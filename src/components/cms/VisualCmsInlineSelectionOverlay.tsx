@@ -1,10 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 
 type SelectionLevel = 'element' | 'container' | 'section';
 type HomeStructureAction = 'move-up' | 'move-down' | 'duplicate';
+type DragSource =
+  | { kind: 'section'; sectionId: string }
+  | { kind: 'card'; sectionId: string; container: string; key: string };
+type DragTarget =
+  | { kind: 'section'; sectionId: string; rect: OverlayRect; label: string }
+  | { kind: 'card'; sectionId: string; container: string; rect: OverlayRect; label: string };
 
 type OverlayRect = { top: number; left: number; width: number; height: number };
 type HomeStructureState = {
@@ -17,6 +23,9 @@ type HomeStructureState = {
 
 const BLOCKED_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'HTML', 'BODY']);
 const TEXT_BLOCKED_TAGS = new Set(['IMG', 'INPUT', 'TEXTAREA', 'SELECT', 'VIDEO', 'CANVAS', 'SVG', 'IFRAME']);
+const TYPOGRAPHY_BLOCKED_TAGS = new Set(['IMG', 'VIDEO', 'CANVAS', 'SVG', 'IFRAME']);
+const FONT_WEIGHTS = ['300', '400', '500', '600', '700', '800', '900'] as const;
+const TEXT_ALIGNS = ['left', 'center', 'right', 'justify'] as const;
 
 function resolveElement(target: EventTarget | null): HTMLElement | null {
   if (target instanceof HTMLElement) return target;
@@ -93,6 +102,26 @@ function cssColorToHex(value: string | undefined, fallback: string) {
   return `#${[rgb[1], rgb[2], rgb[3]].map((part) => Math.max(0, Math.min(255, Number(part))).toString(16).padStart(2, '0')).join('')}`;
 }
 
+function normalizedWeight(value: string | undefined) {
+  const clean = (value || '').trim().toLowerCase();
+  if (clean === 'bold') return '700';
+  if (clean === 'normal') return '400';
+  const numeric = Number(clean);
+  if (!Number.isFinite(numeric)) return '400';
+  const nearest = FONT_WEIGHTS.reduce((best, item) => Math.abs(Number(item) - numeric) < Math.abs(Number(best) - numeric) ? item : best, '400');
+  return nearest;
+}
+
+function normalizedAlign(value: string | undefined): (typeof TEXT_ALIGNS)[number] {
+  const clean = (value || '').trim().toLowerCase();
+  return (TEXT_ALIGNS as readonly string[]).includes(clean) ? clean as (typeof TEXT_ALIGNS)[number] : 'left';
+}
+
+function repeatedKey(container: string | null | undefined) {
+  const match = (container || '').match(/^(.+)-(\d+)$/);
+  return match?.[1] || null;
+}
+
 function shortLabel(element: HTMLElement | null) {
   if (!element) return '';
   const semantic = element.getAttribute('aria-label') || element.getAttribute('title');
@@ -108,6 +137,33 @@ function mutationTouchesOnlyEditorUi(mutation: MutationRecord) {
   return nodes.length > 0 && nodes.every((node) => node instanceof HTMLElement && (node.matches('[data-cms-editor-ignore]') || isEditorElement(node)));
 }
 
+function dragTargetAt(clientX: number, clientY: number, source: DragSource): DragTarget | null {
+  const stack = document.elementsFromPoint(clientX, clientY);
+  for (const node of stack) {
+    if (!(node instanceof Element)) continue;
+    if (source.kind === 'section') {
+      const candidate = node.closest<HTMLElement>('[data-cms-block-id]');
+      if (!candidate || isEditorElement(candidate)) continue;
+      const sectionId = candidate.dataset.cmsBlockId;
+      if (!sectionId || sectionId === source.sectionId) continue;
+      const rect = rectOf(candidate);
+      if (!rect) continue;
+      return { kind: 'section', sectionId, rect, label: shortLabel(candidate) };
+    }
+
+    const candidate = node.closest<HTMLElement>('[data-cms-container]');
+    if (!candidate || isEditorElement(candidate)) continue;
+    const container = candidate.dataset.cmsContainer;
+    if (!container || container === source.container || repeatedKey(container) !== source.key) continue;
+    const sectionId = candidate.closest<HTMLElement>('[data-cms-block-id]')?.dataset.cmsBlockId;
+    if (!sectionId || sectionId !== source.sectionId) continue;
+    const rect = rectOf(candidate);
+    if (!rect) continue;
+    return { kind: 'card', sectionId, container, rect, label: shortLabel(candidate) };
+  }
+  return null;
+}
+
 export default function VisualCmsInlineSelectionOverlay() {
   const [enabled, setEnabled] = useState(false);
   const [selected, setSelected] = useState<HTMLElement | null>(null);
@@ -115,7 +171,10 @@ export default function VisualCmsInlineSelectionOverlay() {
   const [level, setLevel] = useState<SelectionLevel>('element');
   const [rect, setRect] = useState<OverlayRect | null>(null);
   const [editingText, setEditingText] = useState(false);
+  const [editingStyle, setEditingStyle] = useState(false);
   const [textDraft, setTextDraft] = useState('');
+  const [draggingStructure, setDraggingStructure] = useState<DragSource | null>(null);
+  const [dragTarget, setDragTarget] = useState<DragTarget | null>(null);
   const [homeStructure, setHomeStructure] = useState<HomeStructureState>({
     dirty: false,
     busy: false,
@@ -124,6 +183,7 @@ export default function VisualCmsInlineSelectionOverlay() {
     status: '',
   });
   const suppressBaseResetRef = useRef(false);
+  const dragTargetRef = useRef<DragTarget | null>(null);
 
   useEffect(() => {
     let preview = false;
@@ -170,6 +230,7 @@ export default function VisualCmsInlineSelectionOverlay() {
       if (!element || BLOCKED_TAGS.has(element.tagName) || isEditorElement(element)) return;
       setSelected(element);
       setEditingText(false);
+      setEditingStyle(false);
       if (!suppressBaseResetRef.current) {
         setBase(element);
         setLevel('element');
@@ -198,6 +259,56 @@ export default function VisualCmsInlineSelectionOverlay() {
     };
   }, [enabled, selected]);
 
+  useEffect(() => {
+    if (!enabled || !draggingStructure) return;
+
+    const updateTarget = (event: PointerEvent) => {
+      event.preventDefault();
+      const target = dragTargetAt(event.clientX, event.clientY, draggingStructure);
+      dragTargetRef.current = target;
+      setDragTarget(target);
+    };
+
+    const finish = (event: PointerEvent) => {
+      event.preventDefault();
+      const target = dragTargetAt(event.clientX, event.clientY, draggingStructure) || dragTargetRef.current;
+      if (target && target.kind === draggingStructure.kind) {
+        if (draggingStructure.kind === 'section' && target.kind === 'section') {
+          window.parent.postMessage({
+            type: 'cms:visual-home-structure-relocate',
+            sectionId: draggingStructure.sectionId,
+            targetSectionId: target.sectionId,
+          }, window.location.origin);
+        } else if (draggingStructure.kind === 'card' && target.kind === 'card') {
+          window.parent.postMessage({
+            type: 'cms:visual-home-card-structure-relocate',
+            sectionId: draggingStructure.sectionId,
+            container: draggingStructure.container,
+            targetContainer: target.container,
+          }, window.location.origin);
+        }
+      }
+      dragTargetRef.current = null;
+      setDragTarget(null);
+      setDraggingStructure(null);
+    };
+
+    const cancel = () => {
+      dragTargetRef.current = null;
+      setDragTarget(null);
+      setDraggingStructure(null);
+    };
+
+    window.addEventListener('pointermove', updateTarget, { passive: false });
+    window.addEventListener('pointerup', finish, { passive: false });
+    window.addEventListener('pointercancel', cancel);
+    return () => {
+      window.removeEventListener('pointermove', updateTarget);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', cancel);
+    };
+  }, [enabled, draggingStructure]);
+
   const candidates = useMemo(() => {
     if (!base) return { element: null, container: null, section: null };
     return { element: base, container: containerFor(base), section: sectionFor(base) };
@@ -209,29 +320,38 @@ export default function VisualCmsInlineSelectionOverlay() {
   const textColor = cssColorToHex(computed.color, '#171612');
   const backgroundColor = cssColorToHex(computed.backgroundColor, '#ffffff');
   const fontSize = Number.parseFloat(computed.fontSize || '16') || 16;
+  const fontWeight = normalizedWeight(computed.fontWeight);
+  const textAlign = normalizedAlign(computed.textAlign);
+  const borderRadius = Math.max(0, Math.round(Number.parseFloat(computed.borderRadius || '0') || 0));
   const textEditable = isTextEditable(selected);
+  const typographyEditable = !TYPOGRAPHY_BLOCKED_TAGS.has(selected.tagName);
   const textMultiline = textDraft.length > 72 || ['P', 'LI', 'BLOCKQUOTE'].includes(selected.tagName);
   const managedSectionId = level === 'section' ? selected.dataset.cmsBlockId || null : null;
   const rawManagedContainer = level === 'container' ? selected.dataset.cmsContainer || null : null;
   const managedContainer = rawManagedContainer && /^.+-\d+$/.test(rawManagedContainer) ? rawManagedContainer : null;
   const managedContainerSectionId = managedContainer ? selected.closest<HTMLElement>('[data-cms-block-id]')?.dataset.cmsBlockId || null : null;
   const hasManagedStructure = Boolean(managedSectionId || (managedContainer && managedContainerSectionId));
-  const toolbarWidth = Math.min(hasManagedStructure ? 900 : 590, Math.max(300, window.innerWidth - 16));
+  const toolbarWidth = Math.min(hasManagedStructure ? 980 : 680, Math.max(300, window.innerWidth - 16));
   const toolbarLeft = Math.max(8, Math.min(window.innerWidth - toolbarWidth - 8, rect.left));
   const toolbarTop = rect.top > 58 ? rect.top - 48 : Math.min(window.innerHeight - 52, rect.top + rect.height + 8);
-  const textEditorWidth = Math.min(520, Math.max(280, window.innerWidth - 16));
-  const textEditorLeft = Math.max(8, Math.min(window.innerWidth - textEditorWidth - 8, rect.left));
-  const editorHeight = textMultiline ? 166 : 112;
+  const floatingWidth = Math.min(520, Math.max(280, window.innerWidth - 16));
+  const floatingLeft = Math.max(8, Math.min(window.innerWidth - floatingWidth - 8, rect.left));
+  const textEditorHeight = textMultiline ? 166 : 112;
+  const styleEditorHeight = 154;
   const belowToolbar = toolbarTop + 46;
-  const textEditorTop = belowToolbar + editorHeight <= window.innerHeight - 8
+  const textEditorTop = belowToolbar + textEditorHeight <= window.innerHeight - 8
     ? belowToolbar
-    : Math.max(8, toolbarTop - editorHeight - 6);
+    : Math.max(8, toolbarTop - textEditorHeight - 6);
+  const styleEditorTop = belowToolbar + styleEditorHeight <= window.innerHeight - 8
+    ? belowToolbar
+    : Math.max(8, toolbarTop - styleEditorHeight - 6);
 
   const selectLevel = (nextLevel: SelectionLevel) => {
     const target = candidates[nextLevel];
     if (!target) return;
     suppressBaseResetRef.current = true;
     setEditingText(false);
+    setEditingStyle(false);
     setLevel(nextLevel);
     setSelected(target);
     setRect(rectOf(target));
@@ -247,6 +367,7 @@ export default function VisualCmsInlineSelectionOverlay() {
   };
 
   const openTextEditor = () => {
+    setEditingStyle(false);
     if (!textEditable) {
       send('focus-text');
       return;
@@ -259,6 +380,31 @@ export default function VisualCmsInlineSelectionOverlay() {
     if (!textEditable) return;
     send('text', textDraft);
     setEditingText(false);
+  };
+
+  const toggleStyleEditor = () => {
+    setEditingText(false);
+    setEditingStyle((current) => !current);
+  };
+
+  const beginStructureDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (homeStructure.busy) return;
+    setEditingText(false);
+    setEditingStyle(false);
+    dragTargetRef.current = null;
+    setDragTarget(null);
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* noop */ }
+
+    if (managedSectionId) {
+      setDraggingStructure({ kind: 'section', sectionId: managedSectionId });
+      return;
+    }
+    const key = repeatedKey(managedContainer);
+    if (managedContainer && managedContainerSectionId && key) {
+      setDraggingStructure({ kind: 'card', sectionId: managedContainerSectionId, container: managedContainer, key });
+    }
   };
 
   const sendHomeStructure = (action: HomeStructureAction) => {
@@ -297,6 +443,15 @@ export default function VisualCmsInlineSelectionOverlay() {
         </span>
       </div>
 
+      {dragTarget ? (
+        <div
+          className="absolute rounded-lg border-2 border-dashed border-[#ffe08a] bg-[#ffb000]/5 shadow-[0_0_0_4px_rgba(255,176,0,.08)]"
+          style={{ top: dragTarget.rect.top - 3, left: dragTarget.rect.left - 3, width: dragTarget.rect.width + 6, height: dragTarget.rect.height + 6 }}
+        >
+          <span className="absolute left-2 top-2 max-w-[220px] truncate rounded-md bg-[#ffb000] px-2 py-1 text-[8px] font-black uppercase tracking-[.06em] text-black">Soltar aquí · {dragTarget.label}</span>
+        </div>
+      ) : null}
+
       <div
         className="pointer-events-auto absolute flex h-10 items-center gap-1 overflow-x-auto rounded-xl border border-white/10 bg-[#15140f]/95 p-1 text-[#fff8e9] shadow-[0_16px_42px_rgba(0,0,0,.34)] backdrop-blur-xl [scrollbar-width:none]"
         style={{ top: toolbarTop, left: toolbarLeft, width: toolbarWidth }}
@@ -310,6 +465,14 @@ export default function VisualCmsInlineSelectionOverlay() {
           <>
             <span className="mx-0.5 h-5 w-px shrink-0 bg-[#ffb000]/25" />
             <span className="hidden shrink-0 px-1 text-[7px] font-black uppercase tracking-[.08em] text-[#ffd77a]/60 sm:inline">{managedSectionId ? 'Sección' : 'Card'}</span>
+            <button
+              type="button"
+              disabled={homeStructure.busy}
+              onPointerDown={beginStructureDrag}
+              className={`grid h-8 w-8 shrink-0 touch-none place-items-center rounded-lg text-[14px] font-black disabled:opacity-35 ${draggingStructure ? 'bg-[#ffb000] text-black' : 'bg-[#ffb000]/12 text-[#ffd77a]'}`}
+              title={`Arrastrar ${managedSectionId ? 'sección' : 'tarjeta'} para reordenar`}
+              aria-label={`Arrastrar ${managedSectionId ? 'sección' : 'tarjeta'} para reordenar`}
+            >↕</button>
             <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('move-up')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#ffb000]/12 text-[13px] font-black text-[#ffd77a] disabled:opacity-35" title={`Mover ${managedSectionId ? 'sección' : 'tarjeta'} hacia arriba`}>↑</button>
             <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('move-down')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#ffb000]/12 text-[13px] font-black text-[#ffd77a] disabled:opacity-35" title={`Mover ${managedSectionId ? 'sección' : 'tarjeta'} hacia abajo`}>↓</button>
             <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('duplicate')} className="h-8 shrink-0 rounded-lg bg-[#ffb000]/12 px-2 text-[8px] font-black text-[#ffd77a] disabled:opacity-35" title={`Duplicar ${managedSectionId ? 'sección' : 'tarjeta'}`}>Duplicar</button>
@@ -330,6 +493,7 @@ export default function VisualCmsInlineSelectionOverlay() {
         </label>
         <button type="button" onClick={() => send('font-size', `${Math.max(8, fontSize - 1)}px`)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-[10px] font-black text-white/70">A−</button>
         <button type="button" onClick={() => send('font-size', `${Math.min(160, fontSize + 1)}px`)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-[10px] font-black text-white/70">A+</button>
+        <button type="button" onClick={toggleStyleEditor} className={`h-8 shrink-0 rounded-lg px-2 text-[9px] font-black ${editingStyle ? 'bg-[#ffb000] text-black' : 'bg-white/5 text-white/70'}`}>Estilo</button>
         {selected instanceof HTMLImageElement ? <button type="button" onClick={() => send('image')} className="h-8 shrink-0 rounded-lg bg-[#ffb000]/15 px-2 text-[9px] font-black text-[#ffd77a]">Imagen</button> : null}
         <button type="button" onClick={() => send('advanced')} className="ml-auto h-8 shrink-0 rounded-lg border border-[#ffb000]/25 bg-[#ffb000]/10 px-2 text-[9px] font-black text-[#ffd77a]">Avanzado</button>
       </div>
@@ -338,7 +502,7 @@ export default function VisualCmsInlineSelectionOverlay() {
         <div
           data-cms-editor-ignore="true"
           className="pointer-events-auto absolute rounded-2xl border border-[#ffb000]/25 bg-[#15140f]/95 p-2.5 text-[#fff8e9] shadow-[0_20px_60px_rgba(0,0,0,.38)] backdrop-blur-xl"
-          style={{ top: textEditorTop, left: textEditorLeft, width: textEditorWidth }}
+          style={{ top: textEditorTop, left: floatingLeft, width: floatingWidth }}
         >
           <div className="mb-2 flex items-center gap-2 px-1">
             <div className="min-w-0 flex-1">
@@ -373,6 +537,70 @@ export default function VisualCmsInlineSelectionOverlay() {
             />
           )}
           <p className="mt-1.5 px-1 text-[8px] text-white/30">{textMultiline ? 'Ctrl/Cmd + Enter aplica · Esc cancela' : 'Enter aplica · Esc cancela'}</p>
+        </div>
+      ) : null}
+
+      {editingStyle ? (
+        <div
+          data-cms-editor-ignore="true"
+          className="pointer-events-auto absolute rounded-2xl border border-[#ffb000]/25 bg-[#15140f]/95 p-2.5 text-[#fff8e9] shadow-[0_20px_60px_rgba(0,0,0,.38)] backdrop-blur-xl"
+          style={{ top: styleEditorTop, left: floatingLeft, width: floatingWidth }}
+        >
+          <div className="mb-2 flex items-center gap-2 px-1">
+            <div className="min-w-0 flex-1">
+              <p className="text-[8px] font-black uppercase tracking-[.11em] text-[#ffd77a]/55">Estilo rápido</p>
+              <p className="truncate text-[10px] font-bold text-white/75">{shortLabel(selected)}</p>
+            </div>
+            <button type="button" onClick={() => setEditingStyle(false)} className="h-8 rounded-lg border border-white/10 px-2.5 text-[9px] font-black text-white/55">Cerrar</button>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-[118px_minmax(0,1fr)_108px]">
+            {typographyEditable ? (
+              <label className="grid h-14 content-center rounded-xl border border-white/10 bg-black/35 px-2.5">
+                <span className="text-[7px] font-black uppercase tracking-[.08em] text-white/35">Peso</span>
+                <select value={fontWeight} onChange={(event) => send('font-weight', event.target.value)} className="bg-transparent text-[10px] font-black text-white outline-none">
+                  <option className="text-black" value="300">Ligera</option>
+                  <option className="text-black" value="400">Normal</option>
+                  <option className="text-black" value="500">Media</option>
+                  <option className="text-black" value="600">Semi</option>
+                  <option className="text-black" value="700">Negrita</option>
+                  <option className="text-black" value="800">Extra</option>
+                  <option className="text-black" value="900">Black</option>
+                </select>
+              </label>
+            ) : <div className="hidden sm:block" />}
+
+            {typographyEditable ? (
+              <div className="flex h-14 items-center justify-center gap-1 rounded-xl border border-white/10 bg-black/35 px-2">
+                {TEXT_ALIGNS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => send('text-align', value)}
+                    className={`h-9 min-w-9 flex-1 rounded-lg px-1 text-[8px] font-black ${textAlign === value ? 'bg-[#ffb000] text-black' : 'bg-white/5 text-white/55'}`}
+                    title={value === 'left' ? 'Alinear izquierda' : value === 'center' ? 'Centrar' : value === 'right' ? 'Alinear derecha' : 'Justificar'}
+                  >{value === 'left' ? 'Izq' : value === 'center' ? 'Centro' : value === 'right' ? 'Der' : 'Just'}</button>
+                ))}
+              </div>
+            ) : <div className="hidden sm:block" />}
+
+            <label className="grid h-14 content-center rounded-xl border border-white/10 bg-black/35 px-2.5">
+              <span className="text-[7px] font-black uppercase tracking-[.08em] text-white/35">Radio px</span>
+              <input
+                type="number"
+                min="0"
+                max="160"
+                step="1"
+                value={borderRadius}
+                onChange={(event) => {
+                  const value = Math.max(0, Math.min(160, Number(event.target.value) || 0));
+                  send('border-radius', `${value}px`);
+                }}
+                className="w-full bg-transparent text-[11px] font-black text-white outline-none"
+              />
+            </label>
+          </div>
+          <p className="mt-2 px-1 text-[8px] text-white/30">Los cambios usan la misma capa activa del Visual CMS y entran al historial visual normal.</p>
         </div>
       ) : null}
     </div>,

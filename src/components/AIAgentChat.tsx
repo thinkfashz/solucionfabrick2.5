@@ -107,7 +107,7 @@ export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] 
   const clearChat = () => { abortRef.current?.abort(); setMessages([]); setError(null); saveHistory([]); inputRef.current?.focus(); };
 
   if (!mounted) return null;
-  if (pathname && hideOn.some((path) => pathname.startsWith(path))) return null;
+  if (pathname && (pathname.startsWith('/fundador') || hideOn.some((path) => pathname.startsWith(path)))) return null;
 
   return (
     <>

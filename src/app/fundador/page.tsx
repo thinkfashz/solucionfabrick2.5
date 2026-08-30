@@ -1,11 +1,23 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { Outfit } from 'next/font/google';
+import { Anton } from 'next/font/google';
+import { notFound } from 'next/navigation';
 import {
-  ArrowDown,
   ArrowUpRight,
-  ExternalLink,
+  Building2,
+  Code2,
+  FileText,
+  Hammer,
+  Instagram,
+  Layers3,
+  Linkedin,
+  MessageCircle,
+  PaintRoller,
   QrCode,
+  ShoppingCart,
+  Snowflake,
+  Sparkles,
+  Wrench,
+  Zap,
 } from 'lucide-react';
 import FounderExperience from '@/components/founder/FounderExperience';
 import { getPublicFounderProfile } from '@/lib/founderProfileServer';
@@ -13,45 +25,40 @@ import { PUBLIC_FOUNDER_URL } from '@/lib/founderProfile';
 
 export const dynamic = 'force-dynamic';
 
-const outfit = Outfit({
+const anton = Anton({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-founder-display',
-  weight: ['500', '600', '700', '800'],
+  weight: '400',
+  variable: '--font-founder-condensed',
 });
 
-const displayStyle = { fontFamily: 'var(--font-founder-display), Manrope, ui-sans-serif, system-ui, sans-serif' } as const;
+const TECH = [
+  { name: 'HTML5', src: 'https://cdn.simpleicons.org/html5/E34F26' },
+  { name: 'CSS3', src: 'https://cdn.simpleicons.org/css/663399' },
+  { name: 'JavaScript', src: 'https://cdn.simpleicons.org/javascript/F7DF1E' },
+  { name: 'TypeScript', src: 'https://cdn.simpleicons.org/typescript/3178C6' },
+  { name: 'React', src: 'https://cdn.simpleicons.org/react/149ECA' },
+  { name: 'Next.js', src: 'https://cdn.simpleicons.org/nextdotjs/111111' },
+  { name: 'Node.js', src: 'https://cdn.simpleicons.org/nodedotjs/5FA04E' },
+  { name: 'NestJS', src: 'https://cdn.simpleicons.org/nestjs/E0234E' },
+  { name: 'Tailwind CSS', src: 'https://cdn.simpleicons.org/tailwindcss/06B6D4' },
+  { name: 'PostgreSQL', src: 'https://cdn.simpleicons.org/postgresql/4169E1' },
+  { name: 'Supabase', src: 'https://cdn.simpleicons.org/supabase/3FCF8E' },
+  { name: 'GraphQL', src: 'https://cdn.simpleicons.org/graphql/E10098' },
+  { name: 'Three.js', src: 'https://cdn.simpleicons.org/threedotjs/111111' },
+  { name: 'Cloudinary', src: 'https://cdn.simpleicons.org/cloudinary/3448C5' },
+  { name: 'Vercel', src: 'https://cdn.simpleicons.org/vercel/111111' },
+] as const;
 
-const appMap = [
-  {
-    title: 'Sitio y servicios',
-    text: 'Presentación de servicios, proyectos, contacto y contenido para explicar con claridad qué puede resolver Soluciones Fabrick.',
-  },
-  {
-    title: 'Presupuestos y cálculo',
-    text: 'Herramientas para estimar partidas, materiales, superficies, equipos y alcances antes de ejecutar una obra.',
-  },
-  {
-    title: 'Tienda y compra',
-    text: 'Catálogo, fichas de producto, carrito, checkout y flujos comerciales integrados dentro de una misma experiencia.',
-  },
-  {
-    title: 'Visualización técnica',
-    text: 'Visores, esquemas y experiencias 3D para comprender capas, estructuras, medidas y soluciones constructivas.',
-  },
-  {
-    title: 'Administración y Visual CMS',
-    text: 'Panel interno para gestionar contenido, tienda, operaciones y editar visualmente el sitio sin rehacer su lógica.',
-  },
-  {
-    title: 'Automatización e inteligencia',
-    text: 'Capas de automatización e IA orientadas a reducir tareas repetitivas, organizar información y apoyar decisiones operativas.',
-  },
-];
+const PLATFORM = [
+  { title: 'E-commerce', text: 'Catálogo, productos y materiales dentro de una experiencia comercial organizada.', icon: ShoppingCart },
+  { title: 'Cotizaciones', text: 'Flujos rápidos y claros para transformar medidas y necesidades en decisiones.', icon: FileText },
+  { title: 'CMS editable', text: 'Contenido, páginas y bloques que pueden administrarse sin rehacer la lógica.', icon: Code2 },
+  { title: 'Visualización', text: 'Visores y recursos 3D para explicar mejor estructuras, capas, medidas y soluciones.', icon: Layers3 },
+  { title: 'Administración', text: 'Operación, proyectos, pedidos, datos y herramientas reunidos en un solo panel.', icon: Building2 },
+] as const;
 
-function initials(name: string) {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'SF';
-}
+const SERVICE_ICONS = [Hammer, PaintRoller, Layers3, Snowflake, Zap, Code2, Wrench, Building2] as const;
 
 function cleanBrandCopy(value: string) {
   return value
@@ -74,9 +81,18 @@ function externalUrl(value: string | null, network: 'web' | 'instagram' | 'faceb
   return value.includes('.') ? `https://${value}` : null;
 }
 
+function shortHandle(name: string) {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 28) || 'fundador';
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const founder = await getPublicFounderProfile();
-  const title = `${founder.displayName} — Fundador de Soluciones Fabrick`;
+  const title = `${founder.displayName} — Fundador`;
   const description = cleanBrandCopy(
     founder.profile.headline || 'Construcción real, tecnología útil y herramientas digitales creadas para resolver problemas concretos.',
   );
@@ -87,11 +103,11 @@ export async function generateMetadata(): Promise<Metadata> {
     description,
     keywords: [
       founder.displayName,
-      'Fundador Soluciones Fabrick',
+      'fundador',
       'Soluciones Fabrick',
       'construcción y tecnología',
       'desarrollo de software',
-      'automatización para construcción',
+      'automatización',
       'Three.js',
       'Visual CMS',
     ],
@@ -99,23 +115,18 @@ export async function generateMetadata(): Promise<Metadata> {
     creator: founder.displayName,
     alternates: { canonical: PUBLIC_FOUNDER_URL },
     robots: {
-      index: true,
-      follow: true,
-      googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
+      index: false,
+      follow: false,
+      googleBot: { index: false, follow: false, 'max-image-preview': 'large' },
     },
     openGraph: {
       title,
       description,
       url: PUBLIC_FOUNDER_URL,
-      siteName: 'Soluciones Fabrick',
+      siteName: `Perfil público · ${founder.displayName}`,
       locale: 'es_CL',
       type: 'profile',
-      images: [{
-        url: shareImage,
-        width: 1200,
-        height: 630,
-        alt: `${founder.displayName}, fundador de Soluciones Fabrick`,
-      }],
+      images: [{ url: shareImage, width: 1200, height: 630, alt: `${founder.displayName}, fundador de Soluciones Fabrick` }],
     },
     twitter: {
       card: 'summary_large_image',
@@ -129,255 +140,240 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function FounderPage() {
   const founder = await getPublicFounderProfile();
   const profile = founder.profile;
-  const summary = cleanBrandCopy(profile.summary);
-  const biography = cleanBrandCopy(profile.biography);
-  const qrUrl = `https://quickchart.io/qr?size=220&margin=1&ecLevel=H&text=${encodeURIComponent(PUBLIC_FOUNDER_URL)}`;
-  const links = [
-    { label: 'Instagram', href: externalUrl(founder.instagram, 'instagram') },
-    { label: 'Facebook', href: externalUrl(founder.facebook, 'facebook') },
-    { label: 'LinkedIn', href: externalUrl(founder.linkedin, 'linkedin') },
-    { label: 'Sitio web', href: externalUrl(founder.website) },
-    { label: 'WhatsApp', href: externalUrl(founder.whatsapp, 'whatsapp') },
-  ].filter((item): item is { label: string; href: string } => Boolean(item.href));
+  if (!profile.enabled) notFound();
 
-  const storyCards = [
-    { title: 'Origen', text: cleanBrandCopy(profile.origin) },
-    { title: 'Misión', text: cleanBrandCopy(profile.mission) },
-    { title: 'Visión', text: cleanBrandCopy(profile.vision) },
-    { title: 'Proyección', text: cleanBrandCopy(profile.projection) },
+  const displayName = founder.displayName;
+  const handle = shortHandle(displayName);
+  const biography = cleanBrandCopy(profile.biography);
+  const summary = cleanBrandCopy(profile.summary);
+  const qrUrl = `https://quickchart.io/qr?size=320&margin=1&ecLevel=H&text=${encodeURIComponent(PUBLIC_FOUNDER_URL)}`;
+  const whatsapp = externalUrl(founder.whatsapp, 'whatsapp');
+  const instagram = externalUrl(founder.instagram, 'instagram');
+  const linkedin = externalUrl(founder.linkedin, 'linkedin');
+  const website = externalUrl(founder.website);
+
+  const publicLinks = [
+    { label: 'Instagram', href: instagram, icon: Instagram },
+    { label: 'LinkedIn', href: linkedin, icon: Linkedin },
+    { label: 'WhatsApp', href: whatsapp, icon: MessageCircle },
+  ].filter((item): item is { label: string; href: string; icon: typeof Instagram } => Boolean(item.href));
+
+  const story = [
+    { number: '01', label: 'Origen', title: 'Una idea nacida de problemas reales.', text: cleanBrandCopy(profile.origin) },
+    { number: '02', label: 'Misión', title: 'Hacer más simple lo que suele sentirse complejo.', text: cleanBrandCopy(profile.mission) },
+    { number: '03', label: 'Visión', title: 'Conectar obra, información y tecnología.', text: cleanBrandCopy(profile.vision) },
+    { number: '04', label: 'Proyección', title: 'Construir un ecosistema que pueda seguir creciendo.', text: cleanBrandCopy(profile.projection) },
   ];
 
   return (
     <main
       data-founder-page
       data-no-tenant-copy
-      className={`${outfit.variable} relative isolate min-h-screen overflow-hidden bg-[#08090a] text-[#f6f1e8]`}
+      className={`${anton.variable} relative isolate min-h-screen overflow-hidden bg-[#f4eee3] text-[#171612]`}
     >
       <FounderExperience />
 
-      <div className="relative z-10">
-        <section className="relative min-h-[92svh] border-b border-white/[.07]">
-          <div className="mx-auto grid min-h-[92svh] max-w-[1380px] items-center gap-12 px-5 pb-16 pt-24 sm:px-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,.62fr)] lg:gap-16 lg:px-10 lg:pb-20 lg:pt-28 xl:px-14">
-            <div className="max-w-5xl">
-              <p
-                data-founder-hero
-                className="inline-flex min-h-9 items-center rounded-full border border-[#ffbd52]/25 bg-[#ffb000]/[.055] px-4 text-[9px] font-extrabold uppercase tracking-[.24em] text-[#ffd78c] sm:text-[10px]"
-              >
-                Quién está detrás de la plataforma
+      <div className="relative z-10 mx-auto w-full max-w-[1500px] px-5 sm:px-8 lg:px-12 xl:px-16">
+        <header data-founder-hero className="flex items-center justify-between gap-5 border-b border-[#171612]/12 py-5 sm:py-7">
+          <div className="text-[15px] font-extrabold tracking-[-.035em] sm:text-lg">
+            Soluciones <span className="text-[#b84d27]">Fabrick</span>
+          </div>
+          <div className="text-right text-[8px] font-extrabold uppercase leading-4 tracking-[.19em] text-[#7f7569] sm:text-[9px]">
+            Perfil público independiente<br />compartido por enlace o QR
+          </div>
+        </header>
+
+        <section className="relative border-b border-[#171612]/12 pb-12 pt-8 sm:pb-16 sm:pt-12 lg:pb-20">
+          <p data-founder-hero className="text-[10px] font-extrabold uppercase tracking-[.42em] text-[#b84d27]">Biografía</p>
+          <h1
+            data-founder-hero
+            className="mt-3 whitespace-nowrap font-[var(--font-founder-condensed)] text-[clamp(4.8rem,18.2vw,16rem)] leading-[.82] tracking-[-.035em] text-[#151515]"
+          >
+            FUNDADOR
+          </h1>
+
+          <div className="mt-7 grid gap-10 lg:grid-cols-[minmax(0,.88fr)_minmax(420px,1.12fr)] lg:items-end lg:gap-12 xl:gap-20">
+            <div className="order-2 lg:order-1">
+              <p data-founder-hero className="font-serif text-[clamp(2.8rem,6.6vw,6.2rem)] leading-[.78] tracking-[-.055em] text-[#1b1916]">
+                f.{handle}
               </p>
-
-              <h1
-                data-founder-hero
-                style={displayStyle}
-                className="mt-7 max-w-[12ch] break-words text-[clamp(3.05rem,10.5vw,7.4rem)] font-semibold leading-[.86] tracking-[-.075em] text-[#fffaf1]"
-              >
-                {founder.displayName}
-              </h1>
-
-              <p
-                data-founder-hero
-                className="mt-7 max-w-3xl text-[11px] font-extrabold uppercase leading-6 tracking-[.18em] text-[#d8b87b] sm:text-xs sm:leading-7"
-              >
+              <p data-founder-hero className="mt-7 max-w-2xl text-[10px] font-extrabold uppercase leading-6 tracking-[.2em] text-[#b84d27] sm:text-xs">
                 {cleanBrandCopy(profile.role)}
               </p>
-
-              <p
-                data-founder-hero
-                className="mt-7 max-w-3xl text-[clamp(1.15rem,3.6vw,1.75rem)] font-medium leading-[1.5] tracking-[-.025em] text-white/72"
-              >
+              <p data-founder-hero className="mt-6 max-w-xl text-[clamp(1rem,2vw,1.24rem)] leading-8 text-[#554e45]">
                 {cleanBrandCopy(profile.headline)}
               </p>
 
-              <div data-founder-hero className="mt-9 flex flex-wrap gap-3">
-                <Link
-                  href="/"
-                  className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#ffb000] px-5 text-xs font-extrabold text-[#18120a] shadow-[0_12px_45px_rgba(255,176,0,.18)] transition hover:-translate-y-0.5 hover:bg-[#ffc038]"
-                >
-                  Ver Soluciones Fabrick <ArrowUpRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  href="/contacto"
-                  className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/12 bg-white/[.035] px-5 text-xs font-extrabold text-white/82 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[.07]"
-                >
-                  Contacto <ExternalLink className="h-4 w-4" />
-                </Link>
-              </div>
-
-              <a
-                data-founder-hero
-                href="#biografia"
-                className="mt-12 inline-flex items-center gap-3 text-[10px] font-extrabold uppercase tracking-[.19em] text-white/38 transition hover:text-white/66"
-              >
-                Conocer la historia <ArrowDown className="h-3.5 w-3.5" />
-              </a>
+              {publicLinks.length ? (
+                <div data-founder-stagger className="mt-8 flex flex-wrap gap-2.5">
+                  {publicLinks.map(({ label, href, icon: Icon }) => (
+                    <a
+                      key={label}
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#171612]/14 bg-white/30 px-4 text-[11px] font-extrabold text-[#2c2924] transition hover:-translate-y-0.5 hover:border-[#b84d27]/35 hover:bg-white/65"
+                    >
+                      <Icon className="h-3.5 w-3.5" /> {label} <ArrowUpRight className="h-3.5 w-3.5" />
+                    </a>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
-            <aside data-founder-hero className="relative lg:justify-self-end">
-              <div className="relative overflow-hidden rounded-[30px] border border-white/[.09] bg-[#0b0c0d]/70 p-3 shadow-[0_34px_110px_rgba(0,0,0,.38)] sm:p-4">
-                <div data-founder-portrait className="relative aspect-[4/4.55] overflow-hidden rounded-[24px] bg-white/[.035]">
+            <div data-founder-hero className="order-1 lg:order-2">
+              <div className="relative mx-auto max-w-[620px] lg:mr-0">
+                <div className="absolute left-[4%] top-[10%] h-[78%] w-[78%] rounded-full bg-[#c96037]" />
+                <div className="absolute -right-3 top-9 h-28 w-28 rounded-full border border-[#171612]/14 sm:h-40 sm:w-40" />
+                <div className="absolute right-[2%] top-[17%] grid grid-cols-4 gap-2 opacity-40">
+                  {Array.from({ length: 16 }).map((_, index) => <span key={index} className="h-1 w-1 rounded-full bg-[#b84d27]" />)}
+                </div>
+                <div data-founder-portrait className="relative mx-auto aspect-[4/4.05] w-[88%] overflow-hidden rounded-t-[46%] rounded-b-[2.2rem] sm:w-[82%]">
                   {founder.avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={founder.avatarUrl} alt={founder.displayName} className="h-full w-full object-cover" />
+                    <img src={founder.avatarUrl} alt={displayName} className="h-full w-full object-cover object-center" />
                   ) : (
-                    <span style={displayStyle} className="grid h-full w-full place-items-center text-6xl font-semibold tracking-[-.07em] text-[#ffbd52]">
-                      {initials(founder.displayName)}
-                    </span>
+                    <div className="grid h-full w-full place-items-center bg-[#24211c] font-[var(--font-founder-condensed)] text-8xl text-[#f4eee3]">SF</div>
                   )}
-                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_62%,rgba(5,6,7,.62))]" />
-                </div>
-
-                <div className="px-2 pb-2 pt-5 sm:px-3">
-                  <p className="text-[15px] leading-7 text-white/63">{summary}</p>
-
-                  {links.length ? (
-                    <div className="mt-5 grid grid-cols-2 gap-2" data-founder-stagger>
-                      {links.map((link) => (
-                        <a
-                          key={link.label}
-                          href={link.href}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex min-h-11 items-center justify-between gap-2 rounded-xl border border-white/[.08] bg-white/[.025] px-3 text-[11px] font-bold text-white/72 transition hover:border-[#ffbd52]/25 hover:bg-[#ffb000]/[.055] hover:text-white"
-                        >
-                          {link.label}<ArrowUpRight className="h-3.5 w-3.5" />
-                        </a>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/[.08] bg-white/[.025] p-3">
-                    <div className="shrink-0 rounded-xl bg-[#fffaf0] p-1.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={qrUrl} alt="QR para abrir el perfil público del fundador" className="h-[78px] w-[78px] object-contain sm:h-[86px] sm:w-[86px]" />
-                    </div>
-                    <div className="min-w-0">
-                      <span className="inline-flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[.16em] text-[#ffcb6e]"><QrCode className="h-3.5 w-3.5" /> Perfil público</span>
-                      <p className="mt-2 text-xs font-semibold leading-5 text-white/67">Escanea para abrir o compartir esta presentación.</p>
-                      <p className="mt-1 truncate text-[9px] text-white/28">solucionesfabrick.com/fundador</p>
-                    </div>
-                  </div>
+                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_72%,rgba(23,22,18,.10))]" />
                 </div>
               </div>
-            </aside>
+            </div>
           </div>
         </section>
 
-        <section id="biografia" className="scroll-mt-20 border-b border-white/[.07]">
-          <div className="mx-auto grid max-w-[1380px] gap-10 px-5 py-20 sm:px-8 lg:grid-cols-[.72fr_1.28fr] lg:gap-20 lg:px-10 lg:py-28 xl:px-14">
-            <div data-founder-reveal>
-              <p className="text-[9px] font-extrabold uppercase tracking-[.24em] text-[#e5b45b]">01 · Biografía</p>
-              <h2 style={displayStyle} className="mt-5 max-w-[10ch] text-[clamp(2.65rem,7vw,5.4rem)] font-semibold leading-[.96] tracking-[-.06em] text-[#fffaf1]">
-                Entre la obra y el código.
-              </h2>
-              <p className="mt-6 max-w-md text-sm leading-7 text-white/42">Una visión práctica que conecta experiencia en terreno, diseño digital y automatización.</p>
-            </div>
-
-            <div data-founder-reveal className="space-y-6 self-end text-[clamp(1.02rem,2.4vw,1.28rem)] leading-[1.85] tracking-[-.012em] text-white/64">
+        <section id="biografia" className="grid gap-10 border-b border-[#171612]/12 py-16 lg:grid-cols-[.62fr_1.38fr] lg:gap-16 lg:py-24">
+          <div data-founder-reveal>
+            <p className="text-[9px] font-extrabold uppercase tracking-[.28em] text-[#b84d27]">Mi historia</p>
+            <h2 className="mt-5 max-w-[9ch] font-serif text-[clamp(2.8rem,5.6vw,5.4rem)] leading-[.92] tracking-[-.045em]">
+              Entre la obra y el código.
+            </h2>
+            <p className="mt-6 max-w-sm text-sm leading-7 text-[#6c6358]">Construcción real, tecnología útil y una forma práctica de convertir necesidades de terreno en herramientas digitales.</p>
+          </div>
+          <div data-founder-reveal className="self-end border-l border-[#171612]/12 pl-6 sm:pl-9 lg:pl-12">
+            <div className="max-w-4xl space-y-6 text-[clamp(1.02rem,2vw,1.28rem)] leading-[1.9] text-[#4f4941]">
               {biography.split(/\n+/).filter(Boolean).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
             </div>
+            <div className="mt-10 border-t border-[#171612]/10 pt-6">
+              <p className="font-serif text-3xl italic text-[#b84d27]">{displayName}</p>
+              <p className="mt-2 text-[9px] font-extrabold uppercase tracking-[.2em] text-[#6f665b]">Fundador de Soluciones Fabrick</p>
+            </div>
           </div>
         </section>
 
-        <section className="border-b border-white/[.07] bg-black/[.11]">
-          <div className="mx-auto max-w-[1380px] px-5 py-20 sm:px-8 lg:px-10 lg:py-28 xl:px-14">
-            <div data-founder-reveal className="max-w-3xl">
-              <p className="text-[9px] font-extrabold uppercase tracking-[.24em] text-[#e5b45b]">02 · De dónde nace</p>
-              <h2 style={displayStyle} className="mt-5 text-[clamp(2.45rem,6vw,4.8rem)] font-semibold leading-[1] tracking-[-.055em] text-[#fffaf1]">Una idea construida desde problemas reales.</h2>
+        <section className="border-b border-[#171612]/12 py-16 lg:py-24">
+          <div data-founder-reveal className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-[.28em] text-[#b84d27]">Tecnologías y lenguajes</p>
+              <h2 className="mt-4 font-serif text-[clamp(2.4rem,4.8vw,4.4rem)] leading-none tracking-[-.04em]">Herramientas que sostienen la plataforma.</h2>
             </div>
+            <p className="max-w-sm text-sm leading-7 text-[#70675c]">Iconografía oficial de las principales tecnologías utilizadas en el desarrollo y operación de la aplicación.</p>
+          </div>
 
-            <div data-founder-stagger className="mt-12 grid gap-px overflow-hidden rounded-[28px] border border-white/[.07] bg-white/[.07] md:grid-cols-2 xl:grid-cols-4">
-              {storyCards.map((card, index) => (
-                <article key={card.title} className="min-h-[300px] bg-[#0a0b0c]/94 p-6 sm:p-7">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-extrabold uppercase tracking-[.2em] text-[#e5b45b]">{card.title}</span>
-                    <span className="text-[10px] font-semibold text-white/20">0{index + 1}</span>
-                  </div>
-                  <p className="mt-10 text-[14px] leading-7 text-white/56">{card.text}</p>
+          <div data-founder-stagger className="mt-10 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-[#171612]/10 bg-[#171612]/10 sm:grid-cols-5 lg:grid-cols-8">
+            {TECH.map((tech) => (
+              <div key={tech.name} className="grid min-h-[132px] place-items-center bg-[#f8f3ea]/88 p-4 text-center backdrop-blur-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={tech.src} alt={`Logo ${tech.name}`} className="h-10 w-10 object-contain sm:h-11 sm:w-11" loading="lazy" />
+                <span className="mt-3 text-[9px] font-extrabold tracking-[-.01em] text-[#3b3731]">{tech.name}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="grid gap-12 border-b border-[#171612]/12 py-16 lg:grid-cols-[.55fr_1.45fr] lg:gap-16 lg:py-24">
+          <div data-founder-reveal>
+            <p className="text-[9px] font-extrabold uppercase tracking-[.28em] text-[#b84d27]">Qué hace la plataforma</p>
+            <h2 className="mt-5 max-w-[10ch] font-serif text-[clamp(2.7rem,5vw,5rem)] leading-[.92] tracking-[-.045em]">Unifica construcción y tecnología en un solo sistema.</h2>
+            <p className="mt-7 max-w-md text-sm leading-7 text-[#6b6358]">{summary}</p>
+          </div>
+
+          <div data-founder-stagger className="grid gap-px overflow-hidden rounded-2xl border border-[#171612]/10 bg-[#171612]/10 sm:grid-cols-2 xl:grid-cols-5">
+            {PLATFORM.map(({ title, text, icon: Icon }) => (
+              <article key={title} className="min-h-[235px] bg-[#f8f3ea]/90 p-5 backdrop-blur-sm">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-[#c96037]/10 text-[#a84825]"><Icon className="h-4.5 w-4.5" /></span>
+                <h3 className="mt-7 text-[11px] font-extrabold uppercase tracking-[.09em]">{title}</h3>
+                <p className="mt-3 text-xs leading-6 text-[#70675c]">{text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-b border-[#171612]/12 py-16 lg:py-24">
+          <div data-founder-reveal>
+            <p className="text-[9px] font-extrabold uppercase tracking-[.28em] text-[#b84d27]">Origen, misión y proyección</p>
+            <h2 className="mt-5 max-w-4xl font-serif text-[clamp(2.6rem,5vw,5rem)] leading-[.94] tracking-[-.045em]">La aplicación crece desde una iniciativa práctica, no desde una idea abstracta.</h2>
+          </div>
+          <div data-founder-stagger className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-[#171612]/10 bg-[#171612]/10 md:grid-cols-2">
+            {story.map((item) => (
+              <article key={item.label} className="bg-[#f8f3ea]/90 p-6 sm:p-8">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-serif text-4xl text-[#c96037]">{item.number}</span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-[.22em] text-[#8a7e70]">{item.label}</span>
+                </div>
+                <h3 className="mt-7 max-w-[14ch] font-serif text-3xl leading-[1.02] tracking-[-.035em] sm:text-4xl">{item.title}</h3>
+                <p className="mt-5 text-sm leading-7 text-[#625a50]">{item.text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-b border-[#171612]/12 py-16 lg:py-24">
+          <div data-founder-reveal className="flex items-end justify-between gap-5">
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-[.28em] text-[#b84d27]">Servicios</p>
+              <h2 className="mt-5 font-serif text-[clamp(2.6rem,5vw,5rem)] leading-[.94] tracking-[-.045em]">Trabajo real, soluciones digitales.</h2>
+            </div>
+            <Sparkles className="hidden h-8 w-8 text-[#c96037] sm:block" />
+          </div>
+
+          <div data-founder-stagger className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {profile.services.slice(0, 8).map((service, index) => {
+              const Icon = SERVICE_ICONS[index % SERVICE_ICONS.length];
+              return (
+                <article key={service} className="min-h-[190px] rounded-2xl border border-[#171612]/10 bg-white/28 p-5">
+                  <Icon className="h-6 w-6 text-[#a84825]" />
+                  <h3 className="mt-8 text-sm font-extrabold leading-6 text-[#2c2924]">{service}</h3>
+                  <p className="mt-2 text-xs leading-6 text-[#756b5f]">Planificación, ejecución y herramientas claras para entender mejor cada alcance.</p>
                 </article>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </section>
 
-        <section className="border-b border-white/[.07]">
-          <div className="mx-auto max-w-[1380px] px-5 py-20 sm:px-8 lg:px-10 lg:py-28 xl:px-14">
-            <div className="grid gap-10 lg:grid-cols-[.75fr_1.25fr] lg:gap-20">
-              <div data-founder-reveal>
-                <p className="text-[9px] font-extrabold uppercase tracking-[.24em] text-[#e5b45b]">03 · Arquitectura</p>
-                <h2 style={displayStyle} className="mt-5 max-w-[10ch] text-[clamp(2.55rem,6vw,4.9rem)] font-semibold leading-[.98] tracking-[-.055em] text-[#fffaf1]">Una plataforma, varias capas conectadas.</h2>
-                <p className="mt-6 max-w-md text-sm leading-7 text-white/43">No es solo un sitio comercial: reúne presentación, cálculo, compra, visualización, administración y automatización.</p>
-              </div>
-
-              <div data-founder-stagger className="grid gap-3 sm:grid-cols-2">
-                {appMap.map((item, index) => (
-                  <article key={item.title} className="rounded-[22px] border border-white/[.08] bg-white/[.025] p-5 transition hover:-translate-y-1 hover:border-[#e5b45b]/20 hover:bg-white/[.045] sm:p-6">
-                    <span className="text-[9px] font-extrabold tracking-[.18em] text-[#e5b45b]">{String(index + 1).padStart(2, '0')}</span>
-                    <h3 style={displayStyle} className="mt-6 text-xl font-semibold tracking-[-.035em] text-[#fffaf1]">{item.title}</h3>
-                    <p className="mt-3 text-sm leading-7 text-white/48">{item.text}</p>
-                  </article>
-                ))}
-              </div>
+        <section className="py-16 lg:py-24">
+          <div data-founder-reveal className="grid gap-8 rounded-[2rem] border border-[#171612]/12 bg-[linear-gradient(105deg,rgba(255,255,255,.48),rgba(211,116,68,.10))] p-6 sm:p-8 lg:grid-cols-[.8fr_1fr_320px] lg:items-center lg:p-10">
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-[.28em] text-[#b84d27]">Hablemos</p>
+              <h2 className="mt-4 font-serif text-[clamp(2.5rem,4.4vw,4.3rem)] leading-[.9] tracking-[-.045em]">Construyamos algo útil.</h2>
             </div>
-          </div>
-        </section>
 
-        <section className="border-b border-white/[.07] bg-black/[.12]">
-          <div className="mx-auto grid max-w-[1380px] gap-14 px-5 py-20 sm:px-8 lg:grid-cols-2 lg:gap-20 lg:px-10 lg:py-28 xl:px-14">
-            <div data-founder-reveal>
-              <p className="text-[9px] font-extrabold uppercase tracking-[.24em] text-[#e5b45b]">04 · Tecnología</p>
-              <h2 style={displayStyle} className="mt-5 text-[clamp(2.4rem,5.3vw,4.35rem)] font-semibold leading-[1] tracking-[-.055em] text-[#fffaf1]">El lenguaje detrás de Fabrick.</h2>
-              <p className="mt-5 max-w-xl text-sm leading-7 text-white/45">Frontend, backend, datos, 3D, medios en la nube, despliegue continuo e inteligencia artificial trabajando como un solo sistema.</p>
-              <div data-founder-stagger className="mt-8 flex flex-wrap gap-2">
-                {profile.stack.map((item) => (
-                  <span key={item} className="rounded-full border border-white/[.09] bg-white/[.025] px-3.5 py-2 text-[10px] font-bold text-white/60">{item}</span>
-                ))}
+            <div>
+              <p className="max-w-xl text-sm leading-7 text-[#61594f]">Esta página es una presentación pública independiente. No forma parte de la navegación de la tienda ni del sitio principal; se comparte directamente mediante este enlace o QR.</p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {whatsapp ? <a href={whatsapp} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#b84d27] px-5 text-xs font-extrabold text-white"><MessageCircle className="h-4 w-4" /> Escríbeme</a> : null}
+                {website ? <a href={website} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#171612]/14 bg-white/40 px-5 text-xs font-extrabold text-[#2c2924]">Sitio web <ArrowUpRight className="h-4 w-4" /></a> : null}
               </div>
             </div>
 
-            <div data-founder-reveal>
-              <p className="text-[9px] font-extrabold uppercase tracking-[.24em] text-[#e5b45b]">05 · Servicios</p>
-              <h2 style={displayStyle} className="mt-5 text-[clamp(2.4rem,5.3vw,4.35rem)] font-semibold leading-[1] tracking-[-.055em] text-[#fffaf1]">Qué ofrece Soluciones Fabrick.</h2>
-              <div data-founder-stagger className="mt-8 grid gap-2 sm:grid-cols-2">
-                {profile.services.map((item, index) => (
-                  <div key={item} className="flex min-h-16 items-center gap-3 rounded-2xl border border-white/[.08] bg-white/[.025] px-4 py-3 text-sm font-semibold leading-6 text-white/60">
-                    <span className="text-[9px] font-extrabold text-[#e5b45b]">{String(index + 1).padStart(2, '0')}</span>
-                    {item}
-                  </div>
-                ))}
+            <div className="flex items-center gap-4 rounded-2xl border border-[#171612]/10 bg-[#fbf7ef]/80 p-4">
+              <div className="shrink-0 rounded-xl bg-white p-1.5 shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrUrl} alt="QR del perfil público del fundador" className="h-[92px] w-[92px] object-contain sm:h-[108px] sm:w-[108px]" />
+              </div>
+              <div className="min-w-0">
+                <span className="inline-flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[.18em] text-[#b84d27]"><QrCode className="h-3.5 w-3.5" /> Perfil público</span>
+                <p className="mt-2 text-xs font-bold leading-5 text-[#4f4941]">Escanea para abrir o compartir esta biografía.</p>
+                <p className="mt-1 truncate text-[9px] text-[#8b8175]">solucionesfabrick.com/fundador</p>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="relative">
-          <div className="mx-auto max-w-[1380px] px-5 py-20 sm:px-8 lg:px-10 lg:py-28 xl:px-14">
-            <div data-founder-reveal className="grid gap-10 rounded-[30px] border border-white/[.08] bg-white/[.025] p-6 sm:p-8 lg:grid-cols-[.75fr_1.25fr] lg:gap-16 lg:p-10">
-              <div>
-                <p className="text-[9px] font-extrabold uppercase tracking-[.24em] text-[#e5b45b]">06 · Principios</p>
-                <h2 style={displayStyle} className="mt-5 max-w-[11ch] text-[clamp(2.35rem,5.4vw,4.45rem)] font-semibold leading-[1] tracking-[-.055em] text-[#fffaf1]">Lo que buscamos cuidar mientras crece.</h2>
-              </div>
-              <div data-founder-stagger className="grid gap-px overflow-hidden rounded-2xl bg-white/[.07] sm:grid-cols-2">
-                {profile.values.map((value, index) => (
-                  <div key={value} className="flex min-h-24 gap-4 bg-[#090a0b]/88 p-4 sm:p-5">
-                    <span className="pt-0.5 text-[9px] font-extrabold text-[#e5b45b]">{String(index + 1).padStart(2, '0')}</span>
-                    <p className="text-sm font-semibold leading-6 text-white/58">{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div data-founder-reveal className="mt-14 flex flex-col items-start justify-between gap-6 border-t border-white/[.07] pt-8 sm:flex-row sm:items-end">
-              <div>
-                <p className="text-[9px] font-extrabold uppercase tracking-[.2em] text-white/32">Soluciones Fabrick</p>
-                <p style={displayStyle} className="mt-2 text-2xl font-semibold tracking-[-.04em] text-white/78">Construcción real. Tecnología útil.</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Link href="/" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#ffb000] px-4 text-xs font-extrabold text-[#18120a]">Explorar la plataforma <ArrowUpRight className="h-4 w-4" /></Link>
-                <Link href="/contacto" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[.03] px-4 text-xs font-extrabold text-white/75">Conversar <ArrowUpRight className="h-4 w-4" /></Link>
-              </div>
-            </div>
-          </div>
-        </section>
+        <footer className="flex flex-col gap-4 border-t border-[#171612]/12 py-7 text-[9px] font-semibold uppercase tracking-[.14em] text-[#8b8175] sm:flex-row sm:items-center sm:justify-between">
+          <span>Perfil público · {displayName}</span>
+          <span>Construcción · Tecnología · Automatización</span>
+        </footer>
       </div>
     </main>
   );

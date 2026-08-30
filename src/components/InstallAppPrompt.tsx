@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Download, X } from 'lucide-react';
 import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
@@ -32,6 +33,7 @@ function isStandaloneDisplay() {
 }
 
 export default function InstallAppPrompt() {
+  const pathname = usePathname();
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(true);
   const [isIos, setIsIos] = useState(false);
@@ -93,7 +95,7 @@ export default function InstallAppPrompt() {
     return Boolean(promptEvent) || isIos;
   }, [dismissed, isIos, isMobile, promptEvent]);
 
-  if (!canShow) return null;
+  if (pathname?.startsWith('/fundador') || !canShow) return null;
 
   return (
     <div className="fixed bottom-[calc(11.6rem+env(safe-area-inset-bottom))] right-4 z-[9400] md:hidden">

@@ -7,6 +7,7 @@ import {
   type HomeVisualSection,
   type HomeVisualSectionStyle,
 } from '@/lib/homeVisualCms';
+import { createHomeBlockFromTemplate, getHomeVisualBlockTemplate } from '@/lib/homeVisualBlockLibrary';
 import {
   getRepeatedItemPosition,
   mutateRepeatedItem,
@@ -26,6 +27,8 @@ type StructureMessage = {
   targetSectionId?: string;
   container?: string;
   targetContainer?: string;
+  afterSectionId?: string;
+  templateId?: string;
   action?: StructureAction;
 };
 
@@ -57,6 +60,13 @@ function cloneSection(section: HomeVisualSection): HomeVisualSection {
   };
 }
 
+function normalizedSections(content: HomePageContent, sections: HomeVisualSection[]) {
+  return normalizeHomePage({
+    ...content,
+    sections: sections.map((section, position) => ({ ...section, order: (position + 1) * 10 })),
+  });
+}
+
 function applySectionAction(content: HomePageContent, sectionId: string, action: StructureAction) {
   const ordered = [...content.sections].sort((a, b) => a.order - b.order);
   const index = ordered.findIndex((section) => section.id === sectionId);
@@ -65,19 +75,13 @@ function applySectionAction(content: HomePageContent, sectionId: string, action:
   if (action === 'duplicate') {
     const copy = cloneSection(ordered[index]);
     ordered.splice(index + 1, 0, copy);
-    return normalizeHomePage({
-      ...content,
-      sections: ordered.map((section, position) => ({ ...section, order: (position + 1) * 10 })),
-    });
+    return normalizedSections(content, ordered);
   }
 
   const target = action === 'move-up' ? index - 1 : index + 1;
   if (target < 0 || target >= ordered.length) return content;
   [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
-  return normalizeHomePage({
-    ...content,
-    sections: ordered.map((section, position) => ({ ...section, order: (position + 1) * 10 })),
-  });
+  return normalizedSections(content, ordered);
 }
 
 function applySectionRelocate(content: HomePageContent, sectionId: string, targetSectionId: string) {
@@ -87,10 +91,21 @@ function applySectionRelocate(content: HomePageContent, sectionId: string, targe
   if (from < 0 || to < 0 || from === to) return content;
   const [moved] = ordered.splice(from, 1);
   ordered.splice(to, 0, moved);
-  return normalizeHomePage({
-    ...content,
-    sections: ordered.map((section, position) => ({ ...section, order: (position + 1) * 10 })),
-  });
+  return normalizedSections(content, ordered);
+}
+
+function applyInsertBlock(content: HomePageContent, templateId: string, afterSectionId?: string) {
+  const template = getHomeVisualBlockTemplate(templateId);
+  if (!template) return content;
+  const ordered = [...content.sections].sort((a, b) => a.order - b.order);
+  const selectedIndex = afterSectionId ? ordered.findIndex((section) => section.id === afterSectionId) : -1;
+  const footerIndex = ordered.findIndex((section) => section.type === 'footer');
+  let insertAt = selectedIndex >= 0 ? selectedIndex + 1 : (footerIndex >= 0 ? footerIndex : ordered.length);
+  if (selectedIndex >= 0 && ordered[selectedIndex]?.type === 'footer') insertAt = selectedIndex;
+  const block = createHomeBlockFromTemplate(templateId, (insertAt + 1) * 10);
+  if (!block) return content;
+  ordered.splice(insertAt, 0, block);
+  return normalizedSections(content, ordered);
 }
 
 function applyCardAction(content: HomePageContent, sectionId: string, container: string, action: StructureAction) {
@@ -263,6 +278,19 @@ export default function VisualCmsHomeStructureBridge() {
       }
       if (data?.type === 'cms:visual-home-structure-restore') {
         restorePublished();
+        return;
+      }
+
+      if (data?.type === 'cms:visual-home-insert-block' && typeof data.templateId === 'string') {
+        void ensureLoaded().then((current) => {
+          const template = getHomeVisualBlockTemplate(data.templateId);
+          if (!template) {
+            emitState('Ese bloque no pertenece a la biblioteca administrada.');
+            return;
+          }
+          const next = applyInsertBlock(current, data.templateId!, data.afterSectionId);
+          if (!commitDraft(current, next, `${template.label} añadido al borrador.`)) emitState('No se pudo insertar el bloque.');
+        }).catch((error) => emitState(error instanceof Error ? error.message : 'No se pudo insertar el bloque.'));
         return;
       }
 

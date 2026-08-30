@@ -16,12 +16,21 @@ import {
   Users,
 } from 'lucide-react';
 import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
+import FounderPublicProfileEditor from '@/components/admin/profile/FounderPublicProfileEditor';
+import { normalizeFounderPublicProfile, type FounderPublicProfile } from '@/lib/founderProfile';
 
 type SocialStats = {
   instagram_followers?: number;
   facebook_followers?: number;
   linkedin_followers?: number;
   tiktok_followers?: number;
+};
+
+type ProfileMetadata = {
+  social_stats?: SocialStats;
+  cover_url?: string | null;
+  public_profile?: unknown;
+  [key: string]: unknown;
 };
 
 type Profile = {
@@ -35,11 +44,7 @@ type Profile = {
   linkedin: string | null;
   whatsapp: string | null;
   website: string | null;
-  metadata?: {
-    social_stats?: SocialStats;
-    cover_url?: string | null;
-    [key: string]: unknown;
-  } | null;
+  metadata?: ProfileMetadata | null;
 };
 
 type Snapshot = {
@@ -67,9 +72,11 @@ const emptyProfile: Profile = {
 };
 
 const fallbackCover = 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1800&q=80';
+const inputClass = 'w-full rounded-xl border border-black/10 bg-white/75 px-3.5 py-3 text-sm font-semibold text-[#171612] outline-none transition focus:border-[#c77a00]/40 focus:bg-white';
+const labelClass = 'mb-2 block text-[10px] font-black uppercase tracking-[.16em] text-[#8f887c]';
 
 function initials(name: string) {
-  return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'SF';
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'SF';
 }
 
 function fmt(value?: number | null) {
@@ -90,9 +97,6 @@ function externalUrl(value?: string | null, network = 'instagram') {
   if (value.startsWith('@')) return network === 'instagram' ? `https://instagram.com/${value.slice(1)}` : value;
   return value.includes('.') ? `https://${value}` : value;
 }
-
-const inputClass = 'w-full rounded-xl border border-black/10 bg-white/75 px-3.5 py-3 text-sm font-semibold text-[#171612] outline-none transition focus:border-[#c77a00]/40 focus:bg-white';
-const labelClass = 'mb-2 block text-[10px] font-black uppercase tracking-[.16em] text-[#8f887c]';
 
 export default function AdminProfileUnifiedClient() {
   const [profile, setProfile] = useState<Profile>(emptyProfile);
@@ -134,23 +138,18 @@ export default function AdminProfileUnifiedClient() {
 
   const displayName = profile.display_name || profile.email.split('@')[0] || 'Administrador Fabrick';
   const stats = statsOf(profile);
+  const founderProfile = useMemo(
+    () => normalizeFounderPublicProfile(profile.metadata?.public_profile),
+    [profile.metadata?.public_profile],
+  );
   const totalFollowers = Number(stats.instagram_followers || 0)
     + Number(stats.facebook_followers || 0)
     + Number(stats.linkedin_followers || 0)
     + Number(stats.tiktok_followers || 0);
   const socialCount = [profile.instagram, profile.facebook, profile.linkedin, profile.website, profile.whatsapp].filter(Boolean).length;
-  const completion = Math.round(([
-    profile.display_name,
-    profile.phone,
-    profile.bio,
-    profile.avatar_url,
-    profile.instagram,
-    profile.facebook,
-    profile.linkedin,
-    profile.whatsapp,
-    profile.website,
-    profile.metadata?.cover_url,
-  ].filter(Boolean).length / 10) * 100);
+  const identityCompletion = [profile.display_name, profile.phone, profile.bio, profile.avatar_url, profile.metadata?.cover_url].filter(Boolean).length;
+  const publicCompletion = [founderProfile.headline, founderProfile.biography, founderProfile.origin, founderProfile.mission, founderProfile.vision, founderProfile.projection].filter(Boolean).length;
+  const completion = Math.round(((identityCompletion + publicCompletion + socialCount) / 16) * 100);
 
   const socialRows = useMemo(() => [
     { key: 'instagram' as const, label: 'Instagram', icon: Instagram, value: profile.instagram || '', followers: stats.instagram_followers || 0, followersKey: 'instagram_followers' as const },
@@ -160,6 +159,16 @@ export default function AdminProfileUnifiedClient() {
 
   function update(key: keyof Profile, value: string) {
     setProfile((previous) => ({ ...previous, [key]: value }));
+  }
+
+  function updateFounderProfile(next: FounderPublicProfile) {
+    setProfile((previous) => ({
+      ...previous,
+      metadata: {
+        ...(previous.metadata || {}),
+        public_profile: next,
+      },
+    }));
   }
 
   function updateFollower(key: keyof SocialStats, value: string) {
@@ -182,7 +191,14 @@ export default function AdminProfileUnifiedClient() {
       const response = await fetch('/api/admin/profile', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...profile, social_stats: statsOf(profile), metadata: profile.metadata || {} }),
+        body: JSON.stringify({
+          ...profile,
+          social_stats: statsOf(profile),
+          metadata: {
+            ...(profile.metadata || {}),
+            public_profile: founderProfile,
+          },
+        }),
       });
       const json = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(json.error || 'No se pudo guardar.');
@@ -191,7 +207,7 @@ export default function AdminProfileUnifiedClient() {
         ...json.profile,
         metadata: { ...(previous.metadata || {}), ...(json.profile?.metadata || {}) },
       }));
-      setStatus('Perfil y ajustes guardados.');
+      setStatus('Perfil, biografía pública y ajustes guardados correctamente.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Error guardando.');
     } finally {
@@ -209,7 +225,7 @@ export default function AdminProfileUnifiedClient() {
       const json = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(json.error || 'No se pudo subir la foto.');
       setProfile((previous) => ({ ...previous, avatar_url: json.photo }));
-      setStatus('Foto de perfil actualizada.');
+      setStatus('Foto de perfil actualizada en Cloudinary.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Error subiendo foto.');
     } finally {
@@ -230,7 +246,7 @@ export default function AdminProfileUnifiedClient() {
         ...previous,
         metadata: { ...(previous.metadata || {}), cover_url: json.cover },
       }));
-      setStatus('Portada actualizada.');
+      setStatus('Portada actualizada en Cloudinary.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Error subiendo portada.');
     } finally {
@@ -285,7 +301,7 @@ export default function AdminProfileUnifiedClient() {
     return (
       <AdminPage>
         <div className="grid min-h-[55vh] place-items-center text-[#817a6f]">
-          <div className="text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-[#c77a00]" /><p className="mt-3 text-sm">Cargando perfil…</p></div>
+          <div className="text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-[#c77a00]" /><p className="mt-3 text-sm">Cargando perfil del propietario…</p></div>
         </div>
       </AdminPage>
     );
@@ -297,9 +313,9 @@ export default function AdminProfileUnifiedClient() {
       <input ref={coverRef} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadCover(file); event.currentTarget.value = ''; }} />
 
       <AdminPageHeader
-        eyebrow="Acceso · Perfil"
-        title="Perfil administrativo"
-        description="Centraliza identidad, contacto y presencia pública del administrador sin mezclar estilos ajenos al sistema Fabrick."
+        eyebrow="Propietario · Identidad pública"
+        title="Perfil de Soluciones Fabrick"
+        description="Administra tu identidad como propietario de la aplicación, tu imagen de Cloudinary, la historia del proyecto, tecnología, servicios y la página pública que abre tu QR."
         icon={ShieldCheck}
         actions={
           <div className="flex flex-wrap gap-2">
@@ -308,68 +324,77 @@ export default function AdminProfileUnifiedClient() {
             </button>
             <button type="button" onClick={() => void saveProfile()} disabled={saving} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white transition hover:bg-[#2a2823] disabled:opacity-50">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {saving ? 'Guardando…' : 'Guardar perfil'}
+              {saving ? 'Guardando…' : 'Guardar todo'}
             </button>
           </div>
         }
       />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <AdminStat label="Completitud" value={`${completion}%`} icon={Sparkles} accent={completion >= 80 ? 'emerald' : undefined} />
-        <AdminStat label="Redes" value={socialCount} icon={Globe2} />
-        <AdminStat label="Audiencia" value={fmt(totalFollowers)} icon={Users} accent="cyan" />
-        <AdminStat label="Rol" value={role} icon={ShieldCheck} accent={role === 'superadmin' ? 'emerald' : undefined} />
+        <AdminStat label="Perfil completo" value={`${Math.min(100, completion)}%`} icon={Sparkles} accent={completion >= 80 ? 'emerald' : undefined} />
+        <AdminStat label="Canales públicos" value={socialCount} icon={Globe2} />
+        <AdminStat label="Audiencia registrada" value={fmt(totalFollowers)} icon={Users} accent="cyan" />
+        <AdminStat label="Acceso" value={role === 'superadmin' ? 'Propietario' : role} icon={ShieldCheck} accent={role === 'superadmin' ? 'emerald' : undefined} />
       </section>
 
       {status ? (
-        <div className="rounded-xl border border-black/10 bg-white/55 px-4 py-3 text-sm font-medium text-[#625b50]">{status}</div>
+        <div className="rounded-xl border border-black/10 bg-white/60 px-4 py-3 text-sm font-semibold text-[#625b50] shadow-sm">{status}</div>
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <AdminCard className="p-0 sm:p-0">
-          <div className="relative h-44 overflow-hidden rounded-t-[inherit] bg-[#171612]">
+        <AdminCard className="overflow-hidden p-0 sm:p-0">
+          <div className="relative h-48 overflow-hidden bg-[#171612]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={coverOf(profile)} alt="Portada administrativa" className="h-full w-full object-cover opacity-75" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+            <img src={coverOf(profile)} alt="Portada del propietario" className="h-full w-full object-cover opacity-78" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
             <button type="button" onClick={() => coverRef.current?.click()} disabled={uploading} className="absolute right-3 top-3 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/45 px-3 py-2 text-[11px] font-black text-white backdrop-blur-sm disabled:opacity-50">
-              <UploadCloud className="h-3.5 w-3.5" /> Portada
+              <UploadCloud className="h-3.5 w-3.5" /> Cambiar portada
             </button>
           </div>
           <div className="p-5 text-center">
-            <button type="button" onClick={() => avatarRef.current?.click()} disabled={uploading} className="group relative mx-auto -mt-16 grid h-28 w-28 place-items-center overflow-hidden rounded-full border-[6px] border-[#f8f3e9] bg-[#171612] text-2xl font-black text-white shadow-lg disabled:opacity-60">
+            <button type="button" onClick={() => avatarRef.current?.click()} disabled={uploading} className="group relative mx-auto -mt-17 grid h-30 w-30 place-items-center overflow-hidden rounded-full border-[6px] border-[#f8f3e9] bg-[#171612] text-2xl font-black text-white shadow-lg disabled:opacity-60">
               {profile.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={profile.avatar_url} alt={displayName} className="h-full w-full object-cover" />
               ) : initials(displayName)}
               <span className="absolute inset-0 grid place-items-center bg-black/55 opacity-0 transition group-hover:opacity-100"><Camera className="h-5 w-5" /></span>
             </button>
-            <h2 className="mt-4 text-xl font-black tracking-[-.03em] text-[#171612]">{displayName}</h2>
-            <p className="mt-1 text-xs text-[#817a6f]">{profile.email || 'Sin email'}</p>
-            <p className="mt-4 text-sm leading-6 text-[#625b50]">{profile.bio || 'Añade una presentación profesional para propuestas y demos.'}</p>
+            <div className="mt-4 inline-flex rounded-full bg-emerald-500/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-emerald-800">Foto sincronizada con Cloudinary</div>
+            <h2 className="mt-3 text-xl font-black tracking-[-.03em] text-[#171612]">{displayName}</h2>
+            <p className="mt-1 text-xs text-[#817a6f]">{profile.email || 'Cuenta administrativa'}</p>
+            <p className="mt-4 text-sm leading-6 text-[#625b50]">{profile.bio || founderProfile.summary}</p>
           </div>
         </AdminCard>
 
         <AdminCard>
           <div className="border-b border-black/8 pb-4">
-            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Identidad</p>
-            <h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Datos principales</h2>
+            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">01 · Identidad privada</p>
+            <h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Datos principales del propietario</h2>
+            <p className="mt-1 text-xs leading-5 text-[#817a6f]">Estos datos sirven para la administración y contacto. El correo no se publica automáticamente en `/fundador`.</p>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Field label="Nombre visible" value={profile.display_name || ''} onChange={(value) => update('display_name', value)} />
             <Field label="Teléfono" value={profile.phone || ''} onChange={(value) => update('phone', value)} />
-            <Field label="WhatsApp" value={profile.whatsapp || ''} onChange={(value) => update('whatsapp', value)} />
+            <Field label="WhatsApp público" value={profile.whatsapp || ''} onChange={(value) => update('whatsapp', value)} />
             <Field label="Sitio web" value={profile.website || ''} onChange={(value) => update('website', value)} />
-            <div className="sm:col-span-2"><Field label="Bio / presentación" value={profile.bio || ''} onChange={(value) => update('bio', value)} textarea /></div>
+            <div className="sm:col-span-2"><Field label="Presentación corta del perfil" value={profile.bio || ''} onChange={(value) => update('bio', value)} textarea /></div>
           </div>
         </AdminCard>
       </div>
 
-      <AdminCard className="p-0 sm:p-0">
+      <FounderPublicProfileEditor
+        value={founderProfile}
+        displayName={displayName}
+        avatarUrl={profile.avatar_url}
+        onChange={updateFounderProfile}
+      />
+
+      <AdminCard className="overflow-hidden p-0 sm:p-0">
         <div className="flex flex-col gap-3 border-b border-black/8 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Presencia pública</p>
-            <h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Redes y audiencia</h2>
-            <p className="mt-1 text-xs leading-5 text-[#817a6f]">Edita enlaces y métricas manualmente o captura información pública disponible.</p>
+            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">03 · Presencia digital</p>
+            <h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Redes, enlaces y audiencia</h2>
+            <p className="mt-1 text-xs leading-5 text-[#817a6f]">Los enlaces configurados aquí pueden aparecer en la tarjeta pública del fundador. Las métricas siguen siendo editables o capturables.</p>
           </div>
           <button type="button" onClick={() => void captureSocial()} disabled={capturing} className="inline-flex min-h-10 items-center gap-2 self-start rounded-xl border border-black/10 bg-white/65 px-4 text-xs font-black text-[#625b50] transition hover:bg-white disabled:opacity-50">
             {capturing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-[#a56600]" />}

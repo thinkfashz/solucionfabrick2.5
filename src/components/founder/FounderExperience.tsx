@@ -32,32 +32,33 @@ const fragmentShader = /* glsl */ `
     vec2 centered = uv - 0.5;
     centered.x *= aspect;
 
-    vec3 ink = vec3(0.018, 0.020, 0.022);
-    vec3 warmInk = vec3(0.055, 0.040, 0.018);
-    vec3 amber = vec3(1.0, 0.57, 0.05);
-    vec3 ivory = vec3(1.0, 0.94, 0.82);
+    vec3 creamA = vec3(0.965, 0.938, 0.885);
+    vec3 creamB = vec3(0.988, 0.972, 0.938);
+    vec3 terracotta = vec3(0.725, 0.285, 0.125);
+    vec3 honey = vec3(0.92, 0.61, 0.25);
+    vec3 paper = vec3(1.0, 0.99, 0.97);
 
-    float slow = uTime * 0.055;
-    vec2 orbA = vec2(-0.34 + sin(slow) * 0.12, 0.34 + cos(slow * 0.82) * 0.08);
-    vec2 orbB = vec2(0.48 + cos(slow * 0.66) * 0.10, -0.16 + sin(slow * 0.9) * 0.10);
+    float slow = uTime * 0.045;
+    vec2 orbA = vec2(-0.34 + sin(slow) * 0.11, 0.30 + cos(slow * 0.82) * 0.07);
+    vec2 orbB = vec2(0.47 + cos(slow * 0.71) * 0.10, -0.12 + sin(slow * 0.94) * 0.08);
     vec2 pointer = vec2((uPointer.x - 0.5) * aspect, uPointer.y - 0.5);
 
-    float glowA = exp(-3.7 * length(centered - orbA));
+    float glowA = exp(-4.1 * length(centered - orbA));
     float glowB = exp(-4.8 * length(centered - orbB));
-    float pointerGlow = exp(-7.2 * length(centered - pointer)) * 0.20;
-    float ribbon = 0.5 + 0.5 * sin((uv.x * 1.55 + uv.y * 1.15 + slow + uScroll * 0.000055) * 6.2831853);
-    ribbon = smoothstep(0.74, 1.0, ribbon) * 0.055;
+    float pointerGlow = exp(-7.7 * length(centered - pointer)) * 0.17;
+    float ribbon = 0.5 + 0.5 * sin((uv.x * 1.45 + uv.y * 1.05 + slow + uScroll * 0.000045) * 6.2831853);
+    ribbon = smoothstep(0.80, 1.0, ribbon) * 0.038;
 
-    vec3 color = mix(ink, warmInk, smoothstep(0.05, 0.94, uv.y));
-    color += amber * glowA * 0.16;
-    color += amber * glowB * 0.085;
-    color += ivory * pointerGlow;
-    color += amber * ribbon;
+    vec3 color = mix(creamA, creamB, smoothstep(0.0, 1.0, uv.y));
+    color += terracotta * glowA * 0.085;
+    color += honey * glowB * 0.055;
+    color += paper * pointerGlow;
+    color += terracotta * ribbon;
 
-    float vignette = smoothstep(0.95, 0.22, length(centered));
-    color *= 0.68 + vignette * 0.36;
+    float vignette = smoothstep(1.08, 0.22, length(centered));
+    color *= 0.94 + vignette * 0.055;
 
-    float grain = (hash(gl_FragCoord.xy + uTime) - 0.5) * 0.018;
+    float grain = (hash(gl_FragCoord.xy + uTime) - 0.5) * 0.012;
     color += grain;
 
     gl_FragColor = vec4(color, 1.0);
@@ -78,7 +79,7 @@ export default function FounderExperience() {
       antialias: false,
       powerPreference: 'low-power',
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     const scene = new THREE.Scene();
@@ -181,25 +182,21 @@ export default function FounderExperience() {
         const hero = gsap.utils.toArray<HTMLElement>('[data-founder-hero]');
         gsap.fromTo(
           hero,
-          { autoAlpha: 0, y: 24 },
-          { autoAlpha: 1, y: 0, duration: 0.82, stagger: 0.09, ease: 'power3.out', delay: 0.08 },
+          { autoAlpha: 0, y: 22 },
+          { autoAlpha: 1, y: 0, duration: 0.82, stagger: 0.085, ease: 'power3.out', delay: 0.06 },
         );
 
         const revealItems = gsap.utils.toArray<HTMLElement>('[data-founder-reveal]');
         revealItems.forEach((item) => {
           gsap.fromTo(
             item,
-            { autoAlpha: 0, y: 34 },
+            { autoAlpha: 0, y: 38 },
             {
               autoAlpha: 1,
               y: 0,
-              duration: 0.78,
+              duration: 0.82,
               ease: 'power3.out',
-              scrollTrigger: {
-                trigger: item,
-                start: 'top 88%',
-                once: true,
-              },
+              scrollTrigger: { trigger: item, start: 'top 88%', once: true },
             },
           );
         });
@@ -210,18 +207,14 @@ export default function FounderExperience() {
           if (!children.length) return;
           gsap.fromTo(
             children,
-            { autoAlpha: 0, y: 28 },
+            { autoAlpha: 0, y: 26 },
             {
               autoAlpha: 1,
               y: 0,
               duration: 0.68,
-              stagger: 0.075,
+              stagger: 0.06,
               ease: 'power3.out',
-              scrollTrigger: {
-                trigger: group,
-                start: 'top 86%',
-                once: true,
-              },
+              scrollTrigger: { trigger: group, start: 'top 87%', once: true },
             },
           );
         });
@@ -229,14 +222,14 @@ export default function FounderExperience() {
         const portrait = document.querySelector<HTMLElement>('[data-founder-portrait]');
         if (portrait) {
           gsap.to(portrait, {
-            yPercent: 5,
-            scale: 1.025,
+            yPercent: 4,
+            scale: 1.018,
             ease: 'none',
             scrollTrigger: {
               trigger: portrait,
-              start: 'top 85%',
-              end: 'bottom 15%',
-              scrub: 0.6,
+              start: 'top 88%',
+              end: 'bottom 18%',
+              scrub: 0.55,
             },
           });
         }
@@ -254,10 +247,10 @@ export default function FounderExperience() {
   }, []);
 
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#08090a]">
-      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full opacity-95" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-12%,rgba(255,221,168,.07),transparent_37%),linear-gradient(180deg,rgba(3,4,5,.06),rgba(3,4,5,.38))]" />
-      <div className="absolute inset-0 opacity-[.12] [background-image:linear-gradient(rgba(255,255,255,.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.025)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:linear-gradient(to_bottom,black,transparent_75%)]" />
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#f4eee3]">
+      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full opacity-80" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(203,92,49,.10),transparent_26%),radial-gradient(circle_at_14%_86%,rgba(222,167,89,.09),transparent_27%)]" />
+      <div className="absolute inset-0 opacity-[.22] [background-image:linear-gradient(rgba(23,22,18,.025)_1px,transparent_1px),linear-gradient(90deg,rgba(23,22,18,.025)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:linear-gradient(to_bottom,black,transparent_78%)]" />
     </div>
   );
 }

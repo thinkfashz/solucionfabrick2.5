@@ -1,0 +1,365 @@
+/* Admin Sidebar v2 — stable navigation, visibility, search and identity */
+
+/* Stage 7 retired these links before Visual CMS became the primary editor.
+ * Restore them explicitly here; this stylesheet is imported after the legacy stages. */
+.fabrick-sidebar-nav a[href="/admin/editor"],
+.fabrick-sidebar-nav a[href="/admin/paginas"] {
+  display: flex !important;
+}
+
+.fabrick-admin-sidebar {
+  contain: layout paint;
+}
+
+.fabrick-sidebar-nav {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scroll-behavior: auto;
+  overflow-anchor: none;
+}
+
+/* Brand ---------------------------------------------------------------- */
+.fabrick-sidebar-brand {
+  position: relative;
+  z-index: 3;
+  background: rgba(10, 10, 8, .24);
+  backdrop-filter: blur(12px);
+}
+
+.fabrick-brand-link {
+  overflow: visible;
+  border-color: rgba(255,176,0,.25);
+  background:
+    radial-gradient(circle at 50% 25%, rgba(255,176,0,.18), transparent 66%),
+    rgba(255,255,255,.045);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025), 0 8px 24px rgba(0,0,0,.22);
+}
+
+.fabrick-brand-mark {
+  display: block;
+  filter: drop-shadow(0 0 10px rgba(255,176,0,.22));
+}
+
+.fabrick-brand-copy strong {
+  color: #fff8e9;
+  letter-spacing: -.02em;
+}
+
+.fabrick-brand-copy span {
+  color: rgba(255,255,255,.42);
+}
+
+/* Search and quick access ------------------------------------------------ */
+.fabrick-sidebar-search {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+.fabrick-sidebar-search input[type="search"] {
+  appearance: none;
+  -webkit-appearance: none;
+  caret-color: var(--fa-accent);
+}
+
+.fabrick-sidebar-search input[type="search"]::-webkit-search-cancel-button {
+  display: none;
+}
+
+.fabrick-sidebar-quick-tools {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 7px;
+  padding: 0 12px 8px;
+}
+
+.fabrick-sidebar-editor-link {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,176,0,.18);
+  border-radius: 13px;
+  text-decoration: none;
+  color: #fff8e9;
+  background:
+    linear-gradient(105deg, rgba(255,176,0,.14), rgba(255,176,0,.045) 64%, rgba(255,255,255,.025));
+  box-shadow: inset 0 1px rgba(255,255,255,.035);
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+
+.fabrick-sidebar-editor-link:hover,
+.fabrick-sidebar-editor-link.is-active {
+  border-color: rgba(255,176,0,.34);
+  background: linear-gradient(105deg, rgba(255,176,0,.22), rgba(255,176,0,.075));
+  transform: translateY(-1px);
+}
+
+.fabrick-sidebar-editor-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--fa-accent);
+  background: rgba(255,176,0,.10);
+  border: 1px solid rgba(255,176,0,.12);
+}
+
+.fabrick-sidebar-editor-link > span:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.fabrick-sidebar-editor-link strong {
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.fabrick-sidebar-editor-link small {
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.37);
+  font-size: 9.5px;
+}
+
+.fabrick-sidebar-editor-link > svg {
+  flex: 0 0 auto;
+  color: rgba(255,255,255,.3);
+}
+
+.fabrick-sidebar-module-tools {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px;
+  color: rgba(255,255,255,.32);
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.fabrick-sidebar-module-tools button {
+  border: 0;
+  padding: 4px 6px;
+  border-radius: 7px;
+  color: rgba(255,230,185,.62);
+  background: transparent;
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.fabrick-sidebar-module-tools button:hover {
+  color: #fff3dc;
+  background: rgba(255,255,255,.055);
+}
+
+.fabrick-sidebar-empty-search {
+  margin: 14px 4px;
+  padding: 18px 12px;
+  border: 1px dashed rgba(255,255,255,.10);
+  border-radius: 12px;
+  text-align: center;
+  color: rgba(255,255,255,.36);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+/* Profile and footer ---------------------------------------------------- */
+.fabrick-sidebar-footer {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+  background: linear-gradient(180deg, rgba(8,8,7,.74), rgba(8,8,7,.96));
+  backdrop-filter: blur(16px);
+}
+
+.fabrick-sidebar-user {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255,255,255,.065);
+  border-radius: 12px;
+  text-decoration: none;
+  color: #fff8e9;
+  background: rgba(255,255,255,.025);
+  transition: background .16s ease, border-color .16s ease;
+}
+
+.fabrick-sidebar-user:hover {
+  border-color: rgba(255,176,0,.18);
+  background: rgba(255,255,255,.055);
+}
+
+.fabrick-sidebar-user.compact {
+  min-height: 46px;
+  justify-content: center;
+  padding: 4px;
+  border-color: transparent;
+}
+
+.fabrick-sidebar-avatar {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255,176,0,.26);
+  border-radius: 50%;
+  object-fit: cover;
+  background: #1c1913;
+  box-shadow: 0 0 0 2px rgba(255,176,0,.055);
+}
+
+.fabrick-sidebar-avatar-fallback {
+  color: #17120b;
+  background: linear-gradient(145deg, #ffc43d, #d88b00);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.fabrick-sidebar-user-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.fabrick-sidebar-user-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.84);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fabrick-sidebar-user-copy small {
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.31);
+  font-size: 8.7px;
+}
+
+.fabrick-sidebar-user > svg {
+  color: rgba(255,255,255,.26);
+  flex: 0 0 auto;
+}
+
+/* Topbar shortcuts and avatar ----------------------------------------- */
+.fabrick-topbar-editor-shortcut {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid rgba(23,22,18,.10);
+  border-radius: 11px;
+  text-decoration: none;
+  color: #27231c;
+  background: rgba(255,255,255,.46);
+  font-size: 11px;
+  font-weight: 800;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+
+.fabrick-topbar-editor-shortcut:hover {
+  background: rgba(255,255,255,.88);
+  border-color: rgba(192,116,0,.18);
+  transform: translateY(-1px);
+}
+
+.fabrick-topbar-profile {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(192,116,0,.18);
+  border-radius: 50%;
+  text-decoration: none;
+  background: rgba(255,255,255,.68);
+  box-shadow: 0 4px 14px rgba(51,38,18,.06);
+}
+
+.fabrick-topbar-profile img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.fabrick-topbar-profile span {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #211a0e;
+  background: linear-gradient(145deg, #ffd165, #e49a12);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .03em;
+}
+
+/* Mobile --------------------------------------------------------------- */
+@media (max-width: 1023px) {
+  .fabrick-admin-sidebar.is-mobile {
+    contain: none;
+  }
+
+  .fabrick-admin-sidebar.is-mobile .fabrick-sidebar-search input[type="search"] {
+    font-size: 16px;
+  }
+
+  .fabrick-admin-sidebar.is-mobile .fabrick-sidebar-nav {
+    padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .fabrick-admin-sidebar.is-mobile .fabrick-sidebar-footer {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 760px) {
+  .fabrick-topbar-editor-shortcut span,
+  .fabrick-intelligence-shortcut span {
+    display: none;
+  }
+
+  .fabrick-topbar-editor-shortcut,
+  .fabrick-intelligence-shortcut {
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .fabrick-topbar-actions {
+    gap: 6px;
+  }
+
+  .fabrick-topbar-actions > .fabrick-icon-button {
+    display: none;
+  }
+
+  .fabrick-page-heading > span {
+    display: none;
+  }
+}

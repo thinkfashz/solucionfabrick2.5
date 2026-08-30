@@ -15,14 +15,15 @@ export default function MetalconSeismicStory({ section }: { section?: HomeVisual
   const background = current.style.background || '#08090A';
   const textColor = current.style.textColor || '#FFF9EE';
   const accent = current.style.accent || '#FFB000';
+  const titleId = current.id === 'home-seismic' ? 'sismo-title' : `${current.id}-title`;
 
   return (
-    <section aria-labelledby="sismo-title" data-cms-section="home-seismic" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
+    <section aria-labelledby={titleId} data-cms-section="home-seismic" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
       <div className="mx-auto max-w-[1280px]">
         <div className="grid gap-9 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
           <div>
             <p data-cms-field="eyebrow" className="text-[10px] font-black uppercase tracking-[.22em]" style={{ color: accent }}>{textContent(current, 'eyebrow')}</p>
-            <h2 data-cms-field="title" id="sismo-title" className="mt-3 max-w-[11ch] text-4xl font-black leading-[.94] tracking-[-.06em] sm:text-6xl">{textContent(current, 'title')}</h2>
+            <h2 data-cms-field="title" id={titleId} className="mt-3 max-w-[11ch] text-4xl font-black leading-[.94] tracking-[-.06em] sm:text-6xl">{textContent(current, 'title')}</h2>
             <p data-cms-field="paragraph1" className="mt-5 max-w-xl text-sm leading-7 opacity-55 sm:text-base">{textContent(current, 'paragraph1')}</p>
             <p data-cms-field="paragraph2" className="mt-4 max-w-xl text-sm leading-7 opacity-55">{textContent(current, 'paragraph2')}</p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">

@@ -15,6 +15,7 @@ import {
   LandingStoreSection,
 } from '@/components/LandingSections';
 import CmsSectionMotion from '@/components/cms/CmsSectionMotion';
+import HomeVisualLibraryBlock, { type HomeVisualLibraryRendererId } from '@/components/cms/HomeVisualLibraryBlocks';
 import HomeVisualTextToolbar from '@/components/cms/HomeVisualTextToolbar';
 import styles from '@/components/cms/HomeVisualRuntime.module.css';
 import {
@@ -53,21 +54,25 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
   const [inlineEdit, setInlineEdit] = useState<InlineEditState | null>(null);
 
   useEffect(() => {
-    const preview = new URLSearchParams(window.location.search).get('cms') === 'preview';
+    const params = new URLSearchParams(window.location.search);
+    const preview = params.get('cms') === 'preview';
+    const visualPreview = params.get('cmsVisual') === '1' && window.parent !== window;
     setPreviewMode(preview);
-    if (!preview) return;
+    if (!preview && !visualPreview) return;
 
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: string; content?: unknown; sectionId?: string; field?: string | null } | null;
-      if (data?.type === 'cms:home-preview') setConfig(normalizeHomePage(data.content));
-      if (data?.type === 'cms:home-selected' && typeof data.sectionId === 'string') {
+      if (preview && data?.type === 'cms:home-preview') setConfig(normalizeHomePage(data.content));
+      if (visualPreview && data?.type === 'cms:visual-home-preview') setConfig(normalizeHomePage(data.content));
+      if (preview && data?.type === 'cms:home-selected' && typeof data.sectionId === 'string') {
         setSelectedPreviewId(data.sectionId);
         setSelectedPreviewField(typeof data.field === 'string' ? data.field : null);
       }
     };
     window.addEventListener('message', handler);
-    window.parent?.postMessage({ type: 'cms:home-preview-ready' }, window.location.origin);
+    if (preview) window.parent?.postMessage({ type: 'cms:home-preview-ready' }, window.location.origin);
+    if (visualPreview) window.parent?.postMessage({ type: 'cms:visual-home-ready' }, window.location.origin);
     return () => window.removeEventListener('message', handler);
   }, []);
 
@@ -355,15 +360,15 @@ function ToolbarButton({ label, disabled = false, accent = false, onClick, child
 function containerFromField(field: string | null): string | null {
   if (!field) return null;
   if (field.endsWith('-container')) return field.slice(0, -'-container'.length);
-  const nested = field.match(/^(.+)-(\d+)-(title|text|label|number)$/);
+  const nested = field.match(/^(.+)-(\d+)-([a-zA-Z][a-zA-Z0-9]*)$/);
   if (nested) return `${nested[1]}-${nested[2]}`;
   const repeated = field.match(/^(.+)-(\d+)$/);
   return repeated ? `${repeated[1]}-${repeated[2]}` : null;
 }
 
 function prettyField(field: string) {
-  const nested = field.match(/^(.+)-(\d+)-(title|text)$/);
-  if (nested) return `${pretty(nested[1])} · ${Number(nested[2]) + 1} · ${nested[3] === 'title' ? 'Título' : 'Texto'}`;
+  const nested = field.match(/^(.+)-(\d+)-([a-zA-Z][a-zA-Z0-9]*)$/);
+  if (nested) return `${pretty(nested[1])} · ${Number(nested[2]) + 1} · ${pretty(nested[3])}`;
   const repeated = field.match(/^(.+)-(\d+)$/);
   if (repeated) return `${pretty(repeated[1])} · ${Number(repeated[2]) + 1}`;
   return pretty(field);
@@ -442,6 +447,13 @@ function shadow(value: VisualShadow | undefined) {
   return undefined;
 }
 
+function libraryRendererId(section: HomeVisualSection): HomeVisualLibraryRendererId | null {
+  const value = section.content._cmsTemplate;
+  return value === 'editorial' || value === 'info-cards' || value === 'gallery' || value === 'cta-process' || value === 'services' || value === 'testimonials'
+    ? value
+    : null;
+}
+
 function HomeBlock({
   section,
   copyrightText,
@@ -451,6 +463,9 @@ function HomeBlock({
   copyrightText?: string;
   socialLinks?: { facebook?: string; instagram?: string; tiktok?: string };
 }) {
+  const libraryRenderer = libraryRendererId(section);
+  if (libraryRenderer) return <HomeVisualLibraryBlock section={section} templateId={libraryRenderer} />;
+
   switch (section.type) {
     case 'hero':
       return <StaticConstructionHero section={section} />;

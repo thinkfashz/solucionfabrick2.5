@@ -28,10 +28,11 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
   const backgroundFit = advanced.backgroundFit === 'contain' ? 'contain' : 'cover';
   const positionX = clampPercent(advanced.backgroundPositionX, 50);
   const positionY = clampPercent(advanced.backgroundPositionY, 50);
+  const sectionAnchor = current.id === 'home-hero' ? 'inicio' : current.id;
 
   return (
     <section
-      id="inicio"
+      id={sectionAnchor}
       data-cms-section="home-hero"
       className="relative isolate overflow-hidden px-4 pb-12 pt-20 sm:px-6 sm:pb-16 sm:pt-24 lg:px-8 lg:pb-20 lg:pt-28"
       style={{ backgroundColor: background, color: textColor }}

@@ -12,6 +12,7 @@ import './admin-professional-stage5.css';
 import './admin-professional-stage6.css';
 import './admin-professional-stage7.css';
 import './admin-professional-stage8.css';
+import './admin-sidebar-v2.css';
 
 export const metadata: Metadata = {
   title: 'Admin | Fabrick',

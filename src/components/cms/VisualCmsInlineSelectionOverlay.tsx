@@ -108,8 +108,7 @@ function normalizedWeight(value: string | undefined) {
   if (clean === 'normal') return '400';
   const numeric = Number(clean);
   if (!Number.isFinite(numeric)) return '400';
-  const nearest = FONT_WEIGHTS.reduce((best, item) => Math.abs(Number(item) - numeric) < Math.abs(Number(best) - numeric) ? item : best, '400');
-  return nearest;
+  return FONT_WEIGHTS.reduce((best, item) => Math.abs(Number(item) - numeric) < Math.abs(Number(best) - numeric) ? item : best, '400');
 }
 
 function normalizedAlign(value: string | undefined): (typeof TEXT_ALIGNS)[number] {
@@ -184,6 +183,7 @@ export default function VisualCmsInlineSelectionOverlay() {
   });
   const suppressBaseResetRef = useRef(false);
   const dragTargetRef = useRef<DragTarget | null>(null);
+  const dragPointerRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     let preview = false;
@@ -261,16 +261,36 @@ export default function VisualCmsInlineSelectionOverlay() {
 
   useEffect(() => {
     if (!enabled || !draggingStructure) return;
+    let scrollFrame = 0;
 
-    const updateTarget = (event: PointerEvent) => {
-      event.preventDefault();
-      const target = dragTargetAt(event.clientX, event.clientY, draggingStructure);
+    const refreshTarget = (clientX: number, clientY: number) => {
+      const target = dragTargetAt(clientX, clientY, draggingStructure);
       dragTargetRef.current = target;
       setDragTarget(target);
     };
 
+    const updateTarget = (event: PointerEvent) => {
+      event.preventDefault();
+      dragPointerRef.current = { x: event.clientX, y: event.clientY };
+      refreshTarget(event.clientX, event.clientY);
+    };
+
+    const autoScroll = () => {
+      const { x, y } = dragPointerRef.current;
+      const edge = Math.min(96, Math.max(56, window.innerHeight * 0.12));
+      let delta = 0;
+      if (y > 0 && y < edge) delta = -Math.max(4, Math.round(((edge - y) / edge) * 18));
+      else if (y < window.innerHeight && y > window.innerHeight - edge) delta = Math.max(4, Math.round(((y - (window.innerHeight - edge)) / edge) * 18));
+      if (delta !== 0) {
+        window.scrollBy({ top: delta, left: 0, behavior: 'auto' });
+        refreshTarget(x, y);
+      }
+      scrollFrame = window.requestAnimationFrame(autoScroll);
+    };
+
     const finish = (event: PointerEvent) => {
       event.preventDefault();
+      dragPointerRef.current = { x: event.clientX, y: event.clientY };
       const target = dragTargetAt(event.clientX, event.clientY, draggingStructure) || dragTargetRef.current;
       if (target && target.kind === draggingStructure.kind) {
         if (draggingStructure.kind === 'section' && target.kind === 'section') {
@@ -299,10 +319,12 @@ export default function VisualCmsInlineSelectionOverlay() {
       setDraggingStructure(null);
     };
 
+    scrollFrame = window.requestAnimationFrame(autoScroll);
     window.addEventListener('pointermove', updateTarget, { passive: false });
     window.addEventListener('pointerup', finish, { passive: false });
     window.addEventListener('pointercancel', cancel);
     return () => {
+      window.cancelAnimationFrame(scrollFrame);
       window.removeEventListener('pointermove', updateTarget);
       window.removeEventListener('pointerup', finish);
       window.removeEventListener('pointercancel', cancel);
@@ -393,6 +415,7 @@ export default function VisualCmsInlineSelectionOverlay() {
     if (homeStructure.busy) return;
     setEditingText(false);
     setEditingStyle(false);
+    dragPointerRef.current = { x: event.clientX, y: event.clientY };
     dragTargetRef.current = null;
     setDragTarget(null);
     try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* noop */ }

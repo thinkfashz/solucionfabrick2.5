@@ -74,7 +74,7 @@ interface OllamaModel {
   details?: { parameter_size?: string; family?: string };
 }
 
-function authHeaders(apiKey: string) {
+function authHeaders(apiKey: string): Record<string, string> {
   return apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
 }
 

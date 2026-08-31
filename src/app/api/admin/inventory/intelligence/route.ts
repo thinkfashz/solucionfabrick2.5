@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireTenantAdmin } from '@/lib/tenantAdmin';
+import { readTenantIntegration } from '@/lib/tenantIntegrations';
 import {
   getProductIntelligenceCapabilities,
   identifyProductByCode,
@@ -23,6 +24,41 @@ const ALLOWED_IMAGE_TYPES = new Set([
 
 function cleanCode(value: unknown) {
   return typeof value === 'string' ? value.trim().slice(0, 512) : '';
+}
+
+async function sha1Hex(value: string) {
+  const digest = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function uploadProductPhoto(tenantId: string, file: File) {
+  const integration = await readTenantIntegration(tenantId, 'cloudinary', ['cloud_name', 'api_key', 'api_secret']);
+  if (!integration.ready) return { url: '', warning: 'Cloudinary no está configurado para esta empresa; la foto se usó para el análisis pero no se guardó.' };
+
+  const folder = 'inventory/intelligence';
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const signature = await sha1Hex(`folder=${folder}&timestamp=${timestamp}${integration.values.api_secret}`);
+  const form = new FormData();
+  form.append('file', file);
+  form.append('folder', folder);
+  form.append('timestamp', timestamp);
+  form.append('api_key', integration.values.api_key);
+  form.append('signature', signature);
+
+  try {
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(integration.values.cloud_name)}/image/upload`, {
+      method: 'POST',
+      body: form,
+      cache: 'no-store',
+    });
+    if (!response.ok) return { url: '', warning: `Cloudinary no pudo guardar la fotografía (HTTP ${response.status}).` };
+    const json = await response.json().catch(() => ({})) as { secure_url?: string };
+    return json.secure_url
+      ? { url: json.secure_url, warning: '' }
+      : { url: '', warning: 'Cloudinary respondió sin una URL de imagen.' };
+  } catch {
+    return { url: '', warning: 'No se pudo guardar la fotografía en Cloudinary.' };
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -65,7 +101,16 @@ export async function POST(request: NextRequest) {
       }, { status: result.code === 'AI_NOT_AVAILABLE' ? 503 : 502 });
     }
 
-    return NextResponse.json({ ...result, configureUrl: '/admin/integraciones?category=ai' });
+    const persistPhoto = String(form.get('persistPhoto') ?? '1') !== '0';
+    const upload = persistPhoto ? await uploadProductPhoto(tenantId, file) : { url: '', warning: '' };
+    const warnings = [...result.warnings, ...(upload.warning ? [upload.warning] : [])];
+
+    return NextResponse.json({
+      ...result,
+      warnings,
+      imageUrl: upload.url,
+      configureUrl: '/admin/integraciones?category=ai',
+    });
   }
 
   let body: Record<string, unknown>;

@@ -49,10 +49,21 @@ type ProviderDraft = Partial<Omit<ProductIntelligenceCandidate, 'confidence' | '
   sources: ProductIntelligenceSource[];
 };
 
+type LookupResult = {
+  draft?: ProviderDraft;
+  warning?: string;
+  context?: string;
+};
+
 type JsonRecord = Record<string, unknown>;
 
+const EMPTY_LOOKUP: LookupResult = {};
 const CODE_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
-const codeCache = new Map<string, { expiresAt: number; candidate: ProductIntelligenceCandidate | null; warnings: string[] }>();
+const codeCache = new Map<string, {
+  expiresAt: number;
+  candidate: ProductIntelligenceCandidate | null;
+  warnings: string[];
+}>();
 
 function clean(value: unknown, max = 5000): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -77,7 +88,12 @@ function isUniversalCode(value: string) {
 }
 
 function normalizeComparable(value: string) {
-  return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 function sameMeaning(a: string, b: string) {
@@ -118,7 +134,16 @@ function mergeDrafts(drafts: ProviderDraft[]): ProductIntelligenceCandidate | nu
   if (!drafts.length) return null;
   const sorted = [...drafts].sort((a, b) => b.confidence - a.confidence);
   const output = emptyCandidate();
-  const scalarFields = ['name', 'brand', 'model', 'description', 'sku', 'ean', 'category', 'referenceImageUrl'] as const;
+  const scalarFields = [
+    'name',
+    'brand',
+    'model',
+    'description',
+    'sku',
+    'ean',
+    'category',
+    'referenceImageUrl',
+  ] as const;
 
   for (const draft of sorted) {
     for (const field of scalarFields) {
@@ -130,36 +155,47 @@ function mergeDrafts(drafts: ProviderDraft[]): ProductIntelligenceCandidate | nu
         if (!existing.includes(draft.provider)) output.fieldSources[field] = [...existing, draft.provider];
       }
     }
+
     for (const [key, value] of Object.entries(draft.attributes ?? {})) {
       const label = clean(key, 120);
       const text = clean(value, 500);
       if (label && text && !output.attributes[label]) output.attributes[label] = text;
     }
+
     for (const source of draft.sources) {
-      if (!output.sources.some((item) => item.provider === source.provider && item.url === source.url && item.detail === source.detail)) {
+      if (!output.sources.some((item) =>
+        item.provider === source.provider && item.url === source.url && item.detail === source.detail
+      )) {
         output.sources.push(source);
       }
     }
   }
 
   const max = Math.max(...sorted.map((draft) => draft.confidence));
-  const independentSources = new Set(sorted.map((draft) => draft.provider)).size;
-  output.confidence = Math.min(0.99, max + Math.min(0.1, Math.max(0, independentSources - 1) * 0.04));
+  const sourceCount = new Set(sorted.map((draft) => draft.provider)).size;
+  output.confidence = Math.min(0.99, max + Math.min(0.1, Math.max(0, sourceCount - 1) * 0.04));
   return output.name || output.brand || output.model || output.ean ? output : null;
 }
 
-async function lookupUpcItemDb(code: string): Promise<{ draft?: ProviderDraft; warning?: string }> {
+async function lookupUpcItemDb(code: string): Promise<LookupResult> {
   const normalized = code.replace(/\s+/g, '');
-  if (!isUniversalCode(normalized)) return {};
+  if (!isUniversalCode(normalized)) return EMPTY_LOOKUP;
+
   try {
-    const endpoint = `https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(normalized)}`;
-    const response = await fetchWithTimeout(endpoint, { headers: { Accept: 'application/json' } }, 7_000);
-    if (response.status === 404) return {};
-    if (response.status === 429) return { warning: 'UPCitemdb alcanzó temporalmente su límite gratuito. Puedes continuar con Mercado Libre o la foto IA.' };
+    const response = await fetchWithTimeout(
+      `https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(normalized)}`,
+      { headers: { Accept: 'application/json' } },
+      7_000,
+    );
+    if (response.status === 404) return EMPTY_LOOKUP;
+    if (response.status === 429) {
+      return { warning: 'UPCitemdb alcanzó temporalmente su límite gratuito. Puedes continuar con Mercado Libre o la foto IA.' };
+    }
     if (!response.ok) return { warning: `UPCitemdb respondió HTTP ${response.status}.` };
+
     const payload = record(await response.json().catch(() => ({})));
     const item = record(list(payload.items)[0]);
-    if (!Object.keys(item).length) return {};
+    if (!Object.keys(item).length) return EMPTY_LOOKUP;
 
     const images = list(item.images).map((value) => clean(value, 2000)).filter(Boolean);
     const attributes: Record<string, string> = {};
@@ -190,19 +226,23 @@ async function lookupUpcItemDb(code: string): Promise<{ draft?: ProviderDraft; w
       },
     };
   } catch (error) {
-    return { warning: error instanceof Error && error.name === 'AbortError' ? 'UPCitemdb tardó demasiado en responder.' : 'No se pudo consultar UPCitemdb.' };
+    return {
+      warning: error instanceof Error && error.name === 'AbortError'
+        ? 'UPCitemdb tardó demasiado en responder.'
+        : 'No se pudo consultar UPCitemdb.',
+    };
   }
 }
 
 function attributeMap(value: unknown) {
-  const out: Record<string, string> = {};
+  const output: Record<string, string> = {};
   for (const raw of list(value)) {
     const item = record(raw);
     const name = clean(item.name || item.id, 160);
     const text = clean(item.value_name, 400) || clean(record(list(item.values)[0]).name, 400);
-    if (name && text) out[name] = text;
+    if (name && text) output[name] = text;
   }
-  return out;
+  return output;
 }
 
 function findAttribute(attributes: Record<string, string>, keys: string[]) {
@@ -218,55 +258,63 @@ async function lookupMercadoLibre(
   token: string,
   value: string,
   exactIdentifier: boolean,
-): Promise<{ draft?: ProviderDraft; warning?: string }> {
-  if (!token) return {};
+): Promise<LookupResult> {
+  if (!token) return EMPTY_LOOKUP;
+
   try {
     const searchUrl = new URL('https://api.mercadolibre.com/products/search');
     searchUrl.searchParams.set('status', 'active');
     searchUrl.searchParams.set('site_id', 'MLC');
     searchUrl.searchParams.set('limit', '5');
     searchUrl.searchParams.set(exactIdentifier ? 'product_identifier' : 'q', value);
+
     const response = await fetchWithTimeout(searchUrl.toString(), {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
     }, 8_000);
-    if (response.status === 401 || response.status === 403) return { warning: 'Mercado Libre requiere renovar la conexión OAuth antes de consultar catálogo.' };
+    if (response.status === 401 || response.status === 403) {
+      return { warning: 'Mercado Libre requiere renovar la conexión OAuth antes de consultar catálogo.' };
+    }
     if (!response.ok) return { warning: `Mercado Libre respondió HTTP ${response.status}.` };
+
     const payload = record(await response.json().catch(() => ({})));
     const first = record(list(payload.results)[0]);
     const productId = clean(first.id, 120);
-    if (!productId) return {};
+    if (!productId) return EMPTY_LOOKUP;
 
     let detail = first;
     try {
-      const detailResponse = await fetchWithTimeout(`https://api.mercadolibre.com/products/${encodeURIComponent(productId)}`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-      }, 7_000);
+      const detailResponse = await fetchWithTimeout(
+        `https://api.mercadolibre.com/products/${encodeURIComponent(productId)}`,
+        { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } },
+        7_000,
+      );
       if (detailResponse.ok) detail = record(await detailResponse.json().catch(() => first));
     } catch {
-      // Search data is still useful when the detail endpoint is temporarily unavailable.
+      // Search data remains useful if detail lookup is temporarily unavailable.
     }
 
     const attributes = attributeMap(detail.attributes ?? first.attributes);
-    const pictures = list(detail.pictures ?? first.pictures).map((picture) => {
-      const item = record(picture);
-      return clean(item.secure_url || item.url, 2000);
-    }).filter(Boolean);
-    const mainFeatures = list(detail.main_features ?? first.main_features)
+    const pictures = list(detail.pictures ?? first.pictures)
+      .map((picture) => {
+        const item = record(picture);
+        return clean(item.secure_url || item.url, 2000);
+      })
+      .filter(Boolean);
+    const features = list(detail.main_features ?? first.main_features)
       .map((feature) => clean(record(feature).text || record(feature).value_name || feature, 500))
       .filter(Boolean);
 
     const brand = findAttribute(attributes, ['Marca', 'BRAND']);
     const model = findAttribute(attributes, ['Modelo', 'MODEL', 'Número de pieza', 'Part number', 'MPN']);
     const gtin = findAttribute(attributes, ['GTIN', 'EAN', 'UPC', 'Código universal de producto']);
-    const name = clean(detail.name || first.name, 240);
 
     return {
       draft: {
         provider: 'mercadolibre',
-        name,
+        name: clean(detail.name || first.name, 240),
         brand,
         model,
-        description: mainFeatures.slice(0, 4).join(' · '),
+        description: features.slice(0, 4).join(' · '),
         ean: gtin || (exactIdentifier ? value : ''),
         category: clean(detail.domain_id || first.domain_id, 200),
         referenceImageUrl: pictures[0] ?? '',
@@ -276,38 +324,51 @@ async function lookupMercadoLibre(
           provider: 'mercadolibre',
           label: 'Mercado Libre Chile',
           url: `https://www.mercadolibre.cl/p/${encodeURIComponent(productId)}`,
-          detail: exactIdentifier ? 'Producto de catálogo por GTIN/EAN/UPC' : 'Coincidencia de catálogo por nombre/modelo',
+          detail: exactIdentifier
+            ? 'Producto de catálogo por GTIN/EAN/UPC'
+            : 'Coincidencia de catálogo por nombre/modelo',
           exact: exactIdentifier,
         }],
       },
     };
   } catch (error) {
-    return { warning: error instanceof Error && error.name === 'AbortError' ? 'Mercado Libre tardó demasiado en responder.' : 'No se pudo consultar Mercado Libre.' };
+    return {
+      warning: error instanceof Error && error.name === 'AbortError'
+        ? 'Mercado Libre tardó demasiado en responder.'
+        : 'No se pudo consultar Mercado Libre.',
+    };
   }
 }
 
-async function searchSerper(apiKey: string, query: string): Promise<{ draft?: ProviderDraft; warning?: string; context?: string }> {
-  if (!apiKey || !query.trim()) return {};
+async function searchSerper(apiKey: string, query: string): Promise<LookupResult> {
+  if (!apiKey || !query.trim()) return EMPTY_LOOKUP;
+
   try {
     const response = await fetchWithTimeout('https://google.serper.dev/search', {
       method: 'POST',
-      headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
       body: JSON.stringify({ q: query, gl: 'cl', hl: 'es', num: 5 }),
     }, 8_000);
     if (response.status === 401 || response.status === 403) return { warning: 'Serper rechazó la API key configurada.' };
     if (!response.ok) return { warning: `Serper respondió HTTP ${response.status}.` };
+
     const payload = record(await response.json().catch(() => ({})));
     const organic = list(payload.organic).slice(0, 5).map(record);
-    if (!organic.length) return {};
-    const sources = organic.slice(0, 3).map((item) => ({
-      provider: 'serper' as const,
+    if (!organic.length) return EMPTY_LOOKUP;
+
+    const sources: ProductIntelligenceSource[] = organic.slice(0, 3).map((item) => ({
+      provider: 'serper',
       label: clean(item.title, 180) || 'Resultado web',
       url: clean(item.link, 2000) || undefined,
       detail: clean(item.snippet, 300) || 'Resultado de búsqueda web',
       exact: false,
     }));
     const first = organic[0];
-    const context = organic.map((item) => `${clean(item.title, 220)} — ${clean(item.snippet, 500)}`).filter(Boolean).join('\n');
+
     return {
       draft: {
         provider: 'serper',
@@ -316,10 +377,17 @@ async function searchSerper(apiKey: string, query: string): Promise<{ draft?: Pr
         confidence: 0.5,
         sources,
       },
-      context,
+      context: organic
+        .map((item) => `${clean(item.title, 220)} — ${clean(item.snippet, 500)}`)
+        .filter(Boolean)
+        .join('\n'),
     };
   } catch (error) {
-    return { warning: error instanceof Error && error.name === 'AbortError' ? 'La búsqueda web tardó demasiado en responder.' : 'No se pudo consultar la búsqueda web.' };
+    return {
+      warning: error instanceof Error && error.name === 'AbortError'
+        ? 'La búsqueda web tardó demasiado en responder.'
+        : 'No se pudo consultar la búsqueda web.',
+    };
   }
 }
 
@@ -331,24 +399,27 @@ function parseAiJson(text: string): JsonRecord {
     const start = trimmed.indexOf('{');
     const end = trimmed.lastIndexOf('}');
     if (start >= 0 && end > start) {
-      try { return record(JSON.parse(trimmed.slice(start, end + 1))); } catch { return {}; }
+      try {
+        return record(JSON.parse(trimmed.slice(start, end + 1)));
+      } catch {
+        return {};
+      }
     }
     return {};
   }
 }
 
 function aiDraftFromJson(payload: JsonRecord, provider: 'gemini' | 'openrouter'): ProviderDraft | null {
-  const rawAttributes = payload.attributes;
   const attributes: Record<string, string> = {};
-  if (Array.isArray(rawAttributes)) {
-    for (const entry of rawAttributes) {
+  if (Array.isArray(payload.attributes)) {
+    for (const entry of payload.attributes) {
       const item = record(entry);
       const name = clean(item.name, 120);
       const value = clean(item.value, 400);
       if (name && value) attributes[name] = value;
     }
   } else {
-    for (const [key, value] of Object.entries(record(rawAttributes))) {
+    for (const [key, value] of Object.entries(record(payload.attributes))) {
       const text = clean(value, 400);
       if (key && text) attributes[clean(key, 120)] = text;
     }
@@ -365,7 +436,12 @@ function aiDraftFromJson(payload: JsonRecord, provider: 'gemini' | 'openrouter')
     category: clean(payload.category, 180),
     attributes,
     confidence: clampConfidence(payload.confidence, 0.68),
-    sources: [{ provider, label: provider === 'gemini' ? 'Gemini Vision' : 'OpenRouter Vision', detail: 'Datos extraídos de la fotografía del producto', exact: false }],
+    sources: [{
+      provider,
+      label: provider === 'gemini' ? 'Gemini Vision' : 'OpenRouter Vision',
+      detail: 'Datos extraídos de la fotografía del producto',
+      exact: false,
+    }],
   };
   return draft.name || draft.brand || draft.model || draft.ean ? draft : null;
 }
@@ -375,7 +451,7 @@ function buildVisionPrompt(code: string, externalContext: string) {
 Analiza la fotografía del producto y extrae solamente datos que puedas observar o sostener con alta probabilidad. No inventes precio, stock ni fabricante.
 Si un campo no es visible o no es razonablemente identificable, déjalo vacío.
 Código escaneado actual: ${code || 'sin código'}.
-${externalContext ? `Contexto encontrado en fuentes externas (úsalo solo para corroborar, puede contener errores):\n${externalContext}` : ''}
+${externalContext ? `Contexto encontrado en fuentes externas (úsalo solo para corroborar; puede contener errores):\n${externalContext}` : ''}
 Devuelve EXCLUSIVAMENTE JSON válido con esta forma:
 {
   "name":"nombre comercial claro",
@@ -391,29 +467,77 @@ Devuelve EXCLUSIVAMENTE JSON válido con esta forma:
 La confianza debe estar entre 0 y 1. Prioriza texto visible en etiqueta, envase, logotipo, modelo, voltaje, medidas, color, capacidad y especificaciones técnicas.`;
 }
 
-async function analyzeGemini(apiKey: string, model: string, mimeType: string, base64: string, prompt: string) {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-  const response = await fetchWithTimeout(endpoint, {
-    method: 'POST',
-    headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ inline_data: { mime_type: mimeType, data: base64 } }, { text: prompt }] }],
-      generationConfig: { temperature: 0.1, responseMimeType: 'application/json', maxOutputTokens: 1600 },
-    }),
-  }, 28_000);
+async function analyzeGemini(
+  apiKey: string,
+  model: string,
+  mimeType: string,
+  base64: string,
+  prompt: string,
+): Promise<ProviderDraft | null> {
+  const response = await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'x-goog-api-key': apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { inline_data: { mime_type: mimeType, data: base64 } },
+            { text: prompt },
+          ],
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: 'application/json',
+          maxOutputTokens: 1600,
+        },
+      }),
+    },
+    28_000,
+  );
+
   const payload = record(await response.json().catch(() => ({})));
   if (!response.ok) {
     const message = clean(record(payload.error).message, 500) || `Gemini HTTP ${response.status}`;
     throw new Error(message);
   }
+
   const candidate = record(list(payload.candidates)[0]);
   const content = record(candidate.content);
-  const text = list(content.parts).map((part) => clean(record(part).text, 10000)).filter(Boolean).join('\n');
+  const text = list(content.parts)
+    .map((part) => clean(record(part).text, 10000))
+    .filter(Boolean)
+    .join('\n');
   return aiDraftFromJson(parseAiJson(text), 'gemini');
 }
 
-async function analyzeOpenRouter(apiKey: string, model: string, siteUrl: string, appName: string, mimeType: string, base64: string, prompt: string) {
-  const body = {
+function openRouterText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (!Array.isArray(value)) return '';
+  return value
+    .map((part) => {
+      if (typeof part === 'string') return part;
+      return clean(record(part).text, 10000);
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
+async function analyzeOpenRouter(
+  apiKey: string,
+  model: string,
+  siteUrl: string,
+  appName: string,
+  mimeType: string,
+  base64: string,
+  prompt: string,
+): Promise<ProviderDraft | null> {
+  const requestBody: Record<string, unknown> = {
     model,
     temperature: 0.1,
     max_tokens: 1600,
@@ -426,28 +550,44 @@ async function analyzeOpenRouter(apiKey: string, model: string, siteUrl: string,
       ],
     }],
   };
-  const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', Accept: 'application/json' };
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  };
   if (siteUrl) headers['HTTP-Referer'] = siteUrl;
   if (appName) headers['X-Title'] = appName;
 
-  let response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', { method: 'POST', headers, body: JSON.stringify(body) }, 30_000);
+  let response = await fetchWithTimeout(
+    'https://openrouter.ai/api/v1/chat/completions',
+    { method: 'POST', headers, body: JSON.stringify(requestBody) },
+    30_000,
+  );
+
   if (!response.ok && response.status === 400) {
-    const retryBody = { ...body } as Record<string, unknown>;
+    const retryBody = { ...requestBody };
     delete retryBody.response_format;
-    response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', { method: 'POST', headers, body: JSON.stringify(retryBody) }, 30_000);
+    response = await fetchWithTimeout(
+      'https://openrouter.ai/api/v1/chat/completions',
+      { method: 'POST', headers, body: JSON.stringify(retryBody) },
+      30_000,
+    );
   }
+
   const payload = record(await response.json().catch(() => ({})));
   if (!response.ok) {
     const message = clean(record(payload.error).message, 500) || `OpenRouter HTTP ${response.status}`;
     throw new Error(message);
   }
+
   const choice = record(list(payload.choices)[0]);
   const message = record(choice.message);
-  const content = clean(message.content, 12000);
-  return aiDraftFromJson(parseAiJson(content), 'openrouter');
+  return aiDraftFromJson(parseAiJson(openRouterText(message.content)), 'openrouter');
 }
 
-export async function getProductIntelligenceCapabilities(tenantId: string): Promise<ProductIntelligenceCapabilities> {
+export async function getProductIntelligenceCapabilities(
+  tenantId: string,
+): Promise<ProductIntelligenceCapabilities> {
   const [ml, gemini, openrouter, serper, cloudinary] = await Promise.all([
     readTenantIntegration(tenantId, 'mercadolibre', ['access_token']),
     readTenantIntegration(tenantId, 'gemini', ['api_key']),
@@ -455,6 +595,7 @@ export async function getProductIntelligenceCapabilities(tenantId: string): Prom
     readTenantIntegration(tenantId, 'serper', ['api_key']),
     readTenantIntegration(tenantId, 'cloudinary', ['cloud_name', 'api_key', 'api_secret']),
   ]);
+
   return {
     upcitemdb: true,
     mercadolibre: ml.ready,
@@ -469,26 +610,44 @@ export async function getProductIntelligenceCapabilities(tenantId: string): Prom
 
 export async function identifyProductByCode(tenantId: string, code: string) {
   const normalized = code.trim().slice(0, 512);
-  if (!normalized) return { found: false, candidate: null, warnings: ['Falta el código a consultar.'], capabilities: await getProductIntelligenceCapabilities(tenantId) };
+  if (!normalized) {
+    return {
+      found: false,
+      candidate: null,
+      warnings: ['Falta el código a consultar.'],
+      capabilities: await getProductIntelligenceCapabilities(tenantId),
+      cached: false,
+    };
+  }
 
-  const cached = codeCache.get(`${tenantId}:${normalized}`);
+  const cacheKey = `${tenantId}:${normalized}`;
+  const cached = codeCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
-    return { found: Boolean(cached.candidate), candidate: cached.candidate, warnings: cached.warnings, capabilities: await getProductIntelligenceCapabilities(tenantId), cached: true };
+    return {
+      found: Boolean(cached.candidate),
+      candidate: cached.candidate,
+      warnings: cached.warnings,
+      capabilities: await getProductIntelligenceCapabilities(tenantId),
+      cached: true,
+    };
   }
 
   const [mlIntegration, serperIntegration] = await Promise.all([
     readTenantIntegration(tenantId, 'mercadolibre', ['access_token']),
     readTenantIntegration(tenantId, 'serper', ['api_key']),
   ]);
-
   const exact = isUniversalCode(normalized);
-  const [upcResult, mlResult] = await Promise.all([
-    lookupUpcItemDb(normalized),
-    mlIntegration.ready ? lookupMercadoLibre(mlIntegration.values.access_token, normalized, exact) : Promise.resolve({}),
-  ]);
 
-  const warnings = [upcResult.warning, mlResult.warning].filter((value): value is string => Boolean(value));
-  const drafts = [upcResult.draft, mlResult.draft].filter((value): value is ProviderDraft => Boolean(value));
+  const upcPromise: Promise<LookupResult> = lookupUpcItemDb(normalized);
+  const mlPromise: Promise<LookupResult> = mlIntegration.ready
+    ? lookupMercadoLibre(mlIntegration.values.access_token, normalized, exact)
+    : Promise.resolve(EMPTY_LOOKUP);
+  const [upcResult, mlResult] = await Promise.all([upcPromise, mlPromise]);
+
+  const warnings = [upcResult.warning, mlResult.warning]
+    .filter((value): value is string => Boolean(value));
+  const drafts = [upcResult.draft, mlResult.draft]
+    .filter((value): value is ProviderDraft => Boolean(value));
 
   if (!drafts.length && serperIntegration.ready) {
     const web = await searchSerper(serperIntegration.values.api_key, `"${normalized}" producto Chile`);
@@ -497,7 +656,12 @@ export async function identifyProductByCode(tenantId: string, code: string) {
   }
 
   const candidate = mergeDrafts(drafts);
-  codeCache.set(`${tenantId}:${normalized}`, { expiresAt: Date.now() + CODE_CACHE_TTL_MS, candidate, warnings });
+  codeCache.set(cacheKey, {
+    expiresAt: Date.now() + CODE_CACHE_TTL_MS,
+    candidate,
+    warnings,
+  });
+
   return {
     found: Boolean(candidate),
     candidate,
@@ -527,21 +691,30 @@ export async function identifyProductFromPhoto(
     onlineCandidate = online.candidate;
     warnings.push(...online.warnings);
     if (onlineCandidate) {
-      webContext = [onlineCandidate.name, onlineCandidate.brand, onlineCandidate.model, onlineCandidate.description]
-        .filter(Boolean)
-        .join(' · ');
+      webContext = [
+        onlineCandidate.name,
+        onlineCandidate.brand,
+        onlineCandidate.model,
+        onlineCandidate.description,
+      ].filter(Boolean).join(' · ');
     }
   }
 
+  const prompt = buildVisionPrompt(code, webContext);
   let aiDraft: ProviderDraft | null = null;
   let aiProvider: 'gemini' | 'openrouter' | null = null;
-  const prompt = buildVisionPrompt(code, webContext);
 
   if (gemini.ready) {
     try {
       const model = gemini.values.modelo || gemini.values.model || 'gemini-2.5-flash';
-      aiDraft = await analyzeGemini(gemini.values.api_key, model, input.mimeType, input.base64, prompt);
-      aiProvider = aiDraft ? 'gemini' : null;
+      aiDraft = await analyzeGemini(
+        gemini.values.api_key,
+        model,
+        input.mimeType,
+        input.base64,
+        prompt,
+      );
+      if (aiDraft) aiProvider = 'gemini';
     } catch (error) {
       warnings.push(`Gemini no pudo analizar la foto: ${error instanceof Error ? error.message : 'error desconocido'}`);
     }
@@ -559,7 +732,7 @@ export async function identifyProductFromPhoto(
         input.base64,
         prompt,
       );
-      aiProvider = aiDraft ? 'openrouter' : null;
+      if (aiDraft) aiProvider = 'openrouter';
     } catch (error) {
       warnings.push(`OpenRouter no pudo analizar la foto: ${error instanceof Error ? error.message : 'error desconocido'}`);
     }
@@ -567,7 +740,7 @@ export async function identifyProductFromPhoto(
 
   if (!aiDraft) {
     return {
-      ok: false,
+      ok: false as const,
       code: 'AI_NOT_AVAILABLE',
       error: gemini.ready || openrouter.ready
         ? 'Los proveedores de IA configurados no pudieron analizar esta fotografía.'
@@ -582,18 +755,35 @@ export async function identifyProductFromPhoto(
   if (onlineCandidate) {
     drafts.push({
       provider: onlineCandidate.sources[0]?.provider ?? 'upcitemdb',
-      ...onlineCandidate,
+      name: onlineCandidate.name,
+      brand: onlineCandidate.brand,
+      model: onlineCandidate.model,
+      description: onlineCandidate.description,
+      sku: onlineCandidate.sku,
+      ean: onlineCandidate.ean,
+      category: onlineCandidate.category,
+      referenceImageUrl: onlineCandidate.referenceImageUrl,
+      attributes: onlineCandidate.attributes,
       confidence: onlineCandidate.confidence,
       sources: onlineCandidate.sources,
     });
   }
 
-  const query = [clean(aiDraft.brand, 160), clean(aiDraft.model, 160), clean(aiDraft.name, 240)].filter(Boolean).join(' ').trim();
+  const query = [
+    clean(aiDraft.brand, 160),
+    clean(aiDraft.model, 160),
+    clean(aiDraft.name, 240),
+  ].filter(Boolean).join(' ').trim();
+
   if (query) {
-    const [mlResult, webResult] = await Promise.all([
-      ml.ready ? lookupMercadoLibre(ml.values.access_token, query, false) : Promise.resolve({}),
-      serper.ready ? searchSerper(serper.values.api_key, `${query} Chile`) : Promise.resolve({}),
-    ]);
+    const mlPromise: Promise<LookupResult> = ml.ready
+      ? lookupMercadoLibre(ml.values.access_token, query, false)
+      : Promise.resolve(EMPTY_LOOKUP);
+    const webPromise: Promise<LookupResult> = serper.ready
+      ? searchSerper(serper.values.api_key, `${query} Chile`)
+      : Promise.resolve(EMPTY_LOOKUP);
+    const [mlResult, webResult] = await Promise.all([mlPromise, webPromise]);
+
     if (mlResult.warning) warnings.push(mlResult.warning);
     if (webResult.warning) warnings.push(webResult.warning);
     if (mlResult.draft) drafts.push(mlResult.draft);
@@ -601,27 +791,25 @@ export async function identifyProductFromPhoto(
   }
 
   const candidate = mergeDrafts(drafts);
-  if (candidate && aiProvider) {
-    // The photographed product is the primary evidence: keep the AI naming when
-    // external keyword search returns a generic page title.
+  if (candidate) {
     const aiName = clean(aiDraft.name, 240);
-    if (aiName) candidate.name = aiName;
     const aiBrand = clean(aiDraft.brand, 160);
-    if (aiBrand) candidate.brand = aiBrand;
     const aiModel = clean(aiDraft.model, 160);
-    if (aiModel) candidate.model = aiModel;
     const aiDescription = clean(aiDraft.description, 2200);
-    if (aiDescription) candidate.description = aiDescription;
     const aiSku = clean(aiDraft.sku, 128);
-    if (aiSku) candidate.sku = aiSku;
     const aiEan = clean(aiDraft.ean, 64);
-    if (aiEan) candidate.ean = aiEan;
     const aiCategory = clean(aiDraft.category, 180);
+    if (aiName) candidate.name = aiName;
+    if (aiBrand) candidate.brand = aiBrand;
+    if (aiModel) candidate.model = aiModel;
+    if (aiDescription) candidate.description = aiDescription;
+    if (aiSku) candidate.sku = aiSku;
+    if (aiEan) candidate.ean = aiEan;
     if (aiCategory) candidate.category = aiCategory;
   }
 
   return {
-    ok: true,
+    ok: true as const,
     provider: aiProvider,
     candidate,
     warnings,

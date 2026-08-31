@@ -5,7 +5,10 @@ import { slugFromHostname, DEFAULT_TENANT_ID, DEFAULT_TENANT_SLUG } from '@/lib/
 
 const CUSTOM_DOMAIN_CACHE_COOKIE = 'x-cd-tenant'
 const CUSTOM_DOMAIN_CACHE_TTL = 300
-const DEFAULT_PERMISSIONS_POLICY = 'camera=(), microphone=(), geolocation=(self), interest-cohort=()'
+// Permissions Policy is document-scoped. The admin uses client-side navigation,
+// so a document loaded on /admin must already allow the same-origin camera if
+// it may later navigate to /admin/inventario/scan without a full reload.
+const DEFAULT_PERMISSIONS_POLICY = 'camera=(self), microphone=(), geolocation=(self), interest-cohort=()'
 const INVENTORY_SCANNER_PERMISSIONS_POLICY = 'camera=(self), microphone=(), geolocation=(self), interest-cohort=()'
 
 const VIEWER_BLOCKED_ADMIN_PATHS = [

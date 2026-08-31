@@ -57,8 +57,9 @@ BEGIN
       ON public.products(tenant_id, trim(ean)) WHERE COALESCE(trim(ean),'') <> '';
     CREATE UNIQUE INDEX IF NOT EXISTS products_tenant_scan_code_unique_idx
       ON public.products(tenant_id, trim(scan_code)) WHERE COALESCE(trim(scan_code),'') <> '';
-    CREATE INDEX IF NOT EXISTS products_tenant_name_trgm_idx
-      ON public.products USING gin (lower(name) gin_trgm_ops);
+    DROP INDEX IF EXISTS public.products_tenant_name_trgm_idx;
+    CREATE INDEX products_tenant_name_trgm_idx
+      ON public.products USING gin (name gin_trgm_ops);
     CREATE INDEX IF NOT EXISTS products_tenant_stock_idx
       ON public.products(tenant_id, activo, stock);
   END IF;
@@ -102,18 +103,27 @@ UPDATE public.inventory_movements SET tenant_id = '${DEFAULT_TENANT}'::uuid WHER
 UPDATE public.inventory_movements SET created_at = now() WHERE created_at IS NULL;
 `);
 
-  await runSql('phase 5 movement indexes', `
+  await runSql('phase 5 movement indexes and operation keys', `
 CREATE INDEX IF NOT EXISTS inventory_movements_product_idx
   ON public.inventory_movements(tenant_id, product_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS inventory_movements_reference_idx
   ON public.inventory_movements(tenant_id, reference_type, reference_id)
   WHERE reference_id IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS inventory_movements_idempotency_idx
-  ON public.inventory_movements(tenant_id, reference_type, reference_id)
-  WHERE reference_type IS NOT NULL AND reference_id IS NOT NULL;
+DROP INDEX IF EXISTS public.inventory_movements_idempotency_idx;
 CREATE INDEX IF NOT EXISTS inventory_movements_barcode_idx
   ON public.inventory_movements(tenant_id, barcode, created_at DESC)
   WHERE barcode IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS public.inventory_operation_keys (
+  tenant_id uuid NOT NULL DEFAULT '${DEFAULT_TENANT}'::uuid,
+  reference_type text NOT NULL,
+  reference_id text NOT NULL,
+  product_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, reference_type, reference_id)
+);
+CREATE INDEX IF NOT EXISTS inventory_operation_keys_product_idx
+  ON public.inventory_operation_keys(tenant_id, product_id, created_at DESC);
 `);
 
   await runSql('phase 6 persistent intake', `
@@ -218,13 +228,14 @@ CREATE OR REPLACE FUNCTION public.inventory_apply_movement(
 )
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
   v_before integer;
   v_after integer;
   v_signed integer;
+  v_claimed boolean := false;
   v_existing public.inventory_movements%ROWTYPE;
   v_movement public.inventory_movements%ROWTYPE;
 BEGIN
@@ -237,22 +248,35 @@ BEGIN
   END IF;
 
   IF p_reference_type IS NOT NULL AND p_reference_id IS NOT NULL THEN
-    SELECT * INTO v_existing
-    FROM public.inventory_movements
-    WHERE tenant_id = p_tenant_id
-      AND reference_type = p_reference_type
-      AND reference_id = p_reference_id
-    LIMIT 1;
+    INSERT INTO public.inventory_operation_keys (
+      tenant_id, reference_type, reference_id, product_id
+    ) VALUES (
+      p_tenant_id, p_reference_type, p_reference_id, p_product_id
+    )
+    ON CONFLICT (tenant_id, reference_type, reference_id) DO NOTHING
+    RETURNING true INTO v_claimed;
 
-    IF FOUND THEN
-      RETURN jsonb_build_object(
-        'ok', true,
-        'duplicate', true,
-        'movement_id', v_existing.id,
-        'stock_before', v_existing.stock_before,
-        'stock_after', v_existing.stock_after,
-        'quantity', v_existing.quantity
-      );
+    IF NOT COALESCE(v_claimed, false) THEN
+      SELECT * INTO v_existing
+      FROM public.inventory_movements
+      WHERE tenant_id = p_tenant_id
+        AND reference_type = p_reference_type
+        AND reference_id = p_reference_id
+      ORDER BY created_at DESC
+      LIMIT 1;
+
+      IF FOUND THEN
+        RETURN jsonb_build_object(
+          'ok', true,
+          'duplicate', true,
+          'movement_id', v_existing.id,
+          'stock_before', v_existing.stock_before,
+          'stock_after', v_existing.stock_after,
+          'quantity', v_existing.quantity
+        );
+      END IF;
+
+      RAISE EXCEPTION 'IDEMPOTENCY_STATE_MISSING';
     END IF;
   END IF;
 

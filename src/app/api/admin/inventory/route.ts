@@ -15,9 +15,9 @@ function cleanFormat(value: unknown) {
   return String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
 }
 
-function clampLimit(value: unknown, fallback = 100) {
+function clampLimit(value: unknown, fallback = 100, max = 250) {
   const parsed = Math.trunc(Number(value));
-  return Number.isFinite(parsed) ? Math.max(1, Math.min(250, parsed)) : fallback;
+  return Number.isFinite(parsed) ? Math.max(1, Math.min(max, parsed)) : fallback;
 }
 
 const PRODUCT_SELECT = 'id,name,stock,price,sku,ean,scan_code,scan_format,image_url,activo';
@@ -31,7 +31,9 @@ export async function GET(request: NextRequest) {
   const code = cleanScanCode(url.searchParams.get('code'));
   const catalog = url.searchParams.get('catalog') === '1';
   const history = url.searchParams.get('history') === '1';
-  const limit = clampLimit(url.searchParams.get('limit'));
+  const limit = catalog
+    ? clampLimit(url.searchParams.get('limit'), 500, 500)
+    : clampLimit(url.searchParams.get('limit'), 100, 250);
 
   try {
     if (history) {

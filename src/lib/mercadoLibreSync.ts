@@ -1,6 +1,7 @@
 import 'server-only';
 import { insforgeAdmin } from './insforge';
 import { mlGetItem, mlGetOrders } from './mlApi';
+import { applyInventoryMovementAtomic } from './inventory/stockLedger';
 
 export interface MLSyncProduct {
   id: string;
@@ -64,22 +65,36 @@ export async function syncProductPrice(
     if (!localProduct) throw new Error('Producto local no encontrado en este tenant');
 
     const nextPrice = Number(mlItem.price ?? localProduct.price ?? 0);
-    const nextStock = Number(mlItem.available_quantity ?? localProduct.stock ?? 0);
+    const nextStock = Math.max(0, Math.trunc(Number(mlItem.available_quantity ?? localProduct.stock ?? 0)));
     const localPrice = Number(localProduct.price ?? 0);
     const localStock = Number(localProduct.stock ?? 0);
-    const needsUpdate = localPrice !== nextPrice || localStock !== nextStock;
+    const priceChanged = localPrice !== nextPrice;
+    const stockChanged = localStock !== nextStock;
+    const needsUpdate = priceChanged || stockChanged;
 
-    if (needsUpdate) {
+    if (priceChanged) {
       const { error: updateError } = await insforgeAdmin.database
         .from('products')
         .update({
           price: nextPrice,
-          stock: nextStock,
           updated_at: new Date().toISOString(),
         })
         .eq('tenant_id', tenantId)
         .eq('id', productId);
       if (updateError) throw new Error(updateError.message);
+    }
+
+    if (stockChanged) {
+      await applyInventoryMovementAtomic({
+        tenantId,
+        productId,
+        type: 'adjustment',
+        quantity: nextStock,
+        referenceType: 'mercadolibre_snapshot',
+        referenceId: null,
+        note: `Stock sincronizado desde Mercado Libre (${mlItemId})`,
+        actorId: 'mercadolibre-sync',
+      });
     }
 
     return {
@@ -296,43 +311,18 @@ export async function adjustStockFromML(
   tenantId: string,
 ): Promise<boolean> {
   try {
-    const { data: product, error } = await insforgeAdmin.database
-      .from('products')
-      .select('stock')
-      .eq('tenant_id', tenantId)
-      .eq('id', productId)
-      .limit(1);
-    if (error || !product?.[0]) return false;
-
-    const stockBefore = Number(product[0].stock ?? 0);
-    const stockAfter = Math.max(0, Math.trunc(mlQuantity));
-    if (stockBefore === stockAfter) return false;
-
-    const { error: updateError } = await insforgeAdmin.database
-      .from('products')
-      .update({ stock: stockAfter, updated_at: new Date().toISOString() })
-      .eq('tenant_id', tenantId)
-      .eq('id', productId);
-    if (updateError) return false;
-
-    try {
-      await insforgeAdmin.database.from('inventory_movements').insert({
-        tenant_id: tenantId,
-        product_id: productId,
-        movement_type: stockAfter >= stockBefore ? 'entrada' : 'salida',
-        quantity: Math.abs(stockAfter - stockBefore),
-        stock_before: stockBefore,
-        stock_after: stockAfter,
-        reference_type: 'mercadolibre_sync',
-        reference_id: null,
-        note: 'Ajuste automático desde Mercado Libre',
-        created_at: new Date().toISOString(),
-      });
-    } catch {
-      // Stock update already succeeded; movement audit is best-effort here.
-    }
-
-    return true;
+    const targetStock = Math.max(0, Math.trunc(Number(mlQuantity) || 0));
+    const movement = await applyInventoryMovementAtomic({
+      tenantId,
+      productId,
+      type: 'adjustment',
+      quantity: targetStock,
+      referenceType: 'mercadolibre_sync',
+      referenceId: null,
+      note: 'Ajuste automático desde Mercado Libre',
+      actorId: 'mercadolibre-sync',
+    });
+    return movement.quantity !== 0;
   } catch (err) {
     console.error('[ml-sync] stock adjustment failed', { tenantId, productId, err });
     return false;

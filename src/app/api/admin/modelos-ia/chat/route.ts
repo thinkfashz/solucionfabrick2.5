@@ -3,7 +3,8 @@ export const runtime = 'nodejs';
 
 import type { NextRequest } from 'next/server';
 import { requireAdminPermission } from '@/lib/adminPermissions';
-import { resolveProviderConfig } from '@/lib/resolveAiConfig';
+import { getAdminTenantId } from '@/lib/adminApi';
+import { resolveTenantProviderConfig } from '@/lib/tenantAiConfig';
 import type { AiProvider } from '@/lib/resolveAiConfig';
 
 interface ImageUrlPart {
@@ -299,6 +300,7 @@ function sseResponse(stream: ReadableStream) {
 export async function POST(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'integrations', action: 'read' });
   if (!auth.ok) return auth.response;
+  const tenantId = await getAdminTenantId(request);
 
   let body: ChatRequestBody;
   try {
@@ -314,7 +316,7 @@ export async function POST(request: NextRequest) {
     return sseResponse(new ReadableStream({ start(controller) { sendEvent(controller, { type: 'error', message: 'provider, modelo y messages son requeridos', errorType: 'other' }); sendEvent(controller, { type: 'done' }); controller.close(); } }));
   }
 
-  const config = await resolveProviderConfig(provider, modelo);
+  const config = await resolveTenantProviderConfig(provider, modelo, tenantId);
   const stream = new ReadableStream({
     async start(controller) {
       try {

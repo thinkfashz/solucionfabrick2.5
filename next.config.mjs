@@ -14,6 +14,11 @@ const securityHeaders = [
   // each navigation gets a fresh nonce for inline JSON-LD scripts.
 ];
 
+const inventoryScannerPermissionsHeader = {
+  key: 'Permissions-Policy',
+  value: 'camera=(self), microphone=(), geolocation=(self), interest-cohort=()',
+};
+
 /**
  * Sentry pulls OpenTelemetry instrumentation packages for server tracing. Those
  * packages intentionally use dynamic require/import patterns that webpack cannot
@@ -116,6 +121,12 @@ const nextConfig = {
       {
         source: '/:path*',
         headers: securityHeaders,
+      },
+      {
+        // The global policy blocks cameras everywhere. This route-specific
+        // header intentionally overrides that single key only for the scanner.
+        source: '/admin/inventario/scan',
+        headers: [inventoryScannerPermissionsHeader],
       },
       {
         // Service worker must be served with a no-cache policy so updates ship fast

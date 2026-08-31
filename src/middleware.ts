@@ -5,6 +5,8 @@ import { slugFromHostname, DEFAULT_TENANT_ID, DEFAULT_TENANT_SLUG } from '@/lib/
 
 const CUSTOM_DOMAIN_CACHE_COOKIE = 'x-cd-tenant'
 const CUSTOM_DOMAIN_CACHE_TTL = 300
+const DEFAULT_PERMISSIONS_POLICY = 'camera=(), microphone=(), geolocation=(self), interest-cohort=()'
+const INVENTORY_SCANNER_PERMISSIONS_POLICY = 'camera=(self), microphone=(), geolocation=(self), interest-cohort=()'
 
 const VIEWER_BLOCKED_ADMIN_PATHS = [
   '/admin/equipo',
@@ -119,9 +121,16 @@ async function isValidSession(value: string): Promise<boolean> {
   }
 }
 
-function withSecurityHeaders(response: NextResponse, nonce: string, csp: string): NextResponse {
+function permissionsPolicyForPath(pathname: string): string {
+  return pathname === '/admin/inventario/scan'
+    ? INVENTORY_SCANNER_PERMISSIONS_POLICY
+    : DEFAULT_PERMISSIONS_POLICY
+}
+
+function withSecurityHeaders(response: NextResponse, nonce: string, csp: string, pathname: string): NextResponse {
   response.headers.set('x-nonce', nonce)
   response.headers.set('Content-Security-Policy', csp)
+  response.headers.set('Permissions-Policy', permissionsPolicyForPath(pathname))
   return response
 }
 
@@ -219,7 +228,7 @@ export async function middleware(request: NextRequest) {
   if (isAdmin && !isLogin && !isJoin && !isDemo) {
     if (!sessionCookie?.value || !validAdminSession) {
       const redirect = NextResponse.redirect(new URL('/admin/login', request.url))
-      return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
+      return isHtml ? withSecurityHeaders(redirect, nonce, csp, pathname) : redirect
     }
 
     const suspendedPath = '/admin/plan-suspendido'
@@ -228,18 +237,18 @@ export async function middleware(request: NextRequest) {
       const tenantStatus = request.cookies.get('tenant_status')?.value
       if (tenantStatus === 'suspended' || tenantStatus === 'cancelled') {
         const redirect = NextResponse.redirect(new URL(suspendedPath, request.url))
-        return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
+        return isHtml ? withSecurityHeaders(redirect, nonce, csp, pathname) : redirect
       }
     }
 
     if (sessionPayload.rol === 'viewer' && isViewerBlockedPage(pathname)) {
       const redirect = NextResponse.redirect(new URL('/admin?demo=blocked', request.url))
-      return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
+      return isHtml ? withSecurityHeaders(redirect, nonce, csp, pathname) : redirect
     }
 
     if (isSuperadminOnlyPage(pathname) && sessionPayload.rol !== 'superadmin') {
       const redirect = NextResponse.redirect(new URL('/admin?forbidden=root', request.url))
-      return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
+      return isHtml ? withSecurityHeaders(redirect, nonce, csp, pathname) : redirect
     }
   }
 
@@ -317,7 +326,7 @@ export async function middleware(request: NextRequest) {
     )
   }
 
-  return isHtml ? withSecurityHeaders(response, nonce, csp) : response
+  return isHtml ? withSecurityHeaders(response, nonce, csp, pathname) : response
 }
 
 export const config = {

@@ -5,6 +5,7 @@
  */
 import 'server-only';
 import { resolveIntegrationCredentials } from '@/lib/integrationCredentials';
+import { normalizeAiBaseUrl } from '@/lib/ai/safeEndpoint';
 
 const INSFORGE_URL = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
 
@@ -61,11 +62,6 @@ const DEFAULT_BASE_URLS: Partial<Record<AiProvider, string>> = {
   ollama: 'https://ollama.com/v1',
 };
 
-function normalizeBaseUrl(value: string | undefined, fallback?: string) {
-  const raw = (value || fallback || '').trim();
-  return raw ? raw.replace(/\/+$/, '') : undefined;
-}
-
 async function getProviderCreds(provider: string): Promise<Record<string, string>> {
   const resolved = await resolveIntegrationCredentials(provider, ['api_key'], true);
   return resolved.values;
@@ -91,7 +87,7 @@ export async function resolveAiConfig(): Promise<AiConfig | null> {
     if (preferredProvider) {
       const creds = await getProviderCreds(preferredProvider);
       const key = creds.api_key?.trim() ?? '';
-      const baseUrl = normalizeBaseUrl(creds.base_url, DEFAULT_BASE_URLS[preferredProvider]);
+      const baseUrl = normalizeAiBaseUrl(creds.base_url, DEFAULT_BASE_URLS[preferredProvider]);
       const usable = preferredProvider === 'custom' ? Boolean(baseUrl) : Boolean(key);
       if (usable) {
         return {
@@ -109,7 +105,7 @@ export async function resolveAiConfig(): Promise<AiConfig | null> {
     for (const p of autoOrder) {
       const creds = await getProviderCreds(p);
       const key = creds.api_key?.trim() ?? '';
-      const baseUrl = normalizeBaseUrl(creds.base_url, DEFAULT_BASE_URLS[p]);
+      const baseUrl = normalizeAiBaseUrl(creds.base_url, DEFAULT_BASE_URLS[p]);
       const usable = p === 'custom' ? Boolean(baseUrl) : Boolean(key);
       if (usable) {
         return {
@@ -149,7 +145,7 @@ export async function resolveProviderConfig(provider: AiProvider, modelo: string
   try {
     const creds = await getProviderCreds(provider);
     const key = creds.api_key?.trim() ?? '';
-    const baseUrl = normalizeBaseUrl(creds.base_url, DEFAULT_BASE_URLS[provider]);
+    const baseUrl = normalizeAiBaseUrl(creds.base_url, DEFAULT_BASE_URLS[provider]);
     if (provider === 'custom') {
       if (!baseUrl) return null;
     } else if (!key) {

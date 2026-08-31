@@ -6,13 +6,18 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   {
     key: 'Permissions-Policy',
-    value: 'camera=(self), microphone=(), geolocation=(self), interest-cohort=()',
+    value: 'camera=(), microphone=(), geolocation=(self), interest-cohort=()',
   },
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
   // Note: the Content-Security-Policy and X-Frame-Options equivalents
   // (`frame-ancestors 'none'`) are emitted per-request by middleware.ts so that
   // each navigation gets a fresh nonce for inline JSON-LD scripts.
 ];
+
+const inventoryScannerPermissionsHeader = {
+  key: 'Permissions-Policy',
+  value: 'camera=(self), microphone=(), geolocation=(self), interest-cohort=()',
+};
 
 /**
  * Sentry pulls OpenTelemetry instrumentation packages for server tracing. Those
@@ -116,6 +121,12 @@ const nextConfig = {
       {
         source: '/:path*',
         headers: securityHeaders,
+      },
+      {
+        // The global policy blocks cameras everywhere. This route-specific
+        // header intentionally overrides that single key only for the scanner.
+        source: '/admin/inventario/scan',
+        headers: [inventoryScannerPermissionsHeader],
       },
       {
         // Service worker must be served with a no-cache policy so updates ship fast

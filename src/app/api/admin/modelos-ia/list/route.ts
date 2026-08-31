@@ -4,7 +4,8 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireAdminPermission } from '@/lib/adminPermissions';
-import { resolveProviderConfig } from '@/lib/resolveAiConfig';
+import { getAdminTenantId } from '@/lib/adminApi';
+import { resolveTenantProviderConfig } from '@/lib/tenantAiConfig';
 import type { AiConfig, AiProvider } from '@/lib/resolveAiConfig';
 
 export interface ModelEntry {
@@ -168,9 +169,9 @@ async function fetchCustom(config: AiConfig): Promise<ModelEntry[]> {
   return config.modelo ? [{ id: config.modelo, name: config.modelo, free: false }] : [];
 }
 
-async function fetchProvider(provider: AiProvider): Promise<ProviderResult> {
+async function fetchProvider(provider: AiProvider, tenantId: string): Promise<ProviderResult> {
   const label = PROVIDER_LABELS[provider];
-  const config = await resolveProviderConfig(provider, '');
+  const config = await resolveTenantProviderConfig(provider, '', tenantId);
   if (!config) return { id: provider, label, configured: false, models: [] };
 
   try {
@@ -202,8 +203,9 @@ const ALL_PROVIDERS: AiProvider[] = ['openrouter', 'groq', 'anthropic', 'openai'
 export async function GET(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'integrations', action: 'read' });
   if (!auth.ok) return auth.response;
+  const tenantId = await getAdminTenantId(request);
 
-  const settled = await Promise.allSettled(ALL_PROVIDERS.map(fetchProvider));
+  const settled = await Promise.allSettled(ALL_PROVIDERS.map((provider) => fetchProvider(provider, tenantId)));
   const providers: ProviderResult[] = settled.map((result, i) => {
     if (result.status === 'fulfilled') return result.value;
     return {

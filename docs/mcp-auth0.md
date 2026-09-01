@@ -16,7 +16,7 @@ Auth0 es el Authorization Server recomendado para el flujo OAuth interactivo del
 - `products:publish`
 - `inventory:write`
 
-El cliente interactivo también solicita `openid profile email offline_access`. `offline_access` requiere que la API de Auth0 tenga `Allow Offline Access` habilitado y que la Application pueda usar Refresh Token.
+Para mantener la conexión, el cliente interactivo solicita `offline_access` junto con los scopes Fabrick. No se necesitan `profile` ni `email` para el vínculo MCP: Fabrick usa `sub + client_id/azp` del access token y guarda únicamente el hash del subject. `offline_access` requiere que la API de Auth0 tenga `Allow Offline Access` habilitado y que la Application pueda usar Refresh Token.
 
 ## RBAC
 

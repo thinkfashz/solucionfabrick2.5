@@ -33,12 +33,20 @@ function cleanUuid(value: unknown) {
 }
 
 async function expireOldApprovals(tenantId: string) {
+  const now = new Date().toISOString();
   try {
-    await insforgeAdmin.database.from('mcp_approvals')
-      .update({ status: 'expired' })
-      .eq('tenant_id', tenantId)
-      .in('status', ['pending', 'approved'])
-      .lt('expires_at', new Date().toISOString());
+    await Promise.all([
+      insforgeAdmin.database.from('mcp_approvals')
+        .update({ status: 'expired' })
+        .eq('tenant_id', tenantId)
+        .eq('status', 'pending')
+        .lt('expires_at', now),
+      insforgeAdmin.database.from('mcp_approvals')
+        .update({ status: 'expired' })
+        .eq('tenant_id', tenantId)
+        .eq('status', 'approved')
+        .lt('expires_at', now),
+    ]);
   } catch {
     // Best-effort cleanup; GET can still continue.
   }

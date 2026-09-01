@@ -77,6 +77,22 @@ CREATE TABLE IF NOT EXISTS public.mcp_audit_logs (
   result_summary jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS public.mcp_oauth_bindings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL DEFAULT '${DEFAULT_TENANT}'::uuid,
+  issuer text NOT NULL,
+  subject_hash text NOT NULL,
+  subject_hint text,
+  client_id text NOT NULL DEFAULT '',
+  key_id text NOT NULL,
+  label text,
+  enabled boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT mcp_oauth_subject_hash_check CHECK (subject_hash ~ '^[a-f0-9]{64}$'),
+  CONSTRAINT mcp_oauth_identity_unique UNIQUE (issuer, subject_hash, client_id)
+);
 `);
 
   await runSql('phase 2 governance indexes', `
@@ -92,6 +108,12 @@ CREATE INDEX IF NOT EXISTS mcp_audit_tenant_tool_idx
   ON public.mcp_audit_logs(tenant_id, tool_name, created_at DESC);
 CREATE INDEX IF NOT EXISTS mcp_rate_windows_cleanup_idx
   ON public.mcp_rate_windows(window_start DESC);
+CREATE INDEX IF NOT EXISTS mcp_oauth_bindings_tenant_idx
+  ON public.mcp_oauth_bindings(tenant_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS mcp_oauth_bindings_lookup_idx
+  ON public.mcp_oauth_bindings(issuer, subject_hash, enabled);
+CREATE INDEX IF NOT EXISTS mcp_oauth_bindings_key_idx
+  ON public.mcp_oauth_bindings(tenant_id, key_id, enabled);
 `);
 
   await runSql('phase 3 atomic rate limiter', `
@@ -165,7 +187,7 @@ SET status = 'expired'
 WHERE status IN ('pending','approved') AND expires_at < now();
 `);
 
-  console.log('[mcp-governance-bootstrap] audit, approvals and rate limits aligned.');
+  console.log('[mcp-governance-bootstrap] audit, approvals, OAuth bindings and rate limits aligned.');
 } catch (error) {
   console.error('[mcp-governance-bootstrap] Failed:', error instanceof Error ? error.message : error);
   process.exit(1);

@@ -3,6 +3,7 @@ import 'server-only';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { insforgeAdmin } from '@/lib/insforge';
 import { decryptCredentials, encryptCredentials } from '@/lib/integrationsCrypto';
+import { hashMcpOAuthSubject, verifyMcpOAuthBearerToken } from '@/lib/mcp/oauthVerifier';
 
 export const MCP_PROVIDER = 'mcp_gateway';
 export const MCP_DEFAULT_SCOPES = ['products:read', 'products:write', 'products:publish', 'inventory:write'] as const;
@@ -16,6 +17,7 @@ export type McpAccess = {
   tokenPrefix: string;
   scopes: Set<string>;
   label: string;
+  authType?: 'fabrick_token' | 'oauth';
 };
 
 type GatewayCredentials = {
@@ -34,6 +36,13 @@ type GatewayRow = {
   updated_at?: string | null;
 };
 
+type OAuthBindingRow = {
+  tenant_id?: string | null;
+  key_id?: string | null;
+  client_id?: string | null;
+  label?: string | null;
+};
+
 function hashToken(token: string) {
   return createHash('sha256').update(token, 'utf8').digest('hex');
 }
@@ -45,12 +54,13 @@ function safeEqualHex(a: string, b: string) {
   return aa.length === bb.length && timingSafeEqual(aa, bb);
 }
 
-function extractToken(request: Request, pathToken?: string) {
+function extractCredential(request: Request, pathToken?: string) {
   const fromPath = String(pathToken ?? '').trim();
-  if (fromPath) return fromPath;
+  if (fromPath) return { token: fromPath, source: 'path' as const };
   const auth = request.headers.get('authorization') ?? '';
-  if (/^Bearer\s+/i.test(auth)) return auth.replace(/^Bearer\s+/i, '').trim();
-  return (request.headers.get('x-fabrick-mcp-key') ?? '').trim();
+  if (/^Bearer\s+/i.test(auth)) return { token: auth.replace(/^Bearer\s+/i, '').trim(), source: 'authorization' as const };
+  const apiKey = (request.headers.get('x-fabrick-mcp-key') ?? '').trim();
+  return { token: apiKey, source: 'api-key' as const };
 }
 
 function parseScopes(value: unknown) {
@@ -203,6 +213,7 @@ async function authenticateIndexedToken(token: string, keyId: string): Promise<M
       tokenPrefix: String(plain.token_prefix ?? `sfmcp_${keyId.slice(0, 6)}`),
       scopes: parseScopes(plain.scopes),
       label: String(plain.label ?? 'MCP'),
+      authType: 'fabrick_token',
     };
   }
   return null;
@@ -225,17 +236,81 @@ async function authenticateLegacyToken(token: string): Promise<McpAccess | null>
       tokenPrefix: String(plain.token_prefix ?? token.slice(0, 13)),
       scopes: parseScopes(plain.scopes),
       label: String(plain.label ?? 'MCP legacy'),
+      authType: 'fabrick_token',
+    };
+  }
+  return null;
+}
+
+async function accessFromConnection(tenantId: string, keyId: string): Promise<McpAccess | null> {
+  const provider = keyId === 'legacy' ? MCP_PROVIDER : providerForKey(keyId);
+  const { data, error } = await insforgeAdmin.database.from('integrations')
+    .select('tenant_id,provider,credentials')
+    .eq('tenant_id', tenantId)
+    .eq('provider', provider)
+    .limit(1);
+  if (error || !Array.isArray(data) || !data[0]) return null;
+  const row = data[0] as GatewayRow;
+  const plain = decryptCredentials(row.credentials ?? {}) as GatewayCredentials;
+  return {
+    tenantId,
+    keyId,
+    tokenPrefix: String(plain.token_prefix ?? (keyId === 'legacy' ? 'legacy' : `sfmcp_${keyId.slice(0, 6)}`)),
+    scopes: parseScopes(plain.scopes),
+    label: String(plain.label ?? 'MCP'),
+  };
+}
+
+async function authenticateOAuthToken(token: string): Promise<McpAccess | null> {
+  const identity = await verifyMcpOAuthBearerToken(token);
+  if (!identity) return null;
+  const subjectHash = hashMcpOAuthSubject(identity.issuer, identity.subject);
+  const { data, error } = await insforgeAdmin.database.from('mcp_oauth_bindings')
+    .select('tenant_id,key_id,client_id,label')
+    .eq('issuer', identity.issuer)
+    .eq('subject_hash', subjectHash)
+    .eq('enabled', true)
+    .limit(20);
+  if (error || !Array.isArray(data)) return null;
+
+  const rows = (data as OAuthBindingRow[])
+    .filter((row) => {
+      const requiredClient = String(row.client_id ?? '').trim();
+      return requiredClient ? requiredClient === identity.clientId : true;
+    })
+    .sort((a, b) => Number(Boolean(String(b.client_id ?? '').trim())) - Number(Boolean(String(a.client_id ?? '').trim())));
+
+  for (const binding of rows) {
+    const tenantId = String(binding.tenant_id ?? '').trim();
+    const keyId = String(binding.key_id ?? '').trim().toLowerCase();
+    if (!tenantId || (keyId !== 'legacy' && !/^[a-f0-9]{16}$/.test(keyId))) continue;
+    const connection = await accessFromConnection(tenantId, keyId);
+    if (!connection) continue;
+    const effectiveScopes = new Set([...connection.scopes].filter((scope) => identity.scopes.has(scope)));
+    return {
+      ...connection,
+      scopes: effectiveScopes,
+      label: String(binding.label ?? '').trim().slice(0, 80) || `${connection.label} · OAuth`,
+      authType: 'oauth',
+      tokenPrefix: `oauth_${identity.tokenFingerprint.slice(0, 10)}`,
     };
   }
   return null;
 }
 
 export async function authenticateMcpRequest(request: Request, pathToken?: string): Promise<McpAccess | null> {
-  const token = extractToken(request, pathToken);
-  if (!token || !token.startsWith('sfmcp_') || token.length < 30 || token.length > 180) return null;
-  const keyId = tokenKeyId(token);
-  if (keyId) return authenticateIndexedToken(token, keyId);
-  return authenticateLegacyToken(token);
+  const credential = extractCredential(request, pathToken);
+  const token = credential.token;
+  if (!token) return null;
+
+  if (token.startsWith('sfmcp_') && token.length >= 30 && token.length <= 180) {
+    const keyId = tokenKeyId(token);
+    if (keyId) return authenticateIndexedToken(token, keyId);
+    return authenticateLegacyToken(token);
+  }
+
+  if (credential.source === 'authorization') return authenticateOAuthToken(token);
+  return null;
 }
 
 export function requireMcpScope(access: McpAccess, scope: McpScope) {

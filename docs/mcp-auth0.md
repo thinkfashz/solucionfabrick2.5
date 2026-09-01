@@ -42,6 +42,43 @@ El provisionador **no** crea usuarios, roles, conexiones, Actions ni la Applicat
 
 Para reducir SSRF y errores operativos, el provisionador acepta únicamente el dominio estándar del tenant `*.auth0.com` para llamadas Management API. Un custom domain puede seguir usándose como issuer si se valida después en el diagnóstico OAuth.
 
+## Activación escalonada en Vercel
+
+`/admin/mcp/oauth/activar` administra las variables OAuth usando las credenciales Vercel server-only que ya existen en Soluciones Fabrick.
+
+Seguridad del activador:
+
+- requiere Root/superadmin (`admin:manage`), no basta un tenant admin;
+- en un deployment Preview solo puede modificar variables `preview` de la rama actual;
+- un Preview nunca puede escribir variables de producción;
+- producción solo se puede activar desde el runtime `production` cuando este código ya está en `main`;
+- antes de activar vuelve a ejecutar discovery, PKCE y JWKS;
+- producción exige además `offline_access` + refresh token;
+- exige confirmación explícita de Resource Parameter Compatibility Profile;
+- primero devuelve un plan sin cambiar Vercel;
+- el commit requiere escribir una frase exacta;
+- no devuelve ni expone el token Vercel;
+- después de cambiar variables se requiere un nuevo deployment para que el runtime las cargue.
+
+Variables gestionadas al activar:
+
+```env
+MCP_OAUTH_ENABLED=1
+MCP_OAUTH_METADATA_ENABLED=1
+MCP_OAUTH_ISSUER=https://TU_DOMINIO_AUTH0
+MCP_OAUTH_AUDIENCE=https://www.solucionesfabrick.com/api/mcp
+MCP_OAUTH_ALLOWED_ALGS=RS256
+```
+
+El mismo panel incluye un **kill switch** que pone únicamente:
+
+```env
+MCP_OAUTH_ENABLED=0
+MCP_OAUTH_METADATA_ENABLED=0
+```
+
+No borra issuer/audience, por lo que permite volver a habilitar OAuth después de corregir un incidente sin reconstruir toda la configuración.
+
 ## Recurso MCP
 
 - Endpoint: `https://www.solucionesfabrick.com/api/mcp`
@@ -68,18 +105,6 @@ Crea una Application separada para ChatGPT. Habilita Authorization Code y Refres
 
 No guardes `client_secret` en el panel MCP de Fabrick. Si el mecanismo de autenticación elegido en ChatGPT requiere un cliente confidencial, configura el secreto únicamente donde el proveedor/cliente OAuth lo solicite.
 
-## Variables Fabrick
-
-```env
-MCP_OAUTH_ENABLED=1
-MCP_OAUTH_METADATA_ENABLED=1
-MCP_OAUTH_ISSUER=https://TU_DOMINIO_AUTH0
-MCP_OAUTH_AUDIENCE=https://www.solucionesfabrick.com/api/mcp
-MCP_OAUTH_ALLOWED_ALGS=RS256
-```
-
-`MCP_OAUTH_JWKS_URI` no es necesario para Auth0 mientras discovery anuncie un `jwks_uri` público válido.
-
 ## Verificación
 
 1. Abre `/admin/mcp/oauth/auth0/provision` y usa primero `Revisar sin cambiar`.
@@ -89,8 +114,11 @@ MCP_OAUTH_ALLOWED_ALGS=RS256
 5. Confirma Authorization Code, PKCE S256 y JWKS.
 6. Confirma `offline_access`/refresh para persistencia.
 7. Crea/configura la Application ChatGPT con la callback exacta que ChatGPT muestre.
-8. Activa las variables en Vercel solo cuando el panel marque Activación MCP = Lista.
-9. Revisa `/admin/mcp/oauth/diagnostico`.
-10. Autoriza ChatGPT.
-11. Vincula `sub + client_id/azp` en `/admin/mcp/oauth` a una credencial MCP de mínimo privilegio.
-12. Ejecuta una lectura y luego una escritura controlada; revisa `/admin/mcp/gobernanza`.
+8. En el Preview del PR abre `/admin/mcp/oauth/activar`, revisa el plan y activa OAuth solo para esa rama.
+9. Crea un nuevo deployment Preview y ejecuta el diagnóstico/smoke OAuth con la configuración ya cargada.
+10. Después de fusionar a `main`, abre el mismo activador desde producción y repite revisión + confirmación para las variables `production`.
+11. Crea el nuevo deployment de producción y confirma Protected Resource Metadata + challenge 401.
+12. Autoriza ChatGPT.
+13. Vincula `sub + client_id/azp` en `/admin/mcp/oauth` a una credencial MCP de mínimo privilegio.
+14. Ejecuta una lectura y luego una escritura controlada; revisa `/admin/mcp/gobernanza`.
+15. Si aparece una incidencia, usa el kill switch y redepliega antes de investigar.

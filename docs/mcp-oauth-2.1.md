@@ -11,25 +11,11 @@ El JWT externo nunca decide el `tenant_id` de Fabrick. Después de validar firma
 
 La base de datos guarda solamente SHA-256 de `issuer + subject`; el `sub` completo no se persiste. Por defecto una vinculación exige también un `client_id`/`azp` concreto. Solo se permite vincular por `sub` sin cliente si se habilita explícitamente `MCP_OAUTH_ALLOW_SUBJECT_ONLY_BINDING=1`.
 
-Los scopes efectivos son la intersección entre:
-
-- scopes emitidos en `scope` o `scp` por el Authorization Server; y
-- scopes permitidos por la credencial MCP vinculada.
-
-Por tanto un IdP no puede ampliar permisos más allá de los que Fabrick concedió a esa conexión.
+Los scopes efectivos son la intersección entre los scopes emitidos por el Authorization Server y los scopes permitidos por la credencial MCP vinculada. Un IdP nunca puede ampliar permisos más allá de los que Fabrick concedió.
 
 ## Validación JWT
 
-El Resource Server valida:
-
-- `iss` contra `MCP_OAUTH_ISSUER`;
-- `aud` contra `MCP_OAUTH_AUDIENCE`;
-- `exp`, `nbf` e `iat` con skew configurable;
-- algoritmo contra una allow-list;
-- firma usando la clave pública del JWKS;
-- `kid`, `use`, `key_ops` y `alg` cuando están presentes en el JWK.
-
-Si `MCP_OAUTH_JWKS_URI` no está definido, el servidor descubre `jwks_uri` mediante OAuth Authorization Server Metadata (RFC 8414) y, como fallback, OpenID Connect Discovery. Metadata y JWKS se cachean brevemente en cada instancia serverless y un `kid` desconocido fuerza una recarga del JWKS una vez.
+El Resource Server valida `iss`, `aud`, `exp`, `nbf`, `iat`, algoritmo allow-list, firma JWKS y `kid`/`use`/`key_ops`/`alg` cuando están presentes. Si `MCP_OAUTH_JWKS_URI` no está definido, `jwks_uri` se descubre mediante RFC 8414 y fallback OpenID Connect Discovery. Metadata y JWKS se cachean brevemente y un `kid` desconocido fuerza una recarga una vez.
 
 ## Protección de red / SSRF
 
@@ -46,31 +32,38 @@ Para desarrollo local existe `MCP_OAUTH_ALLOW_PRIVATE_DEV=1`, pero solo tiene ef
 
 ## Registro de clientes MCP moderno
 
-MCP 2026 prioriza estos mecanismos:
+El orden recomendado es:
 
-1. cliente pre-registrado cuando cliente e issuer ya tienen relación;
-2. Client ID Metadata Documents (CIMD), preferido para clientes sin relación previa;
-3. Dynamic Client Registration (DCR) como fallback de compatibilidad.
+1. pre-registro cuando cliente e issuer ya tienen relación;
+2. Client ID Metadata Documents (CIMD) cuando no hay relación previa y el Authorization Server lo soporta;
+3. Dynamic Client Registration (DCR) como fallback de compatibilidad;
+4. credenciales introducidas manualmente si no hay otro mecanismo.
 
-DCR está deprecado en la línea moderna del protocolo, por lo que Fabrick no lo trata como requisito de readiness. Un issuer sin CIMD ni DCR puede seguir siendo válido si el cliente se pre-registra manualmente.
+DCR está deprecado en MCP 2026 frente a CIMD. El documento CIMD pertenece al **cliente MCP**: Fabrick, como Resource Server, no debe publicar un CIMD fingiendo ser ChatGPT u otro cliente.
 
 ## Authorization Code + PKCE y sesiones persistentes
 
-Para interoperabilidad con clientes MCP interactivos el Authorization Server debe ofrecer Authorization Code y PKCE `S256`. Para conexiones duraderas con ChatGPT se recomienda que el issuer anuncie `offline_access` y emita refresh tokens; sin refresh, el usuario puede tener que volver a autorizar cuando venza el access token.
+Para clientes MCP interactivos el Authorization Server debe ofrecer Authorization Code y PKCE `S256`. Para conexiones duraderas se recomienda `offline_access` y refresh tokens; sin refresh el cliente puede requerir reautorización al vencer el access token.
 
-El panel `/admin/mcp/oauth/diagnostico` comprueba automáticamente:
+El panel `/admin/mcp/oauth/diagnostico` comprueba automáticamente discovery, endpoints, Authorization Code, PKCE, refresh/offline access, CIMD/DCR/pre-registro, métodos del token endpoint, authorization response issuer y JWKS.
 
-- discovery RFC 8414 / OIDC;
-- `authorization_endpoint` y `token_endpoint` públicos;
-- Authorization Code;
-- PKCE `S256`;
-- `offline_access` y `refresh_token`;
-- CIMD / DCR / necesidad de pre-registro;
-- métodos de autenticación del token endpoint;
-- `authorization_response_iss_parameter_supported`;
-- JWKS accesible y no vacío.
+## Kit de conexión
 
-El diagnóstico no guarda secretos ni activa OAuth. Tampoco sustituye el último test: debe probarse un access token real emitido para el audience/resource MCP.
+`/admin/mcp/oauth/conexion` centraliza los valores que deben copiarse al cliente y al Authorization Server:
+
+- MCP endpoint;
+- resource/audience;
+- Protected Resource Metadata RFC 9728;
+- scopes Fabrick;
+- scopes interactivos recomendados;
+- flujo Authorization Code + PKCE S256;
+- prioridad de registro de cliente.
+
+Para ChatGPT, la callback no se inventa en Fabrick. El usuario debe copiar **exactamente** la callback que ChatGPT muestre durante la creación/configuración de la app y pegarla en el kit. El kit genera un perfil de conexión y un ejemplo neutral de pre-registro, pero no guarda la callback ni secretos.
+
+El ejemplo `token_endpoint_auth_method: none` representa un cliente público con PKCE. Si un Authorization Server exige cliente confidencial, se debe usar el método y secreto definidos por ese proveedor; el secreto no debe incrustarse en código ni en un documento público.
+
+Para clientes que permitan headers y no necesiten OAuth, las credenciales `sfmcp_...` siguen siendo válidas y recomendables por su aislamiento de scopes, cuotas y revocación individual.
 
 ## Variables
 
@@ -104,7 +97,7 @@ Las respuestas `401` de `/api/mcp` reciben un `WWW-Authenticate` con `resource_m
 
 ## Revocación y gobernanza
 
-Revocar la credencial MCP vinculada invalida también sus accesos OAuth, aunque el JWT externo siga siendo criptográficamente válido. Eliminar la vinculación OAuth también corta el acceso sin modificar el Authorization Server. Las cuotas, aprobaciones y auditoría siguen usando el `key_id` de la credencial MCP vinculada, de modo que OAuth no crea un camino paralelo fuera de Gobernanza.
+Revocar la credencial MCP vinculada invalida también sus accesos OAuth, aunque el JWT externo siga siendo criptográficamente válido. Eliminar la vinculación OAuth también corta el acceso sin modificar el Authorization Server. Las cuotas, aprobaciones y auditoría usan el `key_id` de la credencial MCP vinculada, por lo que OAuth no crea un camino paralelo fuera de Gobernanza.
 
 ## Notificaciones
 
@@ -113,7 +106,7 @@ Cuando existen aprobaciones MCP pendientes el administrador muestra un aviso glo
 ## Limitaciones intencionales
 
 - Fabrick es Resource Server; no intenta convertirse en Authorization Server.
-- Esta implementación valida access tokens JWT. Tokens opacos requieren introspection y no se aceptan.
-- Fabrick no reenvía el access token OAuth a APIs de terceros.
+- Solo valida access tokens JWT; tokens opacos requerirían introspection y no se aceptan.
+- Fabrick no reenvía access tokens OAuth a APIs de terceros.
 - La creación/autorización del cliente OAuth ocurre en el Authorization Server.
 - Un diagnóstico verde no confirma el contenido de un token hasta hacer el test criptográfico end-to-end con un token real.

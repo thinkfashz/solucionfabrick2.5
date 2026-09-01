@@ -126,7 +126,7 @@ function verifySource(source: DeploymentInfo, target: Target, context: ReturnTyp
   return { sourceBranch, sourceSha };
 }
 
-async function productionSmoke() {
+async function productionSmoke(expectedEnabled: boolean) {
   const metadataUrl = 'https://www.solucionesfabrick.com/.well-known/oauth-protected-resource/api/mcp';
   const mcpUrl = 'https://www.solucionesfabrick.com/api/mcp';
   try {
@@ -138,8 +138,13 @@ async function productionSmoke() {
     let metadata: unknown = null;
     try { metadata = metadataText ? JSON.parse(metadataText) : null; } catch { metadata = null; }
     const challenge = mcpResponse.headers.get('www-authenticate') ?? '';
+    const hasBearer = /^Bearer\b/i.test(challenge);
+    const hasResourceMetadata = /resource_metadata=/i.test(challenge);
+    const enabledHealthy = metadataResponse.status === 200 && mcpResponse.status === 401 && hasBearer && hasResourceMetadata;
+    const disabledHealthy = metadataResponse.status === 404 && mcpResponse.status === 401 && hasBearer && !hasResourceMetadata;
     return {
       checked: true,
+      expected: expectedEnabled ? 'enabled' : 'disabled',
       metadata: {
         status: metadataResponse.status,
         noStore: (metadataResponse.headers.get('cache-control') ?? '').toLowerCase().includes('no-store'),
@@ -147,14 +152,15 @@ async function productionSmoke() {
       },
       mcpChallenge: {
         status: mcpResponse.status,
-        hasBearer: /^Bearer\b/i.test(challenge),
-        hasResourceMetadata: /resource_metadata=/i.test(challenge),
+        hasBearer,
+        hasResourceMetadata,
       },
-      healthy: metadataResponse.status === 200 && mcpResponse.status === 401 && /^Bearer\b/i.test(challenge) && /resource_metadata=/i.test(challenge),
+      healthy: expectedEnabled ? enabledHealthy : disabledHealthy,
     };
   } catch (error) {
     return {
       checked: true,
+      expected: expectedEnabled ? 'enabled' : 'disabled',
       healthy: false,
       error: error instanceof Error ? error.message : 'No se pudo ejecutar el smoke OAuth de producción.',
     };
@@ -166,6 +172,7 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const id = String(request.nextUrl.searchParams.get('id') ?? '').trim();
+  const expectedEnabled = request.nextUrl.searchParams.get('expected') !== 'disabled';
   if (!/^dpl_[A-Za-z0-9]+$/.test(id)) {
     return NextResponse.json({ error: 'Deployment ID inválido.' }, { status: 400, headers: { 'cache-control': 'no-store' } });
   }
@@ -180,10 +187,10 @@ export async function GET(request: NextRequest) {
     const context = runtimeContext();
 
     const smoke = readyState === 'READY' && target === 'production'
-      ? await productionSmoke()
+      ? await productionSmoke(expectedEnabled)
       : readyState === 'READY'
-        ? { checked: false, healthy: null, reason: 'El preview puede estar protegido por Vercel SSO; la verificación HTTP pública se reserva para producción.' }
-        : { checked: false, healthy: null, reason: 'El deployment todavía no está READY.' };
+        ? { checked: false, healthy: null, expected: expectedEnabled ? 'enabled' : 'disabled', reason: 'El preview puede estar protegido por Vercel SSO; la verificación HTTP pública se reserva para producción.' }
+        : { checked: false, healthy: null, expected: expectedEnabled ? 'enabled' : 'disabled', reason: 'El deployment todavía no está READY.' };
 
     return NextResponse.json({
       ok: true,

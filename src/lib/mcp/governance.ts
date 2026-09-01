@@ -57,7 +57,7 @@ export function mcpActionHash(toolName: string, payload: unknown) {
 }
 
 export async function getMcpGovernancePolicy(tenantId: string, keyId: string): Promise<McpGovernancePolicy> {
-  if (!keyId || keyId === 'legacy') return DEFAULT_POLICY;
+  if (!keyId) return DEFAULT_POLICY;
   const { data, error } = await insforgeAdmin.database.from('mcp_governance_policies')
     .select('enabled,request_limit_5m,write_limit_5m,approval_publish,approval_inventory')
     .eq('tenant_id', tenantId)

@@ -95,9 +95,11 @@ CREATE INDEX IF NOT EXISTS mcp_rate_windows_cleanup_idx
 `);
 
   await runSql('phase 3 atomic rate limiter', `
+DROP FUNCTION IF EXISTS public.mcp_claim_rate_limit(uuid,text,boolean,integer,integer,integer);
 CREATE OR REPLACE FUNCTION public.mcp_claim_rate_limit(
   p_tenant_id uuid,
   p_key_id text,
+  p_count_request boolean DEFAULT true,
   p_is_write boolean DEFAULT false,
   p_request_limit integer DEFAULT 240,
   p_write_limit integer DEFAULT 40,
@@ -126,13 +128,13 @@ BEGIN
     p_tenant_id,
     left(trim(p_key_id), 120),
     v_window,
-    1,
+    CASE WHEN p_count_request THEN 1 ELSE 0 END,
     CASE WHEN p_is_write THEN 1 ELSE 0 END,
     now()
   )
   ON CONFLICT (tenant_id, key_id, window_start)
   DO UPDATE SET
-    request_count = public.mcp_rate_windows.request_count + 1,
+    request_count = public.mcp_rate_windows.request_count + CASE WHEN p_count_request THEN 1 ELSE 0 END,
     write_count = public.mcp_rate_windows.write_count + CASE WHEN p_is_write THEN 1 ELSE 0 END,
     updated_at = now()
   RETURNING request_count, write_count INTO v_request_count, v_write_count;

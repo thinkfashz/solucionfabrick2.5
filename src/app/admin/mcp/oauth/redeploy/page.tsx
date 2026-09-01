@@ -91,6 +91,8 @@ export default function McpOAuthRedeployPage() {
 
   const phrase = target === 'production' ? 'REDESPLEGAR OAUTH PRODUCCION' : 'REDESPLEGAR OAUTH PREVIEW';
   const deploymentId = started?.deployment.id || '';
+  const current = status?.deployment ?? started?.deployment;
+  const terminal = current ? ['READY', 'ERROR', 'CANCELED'].includes(current.readyState.toUpperCase()) : false;
 
   const refreshStatus = useCallback(async () => {
     if (!deploymentId) return;
@@ -105,11 +107,11 @@ export default function McpOAuthRedeployPage() {
   }, [deploymentId, expected]);
 
   useEffect(() => {
-    if (!deploymentId) return;
+    if (!deploymentId || terminal) return;
     void refreshStatus();
     const timer = window.setInterval(() => void refreshStatus(), 6_000);
     return () => window.clearInterval(timer);
-  }, [deploymentId, refreshStatus]);
+  }, [deploymentId, refreshStatus, terminal]);
 
   async function redeploy() {
     setBusy(true);
@@ -131,9 +133,6 @@ export default function McpOAuthRedeployPage() {
       setBusy(false);
     }
   }
-
-  const current = status?.deployment ?? started?.deployment;
-  const terminal = current ? ['READY', 'ERROR', 'CANCELED'].includes(current.readyState.toUpperCase()) : false;
 
   return (
     <AdminPage>

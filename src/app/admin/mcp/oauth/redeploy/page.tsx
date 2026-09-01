@@ -107,11 +107,12 @@ export default function McpOAuthRedeployPage() {
   }, [deploymentId, expected]);
 
   useEffect(() => {
-    if (!deploymentId || terminal) return;
+    if (!deploymentId || (terminal && status)) return;
     void refreshStatus();
+    if (terminal) return;
     const timer = window.setInterval(() => void refreshStatus(), 6_000);
     return () => window.clearInterval(timer);
-  }, [deploymentId, refreshStatus, terminal]);
+  }, [deploymentId, refreshStatus, status, terminal]);
 
   async function redeploy() {
     setBusy(true);

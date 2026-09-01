@@ -14,7 +14,12 @@ function normalizeUrl(value: unknown) {
   }
 }
 
+export function isMcpOAuthMetadataEnabled() {
+  return String(process.env.MCP_OAUTH_METADATA_ENABLED ?? '').trim() === '1';
+}
+
 export function getMcpOAuthIssuer() {
+  if (!isMcpOAuthMetadataEnabled()) return '';
   return normalizeUrl(process.env.MCP_OAUTH_ISSUER);
 }
 

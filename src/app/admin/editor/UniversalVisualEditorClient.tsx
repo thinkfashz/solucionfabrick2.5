@@ -71,7 +71,6 @@ type ElementScope = 'page' | 'global';
 type TargetMode = 'single' | 'similar';
 type MobilePanel = 'pages' | 'inspector' | null;
 type InspectorTab = 'content' | 'appearance' | 'layout';
-type NativeInspectorControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
 const widthFor: Record<VisualCmsDevice, string> = {
   desktop: '100%',

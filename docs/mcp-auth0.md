@@ -79,6 +79,33 @@ MCP_OAUTH_METADATA_ENABLED=0
 
 No borra issuer/audience, por lo que permite volver a habilitar OAuth después de corregir un incidente sin reconstruir toda la configuración.
 
+## Deploy & Verify
+
+`/admin/mcp/oauth/redeploy` completa la fase posterior a un cambio de variables.
+
+El redeploy es una operación separada y Root-only. No despliega “el último commit” mutable: usa `VERCEL_DEPLOYMENT_ID` para crear un deployment nuevo a partir del **mismo snapshot** que ejecuta el panel.
+
+Barreras:
+
+- Preview solo puede redeplegar el snapshot Preview de la rama actual;
+- Producción solo puede redeplegar desde el runtime productivo de `main`;
+- el backend comprueba `githubCommitRef` y `githubCommitSha` del deployment de origen;
+- se requiere una segunda frase de confirmación exacta;
+- el panel consulta el deployment nuevo cada 6 segundos hasta un estado terminal;
+- el token Vercel permanece únicamente server-side.
+
+Frases:
+
+- `REDESPLEGAR OAUTH PREVIEW`
+- `REDESPLEGAR OAUTH PRODUCCION`
+
+Cuando un redeploy de producción llega a `READY`, el backend ejecuta automáticamente un smoke público:
+
+- si se espera OAuth **activado**, Protected Resource Metadata debe responder `200` y `/api/mcp` debe responder `401 Bearer` anunciando `resource_metadata`;
+- si se espera OAuth **desactivado** mediante kill switch, metadata debe responder `404` y `/api/mcp` debe conservar un `401 Bearer` sin `resource_metadata`.
+
+En Preview el deployment puede estar detrás de Vercel Deployment Protection/SSO; por eso el panel confirma `READY` pero reserva el smoke HTTP público definitivo para producción.
+
 ## Recurso MCP
 
 - Endpoint: `https://www.solucionesfabrick.com/api/mcp`
@@ -115,10 +142,12 @@ No guardes `client_secret` en el panel MCP de Fabrick. Si el mecanismo de autent
 6. Confirma `offline_access`/refresh para persistencia.
 7. Crea/configura la Application ChatGPT con la callback exacta que ChatGPT muestre.
 8. En el Preview del PR abre `/admin/mcp/oauth/activar`, revisa el plan y activa OAuth solo para esa rama.
-9. Crea un nuevo deployment Preview y ejecuta el diagnóstico/smoke OAuth con la configuración ya cargada.
-10. Después de fusionar a `main`, abre el mismo activador desde producción y repite revisión + confirmación para las variables `production`.
-11. Crea el nuevo deployment de producción y confirma Protected Resource Metadata + challenge 401.
-12. Autoriza ChatGPT.
-13. Vincula `sub + client_id/azp` en `/admin/mcp/oauth` a una credencial MCP de mínimo privilegio.
-14. Ejecuta una lectura y luego una escritura controlada; revisa `/admin/mcp/gobernanza`.
-15. Si aparece una incidencia, usa el kill switch y redepliega antes de investigar.
+9. Abre `/admin/mcp/oauth/redeploy`, selecciona Preview + OAuth activado, confirma y crea el deployment del mismo snapshot.
+10. Espera `READY`; en Preview usa el diagnóstico OAuth y, cuando Deployment Protection lo permita, el smoke de la ruta pública.
+11. Después de fusionar a `main`, abre `Activar OAuth` desde producción y repite revisión + confirmación para variables `production`.
+12. Abre `Deploy & Verify` desde producción y crea el redeploy productivo del snapshot `main`.
+13. Espera el smoke automático: Protected Resource Metadata `200` + `/api/mcp` `401 Bearer` con `resource_metadata`.
+14. Autoriza ChatGPT.
+15. Vincula `sub + client_id/azp` en `/admin/mcp/oauth` a una credencial MCP de mínimo privilegio.
+16. Ejecuta una lectura y luego una escritura controlada; revisa `/admin/mcp/gobernanza`.
+17. Si aparece una incidencia, usa el kill switch, aplica variables, entra en `Deploy & Verify` seleccionando OAuth desactivado y confirma que el smoke de rollback sea correcto.

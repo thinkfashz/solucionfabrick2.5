@@ -10,9 +10,37 @@ MCP usa el parámetro estándar `resource` de RFC 8707 para indicar el Resource 
 
 Con el perfil activo, Auth0 puede usar `resource=https://www.solucionesfabrick.com/api/mcp` para definir el `aud` del access token. Sin él, una integración MCP puede terminar usando el audience de `/userinfo` y fallar aunque discovery/JWKS sean correctos.
 
-La pantalla `/admin/mcp/oauth/auth0` exige confirmación explícita de este toggle antes de marcar el setup como listo para activar, porque esta preferencia del tenant no puede inferirse de manera fiable solo con metadata pública.
+La pantalla `/admin/mcp/oauth/auth0` exige confirmación explícita de este toggle antes de marcar el setup como listo para activar.
 
 Auth0 también permite habilitar Client ID Metadata Document Registration (CIMD). Es útil para clientes MCP que usen CIMD, pero no es requisito para una Application ChatGPT pre-registrada.
+
+## Provisionamiento asistido
+
+`/admin/mcp/oauth/auth0/provision` permite inspeccionar o alinear de forma controlada las partes deterministas del tenant Auth0.
+
+Requiere un Management API access token temporal con estos scopes:
+
+- `read:tenant_settings`
+- `update:tenant_settings`
+- `read:resource_servers`
+- `create:resource_servers`
+- `update:resource_servers`
+
+El token se usa únicamente durante la petición y no se guarda en base de datos, variables de entorno ni respuesta.
+
+El provisionador puede:
+
+- establecer `resource_parameter_profile=compatibility`;
+- crear la Custom API `https://www.solucionesfabrick.com/api/mcp` si no existe;
+- alinear firma `RS256`;
+- activar `Allow Offline Access`;
+- activar RBAC (`enforce_policies=true`);
+- añadir los cuatro scopes Fabrick;
+- preservar scopes adicionales ya existentes.
+
+El provisionador **no** crea usuarios, roles, conexiones, Actions ni la Application de ChatGPT. La Application se configura después de conocer la callback exacta y el método de autenticación que muestre ChatGPT.
+
+Para reducir SSRF y errores operativos, el provisionador acepta únicamente el dominio estándar del tenant `*.auth0.com` para llamadas Management API. Un custom domain puede seguir usándose como issuer si se valida después en el diagnóstico OAuth.
 
 ## Recurso MCP
 
@@ -32,7 +60,7 @@ Para mantener la conexión, el cliente interactivo solicita `offline_access` jun
 
 ## RBAC
 
-Se recomienda habilitar RBAC en la Custom API y asignar al usuario solamente los permisos que correspondan. Fabrick no confía únicamente en Auth0: los scopes del access token se intersectan con los scopes de la credencial MCP vinculada, y las operaciones sensibles siguen pasando por cuotas y aprobaciones.
+Se recomienda habilitar RBAC en la Custom API y asignar al usuario solamente los permisos que correspondan. Con RBAC activo, Auth0 restringe el `scope` del access token a la intersección entre permisos solicitados y permisos asignados. Fabrick vuelve a intersectar esos scopes con los scopes de la credencial MCP vinculada, y las operaciones sensibles siguen pasando por cuotas y aprobaciones.
 
 ## Application de ChatGPT
 
@@ -54,12 +82,15 @@ MCP_OAUTH_ALLOWED_ALGS=RS256
 
 ## Verificación
 
-1. Activa Resource Parameter Compatibility Profile en Auth0.
-2. Abre `/admin/mcp/oauth/auth0`, confirma el toggle y prueba el dominio Auth0.
-3. Confirma Authorization Code, PKCE S256 y JWKS.
-4. Confirma `offline_access`/refresh para persistencia.
-5. Activa las variables en Vercel solo cuando el panel marque Activación MCP = Lista.
-6. Revisa `/admin/mcp/oauth/diagnostico`.
-7. Autoriza ChatGPT.
-8. Vincula `sub + client_id/azp` en `/admin/mcp/oauth` a una credencial MCP de mínimo privilegio.
-9. Ejecuta una lectura y luego una escritura controlada; revisa `/admin/mcp/gobernanza`.
+1. Abre `/admin/mcp/oauth/auth0/provision` y usa primero `Revisar sin cambiar`.
+2. Si el plan es correcto, provisiona tenant + Custom API con un Management API token temporal.
+3. Revoca o descarta el Management API token usado.
+4. Abre `/admin/mcp/oauth/auth0` y prueba el dominio/issuer Auth0.
+5. Confirma Authorization Code, PKCE S256 y JWKS.
+6. Confirma `offline_access`/refresh para persistencia.
+7. Crea/configura la Application ChatGPT con la callback exacta que ChatGPT muestre.
+8. Activa las variables en Vercel solo cuando el panel marque Activación MCP = Lista.
+9. Revisa `/admin/mcp/oauth/diagnostico`.
+10. Autoriza ChatGPT.
+11. Vincula `sub + client_id/azp` en `/admin/mcp/oauth` a una credencial MCP de mínimo privilegio.
+12. Ejecuta una lectura y luego una escritura controlada; revisa `/admin/mcp/gobernanza`.

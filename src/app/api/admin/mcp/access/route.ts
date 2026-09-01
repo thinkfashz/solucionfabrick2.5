@@ -28,8 +28,9 @@ export async function GET(request: NextRequest) {
     secretEndpointTemplate: `${base}/api/mcp/{TOKEN}`,
     supportedAuth: ['bearer', 'x-fabrick-mcp-key', 'secret-path'],
     availableScopes: [
-      { id: 'products:read', label: 'Leer y supervisar productos' },
-      { id: 'products:write', label: 'Crear y editar productos' },
+      { id: 'products:read', label: 'Leer, supervisar y buscar mercado' },
+      { id: 'products:write', label: 'Crear y editar borradores' },
+      { id: 'products:publish', label: 'Activar o desactivar productos' },
       { id: 'inventory:write', label: 'Mover stock' },
     ],
   });

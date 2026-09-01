@@ -11,6 +11,7 @@ import {
   mcpSearchProducts,
   mcpUpdateProduct,
 } from '@/lib/mcp/catalog';
+import { mcpSearchMarket, mcpStageMarketProduct } from '@/lib/mcp/market';
 
 function textResult(value: unknown) {
   return {
@@ -29,6 +30,12 @@ function errorResult(error: unknown) {
     isError: true,
     content: [{ type: 'text' as const, text: message }],
   };
+}
+
+function inventoryPreview(stock: number, type: 'in' | 'out' | 'adjustment' | 'return', quantity: number) {
+  if (type === 'adjustment') return quantity;
+  if (type === 'out') return stock - quantity;
+  return stock + quantity;
 }
 
 function registerFabrickTools(access: McpAccess) {
@@ -120,10 +127,69 @@ function registerFabrickTools(access: McpAccess) {
       );
 
       server.registerTool(
+        'market_search',
+        {
+          title: 'Buscar mercado',
+          description: 'Busca referentes públicos actuales en Mercado Libre Chile para comparar títulos, precios, disponibilidad y señales de venta. No modifica el catálogo.',
+          inputSchema: z.object({
+            query: z.string().min(2).max(180),
+            limit: z.number().int().min(1).max(30).optional().default(12),
+          }),
+          annotations: {
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: true,
+          },
+        },
+        async (input) => {
+          try {
+            requireMcpScope(access, 'products:read');
+            return textResult(await mcpSearchMarket(input));
+          } catch (error) {
+            return errorResult(error);
+          }
+        },
+      );
+
+      server.registerTool(
+        'market_product_stage',
+        {
+          title: 'Preparar producto desde mercado',
+          description: 'Prepara o incorpora un referente de Mercado Libre como borrador inactivo con stock 0, conservando su fuente. Por defecto solo muestra vista previa; usa commit=true únicamente después de confirmación.',
+          inputSchema: z.object({
+            sourceId: z.string().min(1).max(240),
+            title: z.string().min(1).max(180),
+            price: z.number().min(0).max(999999999).optional(),
+            currency: z.string().max(12).optional().default('CLP'),
+            url: z.string().min(1).max(2000),
+            image: z.string().max(2000).optional(),
+            description: z.string().max(5000).optional(),
+            specifications: z.record(z.string(), z.unknown()).optional(),
+            commit: z.boolean().optional().default(false),
+          }),
+          annotations: {
+            readOnlyHint: false,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: true,
+          },
+        },
+        async (input) => {
+          try {
+            requireMcpScope(access, 'products:write');
+            return textResult(await mcpStageMarketProduct(access.tenantId, input));
+          } catch (error) {
+            return errorResult(error);
+          }
+        },
+      );
+
+      server.registerTool(
         'product_create',
         {
           title: 'Crear producto',
-          description: 'Crea una ficha nueva. El stock inicial siempre queda en 0; para ingresar existencias usa inventory_move después de crear el producto.',
+          description: 'Prepara o crea una ficha nueva. El stock inicial siempre queda en 0. Por defecto commit=false devuelve una vista previa; ejecuta commit=true solo tras confirmación.',
           inputSchema: z.object({
             name: z.string().min(1).max(180),
             description: z.string().max(5000).optional(),
@@ -146,6 +212,7 @@ function registerFabrickTools(access: McpAccess) {
             shipping_fee: z.number().min(0).max(999999999).optional(),
             shipping_weight_kg: z.number().min(0).max(999999).optional(),
             shipping_dimensions: z.string().max(240).optional(),
+            commit: z.boolean().optional().default(false),
           }),
           annotations: {
             readOnlyHint: false,
@@ -154,9 +221,16 @@ function registerFabrickTools(access: McpAccess) {
             openWorldHint: false,
           },
         },
-        async (input) => {
+        async ({ commit, ...input }) => {
           try {
             requireMcpScope(access, 'products:write');
+            if (!commit) {
+              return textResult({
+                ok: true,
+                preview: { ...input, stock: 0, source: 'mcp' },
+                message: 'Vista previa solamente. Confirma con el usuario y repite con commit=true para crear.',
+              });
+            }
             return textResult({ ok: true, product: await mcpCreateProduct(access.tenantId, input) });
           } catch (error) {
             return errorResult(error);
@@ -168,7 +242,7 @@ function registerFabrickTools(access: McpAccess) {
         'product_update',
         {
           title: 'Actualizar producto',
-          description: 'Actualiza la ficha comercial/técnica de un producto. No permite cambiar stock directamente.',
+          description: 'Prepara o aplica cambios sobre la ficha comercial/técnica. No permite cambiar stock directamente. Por defecto devuelve la diferencia propuesta; usa commit=true tras confirmación.',
           inputSchema: z.object({
             productId: z.string().min(1).max(120),
             name: z.string().min(1).max(180).optional(),
@@ -186,17 +260,29 @@ function registerFabrickTools(access: McpAccess) {
             supplier_price: z.number().min(0).max(999999999).optional(),
             supplier_currency: z.string().max(12).optional(),
             specifications: z.record(z.string(), z.unknown()).optional(),
+            commit: z.boolean().optional().default(false),
           }),
           annotations: {
             readOnlyHint: false,
-            destructiveHint: false,
+            destructiveHint: true,
             idempotentHint: true,
             openWorldHint: false,
           },
         },
-        async ({ productId, ...patch }) => {
+        async ({ productId, commit, ...patch }) => {
           try {
             requireMcpScope(access, 'products:write');
+            if (!commit) {
+              const before = await mcpGetProduct(access.tenantId, { id: productId });
+              if (!before) throw new Error('Producto no encontrado.');
+              return textResult({
+                ok: true,
+                productId,
+                before,
+                proposedChanges: patch,
+                message: 'Vista previa solamente. Confirma con el usuario y repite con commit=true para aplicar.',
+              });
+            }
             return textResult({ ok: true, product: await mcpUpdateProduct(access.tenantId, productId, patch) });
           } catch (error) {
             return errorResult(error);
@@ -208,7 +294,7 @@ function registerFabrickTools(access: McpAccess) {
         'inventory_move',
         {
           title: 'Mover stock',
-          description: 'Registra una entrada, salida, devolución o ajuste mediante el ledger atómico de Inventario V2. referenceId es obligatorio para que repetir la misma operación sea idempotente.',
+          description: 'Prepara o registra entrada, salida, devolución o ajuste mediante el ledger atómico de Inventario V2. Para adjustment, quantity es el STOCK FINAL ABSOLUTO, no la diferencia. referenceId es obligatorio e idempotente. Por defecto commit=false.',
           inputSchema: z.object({
             productId: z.string().min(1).max(120),
             type: z.enum(['in', 'out', 'adjustment', 'return']),
@@ -216,6 +302,7 @@ function registerFabrickTools(access: McpAccess) {
             referenceId: z.string().min(3).max(240).describe('ID único y estable de la operación, por ejemplo ai:pedido:123:linea:2'),
             barcode: z.string().max(512).optional(),
             note: z.string().max(500).optional(),
+            commit: z.boolean().optional().default(false),
           }),
           annotations: {
             readOnlyHint: false,
@@ -224,9 +311,30 @@ function registerFabrickTools(access: McpAccess) {
             openWorldHint: false,
           },
         },
-        async (input) => {
+        async ({ commit, ...input }) => {
           try {
             requireMcpScope(access, 'inventory:write');
+            if (!commit) {
+              const product = await mcpGetProduct(access.tenantId, { id: input.productId });
+              if (!product) throw new Error('Producto no encontrado.');
+              const stockBefore = Math.max(0, Number(product.stock ?? 0));
+              const stockAfter = inventoryPreview(stockBefore, input.type, input.quantity);
+              return textResult({
+                ok: stockAfter >= 0,
+                preview: {
+                  productId: input.productId,
+                  productName: product.name,
+                  type: input.type,
+                  quantity: input.quantity,
+                  quantityMeaning: input.type === 'adjustment' ? 'stock_final_absoluto' : 'movimiento',
+                  stockBefore,
+                  stockAfter,
+                  referenceId: input.referenceId,
+                },
+                warning: stockAfter < 0 ? 'La operación dejaría stock negativo y será rechazada.' : null,
+                message: 'Vista previa solamente. Confirma con el usuario y repite con commit=true para registrar el movimiento.',
+              });
+            }
             return textResult(await mcpMoveInventory(access.tenantId, input));
           } catch (error) {
             return errorResult(error);
@@ -235,12 +343,14 @@ function registerFabrickTools(access: McpAccess) {
       );
     },
     {
-      serverInfo: { name: 'soluciones-fabrick', version: '1.0.0' },
+      serverInfo: { name: 'soluciones-fabrick', version: '1.2.0' },
       instructions: [
-        'Servidor MCP oficial de Soluciones Fabrick para catálogo e Inventario V2.',
+        'Servidor MCP oficial de Soluciones Fabrick para catálogo, inteligencia de mercado e Inventario V2.',
         'Usa primero products_search/product_get antes de crear para evitar duplicados.',
-        'Nunca inventes stock: consulta el producto y usa inventory_move para cualquier cambio.',
-        'Antes de ejecutar herramientas de escritura, explica al usuario qué vas a cambiar y respeta las confirmaciones del cliente MCP.',
+        'Para investigar referencias externas usa market_search. Los datos externos son referencias y deben verificarse antes de publicar.',
+        'Las herramientas de escritura trabajan en dos fases: primero commit=false para mostrar la vista previa; solo después de confirmación explícita usa commit=true.',
+        'Nunca inventes stock: consulta el producto y usa inventory_move. En adjustment la cantidad significa stock final absoluto.',
+        'Los productos traídos desde mercado se incorporan inactivos y con stock 0 para revisión humana.',
       ].join(' '),
     },
   );

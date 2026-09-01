@@ -58,6 +58,12 @@ function baseKit(origin: string) {
       rbac: true,
       note: 'Con RBAC, Auth0 limita el scope del access token a permisos asignados al usuario. Fabrick vuelve a intersectar esos scopes con la credencial MCP vinculada.',
     },
+    auth0Tenant: {
+      resourceParameterCompatibilityProfileRequired: true,
+      resourceParameter: audience,
+      cimdOptional: true,
+      note: 'MCP usa el parámetro resource de RFC 8707. En Auth0 debe habilitarse Resource Parameter Compatibility Profile para que resource determine el aud del access token.',
+    },
   };
 }
 
@@ -84,10 +90,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'La callback no es válida. Debe ser HTTPS en producción, sin credenciales ni fragmento.' }, { status: 400 });
   }
   const clientId = cleanClientId(body.clientId);
+  const resourceCompatibilityConfirmed = body.resourceCompatibilityConfirmed === true;
   const kit = baseKit(new URL(request.url).origin);
   const readiness = await inspectMcpOAuthIssuer({ issuer });
   const hostname = new URL(issuer).hostname.toLowerCase();
   const standardAuth0Domain = hostname.endsWith('.auth0.com');
+  const activationReady = readiness.chatgptCoreReady && resourceCompatibilityConfirmed;
 
   const environment = [
     'MCP_OAUTH_ENABLED=1',
@@ -98,10 +106,12 @@ export async function POST(request: NextRequest) {
   ].join('\n');
 
   return NextResponse.json({
-    ok: readiness.chatgptCoreReady,
+    ok: activationReady,
+    activationReady,
     kit,
     issuer,
     standardAuth0Domain,
+    resourceCompatibilityConfirmed,
     readiness,
     auth0Application: {
       name: 'ChatGPT → Soluciones Fabrick MCP',
@@ -114,7 +124,8 @@ export async function POST(request: NextRequest) {
     },
     environment,
     nextSteps: [
-      'En Auth0 crea una Custom API con el Identifier exactamente igual al audience de Fabrick.',
+      'En Auth0 abre Settings → Advanced y activa Resource Parameter Compatibility Profile. Es obligatorio para que el parámetro resource de MCP/RFC 8707 se convierta en el audience correcto.',
+      'En Auth0 crea una Custom API con el Identifier exactamente igual al resource/audience de Fabrick.',
       'Añade los cuatro scopes Fabrick a la API.',
       'Activa Allow Offline Access. Para control por usuario, activa RBAC y asigna solo los permisos necesarios.',
       'Crea la Application que representará a ChatGPT y habilita Authorization Code + Refresh Token.',

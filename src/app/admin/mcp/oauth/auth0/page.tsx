@@ -14,14 +14,17 @@ type Kit = {
   scopes: Scope[];
   requestedScopes: string[];
   auth0Api: { name: string; identifier: string; signingAlgorithm: string; allowOfflineAccess: boolean; rbac: boolean; note: string };
+  auth0Tenant: { resourceParameterCompatibilityProfileRequired: boolean; resourceParameter: string; cimdOptional: boolean; note: string };
 };
 type Result = {
   ok: boolean;
+  activationReady: boolean;
   issuer: string;
   standardAuth0Domain: boolean;
+  resourceCompatibilityConfirmed: boolean;
   kit: Kit;
   readiness: { chatgptCoreReady: boolean; persistentSessionReady: boolean; score: number; metadataUrl: string; checks: CheckItem[] };
-  auth0Application: { name: string; clientId: string; allowedCallbackUrls: string[]; grantTypes: string[]; pkce: string; tokenEndpointAuthentication: string };
+  auth0Application: { name: string; clientId: string; allowedCallbackUrls: string[]; grantTypes: string[]; pkce: string; requestedScopes: string[]; tokenEndpointAuthentication: string };
   environment: string;
   nextSteps: string[];
 };
@@ -43,6 +46,7 @@ export default function Auth0McpPage() {
   const [domain, setDomain] = useState('');
   const [clientId, setClientId] = useState('');
   const [callbackUrl, setCallbackUrl] = useState('');
+  const [resourceCompatibilityConfirmed, setResourceCompatibilityConfirmed] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -68,7 +72,7 @@ export default function Auth0McpPage() {
       const response = await fetch('/api/admin/mcp/oauth/auth0-kit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain, clientId, callbackUrl }),
+        body: JSON.stringify({ domain, clientId, callbackUrl, resourceCompatibilityConfirmed }),
       });
       const data = await response.json() as Result & { error?: string };
       if (!response.ok) throw new Error(data.error || 'No se pudo validar Auth0.');
@@ -96,17 +100,24 @@ export default function Auth0McpPage() {
           {error && <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-200">{error}</div>}
 
           <div className="grid gap-4 xl:grid-cols-3">
-            <AdminCard><p className="text-xs font-black uppercase tracking-[.18em] text-zinc-500">API Identifier</p><p className="mt-3 break-all font-mono text-xs text-white">{kit?.audience || 'Cargando…'}</p><p className="mt-3 text-xs leading-5 text-zinc-500">Debe coincidir exactamente con el `aud` del access token.</p></AdminCard>
+            <AdminCard><p className="text-xs font-black uppercase tracking-[.18em] text-zinc-500">API Identifier / resource</p><p className="mt-3 break-all font-mono text-xs text-white">{kit?.audience || 'Cargando…'}</p><p className="mt-3 text-xs leading-5 text-zinc-500">Debe coincidir exactamente con `resource` de RFC 8707 y con `aud` del access token.</p></AdminCard>
             <AdminCard><p className="text-xs font-black uppercase tracking-[.18em] text-zinc-500">Firma</p><p className="mt-3 text-xl font-black text-emerald-300">RS256</p><p className="mt-3 text-xs leading-5 text-zinc-500">Fabrick valida la firma contra JWKS; no comparte la clave privada.</p></AdminCard>
-            <AdminCard><p className="text-xs font-black uppercase tracking-[.18em] text-zinc-500">Sesión persistente</p><p className="mt-3 text-xl font-black text-amber-300">offline_access</p><p className="mt-3 text-xs leading-5 text-zinc-500">Auth0 debe permitir refresh tokens para evitar reautorizaciones frecuentes en ChatGPT.</p></AdminCard>
+            <AdminCard><p className="text-xs font-black uppercase tracking-[.18em] text-zinc-500">Sesión persistente</p><p className="mt-3 text-xl font-black text-amber-300">offline_access</p><p className="mt-3 text-xs leading-5 text-zinc-500">Auth0 debe permitir refresh tokens para evitar reautorizaciones frecuentes.</p></AdminCard>
           </div>
+
+          <AdminCard>
+            <div className="flex items-start gap-3"><TriangleAlert className="mt-0.5 h-5 w-5 text-amber-300" /><div><h2 className="text-lg font-black text-white">0. Activar compatibilidad MCP / RFC 8707</h2><p className="mt-1 max-w-4xl text-sm leading-6 text-zinc-400">En Auth0: <strong className="text-zinc-200">Settings → Advanced → Resource Parameter Compatibility Profile = ON</strong>. ChatGPT/MCP usa el parámetro estándar `resource`; sin este perfil Auth0 puede emitir un token para otro audience. Este ajuste no se puede inferir de forma confiable solo desde discovery, por eso requiere confirmación explícita.</p></div></div>
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <input type="checkbox" checked={resourceCompatibilityConfirmed} onChange={(event) => setResourceCompatibilityConfirmed(event.target.checked)} className="mt-1 h-4 w-4 accent-amber-300" />
+              <span><span className="block text-sm font-black text-white">Confirmo que Resource Parameter Compatibility Profile está activado</span><span className="mt-1 block text-xs leading-5 text-zinc-500">El panel no marcará el setup como listo para activar hasta confirmar este requisito.</span></span>
+            </label>
+            <p className="mt-3 text-xs leading-5 text-zinc-500">Opcional para futuros clientes MCP: Auth0 también permite habilitar Client ID Metadata Document Registration (CIMD). No es necesario para una Application ChatGPT pre-registrada.</p>
+          </AdminCard>
 
           <AdminCard>
             <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-300" /><div><h2 className="text-lg font-black text-white">1. Crear la Custom API en Auth0</h2><p className="mt-1 text-sm leading-6 text-zinc-400">Crea una API con estos valores. Activa <strong className="text-zinc-200">Allow Offline Access</strong> y RBAC. La capa Fabrick seguirá aplicando scopes, cuotas y aprobaciones aunque Auth0 autorice al usuario.</p></div></div>
             <div className="mt-4 flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-4"><pre className="min-w-0 flex-1 overflow-auto whitespace-pre-wrap text-[11px] leading-5 text-zinc-300">{apiJson}</pre>{apiJson && <CopyButton value={apiJson} />}</div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {(kit?.scopes || []).map((scope) => <div key={scope.name} className="rounded-xl border border-white/10 bg-black/20 p-3"><p className="font-mono text-xs font-black text-amber-200">{scope.name}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{scope.description}</p></div>)}
-            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">{(kit?.scopes || []).map((scope) => <div key={scope.name} className="rounded-xl border border-white/10 bg-black/20 p-3"><p className="font-mono text-xs font-black text-amber-200">{scope.name}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{scope.description}</p></div>)}</div>
           </AdminCard>
 
           <AdminCard>
@@ -121,21 +132,22 @@ export default function Auth0McpPage() {
 
           {result && (
             <>
-              <div className="grid gap-4 xl:grid-cols-3">
-                <AdminCard><p className="text-xs font-black uppercase tracking-[.18em] text-zinc-500">Core ChatGPT</p><p className={`mt-3 text-xl font-black ${result.readiness.chatgptCoreReady ? 'text-emerald-300' : 'text-red-300'}`}>{result.readiness.chatgptCoreReady ? 'Listo' : 'Incompleto'}</p></AdminCard>
+              <div className="grid gap-4 xl:grid-cols-4">
+                <AdminCard><p className="text-xs font-black uppercase tracking-[.18em] text-zinc-500">Activación MCP</p><p className={`mt-3 text-xl font-black ${result.activationReady ? 'text-emerald-300' : 'text-amber-300'}`}>{result.activationReady ? 'Lista' : 'No activar aún'}</p></AdminCard>
+                <AdminCard><p className="text-xs font-black uppercase tracking-[.18em] text-zinc-500">Core OAuth</p><p className={`mt-3 text-xl font-black ${result.readiness.chatgptCoreReady ? 'text-emerald-300' : 'text-red-300'}`}>{result.readiness.chatgptCoreReady ? 'Listo' : 'Incompleto'}</p></AdminCard>
                 <AdminCard><p className="text-xs font-black uppercase tracking-[.18em] text-zinc-500">Refresh persistente</p><p className={`mt-3 text-xl font-black ${result.readiness.persistentSessionReady ? 'text-emerald-300' : 'text-amber-300'}`}>{result.readiness.persistentSessionReady ? 'Listo' : 'Revisar'}</p></AdminCard>
-                <AdminCard><p className="text-xs font-black uppercase tracking-[.18em] text-zinc-500">Readiness</p><p className="mt-3 text-xl font-black text-white">{result.readiness.score}/100</p><p className="mt-2 text-xs text-zinc-500">{result.standardAuth0Domain ? 'Dominio estándar Auth0' : 'Dominio personalizado / compatible'}</p></AdminCard>
+                <AdminCard><p className="text-xs font-black uppercase tracking-[.18em] text-zinc-500">Readiness discovery</p><p className="mt-3 text-xl font-black text-white">{result.readiness.score}/100</p><p className="mt-2 text-xs text-zinc-500">{result.standardAuth0Domain ? 'Dominio estándar Auth0' : 'Dominio personalizado / compatible'}</p></AdminCard>
               </div>
+
+              {!result.resourceCompatibilityConfirmed && <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm leading-6 text-amber-100">Discovery puede verse correcto y aun así fallar MCP si Resource Parameter Compatibility Profile está apagado. Confirma el toggle en Auth0 antes de activar las variables en producción.</div>}
 
               <AdminCard>
                 <h2 className="text-lg font-black text-white">Checks del issuer</h2>
-                <div className="mt-4 grid gap-2">
-                  {result.readiness.checks.map((item) => <div key={item.id} className="flex items-start gap-3 rounded-xl border border-white/10 bg-black/20 p-3">{item.status === 'pass' ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" /> : <TriangleAlert className={`mt-0.5 h-4 w-4 shrink-0 ${item.status === 'fail' ? 'text-red-300' : 'text-amber-300'}`} />}<div><p className="text-sm font-black text-zinc-200">{item.label}</p><p className="mt-1 break-all text-xs leading-5 text-zinc-500">{item.message}</p></div></div>)}
-                </div>
+                <div className="mt-4 grid gap-2">{result.readiness.checks.map((item) => <div key={item.id} className="flex items-start gap-3 rounded-xl border border-white/10 bg-black/20 p-3">{item.status === 'pass' ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" /> : <TriangleAlert className={`mt-0.5 h-4 w-4 shrink-0 ${item.status === 'fail' ? 'text-red-300' : 'text-amber-300'}`} />}<div><p className="text-sm font-black text-zinc-200">{item.label}</p><p className="mt-1 break-all text-xs leading-5 text-zinc-500">{item.message}</p></div></div>)}</div>
               </AdminCard>
 
               <AdminCard>
-                <div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-black text-white">3. Variables de activación Fabrick</h2><p className="mt-1 text-sm text-zinc-400">Copia este bloque a Vercel cuando el issuer esté validado. JWKS se descubre automáticamente.</p></div><CopyButton value={result.environment} /></div>
+                <div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-black text-white">3. Variables de activación Fabrick</h2><p className="mt-1 text-sm text-zinc-400">Úsalas únicamente cuando Activación MCP indique Lista. JWKS se descubre automáticamente.</p></div><CopyButton value={result.environment} /></div>
                 <pre className="mt-4 overflow-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/30 p-4 text-[11px] leading-5 text-zinc-300">{result.environment}</pre>
               </AdminCard>
 
@@ -147,6 +159,7 @@ export default function Auth0McpPage() {
                   <p><strong className="text-zinc-200">Callback:</strong> <span className="break-all font-mono text-xs">{result.auth0Application.allowedCallbackUrls.join(', ')}</span></p>
                   <p><strong className="text-zinc-200">Grant types:</strong> {result.auth0Application.grantTypes.join(', ')}</p>
                   <p><strong className="text-zinc-200">PKCE:</strong> {result.auth0Application.pkce}</p>
+                  <p><strong className="text-zinc-200">Scopes:</strong> <span className="font-mono text-xs">{result.auth0Application.requestedScopes.join(' ')}</span></p>
                   <p className="text-amber-100">{result.auth0Application.tokenEndpointAuthentication}</p>
                 </div>
               </AdminCard>

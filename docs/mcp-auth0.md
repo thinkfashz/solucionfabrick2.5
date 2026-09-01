@@ -2,10 +2,22 @@
 
 Auth0 es el Authorization Server recomendado para el flujo OAuth interactivo del MCP de Soluciones Fabrick. InsForge sigue siendo backend de datos/auth de la aplicación; no se usa como issuer genérico del access token MCP.
 
+## Requisito MCP: Resource Parameter Compatibility Profile
+
+MCP usa el parámetro estándar `resource` de RFC 8707 para indicar el Resource Server. Auth0 históricamente usa `audience`, por lo que antes de conectar un cliente MCP hay que habilitar en el tenant:
+
+`Settings → Advanced → Resource Parameter Compatibility Profile = ON`
+
+Con el perfil activo, Auth0 puede usar `resource=https://www.solucionesfabrick.com/api/mcp` para definir el `aud` del access token. Sin él, una integración MCP puede terminar usando el audience de `/userinfo` y fallar aunque discovery/JWKS sean correctos.
+
+La pantalla `/admin/mcp/oauth/auth0` exige confirmación explícita de este toggle antes de marcar el setup como listo para activar, porque esta preferencia del tenant no puede inferirse de manera fiable solo con metadata pública.
+
+Auth0 también permite habilitar Client ID Metadata Document Registration (CIMD). Es útil para clientes MCP que usen CIMD, pero no es requisito para una Application ChatGPT pre-registrada.
+
 ## Recurso MCP
 
 - Endpoint: `https://www.solucionesfabrick.com/api/mcp`
-- API Identifier / audience: `https://www.solucionesfabrick.com/api/mcp`
+- API Identifier / audience / resource: `https://www.solucionesfabrick.com/api/mcp`
 - Protected Resource Metadata: `https://www.solucionesfabrick.com/.well-known/oauth-protected-resource/api/mcp`
 - Firma recomendada: `RS256`
 
@@ -42,11 +54,12 @@ MCP_OAUTH_ALLOWED_ALGS=RS256
 
 ## Verificación
 
-1. Abre `/admin/mcp/oauth/auth0` y prueba el dominio Auth0.
-2. Confirma Authorization Code, PKCE S256 y JWKS.
-3. Confirma `offline_access`/refresh para persistencia.
-4. Activa las variables en Vercel.
-5. Revisa `/admin/mcp/oauth/diagnostico`.
-6. Autoriza ChatGPT.
-7. Vincula `sub + client_id/azp` en `/admin/mcp/oauth` a una credencial MCP de mínimo privilegio.
-8. Ejecuta una lectura y luego una escritura controlada; revisa `/admin/mcp/gobernanza`.
+1. Activa Resource Parameter Compatibility Profile en Auth0.
+2. Abre `/admin/mcp/oauth/auth0`, confirma el toggle y prueba el dominio Auth0.
+3. Confirma Authorization Code, PKCE S256 y JWKS.
+4. Confirma `offline_access`/refresh para persistencia.
+5. Activa las variables en Vercel solo cuando el panel marque Activación MCP = Lista.
+6. Revisa `/admin/mcp/oauth/diagnostico`.
+7. Autoriza ChatGPT.
+8. Vincula `sub + client_id/azp` en `/admin/mcp/oauth` a una credencial MCP de mínimo privilegio.
+9. Ejecuta una lectura y luego una escritura controlada; revisa `/admin/mcp/gobernanza`.

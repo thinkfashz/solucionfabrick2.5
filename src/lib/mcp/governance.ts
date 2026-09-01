@@ -75,14 +75,15 @@ export async function getMcpGovernancePolicy(tenantId: string, keyId: string): P
   };
 }
 
-export async function claimMcpRateLimit(access: McpAccess, isWrite = false): Promise<McpRateResult> {
+export async function claimMcpRateLimit(access: McpAccess, mode: 'request' | 'write' = 'request'): Promise<McpRateResult> {
   const policy = await getMcpGovernancePolicy(access.tenantId, access.keyId);
   if (!policy.enabled) throw new Error('MCP_CONNECTION_DISABLED');
 
   const { data, error } = await insforgeAdmin.database.rpc('mcp_claim_rate_limit', {
     p_tenant_id: access.tenantId,
     p_key_id: access.keyId,
-    p_is_write: isWrite,
+    p_count_request: mode === 'request',
+    p_is_write: mode === 'write',
     p_request_limit: policy.requestLimit5m,
     p_write_limit: policy.writeLimit5m,
     p_window_seconds: 300,
@@ -100,9 +101,7 @@ export async function claimMcpRateLimit(access: McpAccess, isWrite = false): Pro
     windowSeconds: clampInt(raw?.windowSeconds, 300, 60, 3600),
     retryAfterSeconds: clampInt(raw?.retryAfterSeconds, 60, 1, 3600),
   };
-  if (!result.allowed) {
-    throw new Error(`MCP_RATE_LIMITED:${result.retryAfterSeconds}`);
-  }
+  if (!result.allowed) throw new Error(`MCP_RATE_LIMITED:${result.retryAfterSeconds}`);
   return result;
 }
 
@@ -140,7 +139,7 @@ export async function auditMcpAction(input: {
       created_at: new Date().toISOString(),
     }]);
   } catch {
-    // Audit must not take the business path down if storage is temporarily unavailable.
+    // Audit is best-effort and must not make a valid business operation fail.
   }
 }
 
@@ -184,9 +183,7 @@ export async function requestMcpApproval(input: {
     expires_at: expiresAt,
   }]).select('id,status,expires_at');
 
-  if (error || !Array.isArray(inserted) || !inserted[0]) {
-    throw new Error(error?.message || 'MCP_APPROVAL_CREATE_FAILED');
-  }
+  if (error || !Array.isArray(inserted) || !inserted[0]) throw new Error(error?.message || 'MCP_APPROVAL_CREATE_FAILED');
   const row = inserted[0] as Record<string, unknown>;
   await auditMcpAction({ access: input.access, toolName: input.toolName, phase: 'approval', outcome: 'pending', payload: input.payload, result: { approvalId: row.id } });
   return { id: String(row.id), status: String(row.status), expiresAt: String(row.expires_at), reused: false };

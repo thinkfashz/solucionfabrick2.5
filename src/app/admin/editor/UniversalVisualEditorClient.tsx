@@ -8,7 +8,6 @@ import {
   Image as ImageIcon,
   Layers3,
   LayoutGrid,
-  Link2,
   Loader2,
   Monitor,
   Paintbrush,
@@ -252,11 +251,6 @@ export default function UniversalVisualEditorClient() {
     updateSelected({ styles: { [styleScope]: nextStyle } });
   }
 
-  // The contextual quick editor lives in a sibling component and updates the
-  // advanced inspector controls programmatically. React 19 can legitimately
-  // ignore those synthetic value changes in some cases. Listen to the native
-  // input/change events as a reliability bridge so the draft remains the one
-  // source of truth even when the contextual toolbar initiated the edit.
   useEffect(() => {
     const handler = (event: Event) => {
       const control = event.target;

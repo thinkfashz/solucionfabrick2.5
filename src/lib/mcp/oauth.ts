@@ -1,24 +1,12 @@
 import 'server-only';
 
+import { normalizePublicOAuthUrl } from '@/lib/mcp/oauthNetwork';
+
 const SCOPES = ['products:read', 'products:write', 'products:publish', 'inventory:write'] as const;
 const SUPPORTED_ALGS = ['RS256', 'RS384', 'RS512', 'PS256', 'PS384', 'PS512', 'ES256', 'ES384', 'ES512', 'EdDSA'] as const;
 
 function enabled(value: unknown) {
   return ['1', 'true', 'yes', 'on'].includes(String(value ?? '').trim().toLowerCase());
-}
-
-function normalizeUrl(value: unknown) {
-  const raw = String(value ?? '').trim().replace(/\/+$/, '');
-  if (!raw) return '';
-  try {
-    const url = new URL(raw);
-    if (url.username || url.password) return '';
-    if (url.protocol !== 'https:' && process.env.NODE_ENV === 'production') return '';
-    if (!['https:', 'http:'].includes(url.protocol)) return '';
-    return url.toString().replace(/\/$/, '');
-  } catch {
-    return '';
-  }
 }
 
 function clampInt(value: unknown, fallback: number, min: number, max: number) {
@@ -38,14 +26,14 @@ function allowedAlgorithms() {
 }
 
 export function getMcpPublicBase(origin?: string) {
-  return normalizeUrl(process.env.NEXT_PUBLIC_SITE_URL) || normalizeUrl(origin) || 'https://www.solucionesfabrick.com';
+  return normalizePublicOAuthUrl(process.env.NEXT_PUBLIC_SITE_URL) || normalizePublicOAuthUrl(origin) || 'https://www.solucionesfabrick.com';
 }
 
 export function getMcpOAuthAdminConfig(origin?: string) {
   const base = getMcpPublicBase(origin);
-  const issuer = normalizeUrl(process.env.MCP_OAUTH_ISSUER);
-  const audience = normalizeUrl(process.env.MCP_OAUTH_AUDIENCE) || `${base}/api/mcp`;
-  const jwksUri = normalizeUrl(process.env.MCP_OAUTH_JWKS_URI);
+  const issuer = normalizePublicOAuthUrl(process.env.MCP_OAUTH_ISSUER);
+  const audience = normalizePublicOAuthUrl(process.env.MCP_OAUTH_AUDIENCE) || `${base}/api/mcp`;
+  const jwksUri = normalizePublicOAuthUrl(process.env.MCP_OAUTH_JWKS_URI);
   const verifierEnabled = enabled(process.env.MCP_OAUTH_ENABLED);
   const metadataEnabled = enabled(process.env.MCP_OAUTH_METADATA_ENABLED);
   const allowSubjectOnlyBinding = enabled(process.env.MCP_OAUTH_ALLOW_SUBJECT_ONLY_BINDING);

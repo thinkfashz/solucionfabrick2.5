@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { KeyRound, Link2, ShieldCheck } from 'lucide-react';
+import { KeyRound, Link2, SearchCheck, ShieldCheck } from 'lucide-react';
 
 const tabs = [
   { href: '/admin/mcp', label: 'Conectores', icon: Link2, exact: true },
   { href: '/admin/mcp/gobernanza', label: 'Gobernanza', icon: ShieldCheck },
-  { href: '/admin/mcp/oauth', label: 'OAuth 2.1', icon: KeyRound },
+  { href: '/admin/mcp/oauth', label: 'OAuth 2.1', icon: KeyRound, exact: true },
+  { href: '/admin/mcp/oauth/diagnostico', label: 'Diagnóstico OAuth', icon: SearchCheck },
 ];
 
 export default function McpLayout({ children }: { children: ReactNode }) {

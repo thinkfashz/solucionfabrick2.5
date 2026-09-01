@@ -8,6 +8,8 @@ import {
   type JsonWebKey,
 } from 'node:crypto';
 import { getMcpOAuthRuntimeConfig } from '@/lib/mcp/oauth';
+import { discoverOAuthServerMetadata } from '@/lib/mcp/oauthDiscovery';
+import { normalizePublicOAuthUrl, safeOAuthFetchJson } from '@/lib/mcp/oauthNetwork';
 
 export type VerifiedMcpOAuthToken = {
   issuer: string;
@@ -54,65 +56,24 @@ function decodeJson<T>(part: string): T | null {
   }
 }
 
-function normalizeIssuer(value: unknown) {
-  const raw = String(value ?? '').trim().replace(/\/+$/, '');
-  if (!raw) return '';
-  try {
-    return new URL(raw).toString().replace(/\/$/, '');
-  } catch {
-    return '';
-  }
-}
-
-function metadataCandidates(issuer: string) {
-  const url = new URL(issuer);
-  const issuerPath = url.pathname === '/' ? '' : url.pathname.replace(/\/$/, '');
-  return [...new Set([
-    `${url.origin}/.well-known/oauth-authorization-server${issuerPath}`,
-    `${issuer}/.well-known/openid-configuration`,
-  ])];
-}
-
-async function fetchJson(url: string) {
-  const response = await fetch(url, {
-    headers: { accept: 'application/json' },
-    cache: 'no-store',
-    redirect: 'follow',
-    signal: AbortSignal.timeout(6_000),
-  });
-  if (!response.ok) throw new Error(`OAuth metadata HTTP ${response.status}`);
-  const text = await response.text();
-  if (text.length > 1_000_000) throw new Error('OAuth metadata demasiado grande.');
-  return JSON.parse(text) as Record<string, unknown>;
-}
-
 async function discoverJwksUri(issuer: string) {
   const now = Date.now();
   if (discoveryCache?.issuer === issuer && discoveryCache.expiresAt > now) return discoveryCache.jwksUri;
-
-  for (const url of metadataCandidates(issuer)) {
-    try {
-      const metadata = await fetchJson(url);
-      if (normalizeIssuer(metadata.issuer) !== issuer) continue;
-      const jwksUri = String(metadata.jwks_uri ?? '').trim();
-      const parsed = new URL(jwksUri);
-      if (parsed.protocol !== 'https:' && process.env.NODE_ENV === 'production') continue;
-      discoveryCache = { issuer, jwksUri: parsed.toString(), expiresAt: now + 5 * 60_000 };
-      return discoveryCache.jwksUri;
-    } catch {
-      // Try the next standards-compliant discovery location.
-    }
-  }
-  return '';
+  const discovery = await discoverOAuthServerMetadata(issuer);
+  const jwksUri = normalizePublicOAuthUrl(discovery.metadata.jwks_uri);
+  if (!jwksUri) return '';
+  discoveryCache = { issuer, jwksUri, expiresAt: now + 5 * 60_000 };
+  return jwksUri;
 }
 
 async function getJwks(jwksUri: string, forceRefresh = false) {
   const now = Date.now();
   if (!forceRefresh && jwksCache?.jwksUri === jwksUri && jwksCache.expiresAt > now) return jwksCache.keys;
-  const data = await fetchJson(jwksUri) as JwkSet;
+  const result = await safeOAuthFetchJson(jwksUri);
+  const data = result.data as JwkSet;
   const keys = Array.isArray(data.keys) ? data.keys.slice(0, 100) : [];
   if (!keys.length) throw new Error('JWKS vacío.');
-  jwksCache = { jwksUri, keys, expiresAt: now + 5 * 60_000 };
+  jwksCache = { jwksUri: result.url, keys, expiresAt: now + 5 * 60_000 };
   return keys;
 }
 
@@ -168,7 +129,7 @@ function audienceMatches(aud: JwtClaims['aud'], expected: string) {
 
 function claimsAreValid(claims: JwtClaims, issuer: string, audience: string, skewSeconds: number) {
   const now = Math.floor(Date.now() / 1000);
-  if (normalizeIssuer(claims.iss) !== issuer) return false;
+  if (normalizePublicOAuthUrl(claims.iss) !== issuer) return false;
   if (!String(claims.sub ?? '').trim()) return false;
   if (!audienceMatches(claims.aud, audience)) return false;
   if (!Number.isFinite(claims.exp) || Number(claims.exp) <= now - skewSeconds) return false;

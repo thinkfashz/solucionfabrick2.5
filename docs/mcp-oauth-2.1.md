@@ -1,4 +1,4 @@
-# MCP OAuth 2.1 / JWKS
+# MCP OAuth 2.1 / JWT / JWKS
 
 Soluciones Fabrick puede aceptar dos familias de credenciales en el mismo endpoint `/api/mcp`:
 
@@ -22,7 +22,7 @@ Por tanto un IdP no puede ampliar permisos más allá de los que Fabrick concedi
 
 El Resource Server valida:
 
-- `iss` exactamente contra `MCP_OAUTH_ISSUER`;
+- `iss` contra `MCP_OAUTH_ISSUER`;
 - `aud` contra `MCP_OAUTH_AUDIENCE`;
 - `exp`, `nbf` e `iat` con skew configurable;
 - algoritmo contra una allow-list;
@@ -30,6 +30,47 @@ El Resource Server valida:
 - `kid`, `use`, `key_ops` y `alg` cuando están presentes en el JWK.
 
 Si `MCP_OAUTH_JWKS_URI` no está definido, el servidor descubre `jwks_uri` mediante OAuth Authorization Server Metadata (RFC 8414) y, como fallback, OpenID Connect Discovery. Metadata y JWKS se cachean brevemente en cada instancia serverless y un `kid` desconocido fuerza una recarga del JWKS una vez.
+
+## Protección de red / SSRF
+
+Las consultas salientes de discovery y JWKS no siguen redirects automáticamente. Cada URL inicial y cada `Location` se valida antes de consultar:
+
+- HTTPS obligatorio en producción;
+- credenciales embebidas bloqueadas;
+- `localhost`, dominios `.local`/`.internal` y hosts de metadata bloqueados;
+- IPv4/IPv6 privadas, link-local, loopback, multicast y rangos reservados bloqueados;
+- resolución DNS comprobada antes de cada fetch;
+- límites de redirects, tiempo y tamaño de respuesta.
+
+Para desarrollo local existe `MCP_OAUTH_ALLOW_PRIVATE_DEV=1`, pero solo tiene efecto fuera de producción.
+
+## Registro de clientes MCP moderno
+
+MCP 2026 prioriza estos mecanismos:
+
+1. cliente pre-registrado cuando cliente e issuer ya tienen relación;
+2. Client ID Metadata Documents (CIMD), preferido para clientes sin relación previa;
+3. Dynamic Client Registration (DCR) como fallback de compatibilidad.
+
+DCR está deprecado en la línea moderna del protocolo, por lo que Fabrick no lo trata como requisito de readiness. Un issuer sin CIMD ni DCR puede seguir siendo válido si el cliente se pre-registra manualmente.
+
+## Authorization Code + PKCE y sesiones persistentes
+
+Para interoperabilidad con clientes MCP interactivos el Authorization Server debe ofrecer Authorization Code y PKCE `S256`. Para conexiones duraderas con ChatGPT se recomienda que el issuer anuncie `offline_access` y emita refresh tokens; sin refresh, el usuario puede tener que volver a autorizar cuando venza el access token.
+
+El panel `/admin/mcp/oauth/diagnostico` comprueba automáticamente:
+
+- discovery RFC 8414 / OIDC;
+- `authorization_endpoint` y `token_endpoint` públicos;
+- Authorization Code;
+- PKCE `S256`;
+- `offline_access` y `refresh_token`;
+- CIMD / DCR / necesidad de pre-registro;
+- métodos de autenticación del token endpoint;
+- `authorization_response_iss_parameter_supported`;
+- JWKS accesible y no vacío.
+
+El diagnóstico no guarda secretos ni activa OAuth. Tampoco sustituye el último test: debe probarse un access token real emitido para el audience/resource MCP.
 
 ## Variables
 
@@ -47,6 +88,7 @@ MCP_OAUTH_JWKS_URI=https://issuer.example.com/.well-known/jwks.json
 MCP_OAUTH_ALLOWED_ALGS=RS256 PS256 ES256 EdDSA
 MCP_OAUTH_CLOCK_SKEW_SECONDS=60
 MCP_OAUTH_ALLOW_SUBJECT_ONLY_BINDING=1
+MCP_OAUTH_ALLOW_PRIVATE_DEV=1
 ```
 
 OAuth solo se considera activo si `MCP_OAUTH_ENABLED` y `MCP_OAUTH_METADATA_ENABLED` están activados y existe un issuer válido. Hasta entonces la metadata protegida permanece apagada y los tokens Fabrick siguen funcionando igual.
@@ -70,6 +112,8 @@ Cuando existen aprobaciones MCP pendientes el administrador muestra un aviso glo
 
 ## Limitaciones intencionales
 
+- Fabrick es Resource Server; no intenta convertirse en Authorization Server.
 - Esta implementación valida access tokens JWT. Tokens opacos requieren introspection y no se aceptan.
 - Fabrick no reenvía el access token OAuth a APIs de terceros.
-- La creación/autorización del cliente OAuth ocurre en el Authorization Server; Fabrick actúa como Resource Server.
+- La creación/autorización del cliente OAuth ocurre en el Authorization Server.
+- Un diagnóstico verde no confirma el contenido de un token hasta hacer el test criptográfico end-to-end con un token real.

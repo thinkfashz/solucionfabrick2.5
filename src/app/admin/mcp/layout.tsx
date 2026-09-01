@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Cable, Cloud, KeyRound, Link2, Power, SearchCheck, ShieldCheck, Wrench } from 'lucide-react';
+import { Cable, Cloud, KeyRound, Link2, Power, Rocket, SearchCheck, ShieldCheck, Wrench } from 'lucide-react';
 
 const tabs = [
   { href: '/admin/mcp', label: 'Conectores', icon: Link2, exact: true },
@@ -14,6 +14,7 @@ const tabs = [
   { href: '/admin/mcp/oauth/auth0', label: 'Auth0', icon: Cloud, exact: true },
   { href: '/admin/mcp/oauth/auth0/provision', label: 'Provisionar Auth0', icon: Wrench },
   { href: '/admin/mcp/oauth/activar', label: 'Activar OAuth', icon: Power },
+  { href: '/admin/mcp/oauth/redeploy', label: 'Deploy & Verify', icon: Rocket },
 ];
 
 export default function McpLayout({ children }: { children: ReactNode }) {

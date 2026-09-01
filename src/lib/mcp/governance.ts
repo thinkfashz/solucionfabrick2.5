@@ -151,24 +151,33 @@ export async function requestMcpApproval(input: {
   ttlMinutes?: number;
 }) {
   const actionHash = mcpActionHash(input.toolName, input.payload);
-  const nowIso = new Date().toISOString();
   const { data } = await insforgeAdmin.database.from('mcp_approvals')
-    .select('id,status,expires_at')
+    .select('id,status,expires_at,requested_at')
     .eq('tenant_id', input.access.tenantId)
     .eq('key_id', input.access.keyId)
     .eq('tool_name', input.toolName)
     .eq('action_hash', actionHash)
-    .eq('status', 'pending')
-    .gt('expires_at', nowIso)
     .order('requested_at', { ascending: false })
-    .limit(1);
+    .limit(8);
 
-  if (Array.isArray(data) && data[0]) {
-    const row = data[0] as Record<string, unknown>;
-    return { id: String(row.id), status: String(row.status), expiresAt: String(row.expires_at), reused: true };
+  if (Array.isArray(data)) {
+    const reusable = (data as Record<string, unknown>[]).find((row) => {
+      const status = String(row.status ?? '');
+      if (status !== 'pending' && status !== 'approved') return false;
+      return new Date(String(row.expires_at ?? '')).getTime() > Date.now();
+    });
+    if (reusable) {
+      return {
+        id: String(reusable.id),
+        status: String(reusable.status),
+        expiresAt: String(reusable.expires_at),
+        reused: true,
+      };
+    }
   }
 
   const ttlMinutes = clampInt(input.ttlMinutes, 30, 5, 240);
+  const nowIso = new Date().toISOString();
   const expiresAt = new Date(Date.now() + ttlMinutes * 60_000).toISOString();
   const { data: inserted, error } = await insforgeAdmin.database.from('mcp_approvals').insert([{
     tenant_id: input.access.tenantId,

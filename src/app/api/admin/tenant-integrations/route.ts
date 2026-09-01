@@ -24,6 +24,8 @@ const ALLOWED_PROVIDERS = new Set([
   'openai',
   'gemini',
   'grok',
+  'ollama',
+  'custom',
   'serper',
   'serpapi',
 ]);

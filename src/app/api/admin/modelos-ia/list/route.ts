@@ -4,8 +4,9 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireAdminPermission } from '@/lib/adminPermissions';
-import { resolveProviderConfig } from '@/lib/resolveAiConfig';
-import type { AiProvider } from '@/lib/resolveAiConfig';
+import { getAdminTenantId } from '@/lib/adminApi';
+import { resolveTenantProviderConfig } from '@/lib/tenantAiConfig';
+import type { AiConfig, AiProvider } from '@/lib/resolveAiConfig';
 
 export interface ModelEntry {
   id: string;
@@ -30,6 +31,8 @@ const PROVIDER_LABELS: Record<AiProvider, string> = {
   openai: 'OpenAI',
   gemini: 'Gemini',
   grok: 'Grok (xAI)',
+  ollama: 'Ollama Cloud',
+  custom: 'OpenAI compatible',
 };
 
 const ANTHROPIC_MODELS: ModelEntry[] = [
@@ -38,8 +41,6 @@ const ANTHROPIC_MODELS: ModelEntry[] = [
   { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', free: false },
   { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', free: false },
   { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', free: false },
-  { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', free: false },
-  { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', free: false },
 ];
 
 interface OpenRouterModel {
@@ -66,6 +67,17 @@ interface GeminiModel {
   supportedGenerationMethods?: string[];
 }
 
+interface OllamaModel {
+  name?: string;
+  model?: string;
+  modified_at?: string;
+  details?: { parameter_size?: string; family?: string };
+}
+
+function authHeaders(apiKey: string): Record<string, string> {
+  return apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+}
+
 async function fetchOpenRouter(apiKey: string): Promise<ModelEntry[]> {
   const res = await fetch('https://openrouter.ai/api/v1/models', {
     headers: { Authorization: `Bearer ${apiKey}` },
@@ -74,120 +86,106 @@ async function fetchOpenRouter(apiKey: string): Promise<ModelEntry[]> {
   });
   if (!res.ok) throw new Error(`OpenRouter ${res.status}`);
   const data = (await res.json()) as { data?: OpenRouterModel[] };
-  const all = data.data ?? [];
-  const textModels = all.filter((m) => {
-    const modality = m.architecture?.modality;
-    if (!modality) return true;
-    return modality.includes('text');
-  });
-  const mapped: ModelEntry[] = textModels.map((m) => {
-    const isFree = m.id.endsWith(':free') || m.pricing?.prompt === '0';
-    return {
+  return (data.data ?? [])
+    .filter((m) => !m.architecture?.modality || m.architecture.modality.includes('text'))
+    .map((m) => ({
       id: m.id,
       name: m.name ?? m.id,
-      free: isFree,
+      free: m.id.endsWith(':free') || m.pricing?.prompt === '0',
       contextLength: m.context_length,
       description: m.description,
-    };
-  });
-  // Sort: free first
-  return mapped.sort((a, b) => (a.free === b.free ? 0 : a.free ? -1 : 1));
+    }))
+    .sort((a, b) => (a.free === b.free ? a.name.localeCompare(b.name) : a.free ? -1 : 1));
 }
 
-async function fetchGroq(apiKey: string): Promise<ModelEntry[]> {
-  const res = await fetch('https://api.groq.com/openai/v1/models', {
-    headers: { Authorization: `Bearer ${apiKey}` },
+async function fetchOpenAICompatModels(baseUrl: string, apiKey: string, free: boolean): Promise<ModelEntry[]> {
+  const res = await fetch(`${baseUrl.replace(/\/+$/, '')}/models`, {
+    headers: authHeaders(apiKey),
     signal: AbortSignal.timeout(10_000),
     cache: 'no-store',
   });
-  if (!res.ok) throw new Error(`Groq ${res.status}`);
+  if (!res.ok) throw new Error(`Models ${res.status}`);
   const data = (await res.json()) as { data?: OpenAIModel[] };
-  const all = data.data ?? [];
-  return all
+  return (data.data ?? [])
     .filter((m) => m.active !== false)
-    .map((m) => ({ id: m.id, name: m.id, free: true }));
+    .map((m) => ({ id: m.id, name: m.id, free }));
+}
+
+async function fetchGroq(apiKey: string) {
+  return fetchOpenAICompatModels('https://api.groq.com/openai/v1', apiKey, true);
 }
 
 async function fetchOpenAI(apiKey: string): Promise<ModelEntry[]> {
-  const res = await fetch('https://api.openai.com/v1/models', {
-    headers: { Authorization: `Bearer ${apiKey}` },
-    signal: AbortSignal.timeout(10_000),
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`OpenAI ${res.status}`);
-  const data = (await res.json()) as { data?: OpenAIModel[] };
-  const all = data.data ?? [];
-  const chatModels = all.filter((m) =>
-    /gpt-4|gpt-3\.5|o1|o3|chatgpt/.test(m.id),
-  );
-  return chatModels.map((m) => ({ id: m.id, name: m.id, free: false }));
+  const all = await fetchOpenAICompatModels('https://api.openai.com/v1', apiKey, false);
+  return all.filter((m) => /^(gpt-|o\d|chatgpt)/i.test(m.id));
+}
+
+async function fetchGrok(apiKey: string) {
+  return fetchOpenAICompatModels('https://api.x.ai/v1', apiKey, false);
 }
 
 async function fetchGemini(apiKey: string): Promise<ModelEntry[]> {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`,
     { signal: AbortSignal.timeout(10_000), cache: 'no-store' },
   );
   if (!res.ok) throw new Error(`Gemini ${res.status}`);
   const data = (await res.json()) as { models?: GeminiModel[] };
-  const all = data.models ?? [];
-  return all
+  return (data.models ?? [])
     .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
     .map((m) => {
       const id = m.name.includes('/') ? m.name.split('/').pop()! : m.name;
-      return {
-        id,
-        name: m.displayName ?? id,
-        free: id.includes('flash'),
-        description: m.description,
-      };
+      return { id, name: m.displayName ?? id, free: id.includes('flash'), description: m.description };
     });
 }
 
-async function fetchGrok(apiKey: string): Promise<ModelEntry[]> {
-  const res = await fetch('https://api.x.ai/v1/models', {
+async function fetchOllama(apiKey: string): Promise<ModelEntry[]> {
+  const res = await fetch('https://ollama.com/api/tags', {
     headers: { Authorization: `Bearer ${apiKey}` },
     signal: AbortSignal.timeout(10_000),
     cache: 'no-store',
   });
-  if (!res.ok) throw new Error(`Grok ${res.status}`);
-  const data = (await res.json()) as { data?: OpenAIModel[] };
-  const all = data.data ?? [];
-  return all.map((m) => ({ id: m.id, name: m.id, free: false }));
+  if (!res.ok) throw new Error(`Ollama ${res.status}`);
+  const data = (await res.json()) as { models?: OllamaModel[] };
+  return (data.models ?? []).map((m) => {
+    const id = m.model || m.name || '';
+    return {
+      id,
+      name: id,
+      free: false,
+      description: [m.details?.parameter_size, m.details?.family].filter(Boolean).join(' · ') || undefined,
+    };
+  }).filter((m) => Boolean(m.id));
 }
 
-async function fetchProvider(provider: AiProvider): Promise<ProviderResult> {
-  const label = PROVIDER_LABELS[provider];
-  const config = await resolveProviderConfig(provider, '');
-
-  if (!config) {
-    return { id: provider, label, configured: false, models: [] };
+async function fetchCustom(config: AiConfig): Promise<ModelEntry[]> {
+  if (!config.baseUrl) return config.modelo ? [{ id: config.modelo, name: config.modelo, free: false }] : [];
+  try {
+    const models = await fetchOpenAICompatModels(config.baseUrl, config.apiKey, false);
+    if (models.length) return models;
+  } catch {
+    // Some compatible gateways do not expose /models; keep configured model usable.
   }
+  return config.modelo ? [{ id: config.modelo, name: config.modelo, free: false }] : [];
+}
+
+async function fetchProvider(provider: AiProvider, tenantId: string): Promise<ProviderResult> {
+  const label = PROVIDER_LABELS[provider];
+  const config = await resolveTenantProviderConfig(provider, '', tenantId);
+  if (!config) return { id: provider, label, configured: false, models: [] };
 
   try {
     let models: ModelEntry[] = [];
-
     switch (provider) {
-      case 'openrouter':
-        models = await fetchOpenRouter(config.apiKey);
-        break;
-      case 'groq':
-        models = await fetchGroq(config.apiKey);
-        break;
-      case 'openai':
-        models = await fetchOpenAI(config.apiKey);
-        break;
-      case 'anthropic':
-        models = ANTHROPIC_MODELS;
-        break;
-      case 'gemini':
-        models = await fetchGemini(config.apiKey);
-        break;
-      case 'grok':
-        models = await fetchGrok(config.apiKey);
-        break;
+      case 'openrouter': models = await fetchOpenRouter(config.apiKey); break;
+      case 'groq': models = await fetchGroq(config.apiKey); break;
+      case 'openai': models = await fetchOpenAI(config.apiKey); break;
+      case 'anthropic': models = ANTHROPIC_MODELS; break;
+      case 'gemini': models = await fetchGemini(config.apiKey); break;
+      case 'grok': models = await fetchGrok(config.apiKey); break;
+      case 'ollama': models = await fetchOllama(config.apiKey); break;
+      case 'custom': models = await fetchCustom(config); break;
     }
-
     return { id: provider, label, configured: true, models };
   } catch (err) {
     return {
@@ -195,19 +193,19 @@ async function fetchProvider(provider: AiProvider): Promise<ProviderResult> {
       label,
       configured: true,
       error: err instanceof Error ? err.message : String(err),
-      models: [],
+      models: config.modelo ? [{ id: config.modelo, name: config.modelo, free: false }] : [],
     };
   }
 }
 
-const ALL_PROVIDERS: AiProvider[] = ['openrouter', 'groq', 'anthropic', 'openai', 'gemini', 'grok'];
+const ALL_PROVIDERS: AiProvider[] = ['openrouter', 'groq', 'anthropic', 'openai', 'gemini', 'grok', 'ollama', 'custom'];
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'integrations', action: 'read' });
   if (!auth.ok) return auth.response;
+  const tenantId = await getAdminTenantId(request);
 
-  const settled = await Promise.allSettled(ALL_PROVIDERS.map(fetchProvider));
-
+  const settled = await Promise.allSettled(ALL_PROVIDERS.map((provider) => fetchProvider(provider, tenantId)));
   const providers: ProviderResult[] = settled.map((result, i) => {
     if (result.status === 'fulfilled') return result.value;
     return {

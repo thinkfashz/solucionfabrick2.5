@@ -5,6 +5,7 @@
  */
 import 'server-only';
 import { resolveIntegrationCredentials } from '@/lib/integrationCredentials';
+import { normalizeAiBaseUrl } from '@/lib/ai/safeEndpoint';
 
 const INSFORGE_URL = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
 
@@ -35,7 +36,7 @@ async function rawsqlAi(query: string): Promise<{ data?: { rows?: Record<string,
   }
 }
 
-export type AiProvider = 'anthropic' | 'groq' | 'openrouter' | 'openai' | 'gemini' | 'grok';
+export type AiProvider = 'anthropic' | 'groq' | 'openrouter' | 'openai' | 'gemini' | 'grok' | 'ollama' | 'custom';
 
 export interface AiConfig {
   provider: AiProvider;
@@ -43,6 +44,7 @@ export interface AiConfig {
   modelo: string;
   siteUrl?: string;
   appName?: string;
+  baseUrl?: string;
 }
 
 const DEFAULT_MODELS: Record<AiProvider, string> = {
@@ -52,6 +54,12 @@ const DEFAULT_MODELS: Record<AiProvider, string> = {
   openai: 'gpt-4o-mini',
   gemini: 'gemini-2.0-flash-exp',
   grok: 'grok-2-1212',
+  ollama: 'gpt-oss:120b',
+  custom: '',
+};
+
+const DEFAULT_BASE_URLS: Partial<Record<AiProvider, string>> = {
+  ollama: 'https://ollama.com/v1',
 };
 
 async function getProviderCreds(provider: string): Promise<Record<string, string>> {
@@ -62,9 +70,9 @@ async function getProviderCreds(provider: string): Promise<Record<string, string
 /**
  * Resolves AI config from DB (configuracion_ia → integrations table).
  * Priority:
- * 1. Provider set in configuracion_ia.proveedor_ia  (explicit user preference)
- * 2. First available provider found in integrations  (auto-detect, ordered by quality)
- * 3. ANTHROPIC_API_KEY env var                       (legacy fallback)
+ * 1. Provider set in configuracion_ia.proveedor_ia
+ * 2. First available provider found in integrations
+ * 3. ANTHROPIC_API_KEY env var (legacy fallback)
  */
 export async function resolveAiConfig(): Promise<AiConfig | null> {
   try {
@@ -76,38 +84,41 @@ export async function resolveAiConfig(): Promise<AiConfig | null> {
     const preferredProvider = (row?.proveedor_ia ?? '') as AiProvider | '';
     const prefModelo = row?.modelo_ia ?? '';
 
-    // 1. Try preferred provider
     if (preferredProvider) {
       const creds = await getProviderCreds(preferredProvider);
       const key = creds.api_key?.trim() ?? '';
-      if (key) {
+      const baseUrl = normalizeAiBaseUrl(creds.base_url, DEFAULT_BASE_URLS[preferredProvider]);
+      const usable = preferredProvider === 'custom' ? Boolean(baseUrl) : Boolean(key);
+      if (usable) {
         return {
           provider: preferredProvider,
           apiKey: key,
           modelo: prefModelo || creds.modelo || DEFAULT_MODELS[preferredProvider] || '',
           siteUrl: creds.site_url,
           appName: creds.app_name,
+          baseUrl,
         };
       }
     }
 
-    // 2. Auto-detect: try providers in order
-    const autoOrder: AiProvider[] = ['anthropic', 'openrouter', 'groq', 'openai', 'gemini', 'grok'];
+    const autoOrder: AiProvider[] = ['anthropic', 'openrouter', 'groq', 'ollama', 'openai', 'gemini', 'grok', 'custom'];
     for (const p of autoOrder) {
       const creds = await getProviderCreds(p);
       const key = creds.api_key?.trim() ?? '';
-      if (key) {
+      const baseUrl = normalizeAiBaseUrl(creds.base_url, DEFAULT_BASE_URLS[p]);
+      const usable = p === 'custom' ? Boolean(baseUrl) : Boolean(key);
+      if (usable) {
         return {
           provider: p,
           apiKey: key,
           modelo: prefModelo || creds.modelo || DEFAULT_MODELS[p],
           siteUrl: creds.site_url,
           appName: creds.app_name,
+          baseUrl,
         };
       }
     }
 
-    // 3. Legacy: key stored directly in configuracion_ia
     if (row?.anthropic_api_key) {
       return { provider: 'anthropic', apiKey: row.anthropic_api_key, modelo: prefModelo || DEFAULT_MODELS.anthropic };
     }
@@ -129,21 +140,24 @@ export async function resolveSerperKey(): Promise<string | undefined> {
   }
 }
 
-/**
- * Resolves AI config for a specific provider + model combo.
- * Returns null if provider is not configured.
- */
+/** Resolves config for a specific provider + model combo. */
 export async function resolveProviderConfig(provider: AiProvider, modelo: string): Promise<AiConfig | null> {
   try {
     const creds = await getProviderCreds(provider);
     const key = creds.api_key?.trim() ?? '';
-    if (!key) return null;
+    const baseUrl = normalizeAiBaseUrl(creds.base_url, DEFAULT_BASE_URLS[provider]);
+    if (provider === 'custom') {
+      if (!baseUrl) return null;
+    } else if (!key) {
+      return null;
+    }
     return {
       provider,
       apiKey: key,
       modelo: modelo || creds.modelo || DEFAULT_MODELS[provider] || '',
       siteUrl: creds.site_url,
       appName: creds.app_name,
+      baseUrl,
     };
   } catch {
     return null;

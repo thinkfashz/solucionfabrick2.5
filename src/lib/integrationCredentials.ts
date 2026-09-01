@@ -19,12 +19,13 @@ function clean(value: unknown): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-async function readStoredValues(provider: string): Promise<Record<string, string>> {
-  const { data, error } = await insforgeAdmin.database
+async function readStoredValues(provider: string, tenantId?: string): Promise<Record<string, string>> {
+  let query = insforgeAdmin.database
     .from('integrations')
     .select('credentials')
-    .eq('provider', provider)
-    .limit(1);
+    .eq('provider', provider);
+  if (tenantId) query = query.eq('tenant_id', tenantId);
+  const { data, error } = await query.limit(1);
 
   if (error || !Array.isArray(data) || data.length === 0) return {};
   const raw = (data[0] as { credentials?: Record<string, unknown> }).credentials ?? {};
@@ -37,12 +38,17 @@ async function readStoredValues(provider: string): Promise<Record<string, string
   return out;
 }
 
-export async function resolveIntegrationCredentials(provider: string, fields: string[], preferDb = true): Promise<ResolvedIntegrationCredentials> {
+export async function resolveIntegrationCredentials(
+  provider: string,
+  fields: string[],
+  preferDb = true,
+  tenantId?: string,
+): Promise<ResolvedIntegrationCredentials> {
   const envDetected = detectEnvProviderCredentials(provider);
   const envValues: Record<string, string> = {};
   for (const [field, detected] of Object.entries(envDetected)) envValues[field] = detected.value;
 
-  const dbValues = await readStoredValues(provider);
+  const dbValues = await readStoredValues(provider, tenantId);
   const values = preferDb ? { ...envValues, ...dbValues } : { ...dbValues, ...envValues };
   const missing = fields.filter((field) => !values[field]);
   const hasDb = fields.some((field) => Boolean(dbValues[field]));

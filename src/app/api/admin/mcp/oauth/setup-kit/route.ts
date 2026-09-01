@@ -24,7 +24,7 @@ function cleanCallbackUrl(value: unknown) {
 
 function clientType(value: unknown) {
   const clean = String(value ?? '').trim().toLowerCase();
-  return clean === 'chatgpt' || clean === 'generic' || clean === 'bearer' ? clean : 'chatgpt';
+  return clean === 'generic' ? 'generic' as const : 'chatgpt' as const;
 }
 
 function buildBaseKit(origin: string) {

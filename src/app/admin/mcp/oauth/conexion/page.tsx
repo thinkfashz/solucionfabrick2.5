@@ -62,7 +62,7 @@ function ValueRow({ label, value }: { label: string; value: string }) {
 export default function McpOAuthConnectionKitPage() {
   const [kit, setKit] = useState<Kit | null>(null);
   const [callbackUrl, setCallbackUrl] = useState('');
-  const [clientType, setClientType] = useState<'chatgpt' | 'generic' | 'bearer'>('chatgpt');
+  const [clientType, setClientType] = useState<'chatgpt' | 'generic'>('chatgpt');
   const [generated, setGenerated] = useState<Generated | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -171,7 +171,6 @@ export default function McpOAuthConnectionKitPage() {
               <select value={clientType} onChange={(event) => setClientType(event.target.value as typeof clientType)} className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-amber-400/40">
                 <option value="chatgpt">ChatGPT</option>
                 <option value="generic">Otro cliente OAuth</option>
-                <option value="bearer">Cliente Bearer</option>
               </select>
               <input value={callbackUrl} onChange={(event) => setCallbackUrl(event.target.value)} placeholder="Pega aquí la callback exacta mostrada por el cliente" className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-amber-400/40" />
               <button type="button" disabled={busy || !callbackUrl.trim()} onClick={() => void generate()} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-300 px-5 py-3 text-sm font-black text-black disabled:opacity-40">
@@ -219,7 +218,7 @@ export default function McpOAuthConnectionKitPage() {
               <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-300" />
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg font-black text-white">Clientes sin OAuth</h2>
-                <p className="mt-1 text-sm leading-6 text-zinc-400">Ollama, clientes internos y otras interfaces que permitan headers pueden seguir usando una credencial `sfmcp_` individual con scopes y gobernanza.</p>
+                <p className="mt-1 text-sm leading-6 text-zinc-400">Ollama, clientes internos y otras interfaces que permitan headers pueden seguir usando una credencial `sfmcp_` individual con scopes y gobernanza. Este flujo no necesita callback.</p>
               </div>
             </div>
             <div className="mt-4 flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 p-4">

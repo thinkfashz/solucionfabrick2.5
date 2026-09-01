@@ -65,8 +65,9 @@ const EMPTY_STATUS: McpStatus = {
   secretEndpointTemplate: '',
   connections: [],
   availableScopes: [
-    { id: 'products:read', label: 'Leer y supervisar productos' },
-    { id: 'products:write', label: 'Crear y editar productos' },
+    { id: 'products:read', label: 'Leer, supervisar y buscar mercado' },
+    { id: 'products:write', label: 'Crear y editar borradores' },
+    { id: 'products:publish', label: 'Activar o desactivar productos' },
     { id: 'inventory:write', label: 'Mover stock' },
   ],
 };
@@ -265,7 +266,7 @@ export default function McpAdminPage() {
                 </button>
               </div>
 
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 {status.availableScopes.map((scope) => {
                   const selected = selectedScopes.includes(scope.id);
                   return (
@@ -341,6 +342,7 @@ export default function McpAdminPage() {
               <div className="mt-5 grid gap-2 text-xs text-zinc-400">
                 <p><strong className="text-white">Lectura:</strong> catálogo, supervisión y búsqueda de referentes de mercado.</p>
                 <p><strong className="text-white">Escritura segura:</strong> primero vista previa; después confirmación y <code className="text-zinc-300">commit=true</code>.</p>
+                <p><strong className="text-white">Publicación:</strong> activar/desactivar requiere un permiso independiente.</p>
                 <p><strong className="text-white">Stock:</strong> siempre por ledger atómico. Los borradores externos entran inactivos y con stock 0.</p>
               </div>
             </AdminCard>

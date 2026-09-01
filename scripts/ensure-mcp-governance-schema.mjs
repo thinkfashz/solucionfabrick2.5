@@ -115,6 +115,7 @@ DECLARE
   v_request_limit integer := greatest(1, least(coalesce(p_request_limit, 240), 10000));
   v_write_limit integer := greatest(1, least(coalesce(p_write_limit, 40), 5000));
   v_window_seconds integer := greatest(60, least(coalesce(p_window_seconds, 300), 3600));
+  v_allowed boolean;
 BEGIN
   IF p_tenant_id IS NULL OR coalesce(trim(p_key_id), '') = '' THEN
     RAISE EXCEPTION 'MCP_RATE_IDENTITY_REQUIRED';
@@ -139,8 +140,12 @@ BEGIN
     updated_at = now()
   RETURNING request_count, write_count INTO v_request_count, v_write_count;
 
+  v_allowed :=
+    (NOT p_count_request OR v_request_count <= v_request_limit)
+    AND (NOT p_is_write OR v_write_count <= v_write_limit);
+
   RETURN jsonb_build_object(
-    'allowed', v_request_count <= v_request_limit AND v_write_count <= v_write_limit,
+    'allowed', v_allowed,
     'requestCount', v_request_count,
     'writeCount', v_write_count,
     'requestLimit', v_request_limit,

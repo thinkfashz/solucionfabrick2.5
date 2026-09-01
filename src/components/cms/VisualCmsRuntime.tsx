@@ -28,6 +28,19 @@ type Snapshot = {
 const EDITOR_PARAM = 'cmsVisual';
 const BLOCKED_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'HTML']);
 const RUNTIME_ICON_ATTR = 'data-cms-runtime-icon';
+const RUNTIME_MUTATION_COUNTS = new WeakMap<Node, number>();
+
+function markRuntimeMutation(target: Node) {
+  RUNTIME_MUTATION_COUNTS.set(target, (RUNTIME_MUTATION_COUNTS.get(target) || 0) + 1);
+}
+
+function consumeRuntimeMutation(target: Node) {
+  const count = RUNTIME_MUTATION_COUNTS.get(target) || 0;
+  if (count <= 0) return false;
+  if (count === 1) RUNTIME_MUTATION_COUNTS.delete(target);
+  else RUNTIME_MUTATION_COUNTS.set(target, count - 1);
+  return true;
+}
 
 function deviceForWidth(width: number): VisualCmsDevice {
   if (width <= 640) return 'mobile';
@@ -101,7 +114,10 @@ function restoreSnapshot(snapshot: Snapshot) {
   const { element } = snapshot;
   if (!element.isConnected) return;
   restoreAttribute(element, 'style', snapshot.style);
-  if (snapshot.text !== null && element.childElementCount === 0) element.textContent = snapshot.text;
+  if (snapshot.text !== null && element.childElementCount === 0 && element.textContent !== snapshot.text) {
+    markRuntimeMutation(element);
+    element.textContent = snapshot.text;
+  }
   if (element instanceof HTMLAnchorElement) restoreAttribute(element, 'href', snapshot.href);
   if (element instanceof HTMLImageElement) {
     restoreAttribute(element, 'src', snapshot.src);
@@ -143,7 +159,10 @@ function applyIconOverride(element: HTMLElement, override: VisualCmsElementOverr
 }
 
 function applyOverride(element: HTMLElement, override: VisualCmsElementOverride, device: VisualCmsDevice) {
-  if (typeof override.text === 'string' && element.childElementCount === 0) element.textContent = override.text;
+  if (typeof override.text === 'string' && element.childElementCount === 0 && element.textContent !== override.text) {
+    markRuntimeMutation(element);
+    element.textContent = override.text;
+  }
   if (element instanceof HTMLAnchorElement && typeof override.href === 'string') element.setAttribute('href', override.href);
   if (element instanceof HTMLImageElement) {
     if (typeof override.src === 'string') {
@@ -343,6 +362,7 @@ function selectionPayload(element: HTMLElement) {
 }
 
 function runtimeOnlyMutation(mutation: MutationRecord): boolean {
+  if (consumeRuntimeMutation(mutation.target)) return true;
   const nodes = [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)];
   return nodes.length > 0 && nodes.every((node) => node instanceof HTMLElement && node.hasAttribute(RUNTIME_ICON_ATTR));
 }

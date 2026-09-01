@@ -9,7 +9,7 @@ Soluciones Fabrick puede aceptar dos familias de credenciales en el mismo endpoi
 
 El JWT externo nunca decide el `tenant_id` de Fabrick. Después de validar firma, issuer, audience y tiempo de vida, Fabrick obtiene `iss`, `sub`, `client_id`/`azp` y scopes. El administrador debe crear previamente una vinculación en `/admin/mcp/oauth` entre esa identidad y una credencial MCP existente.
 
-La base de datos guarda solamente SHA-256 de `issuer + subject`; el `sub` completo no se persiste. Una vinculación puede exigir además un `client_id` concreto.
+La base de datos guarda solamente SHA-256 de `issuer + subject`; el `sub` completo no se persiste. Por defecto una vinculación exige también un `client_id`/`azp` concreto. Solo se permite vincular por `sub` sin cliente si se habilita explícitamente `MCP_OAUTH_ALLOW_SUBJECT_ONLY_BINDING=1`.
 
 Los scopes efectivos son la intersección entre:
 
@@ -46,6 +46,7 @@ Opcionales:
 MCP_OAUTH_JWKS_URI=https://issuer.example.com/.well-known/jwks.json
 MCP_OAUTH_ALLOWED_ALGS=RS256 PS256 ES256 EdDSA
 MCP_OAUTH_CLOCK_SKEW_SECONDS=60
+MCP_OAUTH_ALLOW_SUBJECT_ONLY_BINDING=1
 ```
 
 OAuth solo se considera activo si `MCP_OAUTH_ENABLED` y `MCP_OAUTH_METADATA_ENABLED` están activados y existe un issuer válido. Hasta entonces la metadata protegida permanece apagada y los tokens Fabrick siguen funcionando igual.
@@ -59,9 +60,13 @@ Con OAuth activo se publica RFC 9728 en:
 
 Las respuestas `401` de `/api/mcp` reciben un `WWW-Authenticate` con `resource_metadata` y el scope inicial `products:read`.
 
-## Revocación
+## Revocación y gobernanza
 
-Revocar la credencial MCP vinculada invalida también sus accesos OAuth, aunque el JWT externo siga siendo criptográficamente válido. Eliminar la vinculación OAuth también corta el acceso sin modificar el Authorization Server.
+Revocar la credencial MCP vinculada invalida también sus accesos OAuth, aunque el JWT externo siga siendo criptográficamente válido. Eliminar la vinculación OAuth también corta el acceso sin modificar el Authorization Server. Las cuotas, aprobaciones y auditoría siguen usando el `key_id` de la credencial MCP vinculada, de modo que OAuth no crea un camino paralelo fuera de Gobernanza.
+
+## Notificaciones
+
+Cuando existen aprobaciones MCP pendientes el administrador muestra un aviso global y la subnavegación de `/admin/mcp` muestra el contador. Ambos se actualizan periódicamente y al volver a la pestaña.
 
 ## Limitaciones intencionales
 

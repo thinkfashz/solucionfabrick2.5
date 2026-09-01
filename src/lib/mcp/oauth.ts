@@ -48,11 +48,13 @@ export function getMcpOAuthAdminConfig(origin?: string) {
   const jwksUri = normalizeUrl(process.env.MCP_OAUTH_JWKS_URI);
   const verifierEnabled = enabled(process.env.MCP_OAUTH_ENABLED);
   const metadataEnabled = enabled(process.env.MCP_OAUTH_METADATA_ENABLED);
+  const allowSubjectOnlyBinding = enabled(process.env.MCP_OAUTH_ALLOW_SUBJECT_ONLY_BINDING);
   const ready = verifierEnabled && metadataEnabled && Boolean(issuer && audience);
   return {
     ready,
     verifierEnabled,
     metadataEnabled,
+    allowSubjectOnlyBinding,
     issuer,
     audience,
     jwksUri,

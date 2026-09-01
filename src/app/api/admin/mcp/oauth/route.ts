@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
       ready: config.ready,
       verifierEnabled: config.verifierEnabled,
       metadataEnabled: config.metadataEnabled,
+      allowSubjectOnlyBinding: config.allowSubjectOnlyBinding,
       issuer: config.issuer,
       audience: config.audience,
       jwksMode: config.jwksMode,
@@ -81,6 +82,9 @@ export async function POST(request: NextRequest) {
   const keyId = cleanKeyId(body.keyId);
   const label = cleanText(body.label, 80) || 'OAuth MCP';
   if (!subject || !keyId) return NextResponse.json({ error: 'subject y keyId son obligatorios.' }, { status: 400 });
+  if (!clientId && !config.allowSubjectOnlyBinding) {
+    return NextResponse.json({ error: 'client_id/azp es obligatorio por seguridad. Solo puede omitirse con MCP_OAUTH_ALLOW_SUBJECT_ONLY_BINDING=1.' }, { status: 400 });
+  }
 
   const access = await getMcpAccessStatus(tenantId);
   const validConnection = access.connections.some((connection) => (connection.legacy ? 'legacy' : connection.keyId) === keyId);

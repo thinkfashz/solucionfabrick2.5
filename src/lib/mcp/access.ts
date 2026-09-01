@@ -3,6 +3,7 @@ import 'server-only';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { insforgeAdmin } from '@/lib/insforge';
 import { decryptCredentials, encryptCredentials } from '@/lib/integrationsCrypto';
+import { getMcpOAuthRuntimeConfig } from '@/lib/mcp/oauth';
 import { hashMcpOAuthSubject, verifyMcpOAuthBearerToken } from '@/lib/mcp/oauthVerifier';
 
 export const MCP_PROVIDER = 'mcp_gateway';
@@ -262,6 +263,8 @@ async function accessFromConnection(tenantId: string, keyId: string): Promise<Mc
 }
 
 async function authenticateOAuthToken(token: string): Promise<McpAccess | null> {
+  const config = getMcpOAuthRuntimeConfig();
+  if (!config) return null;
   const identity = await verifyMcpOAuthBearerToken(token);
   if (!identity) return null;
   const subjectHash = hashMcpOAuthSubject(identity.issuer, identity.subject);
@@ -276,7 +279,8 @@ async function authenticateOAuthToken(token: string): Promise<McpAccess | null> 
   const rows = (data as OAuthBindingRow[])
     .filter((row) => {
       const requiredClient = String(row.client_id ?? '').trim();
-      return requiredClient ? requiredClient === identity.clientId : true;
+      if (requiredClient) return requiredClient === identity.clientId;
+      return config.allowSubjectOnlyBinding;
     })
     .sort((a, b) => Number(Boolean(String(b.client_id ?? '').trim())) - Number(Boolean(String(a.client_id ?? '').trim())));
 

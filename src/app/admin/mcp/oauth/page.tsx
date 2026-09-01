@@ -8,6 +8,7 @@ type OAuthConfig = {
   ready: boolean;
   verifierEnabled: boolean;
   metadataEnabled: boolean;
+  allowSubjectOnlyBinding: boolean;
   issuer: string;
   audience: string;
   jwksMode: 'explicit' | 'discovery';
@@ -94,6 +95,7 @@ export default function McpOAuthPage() {
   }
 
   const config = data?.config;
+  const requiresClientId = config?.allowSubjectOnlyBinding !== true;
 
   return (
     <AdminPage>
@@ -135,18 +137,18 @@ export default function McpOAuthPage() {
               <KeyRound className="mt-1 h-5 w-5 text-amber-300" />
               <div>
                 <h2 className="text-lg font-black text-white">Vincular identidad del Authorization Server</h2>
-                <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-400">Copia el claim `sub` del token emitido por tu IdP. Fabrick guarda solo un hash SHA-256 del subject. `client_id` es opcional; si lo defines, el token deberá coincidir también con ese cliente.</p>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-zinc-400">Copia el claim `sub` y el `client_id`/`azp` del access token. Fabrick guarda solo un hash SHA-256 del subject. Por defecto exige ambas identidades; el modo solo-subject debe habilitarse explícitamente.</p>
               </div>
             </div>
             <div className="mt-5 grid gap-3 lg:grid-cols-2">
               <input value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="subject (sub) exacto" className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-amber-400/40" />
-              <input value={clientId} onChange={(event) => setClientId(event.target.value)} placeholder="client_id / azp opcional" className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-amber-400/40" />
+              <input value={clientId} onChange={(event) => setClientId(event.target.value)} placeholder={requiresClientId ? 'client_id / azp obligatorio' : 'client_id / azp opcional'} className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-amber-400/40" />
               <select value={keyId} onChange={(event) => setKeyId(event.target.value)} className="rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-sm text-white outline-none focus:border-amber-400/40">
                 {(data?.connections || []).map((connection) => <option key={connection.keyId} value={connection.keyId}>{connection.label} · {connection.scopes.join(', ')}</option>)}
               </select>
               <input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Etiqueta visible" className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-amber-400/40" />
             </div>
-            <button type="button" disabled={busy === 'save' || !subject || !keyId} onClick={() => void saveBinding()} className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-amber-300 px-4 py-3 text-sm font-black text-black disabled:opacity-40">
+            <button type="button" disabled={busy === 'save' || !subject || !keyId || (requiresClientId && !clientId)} onClick={() => void saveBinding()} className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-amber-300 px-4 py-3 text-sm font-black text-black disabled:opacity-40">
               {busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Vincular identidad
             </button>
@@ -161,7 +163,7 @@ export default function McpOAuthPage() {
                 <div key={binding.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-4">
                   <div className="min-w-0 flex-1">
                     <p className="font-black text-white">{binding.label || 'OAuth MCP'}</p>
-                    <p className="mt-1 text-xs text-zinc-500">subject: {binding.subject_hint || 'hash'} {binding.client_id ? `· client: ${binding.client_id}` : '· cualquier client_id'}</p>
+                    <p className="mt-1 text-xs text-zinc-500">subject: {binding.subject_hint || 'hash'} {binding.client_id ? `· client: ${binding.client_id}` : '· solo subject (modo explícito)'}</p>
                     <p className="mt-1 font-mono text-[11px] text-zinc-600">credencial: {binding.key_id}</p>
                   </div>
                   <button type="button" disabled={Boolean(busy)} onClick={() => void removeBinding(binding.id)} className="inline-flex items-center gap-2 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-200 disabled:opacity-40">
@@ -179,7 +181,7 @@ export default function McpOAuthPage() {
               <p>MCP_OAUTH_METADATA_ENABLED=1</p>
               <p>MCP_OAUTH_ISSUER=https://tu-authorization-server</p>
               <p>MCP_OAUTH_AUDIENCE=https://www.solucionesfabrick.com/api/mcp</p>
-              <p className="text-zinc-500">Opcional: MCP_OAUTH_JWKS_URI y MCP_OAUTH_ALLOWED_ALGS. Sin JWKS URI, Fabrick descubre `jwks_uri` desde RFC 8414 u OIDC.</p>
+              <p className="text-zinc-500">Opcional: MCP_OAUTH_JWKS_URI, MCP_OAUTH_ALLOWED_ALGS y MCP_OAUTH_ALLOW_SUBJECT_ONLY_BINDING=1. Este último reduce el vínculo de identidad y debe usarse solo si el issuer no entrega client_id/azp.</p>
             </div>
           </AdminCard>
         </div>

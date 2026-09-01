@@ -5,7 +5,8 @@ import { insforgeAdmin } from '@/lib/insforge';
 import { decryptCredentials, encryptCredentials } from '@/lib/integrationsCrypto';
 
 export const MCP_PROVIDER = 'mcp_gateway';
-export const MCP_DEFAULT_SCOPES = ['products:read', 'products:write', 'inventory:write'] as const;
+export const MCP_DEFAULT_SCOPES = ['products:read', 'products:write', 'products:publish', 'inventory:write'] as const;
+export const MCP_MAX_CONNECTIONS_PER_TENANT = 20;
 
 export type McpScope = typeof MCP_DEFAULT_SCOPES[number];
 
@@ -91,8 +92,21 @@ function connectionFromRow(row: GatewayRow) {
   };
 }
 
+async function connectionCount(tenantId: string) {
+  const { data } = await insforgeAdmin.database.from('integrations')
+    .select('provider')
+    .eq('tenant_id', tenantId)
+    .like('provider', `${MCP_PROVIDER}%`)
+    .limit(MCP_MAX_CONNECTIONS_PER_TENANT + 1);
+  return Array.isArray(data) ? data.length : 0;
+}
+
 export async function createMcpAccessToken(tenantId: string, label = 'Principal', requestedScopes: unknown = MCP_DEFAULT_SCOPES) {
   const scopes = normalizeMcpScopes(requestedScopes);
+  const count = await connectionCount(tenantId);
+  if (count >= MCP_MAX_CONNECTIONS_PER_TENANT) {
+    throw new Error(`Límite de ${MCP_MAX_CONNECTIONS_PER_TENANT} credenciales MCP alcanzado. Revoca una conexión antes de crear otra.`);
+  }
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const keyId = randomBytes(8).toString('hex');

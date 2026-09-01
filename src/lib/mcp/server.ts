@@ -189,7 +189,7 @@ function registerFabrickTools(access: McpAccess) {
         'product_create',
         {
           title: 'Crear producto',
-          description: 'Prepara o crea una ficha nueva. El stock inicial siempre queda en 0. Por defecto commit=false devuelve una vista previa; ejecuta commit=true solo tras confirmación.',
+          description: 'Prepara o crea una ficha nueva. El stock inicial siempre queda en 0. Por defecto commit=false devuelve una vista previa; ejecuta commit=true solo tras confirmación. Activarlo requiere products:publish.',
           inputSchema: z.object({
             name: z.string().min(1).max(180),
             description: z.string().max(5000).optional(),
@@ -224,6 +224,7 @@ function registerFabrickTools(access: McpAccess) {
         async ({ commit, ...input }) => {
           try {
             requireMcpScope(access, 'products:write');
+            if (input.activo === true) requireMcpScope(access, 'products:publish');
             if (!commit) {
               return textResult({
                 ok: true,
@@ -242,7 +243,7 @@ function registerFabrickTools(access: McpAccess) {
         'product_update',
         {
           title: 'Actualizar producto',
-          description: 'Prepara o aplica cambios sobre la ficha comercial/técnica. No permite cambiar stock directamente. Por defecto devuelve la diferencia propuesta; usa commit=true tras confirmación.',
+          description: 'Prepara o aplica cambios sobre la ficha comercial/técnica. No permite cambiar stock directamente. Por defecto devuelve la diferencia propuesta; usa commit=true tras confirmación. Cambiar activo requiere products:publish.',
           inputSchema: z.object({
             productId: z.string().min(1).max(120),
             name: z.string().min(1).max(180).optional(),
@@ -272,6 +273,7 @@ function registerFabrickTools(access: McpAccess) {
         async ({ productId, commit, ...patch }) => {
           try {
             requireMcpScope(access, 'products:write');
+            if (patch.activo !== undefined) requireMcpScope(access, 'products:publish');
             if (!commit) {
               const before = await mcpGetProduct(access.tenantId, { id: productId });
               if (!before) throw new Error('Producto no encontrado.');
@@ -343,12 +345,13 @@ function registerFabrickTools(access: McpAccess) {
       );
     },
     {
-      serverInfo: { name: 'soluciones-fabrick', version: '1.2.0' },
+      serverInfo: { name: 'soluciones-fabrick', version: '1.3.0' },
       instructions: [
         'Servidor MCP oficial de Soluciones Fabrick para catálogo, inteligencia de mercado e Inventario V2.',
         'Usa primero products_search/product_get antes de crear para evitar duplicados.',
         'Para investigar referencias externas usa market_search. Los datos externos son referencias y deben verificarse antes de publicar.',
         'Las herramientas de escritura trabajan en dos fases: primero commit=false para mostrar la vista previa; solo después de confirmación explícita usa commit=true.',
+        'products:write permite crear/editar borradores; activar o desactivar productos requiere además products:publish.',
         'Nunca inventes stock: consulta el producto y usa inventory_move. En adjustment la cantidad significa stock final absoluto.',
         'Los productos traídos desde mercado se incorporan inactivos y con stock 0 para revisión humana.',
       ].join(' '),

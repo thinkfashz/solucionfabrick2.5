@@ -99,6 +99,7 @@ const NAV: NavSection[] = [
   {
     id: 'ai', label: 'IA & análisis', icon: Bot,
     items: [
+      { href: '/admin/mcp', label: 'ChatGPT & MCP', description: 'Credenciales y conexión con ChatGPT', icon: Link2 },
       { href: '/admin/modelos-ia', label: 'Modelos IA', description: 'Disponibilidad y configuración', icon: Bot },
       { href: '/admin/inteligencia-mercado', label: 'Inteligencia de mercado', description: 'Tendencias, SEO y competencia', icon: BarChart3 },
     ],

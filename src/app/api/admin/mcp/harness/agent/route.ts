@@ -43,8 +43,6 @@ export async function POST(request: NextRequest) {
   if (prompt.length > 12000) return NextResponse.json({ error: 'El prompt supera 12.000 caracteres.' }, { status: 413 });
 
   try {
-    // El perfil se sigue validando con el mismo contrato MCP usado originalmente por Ollama.
-    // El nombre legacy se conserva para no romper rutas existentes, pero el perfil ya es provider-neutral.
     await assertOllamaAgentProfile(readAuth.ctx.tenantId, keyId);
     const result = await runGovernedAgent({
       tenantId: readAuth.ctx.tenantId,
@@ -55,7 +53,7 @@ export async function POST(request: NextRequest) {
       origin: request.nextUrl.origin,
       allowWrites: body.allowWrites === true,
       conversationId,
-      createdBy: readAuth.ctx.userId || null,
+      createdBy: readAuth.ctx.session.email || null,
     });
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
   } catch (error) {

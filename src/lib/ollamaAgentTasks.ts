@@ -2,6 +2,7 @@ import 'server-only';
 
 import { insforgeAdmin } from '@/lib/insforge';
 import { runOllamaAgent, type OllamaAgentResult } from '@/lib/ollamaAgent';
+import { assertOllamaAgentProfile } from '@/lib/ollamaAgentAccess';
 
 export type OllamaAgentTask = {
   id: string;
@@ -55,6 +56,7 @@ export async function createOllamaAgentTask(input: {
   const keyId = cleanText(input.keyId, 32).toLowerCase();
   const scheduleKind = input.scheduleKind || 'manual';
   if (!label || !prompt || !model || !keyId) throw new Error('label, prompt, model y keyId son requeridos.');
+  await assertOllamaAgentProfile(input.tenantId, keyId);
   const weekday = scheduleKind === 'weekly' ? Math.min(6, Math.max(0, Math.trunc(Number(input.weekday ?? 1)))) : null;
   const now = new Date().toISOString();
   const { data, error } = await insforgeAdmin.database.from('ai_agent_tasks').insert([{
@@ -111,6 +113,7 @@ export async function runOllamaAgentTask(task: OllamaAgentTask, origin: string):
   await insforgeAdmin.database.from('ai_agent_tasks').update({ status: 'running', last_error: null, updated_at: startedAt })
     .eq('tenant_id', task.tenant_id).eq('id', task.id);
   try {
+    await assertOllamaAgentProfile(task.tenant_id, task.key_id);
     const result = await runOllamaAgent({
       tenantId: task.tenant_id,
       keyId: task.key_id,

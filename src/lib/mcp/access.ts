@@ -6,11 +6,11 @@ import { decryptCredentials, encryptCredentials } from '@/lib/integrationsCrypto
 import { getMcpOAuthRuntimeConfig } from '@/lib/mcp/oauth';
 import { hashMcpOAuthSubject, verifyMcpOAuthBearerToken } from '@/lib/mcp/oauthVerifier';
 
-export const MCP_PROVIDER = 'mcp_gateway';
 export const MCP_DEFAULT_SCOPES = ['products:read', 'products:write', 'products:publish', 'inventory:write'] as const;
+export const MCP_AVAILABLE_SCOPES = [...MCP_DEFAULT_SCOPES, 'analytics:read', 'site:read', 'automation:run'] as const;
 export const MCP_MAX_CONNECTIONS_PER_TENANT = 20;
 
-export type McpScope = typeof MCP_DEFAULT_SCOPES[number];
+export type McpScope = typeof MCP_AVAILABLE_SCOPES[number];
 
 export type McpAccess = {
   tenantId: string;
@@ -70,7 +70,7 @@ function parseScopes(value: unknown) {
 
 export function normalizeMcpScopes(value: unknown): McpScope[] {
   const requested = Array.isArray(value) ? value.map(String) : String(value ?? '').split(/[\s,]+/);
-  const allowed = new Set<string>(MCP_DEFAULT_SCOPES);
+  const allowed = new Set<string>(MCP_AVAILABLE_SCOPES);
   const scopes = [...new Set(requested.map((item) => item.trim()).filter((item): item is McpScope => allowed.has(item)))];
   return scopes.length > 0 ? scopes : ['products:read'];
 }
@@ -78,6 +78,8 @@ export function normalizeMcpScopes(value: unknown): McpScope[] {
 function providerForKey(keyId: string) {
   return `${MCP_PROVIDER}:${keyId}`;
 }
+
+export const MCP_PROVIDER = 'mcp_gateway';
 
 function keyIdFromProvider(provider: unknown) {
   const raw = String(provider ?? '');

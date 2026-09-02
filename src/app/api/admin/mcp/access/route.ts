@@ -32,6 +32,9 @@ export async function GET(request: NextRequest) {
       { id: 'products:write', label: 'Crear y editar borradores' },
       { id: 'products:publish', label: 'Activar o desactivar productos' },
       { id: 'inventory:write', label: 'Mover stock' },
+      { id: 'analytics:read', label: 'Analizar visitas, conversión y rendimiento' },
+      { id: 'site:read', label: 'Auditar páginas públicas, UX y SEO' },
+      { id: 'automation:run', label: 'Ejecutar el agente y sus tareas guardadas' },
     ],
   });
 }

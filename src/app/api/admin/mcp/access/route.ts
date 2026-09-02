@@ -54,7 +54,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const created = await createMcpAccessToken(auth.ctx.tenantId, label, normalizeMcpScopes(scopes));
+    const requested = normalizeMcpScopes(scopes);
+    const effectiveScopes = /^ollama agent$/i.test(label.trim())
+      ? normalizeMcpScopes([...requested, 'analytics:read', 'site:read', 'automation:run'])
+      : requested;
+    const created = await createMcpAccessToken(auth.ctx.tenantId, label, effectiveScopes);
     const base = publicBase(request);
     return NextResponse.json({
       ok: true,

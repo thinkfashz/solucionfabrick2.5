@@ -40,21 +40,9 @@ export type GovernedAgentResult = {
   memoriesUsed: number;
 };
 
-type ToolCall = { id: string; name: string; arguments: Record<string, unknown> };
 type OpenAiToolCall = { id: string; type: 'function'; function: { name: string; arguments: string } };
 type OpenAiMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string | null; tool_calls?: OpenAiToolCall[]; tool_call_id?: string };
-
-type AgentContext = {
-  tenantId: string;
-  conversationId: string;
-  access: McpAccess;
-  allowWrites: boolean;
-  origin: string;
-  provider: AiProvider;
-  model: string;
-  trace: GovernedAgentTrace[];
-  approvals: GovernedAgentResult['approvals'];
-};
+type AgentContext = { tenantId: string; conversationId: string; access: McpAccess; allowWrites: boolean; origin: string; provider: AiProvider; model: string; trace: GovernedAgentTrace[]; approvals: GovernedAgentResult['approvals'] };
 
 const OPENAI_COMPAT_BASES: Partial<Record<AiProvider, string>> = {
   ollama: 'https://ollama.com/v1',
@@ -95,10 +83,7 @@ function now() { return new Date().toISOString(); }
 function json(value: unknown) { return JSON.stringify(value, null, 2); }
 function errMessage(error: unknown) { return error instanceof Error ? error.message : String(error ?? 'Error desconocido'); }
 function pushTrace(ctx: AgentContext, type: GovernedAgentTrace['type'], detail: string, name?: string) { ctx.trace.push({ at: now(), type, name, detail: detail.slice(0, 1600) }); }
-
-function looksSensitive(value: string) {
-  return /(password|contraseñ|api[_ -]?key|secret|token|bearer\s+[a-z0-9._-]{12,}|sk-[a-z0-9_-]{10,}|sfmcp_[a-f0-9]{8,})/i.test(value);
-}
+function looksSensitive(value: string) { return /(password|contraseñ|api[_ -]?key|secret|token|bearer\s+[a-z0-9._-]{12,}|sk-[a-z0-9_-]{10,}|sfmcp_[a-f0-9]{8,})/i.test(value); }
 
 async function resolveAccess(tenantId: string, keyId: string, provider: AiProvider): Promise<McpAccess> {
   const status = await getMcpAccessStatus(tenantId);
@@ -190,7 +175,6 @@ async function executeTool(ctx: AgentContext, name: string, input: Record<string
       if (needsApproval) await consumeMcpApproval({ access: ctx.access, toolName: name, payload, approvalId: String(approvalId || '') }); return mcpMoveInventory(ctx.tenantId, { productId: payload.productId, type: payload.type as 'in'|'out'|'adjustment'|'return', quantity: payload.quantity, referenceId: payload.referenceId || `agent:${crypto.randomUUID()}`, note: payload.note });
     }, commit);
   }
-
   throw new Error(`AI_AGENT_TOOL_UNKNOWN:${name}`);
 }
 
@@ -207,34 +191,21 @@ Reglas:
 - Puedes cambiar de proveedor/modelo entre turnos sin perder la memoria almacenada por Fabrick.
 - Responde en español, concreto y accionable.`;
 
-function memoriesBlock(memories: AgentMemory[]) {
-  if (!memories.length) return '';
-  return `\n\nMEMORIA RELEVANTE DE FABRICK (puede provenir de conversaciones anteriores):\n${memories.map((memory, index) => `${index + 1}. [${memory.kind}/${memory.scope}] ${memory.memory_key ? `${memory.memory_key}: ` : ''}${memory.content}`).join('\n')}`;
-}
-
-function historyForModel(messages: AgentMessage[]) {
-  return messages.filter((message) => message.role === 'user' || message.role === 'assistant').slice(-20).map((message) => ({ role: message.role as 'user'|'assistant', content: message.content.slice(0, 30000) }));
-}
+function memoriesBlock(memories: AgentMemory[]) { return memories.length ? `\n\nMEMORIA RELEVANTE DE FABRICK (puede provenir de conversaciones anteriores):\n${memories.map((memory, index) => `${index + 1}. [${memory.kind}/${memory.scope}] ${memory.memory_key ? `${memory.memory_key}: ` : ''}${memory.content}`).join('\n')}` : ''; }
+function historyForModel(messages: AgentMessage[]) { return messages.filter((message) => message.role === 'user' || message.role === 'assistant').slice(-20).map((message) => ({ role: message.role as 'user'|'assistant', content: message.content.slice(0, 30000) })); }
 
 async function callOpenAiCompat(input: { ctx: AgentContext; apiKey: string; baseUrl: string; history: Array<{ role: 'user'|'assistant'; content: string }>; prompt: string; system: string }) {
+  if (!/^https:\/\//i.test(input.baseUrl)) throw new Error('AI_PROVIDER_BASE_URL_REQUIRED');
   const messages: OpenAiMessage[] = [{ role: 'system', content: input.system }, ...input.history, { role: 'user', content: input.prompt }];
   let toolCalls = 0; let responseText = '';
   for (let turn = 0; turn < 8; turn += 1) {
     pushTrace(input.ctx, 'model', `Turno ${turn + 1}: ${input.ctx.provider} · ${input.ctx.model}`);
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (input.apiKey) headers.Authorization = `Bearer ${input.apiKey}`;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }; if (input.apiKey) headers.Authorization = `Bearer ${input.apiKey}`;
     const response = await fetch(`${input.baseUrl.replace(/\/+$/, '')}/chat/completions`, { method: 'POST', headers, body: JSON.stringify({ model: input.ctx.model, messages, tools: TOOLS, tool_choice: 'auto', stream: false, temperature: 0.2, max_tokens: 3000 }), signal: AbortSignal.timeout(90_000) });
     if (!response.ok) throw new Error(`AI_PROVIDER_HTTP_${response.status}:${(await response.text().catch(() => '')).slice(0, 600)}`);
-    const body = await response.json() as { choices?: Array<{ message?: { content?: string | null; tool_calls?: OpenAiToolCall[] } }> };
-    const assistant = body.choices?.[0]?.message; if (!assistant) throw new Error('AI_PROVIDER_EMPTY_RESPONSE'); const calls = Array.isArray(assistant.tool_calls) ? assistant.tool_calls : [];
-    messages.push({ role: 'assistant', content: assistant.content || '', tool_calls: calls.length ? calls : undefined });
-    if (!calls.length) { responseText = String(assistant.content || '').trim(); break; }
-    for (const call of calls.slice(0, 6)) {
-      toolCalls += 1; if (toolCalls > 20) throw new Error('AI_AGENT_TOOL_LIMIT_REACHED'); let args: Record<string, unknown> = {}; try { args = JSON.parse(call.function.arguments || '{}') as Record<string, unknown>; } catch { args = {}; }
-      pushTrace(input.ctx, 'tool_call', json(args).slice(0, 900), call.function.name);
-      try { const result = await executeTool(input.ctx, call.function.name, args); const serialized = json(result).slice(0, 14000); pushTrace(input.ctx, 'tool_result', serialized.slice(0, 1400), call.function.name); messages.push({ role: 'tool', tool_call_id: call.id, content: serialized }); }
-      catch (error) { const message = errMessage(error); pushTrace(input.ctx, 'error', message, call.function.name); messages.push({ role: 'tool', tool_call_id: call.id, content: json({ error: message }) }); }
-    }
+    const body = await response.json() as { choices?: Array<{ message?: { content?: string | null; tool_calls?: OpenAiToolCall[] } }> }; const assistant = body.choices?.[0]?.message; if (!assistant) throw new Error('AI_PROVIDER_EMPTY_RESPONSE'); const calls = Array.isArray(assistant.tool_calls) ? assistant.tool_calls : [];
+    messages.push({ role: 'assistant', content: assistant.content || '', tool_calls: calls.length ? calls : undefined }); if (!calls.length) { responseText = String(assistant.content || '').trim(); break; }
+    for (const call of calls.slice(0, 6)) { toolCalls += 1; if (toolCalls > 20) throw new Error('AI_AGENT_TOOL_LIMIT_REACHED'); let args: Record<string, unknown> = {}; try { args = JSON.parse(call.function.arguments || '{}') as Record<string, unknown>; } catch { args = {}; } pushTrace(input.ctx, 'tool_call', json(args).slice(0, 900), call.function.name); try { const result = await executeTool(input.ctx, call.function.name, args); const serialized = json(result).slice(0, 14000); pushTrace(input.ctx, 'tool_result', serialized.slice(0, 1400), call.function.name); messages.push({ role: 'tool', tool_call_id: call.id, content: serialized }); } catch (error) { const message = errMessage(error); pushTrace(input.ctx, 'error', message, call.function.name); messages.push({ role: 'tool', tool_call_id: call.id, content: json({ error: message }) }); } }
   }
   return { responseText, toolCalls };
 }
@@ -242,69 +213,25 @@ async function callOpenAiCompat(input: { ctx: AgentContext; apiKey: string; base
 async function callAnthropic(input: { ctx: AgentContext; apiKey: string; history: Array<{ role: 'user'|'assistant'; content: string }>; prompt: string; system: string }) {
   type Block = { type: 'text'; text: string } | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> } | { type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean };
   type Msg = { role: 'user'|'assistant'; content: string | Block[] };
-  const messages: Msg[] = [...input.history.map((item) => ({ role: item.role, content: item.content })), { role: 'user', content: input.prompt }];
-  const anthropicTools = TOOLS.map((tool) => ({ name: tool.function.name, description: tool.function.description, input_schema: tool.function.parameters }));
-  let toolCalls = 0; let responseText = '';
+  const messages: Msg[] = [...input.history.map((item) => ({ role: item.role, content: item.content })), { role: 'user', content: input.prompt }]; const anthropicTools = TOOLS.map((tool) => ({ name: tool.function.name, description: tool.function.description, input_schema: tool.function.parameters })); let toolCalls = 0; let responseText = '';
   for (let turn = 0; turn < 8; turn += 1) {
     pushTrace(input.ctx, 'model', `Turno ${turn + 1}: Anthropic · ${input.ctx.model}`);
-    const response = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': input.apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model: input.ctx.model, max_tokens: 3000, temperature: 0.2, system: input.system, tools: anthropicTools, messages }), signal: AbortSignal.timeout(90_000) });
-    if (!response.ok) throw new Error(`AI_PROVIDER_HTTP_${response.status}:${(await response.text().catch(() => '')).slice(0, 600)}`);
-    const body = await response.json() as { stop_reason?: string; content?: Array<{ type?: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> }> };
-    const blocks = body.content || []; const assistantBlocks: Block[] = blocks.map((block) => block.type === 'tool_use' ? { type: 'tool_use', id: String(block.id || crypto.randomUUID()), name: String(block.name || ''), input: block.input || {} } : { type: 'text', text: String(block.text || '') });
-    messages.push({ role: 'assistant', content: assistantBlocks });
-    const calls = assistantBlocks.filter((block): block is Extract<Block, { type: 'tool_use' }> => block.type === 'tool_use');
-    if (!calls.length) { responseText = assistantBlocks.filter((block): block is Extract<Block, { type: 'text' }> => block.type === 'text').map((block) => block.text).join('\n').trim(); break; }
-    const results: Block[] = [];
-    for (const call of calls.slice(0, 6)) {
-      toolCalls += 1; if (toolCalls > 20) throw new Error('AI_AGENT_TOOL_LIMIT_REACHED'); pushTrace(input.ctx, 'tool_call', json(call.input).slice(0, 900), call.name);
-      try { const result = await executeTool(input.ctx, call.name, call.input); const serialized = json(result).slice(0, 14000); pushTrace(input.ctx, 'tool_result', serialized.slice(0, 1400), call.name); results.push({ type: 'tool_result', tool_use_id: call.id, content: serialized }); }
-      catch (error) { const message = errMessage(error); pushTrace(input.ctx, 'error', message, call.name); results.push({ type: 'tool_result', tool_use_id: call.id, content: json({ error: message }), is_error: true }); }
-    }
-    messages.push({ role: 'user', content: results });
+    const response = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': input.apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body: JSON.stringify({ model: input.ctx.model, max_tokens: 3000, temperature: 0.2, system: input.system, tools: anthropicTools, messages }), signal: AbortSignal.timeout(90_000) }); if (!response.ok) throw new Error(`AI_PROVIDER_HTTP_${response.status}:${(await response.text().catch(() => '')).slice(0, 600)}`);
+    const body = await response.json() as { content?: Array<{ type?: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> }> }; const blocks = body.content || []; const assistantBlocks: Block[] = blocks.map((block) => block.type === 'tool_use' ? { type: 'tool_use', id: String(block.id || crypto.randomUUID()), name: String(block.name || ''), input: block.input || {} } : { type: 'text', text: String(block.text || '') }); messages.push({ role: 'assistant', content: assistantBlocks }); const calls = assistantBlocks.filter((block): block is Extract<Block, { type: 'tool_use' }> => block.type === 'tool_use'); if (!calls.length) { responseText = assistantBlocks.filter((block): block is Extract<Block, { type: 'text' }> => block.type === 'text').map((block) => block.text).join('\n').trim(); break; }
+    const results: Block[] = []; for (const call of calls.slice(0, 6)) { toolCalls += 1; if (toolCalls > 20) throw new Error('AI_AGENT_TOOL_LIMIT_REACHED'); pushTrace(input.ctx, 'tool_call', json(call.input).slice(0, 900), call.name); try { const result = await executeTool(input.ctx, call.name, call.input); const serialized = json(result).slice(0, 14000); pushTrace(input.ctx, 'tool_result', serialized.slice(0, 1400), call.name); results.push({ type: 'tool_result', tool_use_id: call.id, content: serialized }); } catch (error) { const message = errMessage(error); pushTrace(input.ctx, 'error', message, call.name); results.push({ type: 'tool_result', tool_use_id: call.id, content: json({ error: message }), is_error: true }); } } messages.push({ role: 'user', content: results });
   }
   return { responseText, toolCalls };
 }
 
-export async function runGovernedAgent(input: {
-  tenantId: string;
-  keyId: string;
-  provider: AiProvider;
-  model: string;
-  prompt: string;
-  origin: string;
-  allowWrites?: boolean;
-  conversationId?: string | null;
-  createdBy?: string | null;
-}): Promise<GovernedAgentResult> {
-  const access = await resolveAccess(input.tenantId, input.keyId, input.provider);
-  requireMcpScope(access, 'automation:run');
-  const config = await resolveTenantProviderConfig(input.provider, input.model, input.tenantId);
-  if (!config) throw new Error(`AI_PROVIDER_NOT_CONFIGURED:${input.provider}`);
-
-  let state = input.conversationId ? await getAgentConversation(input.tenantId, input.conversationId) : null;
-  let conversation = state?.conversation;
-  if (!conversation) {
-    conversation = await createAgentConversation({ tenantId: input.tenantId, keyId: input.keyId, provider: input.provider, model: input.model, title: input.prompt.slice(0, 80), createdBy: input.createdBy });
-    state = { conversation, messages: [] };
-  } else if (conversation.provider !== input.provider || conversation.model !== input.model || conversation.key_id !== input.keyId) {
-    conversation = await updateAgentConversationEngine(input.tenantId, conversation.id, input.provider, input.model, input.keyId);
-  }
-
-  await appendAgentMessage({ tenantId: input.tenantId, conversationId: conversation.id, role: 'user', provider: input.provider, model: input.model, content: input.prompt });
-  const memories = await recallAgentMemory(input.tenantId, input.prompt, conversation.id, 12);
-  const ctx: AgentContext = { tenantId: input.tenantId, conversationId: conversation.id, access, allowWrites: input.allowWrites === true, origin: input.origin, provider: input.provider, model: input.model, trace: [], approvals: [] };
-  if (memories.length) pushTrace(ctx, 'memory', `${memories.length} recuerdos cargados antes del razonamiento.`);
-  const history = historyForModel(state?.messages || []);
-  const system = `${SYSTEM_PROMPT}${memoriesBlock(memories)}`;
-
-  const compatibleBase = config.baseUrl || OPENAI_COMPAT_BASES[input.provider];
-  const result = input.provider === 'anthropic'
-    ? await callAnthropic({ ctx, apiKey: config.apiKey, history, prompt: input.prompt.slice(0, 12000), system })
-    : await callOpenAiCompat({ ctx, apiKey: config.apiKey, baseUrl: compatibleBase || '', history, prompt: input.prompt.slice(0, 12000), system });
-
-  let responseText = result.responseText;
-  if (!responseText) responseText = ctx.approvals.length ? 'La operación quedó pendiente de aprobación humana en Gobernanza.' : 'El agente terminó sin una respuesta textual final.';
+export async function runGovernedAgent(input: { tenantId: string; keyId: string; provider: AiProvider; model: string; prompt: string; origin: string; allowWrites?: boolean; conversationId?: string | null; createdBy?: string | null }): Promise<GovernedAgentResult> {
+  const access = await resolveAccess(input.tenantId, input.keyId, input.provider); requireMcpScope(access, 'automation:run'); const config = await resolveTenantProviderConfig(input.provider, input.model, input.tenantId); if (!config) throw new Error(`AI_PROVIDER_NOT_CONFIGURED:${input.provider}`);
+  let state = input.conversationId ? await getAgentConversation(input.tenantId, input.conversationId) : null; let conversation = state?.conversation;
+  if (!conversation) { conversation = await createAgentConversation({ tenantId: input.tenantId, keyId: input.keyId, provider: input.provider, model: input.model, title: input.prompt.slice(0, 80), createdBy: input.createdBy }); state = { conversation, messages: [] }; }
+  else if (conversation.provider !== input.provider || conversation.model !== input.model || conversation.key_id !== input.keyId) conversation = await updateAgentConversationEngine(input.tenantId, conversation.id, input.provider, input.model, input.keyId);
+  await appendAgentMessage({ tenantId: input.tenantId, conversationId: conversation.id, role: 'user', provider: input.provider, model: input.model, content: input.prompt }); const memories = await recallAgentMemory(input.tenantId, input.prompt, conversation.id, 12); const ctx: AgentContext = { tenantId: input.tenantId, conversationId: conversation.id, access, allowWrites: input.allowWrites === true, origin: input.origin, provider: input.provider, model: input.model, trace: [], approvals: [] }; if (memories.length) pushTrace(ctx, 'memory', `${memories.length} recuerdos cargados antes del razonamiento.`); const history = historyForModel(state?.messages || []); const system = `${SYSTEM_PROMPT}${memoriesBlock(memories)}`;
+  const compatibleBase = config.baseUrl || OPENAI_COMPAT_BASES[input.provider]; if (input.provider !== 'anthropic' && !compatibleBase) throw new Error(`AI_PROVIDER_BASE_URL_REQUIRED:${input.provider}`);
+  const result = input.provider === 'anthropic' ? await callAnthropic({ ctx, apiKey: config.apiKey, history, prompt: input.prompt.slice(0, 12000), system }) : await callOpenAiCompat({ ctx, apiKey: config.apiKey, baseUrl: compatibleBase!, history, prompt: input.prompt.slice(0, 12000), system });
+  let responseText = result.responseText; if (!responseText) responseText = ctx.approvals.length ? 'La operación quedó pendiente de aprobación humana en Gobernanza.' : 'El agente terminó sin una respuesta textual final.';
   await appendAgentMessage({ tenantId: input.tenantId, conversationId: conversation.id, role: 'assistant', provider: input.provider, model: input.model, content: responseText, metadata: { toolCalls: result.toolCalls, approvals: ctx.approvals, trace: ctx.trace.slice(-30), memoriesUsed: memories.length } });
-
   return { ok: true, conversationId: conversation.id, provider: input.provider, model: input.model, response: responseText, trace: ctx.trace, toolCalls: result.toolCalls, approvals: ctx.approvals, memoriesUsed: memories.length };
 }

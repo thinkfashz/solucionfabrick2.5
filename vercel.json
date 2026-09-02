@@ -5,7 +5,7 @@
     "deploymentEnabled": true
   },
   "installCommand": "pnpm install --no-frozen-lockfile",
-  "buildCommand": "pnpm build",
+  "buildCommand": "pnpm build && node scripts/ensure-ai-agent-schema.mjs",
   "crons": [
     { "path": "/api/cron/fabrick-daily", "schedule": "15 12 * * *" },
     { "path": "/api/cron/newsletter", "schedule": "0 13 * * *" }

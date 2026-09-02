@@ -73,7 +73,7 @@ function cleanInputCredentials(input: unknown): Record<string, string> {
   return out;
 }
 
-async function readExisting(provider: string, tenantId: string): Promise<Record<string, string>> {
+async function readExisting(provider: string, tenantId: string): Promise<{ exists: boolean; credentials: Record<string, string> }> {
   const { data, error } = await insforgeAdmin.database
     .from('integrations')
     .select('credentials')
@@ -81,9 +81,34 @@ async function readExisting(provider: string, tenantId: string): Promise<Record<
     .eq('provider', provider)
     .limit(1);
 
-  if (error || !Array.isArray(data) || data.length === 0) return {};
+  if (error) throw new Error(error.message || 'No se pudo leer la integración existente.');
+  if (!Array.isArray(data) || data.length === 0) return { exists: false, credentials: {} };
   const row = data[0] as { credentials?: Record<string, unknown> };
-  return decryptCredentials(row.credentials ?? {}) as Record<string, string>;
+  return {
+    exists: true,
+    credentials: decryptCredentials(row.credentials ?? {}) as Record<string, string>,
+  };
+}
+
+async function persistIntegration(provider: string, tenantId: string, credentials: Record<string, unknown>, exists: boolean) {
+  const updatedAt = new Date().toISOString();
+  if (exists) {
+    const updated = await insforgeAdmin.database
+      .from('integrations')
+      .update({ credentials, updated_at: updatedAt })
+      .eq('tenant_id', tenantId)
+      .eq('provider', provider);
+    if (updated.error) throw new Error(updated.error.message || 'No se pudo actualizar la integración.');
+    return;
+  }
+
+  const inserted = await insforgeAdmin.database.from('integrations').insert([{
+    provider,
+    tenant_id: tenantId,
+    credentials,
+    updated_at: updatedAt,
+  }]);
+  if (inserted.error) throw new Error(inserted.error.message || 'No se pudo crear la integración.');
 }
 
 export async function GET(request: NextRequest) {
@@ -133,30 +158,21 @@ export async function POST(request: NextRequest) {
   if (!ALLOWED_PROVIDERS.has(provider)) return NextResponse.json({ error: 'Proveedor no permitido.' }, { status: 400 });
   if (Object.keys(submitted).length === 0) return NextResponse.json({ error: 'No hay campos para guardar.' }, { status: 400 });
 
-  const existing = await readExisting(provider, ctx.tenantId);
-  const nextCredentials = { ...existing, ...submitted };
-  const encryptedToPersist = encryptCredentials(nextCredentials);
+  try {
+    const existing = await readExisting(provider, ctx.tenantId);
+    const nextCredentials = { ...existing.credentials, ...submitted };
+    const encryptedToPersist = encryptCredentials(nextCredentials);
+    await persistIntegration(provider, ctx.tenantId, encryptedToPersist, existing.exists);
 
-  const { error } = await insforgeAdmin.database.from('integrations').upsert(
-    [
-      {
-        provider,
-        tenant_id: ctx.tenantId,
-        credentials: encryptedToPersist,
-        updated_at: new Date().toISOString(),
-      },
-    ],
-    { onConflict: 'provider,tenant_id' },
-  );
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({
-    ok: true,
-    tenantId: ctx.tenantId,
-    credentials: maskCredentials(nextCredentials),
-    encrypted: isEncryptionConfigured(),
-  });
+    return NextResponse.json({
+      ok: true,
+      tenantId: ctx.tenantId,
+      credentials: maskCredentials(nextCredentials),
+      encrypted: isEncryptionConfigured(),
+    });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo guardar la integración.' }, { status: 500 });
+  }
 }
 
 export async function DELETE(request: NextRequest) {

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireTenantAdmin } from '@/lib/tenantAdmin';
 import { runOllamaAgent } from '@/lib/ollamaAgent';
+import { assertOllamaAgentProfile } from '@/lib/ollamaAgentAccess';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
   if (prompt.length > 12000) return NextResponse.json({ error: 'El prompt supera 12.000 caracteres.' }, { status: 413 });
 
   try {
+    await assertOllamaAgentProfile(readAuth.ctx.tenantId, keyId);
     const result = await runOllamaAgent({
       tenantId: readAuth.ctx.tenantId,
       keyId,

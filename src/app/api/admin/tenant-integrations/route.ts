@@ -86,6 +86,33 @@ async function readExisting(provider: string, tenantId: string): Promise<Record<
   return decryptCredentials(row.credentials ?? {}) as Record<string, string>;
 }
 
+async function persistIntegration(provider: string, tenantId: string, credentials: Record<string, unknown>) {
+  const payload = {
+    credentials,
+    updated_at: new Date().toISOString(),
+  };
+
+  const updated = await insforgeAdmin.database
+    .from('integrations')
+    .update(payload)
+    .eq('tenant_id', tenantId)
+    .eq('provider', provider)
+    .select('provider');
+
+  const updatedRows = Array.isArray(updated.data) ? updated.data : [];
+  if (!updated.error && updatedRows.length > 0) return;
+  if (updated.error) throw new Error(updated.error.message || 'No se pudo actualizar la integración.');
+
+  const inserted = await insforgeAdmin.database.from('integrations').insert([{
+    provider,
+    tenant_id: tenantId,
+    credentials,
+    updated_at: payload.updated_at,
+  }]).select('provider');
+
+  if (inserted.error) throw new Error(inserted.error.message || 'No se pudo crear la integración.');
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireTenantAdmin(request, { resource: 'integrations', action: 'read' });
   if (!auth.ok) return auth.response;
@@ -137,19 +164,11 @@ export async function POST(request: NextRequest) {
   const nextCredentials = { ...existing, ...submitted };
   const encryptedToPersist = encryptCredentials(nextCredentials);
 
-  const { error } = await insforgeAdmin.database.from('integrations').upsert(
-    [
-      {
-        provider,
-        tenant_id: ctx.tenantId,
-        credentials: encryptedToPersist,
-        updated_at: new Date().toISOString(),
-      },
-    ],
-    { onConflict: 'provider,tenant_id' },
-  );
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    await persistIntegration(provider, ctx.tenantId, encryptedToPersist);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo guardar la integración.' }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,

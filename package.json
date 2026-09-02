@@ -6,7 +6,7 @@
   "engines": { "node": "24.x" },
   "scripts": {
     "dev": "next dev",
-    "build": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build && node scripts/ensure-intelligence-schema.mjs && node scripts/ensure-market-intel-schema.mjs && node scripts/ensure-inventory-schema.mjs && node scripts/ensure-ml-schema.mjs && node scripts/ensure-mcp-governance-schema.mjs",
+    "build": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build && node scripts/ensure-intelligence-schema.mjs && node scripts/ensure-market-intel-schema.mjs && node scripts/ensure-inventory-schema.mjs && node scripts/ensure-ml-schema.mjs && node scripts/ensure-mcp-governance-schema.mjs && node scripts/ensure-ai-agent-schema.mjs",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
@@ -83,7 +83,7 @@
     "server-only": "^0.0.1",
     "tailwind-merge": "^2.5.5",
     "three": "^0.184.0",
-    "three-stdlib": "^2.36.1",
+    "three-stdlib": "^0.184.1",
     "web-push": "^3.6.7",
     "zod": "^4.2.0",
     "zustand": "^5.0.2"
@@ -97,7 +97,7 @@
     "@types/react": "^19.0.14",
     "@types/react-dom": "^19.0.14",
     "@types/three": "^0.184.1",
-    "@types/web-push": "^3.6.4",
+    "@types/web-push": "^3.6.7",
     "@vitejs/plugin-react": "^5.1.2",
     "autoprefixer": "^10.4.22",
     "eslint": "^9.39.1",

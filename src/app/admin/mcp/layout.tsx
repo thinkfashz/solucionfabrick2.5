@@ -8,7 +8,7 @@ import { Bot, Cable, KeyRound, Link2, SearchCheck, ShieldCheck, Wrench } from 'l
 const tabs = [
   { href: '/admin/mcp', label: 'Conectar ChatGPT', icon: Link2, exact: true },
   { href: '/admin/mcp/harness', label: 'AI Harness', icon: Bot, exact: true },
-  { href: '/admin/mcp/harness/agent', label: 'Ollama Agent', icon: Wrench },
+  { href: '/admin/mcp/harness/agent', label: 'Fabrick Agent', icon: Wrench },
   { href: '/admin/mcp/gobernanza', label: 'Gobernanza', icon: ShieldCheck },
   { href: '/admin/mcp/oauth', label: 'OAuth avanzado', icon: KeyRound, exact: true },
   { href: '/admin/mcp/oauth/diagnostico', label: 'Diagnóstico', icon: SearchCheck },

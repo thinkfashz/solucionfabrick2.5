@@ -71,6 +71,7 @@ type ElementScope = 'page' | 'global';
 type TargetMode = 'single' | 'similar';
 type MobilePanel = 'pages' | 'inspector' | null;
 type InspectorTab = 'content' | 'appearance' | 'layout';
+type NativeInspectorControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
 const widthFor: Record<VisualCmsDevice, string> = {
   desktop: '100%',
@@ -116,6 +117,10 @@ function extractBackgroundUrl(value: string): string {
   if (!clean || clean === 'none') return '';
   const match = clean.match(/^url\(["']?(.*?)["']?\)$/i);
   return match?.[1] || clean;
+}
+
+function normalizeCaption(value: string | null | undefined) {
+  return (value || '').replace(/\s+/g, ' ').trim();
 }
 
 export default function UniversalVisualEditorClient() {
@@ -204,10 +209,10 @@ export default function UniversalVisualEditorClient() {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: string; route?: string; element?: Selection } | null;
-      if (data?.type === 'cms:visual-ready') {
+      if (data?.type === 'cms:preview-ready' || data?.type === 'cms:visual-ready') {
         setIframeReady(true);
         sendPreview(draft);
-        setStatus('Vista lista. Toca cualquier elemento para editarlo.');
+        if (data.type === 'cms:visual-ready') setStatus('Vista lista. Toca cualquier elemento para editarlo.');
       }
       if (data?.type === 'cms:visual-select' && data.element) {
         const selected = data.element;
@@ -248,6 +253,64 @@ export default function UniversalVisualEditorClient() {
     updateSelected({ styles: { [styleScope]: nextStyle } });
   }
 
+  // The contextual quick editor lives in a sibling component and updates the
+  // advanced inspector controls programmatically. React 19 can legitimately
+  // ignore those synthetic value changes in some cases. Listen to the native
+  // input/change events as a reliability bridge so the draft remains the one
+  // source of truth even when the contextual toolbar initiated the edit.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const control = event.target;
+      if (!(control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement || control instanceof HTMLSelectElement)) return;
+      if (!control.closest('[data-visual-cms-editor-root="1"]')) return;
+      const label = control.closest('label');
+      const caption = normalizeCaption(label?.querySelector<HTMLElement>(':scope > span')?.textContent);
+      if (!caption) return;
+      const value = control.value;
+
+      switch (caption) {
+        case 'Texto': updateSelected({ text: value }); break;
+        case 'Destino del enlace': updateSelected({ href: value }); break;
+        case 'URL / Cloudinary': updateSelected({ src: value }); break;
+        case 'Texto alternativo': updateSelected({ alt: value }); break;
+        case 'Reemplazar por SVG / PNG': updateSelected({ iconUrl: value }); break;
+        case 'Descripción accesible': updateSelected({ iconAlt: value }); break;
+        case 'Texto / icono': patchStyle('color', value); break;
+        case 'Fondo': patchStyle('backgroundColor', value); break;
+        case 'Imagen de fondo': patchBackgroundImage(value); break;
+        case 'Ajuste fondo': patchStyle('backgroundSize', value); break;
+        case 'Posición': patchStyle('backgroundPosition', value); break;
+        case 'Tipografía': patchStyle('fontFamily', value); break;
+        case 'Tamaño': patchStyle('fontSize', value); break;
+        case 'Peso': patchStyle('fontWeight', value); break;
+        case 'Interlineado': patchStyle('lineHeight', value); break;
+        case 'Tracking': patchStyle('letterSpacing', value); break;
+        case 'Alineación': patchStyle('textAlign', value); break;
+        case 'Radio': patchStyle('borderRadius', value); break;
+        case 'Grosor borde': patchStyle('borderWidth', value); break;
+        case 'Color borde': patchStyle('borderColor', value); break;
+        case 'Sombra': patchStyle('boxShadow', value); break;
+        case 'Ajuste': patchStyle('objectFit', value); break;
+        case 'Padding': patchStyle('padding', value); break;
+        case 'Margen': patchStyle('margin', value); break;
+        case 'Ancho': patchStyle('width', value); break;
+        case 'Ancho máx.': patchStyle('maxWidth', value); break;
+        case 'Altura': patchStyle('height', value); break;
+        case 'Altura mín.': patchStyle('minHeight', value); break;
+        case 'Gap': patchStyle('gap', value); break;
+        case 'Opacidad': patchStyle('opacity', value); break;
+        default: break;
+      }
+    };
+
+    document.addEventListener('input', handler, true);
+    document.addEventListener('change', handler, true);
+    return () => {
+      document.removeEventListener('input', handler, true);
+      document.removeEventListener('change', handler, true);
+    };
+  }, [selection, targetSelector, targetRoute, styleScope, override]);
+
   function resetSelected() {
     if (!selection || !targetSelector) return;
     setDraft((current) => removeVisualElement(current, targetRoute, targetSelector));
@@ -274,22 +337,33 @@ export default function UniversalVisualEditorClient() {
 
   async function publish() {
     setPublishing(true);
-    setStatus('Publicando cambios visuales…');
+    setStatus('Publicando y verificando cambios visuales…');
     try {
       const normalized = normalizeVisualCmsOverrides(draft);
       const response = await fetch('/api/admin/site-structure/visual-overrides', {
         method: 'POST',
         credentials: 'same-origin',
+        cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: normalized }),
       });
-      const body = await response.json().catch(() => ({})) as { content?: unknown; error?: string };
+      const body = await response.json().catch(() => ({})) as { content?: unknown; error?: string; verified?: boolean };
       if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
-      const saved = normalizeVisualCmsOverrides(body.content ?? normalized);
+      if (body.verified !== true) throw new Error('El servidor no confirmó la persistencia del cambio.');
+
+      const verifyResponse = await fetch(`/api/admin/site-structure/visual-overrides?verify=${Date.now()}`, {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      const verifyBody = await verifyResponse.json().catch(() => ({})) as { content?: unknown; error?: string };
+      if (!verifyResponse.ok) throw new Error(verifyBody.error || `Verificación HTTP ${verifyResponse.status}`);
+      const saved = normalizeVisualCmsOverrides(verifyBody.content ?? body.content ?? normalized);
+
       setPublished(saved);
       setDraft(saved);
+      sendPreview(saved);
       window.localStorage.removeItem(LOCAL_KEY);
-      setStatus('Publicado. Los cambios ya están disponibles en el frontend.');
+      setStatus('Publicado y verificado. El cambio quedó guardado en el sitio.');
     } catch (error) {
       setStatus(error instanceof Error ? `Error al publicar: ${error.message}` : 'Error al publicar.');
     } finally {
@@ -411,7 +485,7 @@ export default function UniversalVisualEditorClient() {
   );
 
   return (
-    <div className="relative flex h-[calc(100dvh-5.25rem)] min-h-[520px] flex-col overflow-hidden rounded-xl bg-[#08090A] text-white md:h-[calc(100dvh-6rem)] xl:min-h-[650px]">
+    <div data-visual-cms-editor-root="1" className="relative flex h-[calc(100dvh-5.25rem)] min-h-[520px] flex-col overflow-hidden rounded-xl bg-[#08090A] text-white md:h-[calc(100dvh-6rem)] xl:min-h-[650px]">
       <header className="flex min-h-12 shrink-0 items-center gap-2 border-b border-white/8 bg-[#08090A]/96 px-2.5 py-1.5 backdrop-blur-xl sm:min-h-14 sm:px-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#FFB000]" /><p className="text-[8px] font-black uppercase tracking-[.15em] text-[#FFB000]">Visual CMS</p></div>

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import SaasSubnav from '@/components/admin/SaasSubnav';
 
 export default async function SaasRootLayout({ children }: { children: ReactNode }) {
   const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
@@ -10,5 +11,10 @@ export default async function SaasRootLayout({ children }: { children: ReactNode
   if (!session) redirect('/admin/login');
   if (session.rol !== 'superadmin') redirect('/admin?forbidden=root');
 
-  return children;
+  return (
+    <>
+      <SaasSubnav />
+      {children}
+    </>
+  );
 }

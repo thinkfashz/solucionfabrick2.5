@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
+import { ArrowUpRight, Check, Plus } from 'lucide-react';
 import { navigateWithTransition } from '@/lib/routeTransition';
 import { useCatalogProducts, type CatalogProduct } from '@/hooks/useCatalogProducts';
 import { useCartContext } from '@/context/CartContext';
@@ -43,40 +44,60 @@ export default function TiendaSection({ limit = 6, title = 'Productos más solic
     addedTimer.current = window.setTimeout(() => setAddedProductId(null), 1800);
   };
 
-  if (visibleProducts.length === 0) return <div className="border-t border-black/10 py-8 text-center text-sm font-black text-black/45">El catálogo se está actualizando. <Link href={primaryCtaHref} className="text-[#B96F00]">Ir a la tienda</Link></div>;
+  if (visibleProducts.length === 0) return <div className="border-t border-black/10 py-8 text-center text-sm font-black text-black/45">El catálogo se está actualizando. <Link href={primaryCtaHref} className="text-[#B96A16]">Ir a la tienda</Link></div>;
 
   if (variant === 'banner') return <FeaturedProductsCarousel products={visibleProducts} title={title} description={description} ctaHref={primaryCtaHref} ctaLabel={primaryCtaLabel} addedProductId={addedProductId} onAdd={addProduct} onBuy={goToProduct} />;
 
   return (
-    <section className="py-6 md:py-8">
-      <div className="mb-6 grid gap-3 border-b border-black/10 pb-5 sm:grid-cols-[1fr_auto] sm:items-end">
+    <section className="py-4 md:py-6">
+      <div className="mb-7 flex flex-col gap-4 border-b border-black/[.07] pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#B96F00]">Tienda Soluciones Fabrick</p>
-          <h3 className="mt-2 text-2xl font-black tracking-[-.04em] text-[#08090A] md:text-3xl">{title}</h3>
+          <p className="text-[9px] font-black uppercase tracking-[.18em] text-[#B96A16]">Selección Fabrick</p>
+          <h3 className="mt-2 text-2xl font-black tracking-[-.045em] text-[#0B0C0E] md:text-3xl">{title}</h3>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-black/45">{description}</p>
         </div>
-        <Link href={primaryCtaHref} className="text-xs font-black text-[#B96F00]">{primaryCtaLabel} →</Link>
+        <Link href={primaryCtaHref} className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[.12em] text-[#B96A16] transition hover:gap-2.5">{primaryCtaLabel}<ArrowUpRight className="h-3.5 w-3.5" /></Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-3 lg:grid-cols-6">
+      <div className="-mx-4 grid auto-cols-[minmax(245px,78vw)] grid-flow-col gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid-flow-row sm:grid-cols-2 sm:px-0 md:grid-cols-3 xl:grid-cols-6">
         {visibleProducts.map((product) => {
           const price = finalProductPrice(product);
           const discount = Number(product.discountPercentage ?? product.discount_percentage ?? 0);
-          return <article key={product.id} className="min-w-0">
-            <button type="button" onClick={() => goToProduct(product)} className="relative aspect-square w-full overflow-hidden bg-white text-left" aria-label={`Ver ${displayProductName(product.name)}`}>
-              {product.img ? <img src={product.img} alt={displayProductName(product.name)} width={480} height={480} loading="lazy" decoding="async" fetchPriority="low" className="h-full w-full object-contain transition duration-500 hover:scale-[1.03]" /> : null}
-              {discount > 0 ? <span className="absolute left-2 top-2 rounded-full bg-[#F5871F] px-2 py-1 text-[9px] font-black text-[#08090A]">-{discount}%</span> : null}
-            </button>
-            <p className="mt-3 text-[9px] font-black uppercase tracking-[.12em] text-[#B96F00]">{product.category}</p>
-            <button type="button" onClick={() => goToProduct(product)} className="mt-1 line-clamp-2 min-h-[2.55rem] text-left text-sm font-black leading-[1.15] text-[#08090A]">{displayProductName(product.name)}</button>
-            <div className="mt-3 border-t border-black/10 pt-3">
-              <strong className="block text-lg font-black tracking-[-.03em] text-[#08090A]">{CLP(price)}</strong>
-              <span className="mt-1 block text-[9px] font-black uppercase tracking-[.1em] text-emerald-700">IVA incluido</span>
-            </div>
-            <button type="button" disabled={product.stock === 0} onClick={() => addProduct(product)} className="mt-3 min-h-10 w-full rounded-full border border-black/15 px-3 text-[10px] font-black text-[#08090A] transition hover:border-[#F5871F] hover:bg-[#F5871F]/10 disabled:opacity-35">{addedProductId === product.id ? 'Añadido' : product.stock === 0 ? 'Sin stock' : 'Agregar'}</button>
-          </article>;
+          const added = addedProductId === product.id;
+          return (
+            <article key={product.id} className="group min-w-0 rounded-[1.45rem] border border-black/[.055] bg-white p-2.5 transition duration-200 hover:-translate-y-0.5 hover:border-black/[.09] hover:shadow-[0_16px_36px_rgba(40,30,20,.07)]">
+              <button type="button" onClick={() => goToProduct(product)} className="relative aspect-[1.04/1] w-full overflow-hidden rounded-[1.1rem] bg-[#F5F1EB] text-left" aria-label={`Ver ${displayProductName(product.name)}`}>
+                {product.img ? <img src={product.img} alt={displayProductName(product.name)} width={480} height={480} loading="lazy" decoding="async" fetchPriority="low" className="h-full w-full object-contain p-3 transition duration-500 group-hover:scale-[1.025]" /> : null}
+                {discount > 0 ? <span className="absolute left-2.5 top-2.5 rounded-full bg-[#F28C28] px-2.5 py-1 text-[8px] font-black text-[#0B0C0E]">-{discount}%</span> : null}
+                <span className="absolute right-2.5 top-2.5 grid h-8 w-8 place-items-center rounded-full bg-white/85 text-[#0B0C0E] opacity-0 backdrop-blur transition group-hover:opacity-100"><ArrowUpRight className="h-3.5 w-3.5" /></span>
+              </button>
+
+              <div className="px-1 pb-1 pt-3">
+                <p className="text-[8px] font-black uppercase tracking-[.13em] text-[#A3611B]">{product.category}</p>
+                <button type="button" onClick={() => goToProduct(product)} className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-left text-sm font-black leading-[1.18] text-[#0B0C0E]">{displayProductName(product.name)}</button>
+
+                <div className="mt-4 flex items-end justify-between gap-2 border-t border-black/[.06] pt-3">
+                  <div>
+                    <strong className="block text-lg font-black tracking-[-.035em] text-[#0B0C0E]">{CLP(price)}</strong>
+                    <span className="mt-0.5 block text-[8px] font-black uppercase tracking-[.1em] text-emerald-700">IVA incluido</span>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={product.stock === 0}
+                    onClick={() => addProduct(product)}
+                    aria-label={product.stock === 0 ? 'Sin stock' : `Agregar ${displayProductName(product.name)}`}
+                    className={`grid h-10 w-10 shrink-0 place-items-center rounded-full transition disabled:opacity-30 ${added ? 'bg-emerald-600 text-white' : 'bg-[#0B0C0E] text-[#F5A13D] hover:bg-[#24262A]'}`}
+                  >
+                    {added ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </article>
+          );
         })}
       </div>
+
+      <p className="mt-2 text-[9px] text-black/32 sm:hidden">Desliza para ver más productos →</p>
     </section>
   );
 }

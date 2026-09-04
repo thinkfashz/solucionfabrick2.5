@@ -10,6 +10,7 @@ import {
   type HomeVisualSection,
 } from '@/lib/homeVisualCms';
 import { getAdvancedStyle } from '@/lib/homeVisualLayout';
+import { HOME_PREMIUM_VISUALS } from '@/lib/homePremiumVisuals';
 
 interface StaticConstructionHeroProps {
   section?: HomeVisualSection;
@@ -31,7 +32,7 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
   const positionX = clampPercent(advanced.backgroundPositionX, 50);
   const positionY = clampPercent(advanced.backgroundPositionY, 50);
   const sectionAnchor = current.id === 'home-hero' ? 'inicio' : current.id;
-  const visualImage = '/images/fabrick-construction-hero.webp';
+  const visualImage = HOME_PREMIUM_VISUALS.hero;
   const primaryLabel = textContent(current, 'primaryLabel', 'Cotizar proyecto');
   const legacyPrimaryHref = textContent(current, 'primaryHref', '/presupuesto');
   const primaryHref = primaryLabel === 'Cotizar proyecto' && legacyPrimaryHref === '#cotizador' ? '/presupuesto' : legacyPrimaryHref;
@@ -81,7 +82,7 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
 
         <div className="relative overflow-hidden rounded-[2rem] border border-white/[.08] bg-white/[.025] shadow-[0_28px_80px_rgba(0,0,0,.28)]">
           <div className="relative aspect-[4/5] min-h-[430px] lg:min-h-[560px]">
-            <img src={visualImage} alt="Proyecto de construcción y remodelación Soluciones Fabrick" className="absolute inset-0 h-full w-full object-cover" loading="eager" decoding="async" />
+            <img src={visualImage} alt="Vivienda contemporánea de referencia · Soluciones Fabrick" className="absolute inset-0 h-full w-full object-cover" loading="eager" decoding="async" fetchPriority="high" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/22 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
               <p data-cms-field="sideEyebrow" className="text-[9px] font-black uppercase tracking-[.2em]" style={{ color: accent }}>{textContent(current, 'sideEyebrow', 'Empieza por lo que necesitas')}</p>

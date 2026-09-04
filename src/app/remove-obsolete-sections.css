@@ -1,13 +1,12 @@
 /* Retiro solicitado desde producción:
    - Oculta el bloque home "Insumos de Autor".
-   - Retira accesos visibles a rutas eliminadas: /juego y /soluciones.
-   Las páginas reales se eliminan del árbol de rutas en commits separados. */
+   - Mantiene oculto el acceso a /juego, que continúa retirado.
+   - /soluciones vuelve a estar disponible como guía informativa. */
 section#tienda {
   display: none !important;
 }
 
 a[href="/juego"],
-a[href="/soluciones"],
 button[aria-label="Diseñar mi casa"] {
   display: none !important;
 }

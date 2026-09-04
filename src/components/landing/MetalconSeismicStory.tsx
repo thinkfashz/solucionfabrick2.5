@@ -8,6 +8,7 @@ import {
   textContent,
   type HomeVisualSection,
 } from '@/lib/homeVisualCms';
+import { HOME_PREMIUM_VISUALS } from '@/lib/homePremiumVisuals';
 
 export default function MetalconSeismicStory({ section }: { section?: HomeVisualSection }) {
   const current = section ?? getHomeSection(DEFAULT_HOME_PAGE, 'seismic');
@@ -29,7 +30,7 @@ export default function MetalconSeismicStory({ section }: { section?: HomeVisual
       <div className="mx-auto max-w-[1320px]">
         <div className="grid gap-8 lg:grid-cols-[.78fr_1.22fr] lg:items-stretch lg:gap-10">
           <div className="relative min-h-[390px] overflow-hidden rounded-[1.8rem] border border-white/[.08] bg-white/[.025] lg:min-h-[540px]">
-            <img src="/images/landing/fabrick-seismic-structure.webp" alt="Estructura y criterio constructivo Soluciones Fabrick" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+            <img src={HOME_PREMIUM_VISUALS.metalcon} alt="Estructura Steel Frame y Metalcon · Soluciones Fabrick" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/36 to-black/8" />
             <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
               <p data-cms-field="eyebrow" className="text-[9px] font-black uppercase tracking-[.2em]" style={{ color: accent }}>{textContent(current, 'eyebrow')}</p>

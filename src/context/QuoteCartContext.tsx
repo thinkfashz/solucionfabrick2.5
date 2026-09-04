@@ -114,7 +114,7 @@ export function QuoteCartProvider({ children }: { children: React.ReactNode }) {
             ...updated[index],
             ...item,
             id: item.id ?? updated[index].id,
-            quantity: Math.max(1, Number(item.quantity) || 1),
+            quantity: Math.max(0.01, Number(item.quantity) || 0.01),
           };
           return updated;
         }
@@ -137,18 +137,20 @@ export function QuoteCartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateQuantity = useCallback((id: string, quantity: number) => {
-    if (!Number.isFinite(quantity) || quantity < 1) return;
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
     setItems((previous) => previous.map((item) => {
       if (item.id !== id) return item;
+      const minimum = item.kind === 'service' ? 0.01 : 1;
+      const nextQuantity = Math.max(minimum, quantity);
       const marketMinUnit = finiteMetaNumber(item.meta, 'marketMinUnit');
       const marketMaxUnit = finiteMetaNumber(item.meta, 'marketMaxUnit');
       return {
         ...item,
-        quantity,
+        quantity: nextQuantity,
         meta: {
           ...item.meta,
-          ...(marketMinUnit ? { marketLow: marketMinUnit * quantity } : {}),
-          ...(marketMaxUnit ? { marketHigh: marketMaxUnit * quantity } : {}),
+          ...(marketMinUnit ? { marketLow: marketMinUnit * nextQuantity } : {}),
+          ...(marketMaxUnit ? { marketHigh: marketMaxUnit * nextQuantity } : {}),
         },
       };
     }));

@@ -24,13 +24,17 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
   const overlay = Math.max(0, Math.min(100, Number(current.style.overlay ?? 58))) / 100;
   const accent = current.style.accent || '#D77A2D';
   const configuredBackground = current.style.background || '';
-  const background = !configuredBackground || configuredBackground.toUpperCase() === '#08090A' ? '#0E0E10' : configuredBackground;
+  const normalizedBackground = configuredBackground.toUpperCase();
+  const background = !configuredBackground || normalizedBackground === '#08090A' || normalizedBackground === '#2F4F6F' ? '#0E0E10' : configuredBackground;
   const textColor = current.style.textColor || '#F6F1E8';
   const backgroundFit = advanced.backgroundFit === 'contain' ? 'contain' : 'cover';
   const positionX = clampPercent(advanced.backgroundPositionX, 50);
   const positionY = clampPercent(advanced.backgroundPositionY, 50);
   const sectionAnchor = current.id === 'home-hero' ? 'inicio' : current.id;
   const visualImage = '/images/fabrick-construction-hero.webp';
+  const primaryLabel = textContent(current, 'primaryLabel', 'Cotizar proyecto');
+  const legacyPrimaryHref = textContent(current, 'primaryHref', '/presupuesto');
+  const primaryHref = primaryLabel === 'Cotizar proyecto' && legacyPrimaryHref === '#cotizador' ? '/presupuesto' : legacyPrimaryHref;
 
   return (
     <section
@@ -60,7 +64,7 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
           <p data-cms-field="description" className="mt-6 max-w-2xl text-[15px] leading-7 opacity-62 sm:text-lg sm:leading-8">{textContent(current, 'description')}</p>
 
           <div className="mt-7 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:flex-wrap">
-            <Link data-cms-field="primaryLabel" href={textContent(current, 'primaryHref', '/presupuesto')} className="inline-flex min-h-12 items-center justify-center rounded-full px-6 text-center text-xs font-black text-[#111214] transition hover:brightness-105 sm:min-h-13 sm:px-7 sm:text-sm" style={{ backgroundColor: accent }}>{textContent(current, 'primaryLabel', 'Cotizar proyecto')}</Link>
+            <Link data-cms-field="primaryLabel" href={primaryHref} className="inline-flex min-h-12 items-center justify-center rounded-full px-6 text-center text-xs font-black text-[#111214] transition hover:brightness-105 sm:min-h-13 sm:px-7 sm:text-sm" style={{ backgroundColor: accent }}>{primaryLabel}</Link>
             <Link data-cms-field="secondaryLabel" href={textContent(current, 'secondaryHref', '/proyectos')} className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/12 bg-white/[.025] px-6 text-center text-xs font-black transition hover:bg-white/[.055] sm:min-h-13 sm:px-7 sm:text-sm">{textContent(current, 'secondaryLabel', 'Ver inspiraciones')}</Link>
           </div>
 

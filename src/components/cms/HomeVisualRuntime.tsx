@@ -57,7 +57,10 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
     const params = new URLSearchParams(window.location.search);
     const preview = params.get('cms') === 'preview';
     const visualPreview = params.get('cmsVisual') === '1' && window.parent !== window;
-    setPreviewMode(preview);
+    // The universal editor already supplies the selection overlay and inspector.
+    // Keep the Home-only toolbar for the dedicated structure editor so both
+    // systems never render competing menus over the same preview.
+    setPreviewMode(preview && !visualPreview);
     if (!preview && !visualPreview) return;
 
     const handler = (event: MessageEvent) => {

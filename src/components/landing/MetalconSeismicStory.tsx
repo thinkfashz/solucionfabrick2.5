@@ -17,6 +17,12 @@ export default function MetalconSeismicStory({ section }: { section?: HomeVisual
   const textColor = current.style.textColor || '#F6F1E8';
   const accent = current.style.accent || '#C69A52';
   const titleId = current.id === 'home-seismic' ? 'sismo-title' : `${current.id}-title`;
+  const primaryLabel = textContent(current, 'primaryLabel', 'Ver solución Metalcon');
+  const secondaryLabel = textContent(current, 'secondaryLabel', 'Cotizar estructura');
+  const legacyPrimaryHref = textContent(current, 'primaryHref', '/servicios/metalcon');
+  const legacySecondaryHref = textContent(current, 'secondaryHref', '/presupuesto?servicio=metalcon');
+  const primaryHref = primaryLabel === 'Ver solución Metalcon' && legacyPrimaryHref === '/presupuesto?servicio=metalcon' ? '/servicios/metalcon' : legacyPrimaryHref;
+  const secondaryHref = secondaryLabel === 'Cotizar estructura' && legacySecondaryHref === '/servicios/metalcon' ? '/presupuesto?servicio=metalcon' : legacySecondaryHref;
 
   return (
     <section aria-labelledby={titleId} data-cms-section="home-seismic" className="px-4 py-18 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
@@ -57,8 +63,8 @@ export default function MetalconSeismicStory({ section }: { section?: HomeVisual
                   <p data-cms-field="note" className="mt-3 max-w-xl text-[9px] leading-5 opacity-28">{textContent(current, 'note')}</p>
                 </div>
                 <div className="flex flex-col gap-2 sm:min-w-[190px]">
-                  <Link data-cms-field="primaryLabel" href={textContent(current, 'primaryHref', '/servicios/metalcon')} className="inline-flex min-h-11 items-center justify-center rounded-full px-5 text-xs font-black text-[#111214] transition hover:brightness-110" style={{ backgroundColor: accent }}>{textContent(current, 'primaryLabel', 'Ver solución Metalcon')}</Link>
-                  <Link data-cms-field="secondaryLabel" href={textContent(current, 'secondaryHref', '/presupuesto?servicio=metalcon')} className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/[.12] px-5 text-xs font-black transition hover:bg-white/[.045]">{textContent(current, 'secondaryLabel', 'Cotizar estructura')}</Link>
+                  <Link data-cms-field="primaryLabel" href={primaryHref} className="inline-flex min-h-11 items-center justify-center rounded-full px-5 text-xs font-black text-[#111214] transition hover:brightness-110" style={{ backgroundColor: accent }}>{primaryLabel}</Link>
+                  <Link data-cms-field="secondaryLabel" href={secondaryHref} className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/[.12] px-5 text-xs font-black transition hover:bg-white/[.045]">{secondaryLabel}</Link>
                 </div>
               </div>
             </div>

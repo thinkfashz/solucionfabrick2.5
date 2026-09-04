@@ -11,7 +11,8 @@ import {
 export default function CalculatorPlanShowcase({ section }: { section?: HomeVisualSection }) {
   const current = section ?? getHomeSection(DEFAULT_HOME_PAGE, 'price-guide');
   const benefits = objectList(current, 'benefits');
-  const background = current.style.background || '#EEE8DF';
+  const configuredBackground = current.style.background || '';
+  const background = !configuredBackground || configuredBackground.toUpperCase() === '#FFF9EE' ? '#EEE8DF' : configuredBackground;
   const textColor = current.style.textColor || '#0B0C0E';
   const accent = current.style.accent || '#B96A16';
 

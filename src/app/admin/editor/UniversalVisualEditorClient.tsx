@@ -280,7 +280,6 @@ export default function UniversalVisualEditorClient() {
           const scale = Math.min(3, Math.max(0.35, pinch.scale));
           const nextStyle = {
             ...(override?.styles?.[device] || {}),
-            ...(selection.isImage ? { objectFit: 'cover' as const } : {}),
             transform: `scale(${scale})`,
             transformOrigin: 'center center',
           };

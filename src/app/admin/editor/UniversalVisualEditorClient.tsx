@@ -115,6 +115,29 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
   );
 }
 
+function gradientParts(value: string): { first: string; second: string; angle: number } {
+  const match = value.match(/linear-gradient\(\s*([\d.]+)deg\s*,\s*(#[0-9a-f]{6})[^,]*,\s*(#[0-9a-f]{6})/i);
+  return match
+    ? { angle: Number(match[1]) || 135, first: match[2], second: match[3] }
+    : { angle: 135, first: '#F5871F', second: '#08090A' };
+}
+
+function GradientField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const parts = gradientParts(value);
+  const update = (next: Partial<typeof parts>) => {
+    const merged = { ...parts, ...next };
+    onChange(`linear-gradient(${merged.angle}deg, ${merged.first} 0%, ${merged.second} 100%)`);
+  };
+  return (
+    <div className="grid gap-2 rounded-xl border border-white/10 bg-black/25 p-2.5">
+      <div className="flex items-center justify-between gap-2"><span className="text-[8px] font-black uppercase tracking-[.12em] text-white/38">Degradado de dos colores</span><span className="h-7 w-16 rounded-lg border border-white/10" style={{ backgroundImage: `linear-gradient(${parts.angle}deg, ${parts.first}, ${parts.second})` }} /></div>
+      <div className="grid grid-cols-2 gap-2"><ColorField label="Color inicial" value={parts.first} onChange={(first) => update({ first })} /><ColorField label="Color final" value={parts.second} onChange={(second) => update({ second })} /></div>
+      <label className="grid gap-1"><span className="text-[8px] font-black uppercase tracking-[.12em] text-white/38">Dirección · {parts.angle}°</span><input type="range" min="0" max="360" step="1" value={parts.angle} onChange={(event) => update({ angle: Number(event.target.value) })} className="h-8 w-full accent-[#FFB000]" /></label>
+      <button type="button" onClick={() => onChange('none')} className="h-8 rounded-lg border border-white/10 text-[8px] font-black text-white/45">Quitar degradado</button>
+    </div>
+  );
+}
+
 function extractBackgroundUrl(value: string): string {
   const clean = value.trim();
   if (!clean || clean === 'none') return '';
@@ -472,6 +495,7 @@ export default function UniversalVisualEditorClient() {
             {styleScopeControl}
             <div className="grid grid-cols-2 gap-1.5"><ColorField label="Texto / icono" value={valueFor('color')} onChange={(value) => patchStyle('color', value)} /><ColorField label="Fondo" value={valueFor('backgroundColor')} onChange={(value) => patchStyle('backgroundColor', value)} /></div>
             <Field label="Imagen de fondo" value={backgroundUrl} onChange={patchBackgroundImage} placeholder="https://.../fondo.webp" />
+            <GradientField value={valueFor('backgroundImage')} onChange={(value) => patchStyle('backgroundImage', value)} />
             <div className="grid grid-cols-2 gap-1.5"><SelectField label="Ajuste fondo" value={valueFor('backgroundSize') || 'cover'} onChange={(value) => patchStyle('backgroundSize', value)} options={[["cover","Cubrir"],["contain","Contener"],["auto","Original"]]} /><Field label="Posición" value={valueFor('backgroundPosition')} onChange={(value) => patchStyle('backgroundPosition', value)} placeholder="center center" /></div>
             <Field label="Tipografía" value={valueFor('fontFamily')} onChange={(value) => patchStyle('fontFamily', value)} placeholder="Manrope, sans-serif" />
             <div className="grid grid-cols-2 gap-1.5"><Field label="Tamaño" value={valueFor('fontSize')} onChange={(value) => patchStyle('fontSize', value)} placeholder="16px" /><Field label="Peso" value={valueFor('fontWeight')} onChange={(value) => patchStyle('fontWeight', value)} placeholder="700" /></div>

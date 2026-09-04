@@ -49,14 +49,13 @@ export default function TiendaSection({ limit = 6, title = 'Productos más solic
   if (variant === 'banner') return <FeaturedProductsCarousel products={visibleProducts} title={title} description={description} ctaHref={primaryCtaHref} ctaLabel={primaryCtaLabel} addedProductId={addedProductId} onAdd={addProduct} onBuy={goToProduct} />;
 
   return (
-    <section className="py-4 md:py-6">
-      <div className="mb-7 flex flex-col gap-4 border-b border-black/[.07] pb-6 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[.18em] text-[#B96A16]">Selección Fabrick</p>
-          <h3 className="mt-2 text-2xl font-black tracking-[-.045em] text-[#0B0C0E] md:text-3xl">{title}</h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-black/45">{description}</p>
+    <section className="py-3 md:py-5">
+      <div className="mb-5 flex items-center justify-between gap-4 border-b border-black/[.07] pb-4">
+        <div className="min-w-0">
+          <p className="truncate text-[9px] font-black uppercase tracking-[.16em] text-[#A3611B]">{title}</p>
+          {description ? <p className="mt-1 line-clamp-1 max-w-2xl text-[10px] leading-5 text-black/34">{description}</p> : null}
         </div>
-        <Link href={primaryCtaHref} className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[.12em] text-[#B96A16] transition hover:gap-2.5">{primaryCtaLabel}<ArrowUpRight className="h-3.5 w-3.5" /></Link>
+        <Link href={primaryCtaHref} className="inline-flex shrink-0 items-center gap-1 text-[9px] font-black uppercase tracking-[.11em] text-[#B96A16] transition hover:gap-2">{primaryCtaLabel}<ArrowUpRight className="h-3.5 w-3.5" /></Link>
       </div>
 
       <div className="-mx-4 grid auto-cols-[minmax(245px,78vw)] grid-flow-col gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid-flow-row sm:grid-cols-2 sm:px-0 md:grid-cols-3 xl:grid-cols-6">

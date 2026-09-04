@@ -6,6 +6,7 @@ export type HomeVisualSectionType =
   | 'calculator'
   | 'process'
   | 'story'
+  | 'inspiration'
   | 'seismic'
   | 'store'
   | 'contact'
@@ -142,6 +143,25 @@ export const DEFAULT_HOME_PAGE: HomePageContent = {
         primaryHref: '/presupuesto',
         secondaryLabel: 'Ver proyectos',
         secondaryHref: '/proyectos',
+      },
+    },
+    {
+      id: 'home-inspiration',
+      type: 'inspiration',
+      label: 'Inspiraciones y proyectos',
+      enabled: true,
+      order: 55,
+      style: { ...dark, background: '#111214' },
+      content: {
+        eyebrow: 'Inspiración Fabrick',
+        title: 'Encuentra una idea y conviértela en tu proyecto.',
+        description: 'Explora ambientes, terminaciones y soluciones relacionadas con los servicios que ofrecemos. Abre cada álbum para ver más imágenes del mismo proyecto.',
+        ctaLabel: 'Ver todas las inspiraciones',
+        ctaHref: '/proyectos',
+        emptyText: 'Sube imágenes desde Proyectos en el administrador para mostrarlas automáticamente aquí.',
+        servicesEyebrow: 'Servicios + referencias visuales',
+        servicesTitle: 'Mira una idea y reconoce qué podemos construir o transformar.',
+        servicesDescription: 'Las imágenes se reutilizan automáticamente desde la biblioteca de Inspiración para relacionar cada servicio con una referencia visual realmente compatible.',
       },
     },
     {

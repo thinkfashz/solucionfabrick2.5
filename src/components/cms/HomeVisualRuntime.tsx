@@ -16,6 +16,7 @@ import {
 } from '@/components/LandingSections';
 import CmsSectionMotion from '@/components/cms/CmsSectionMotion';
 import HomeVisualLibraryBlock, { type HomeVisualLibraryRendererId } from '@/components/cms/HomeVisualLibraryBlocks';
+import HomeInspirationsSection from '@/components/landing/HomeInspirationsSection';
 import HomeVisualTextToolbar from '@/components/cms/HomeVisualTextToolbar';
 import styles from '@/components/cms/HomeVisualRuntime.module.css';
 import {
@@ -484,6 +485,8 @@ function HomeBlock({
       return <LandingProcessSection section={section} />;
     case 'story':
       return <FabrickStorySection section={section} />;
+    case 'inspiration':
+      return <HomeInspirationsSection section={section} />;
     case 'seismic':
       return <MetalconSeismicStory section={section} />;
     case 'store':

@@ -28,19 +28,22 @@ function sectionStyle(section: HomeVisualSection, fallbackBackground: string, fa
 
 export function LandingStoreSection({ section }: { section?: HomeVisualSection }) {
   const current = section ?? getHomeSection(DEFAULT_HOME_PAGE, 'store');
-  const accent = current.style.accent || '#B96F00';
+  const accent = current.style.accent || '#B96A16';
   const sectionAnchor = current.id === 'home-store' ? 'mas-vendidos' : current.id;
+  const configuredBackground = current.style.background || '';
+  const background = !configuredBackground || configuredBackground.toUpperCase() === '#FFF9EE' ? '#F2EEE8' : configuredBackground;
+  const textColor = current.style.textColor || '#0B0C0E';
   return (
-    <section id={sectionAnchor} data-cms-section="home-store" className="scroll-mt-20 px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(current, '#FFF9EE', '#08090A')}>
+    <section id={sectionAnchor} data-cms-section="home-store" className="scroll-mt-20 px-4 py-18 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
       <div className="mx-auto max-w-[1320px]">
-        <div className="grid gap-6 border-b border-current/10 pb-7 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
+        <div className="grid gap-6 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
           <div>
-            <p data-cms-field="eyebrow" className="text-[10px] font-black uppercase tracking-[.22em]" style={{ color: accent }}>{textContent(current, 'eyebrow')}</p>
-            <h2 data-cms-field="title" className="mt-3 max-w-[11ch] text-4xl font-black leading-[.94] tracking-[-.06em] sm:text-6xl">{textContent(current, 'title')}</h2>
+            <p data-cms-field="eyebrow" className="text-[9px] font-black uppercase tracking-[.22em]" style={{ color: accent }}>{textContent(current, 'eyebrow')}</p>
+            <h2 data-cms-field="title" className="mt-3 max-w-[12ch] text-4xl font-black leading-[.95] tracking-[-.055em] sm:text-6xl">{textContent(current, 'title')}</h2>
           </div>
-          <p data-cms-field="description" className="max-w-2xl text-sm leading-7 opacity-50 sm:text-base">{textContent(current, 'description')}</p>
+          <p data-cms-field="description" className="max-w-2xl text-sm leading-7 opacity-48 sm:text-base">{textContent(current, 'description')}</p>
         </div>
-        <div className="mt-5" data-cms-field="product-list">
+        <div className="mt-8" data-cms-field="product-list">
           <TiendaSection limit={6} variant="grid" title={textContent(current, 'listTitle', 'Selección disponible')} description={textContent(current, 'listDescription')} primaryCtaLabel={textContent(current, 'ctaLabel', 'Ver catálogo completo')} />
         </div>
       </div>

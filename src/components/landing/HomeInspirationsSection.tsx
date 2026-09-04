@@ -12,6 +12,9 @@ type Album = {
   description: string;
   cover: string;
   count: number;
+  hashtags?: string[];
+  keywords?: string[];
+  primaryKeyword?: string;
 };
 
 type CatalogResponse = { albums?: Album[]; error?: string; warning?: string };
@@ -28,30 +31,30 @@ const SERVICE_REFERENCES: ServiceReference[] = [
   {
     key: 'construction',
     title: 'Construcción y ampliaciones',
-    description: 'Casas, ampliaciones, estructuras Metalcon, radier y partidas para crear nuevos espacios.',
+    description: 'Casas, ampliaciones, estructuras Metalcon, radier y partidas para crear o abrir nuevos espacios.',
     href: '/servicios/ampliaciones',
-    keywords: ['casa', 'construccion', 'ampliacion', 'estructura', 'metalcon', 'prefabricada', 'radier', 'fundacion'],
+    keywords: ['casa', 'casas', 'construccion', 'ampliacion', 'estructura', 'metalcon', 'prefabricada', 'radier', 'fundacion', 'espacios abiertos'],
+  },
+  {
+    key: 'kitchens',
+    title: 'Cocinas y remodelación',
+    description: 'Transformación de cocinas, distribución, revestimientos, mobiliario y terminaciones para renovar el espacio.',
+    href: '/servicios',
+    keywords: ['cocina', 'cocinas', 'remodelacion', 'transformacion', 'culinario', 'culinarios', 'revestimiento'],
   },
   {
     key: 'exterior',
-    title: 'Techumbre y exterior',
-    description: 'Techumbres, siding, fachadas, cierres y soluciones para proteger y renovar el exterior.',
+    title: 'Terrazas y exterior',
+    description: 'Terrazas, patios, quinchos, techumbres, siding, fachadas y soluciones para mejorar espacios exteriores.',
     href: '/servicios',
-    keywords: ['techumbre', 'techo', 'siding', 'fachada', 'cierre', 'exterior', 'terraza', 'cubierta'],
-  },
-  {
-    key: 'installations',
-    title: 'Instalaciones técnicas',
-    description: 'Electricidad, gasfitería, climatización y soluciones técnicas integradas al proyecto.',
-    href: '/servicios',
-    keywords: ['electricidad', 'electrico', 'gasfiteria', 'climatizacion', 'aire', 'acondicionado', 'instalacion'],
+    keywords: ['terraza', 'terrazas', 'patio', 'exterior', 'quincho', 'techumbre', 'techo', 'siding', 'fachada', 'cubierta', 'jardin'],
   },
   {
     key: 'finishes',
-    title: 'Terminaciones y remodelación',
-    description: 'Cocinas, baños, revestimientos, pisos, pintura y mejoras para transformar espacios existentes.',
+    title: 'Terminaciones y mobiliario',
+    description: 'Carpintería, estanterías, revestimientos, pintura y detalles interiores que terminan de definir cada ambiente.',
     href: '/servicios',
-    keywords: ['remodelacion', 'cocina', 'bano', 'ceramica', 'porcelanato', 'piso', 'pintura', 'revestimiento', 'interior'],
+    keywords: ['estanteria', 'estanterias', 'mueble', 'muebles', 'mobiliario', 'madera', 'interior', 'interiores', 'terminacion', 'revestimiento', 'remodelacion'],
   },
 ];
 
@@ -71,23 +74,33 @@ function normalizeSearch(value: string) {
     .toLowerCase();
 }
 
+function albumSearchText(album: Album) {
+  return normalizeSearch([
+    album.title,
+    album.category,
+    album.description,
+    album.primaryKeyword || '',
+    ...(album.keywords || []),
+    ...(album.hashtags || []),
+  ].join(' '));
+}
+
 function scoreAlbum(album: Album, service: ServiceReference) {
-  const haystack = normalizeSearch(`${album.title} ${album.category} ${album.description}`);
-  return service.keywords.reduce((score, keyword) => score + (haystack.includes(keyword) ? 1 : 0), 0);
+  const haystack = albumSearchText(album);
+  return service.keywords.reduce((score, keyword) => score + (haystack.includes(normalizeSearch(keyword)) ? 1 : 0), 0);
 }
 
 function matchServicesToAlbums(albums: Album[]) {
   const used = new Set<string>();
-  return SERVICE_REFERENCES.map((service, index) => {
+  return SERVICE_REFERENCES.map((service) => {
     const ranked = albums
       .filter((album) => !used.has(album.key))
       .map((album) => ({ album, score: scoreAlbum(album, service) }))
-      .sort((left, right) => right.score - left.score);
-    const matched = ranked.find((entry) => entry.score > 0)?.album
-      || ranked[0]?.album
-      || albums[index % Math.max(albums.length, 1)];
+      .filter((entry) => entry.score > 0)
+      .sort((left, right) => right.score - left.score || right.album.count - left.album.count);
+    const matched = ranked[0]?.album || null;
     if (matched?.key) used.add(matched.key);
-    return { service, album: matched || null };
+    return { service, album: matched };
   });
 }
 
@@ -181,10 +194,10 @@ export default function HomeInspirationsSection({ section }: { section: HomeVisu
         <div className="mt-16 border-t border-white/10 pt-10 sm:mt-20 sm:pt-12">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,.72fr)_minmax(320px,1.28fr)] lg:items-end">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[.22em] text-[var(--inspiration-accent)]">Servicios + referencias visuales</p>
-              <h3 className="mt-3 max-w-[12ch] text-3xl font-black leading-[.96] tracking-[-.045em] sm:text-4xl lg:text-5xl">Mira una idea y reconoce qué podemos construir o transformar.</h3>
+              <p data-cms-field="servicesEyebrow" className="text-[10px] font-black uppercase tracking-[.22em] text-[var(--inspiration-accent)]">{text(section, 'servicesEyebrow', 'Servicios + referencias visuales')}</p>
+              <h3 data-cms-field="servicesTitle" className="mt-3 max-w-[12ch] text-3xl font-black leading-[.96] tracking-[-.045em] sm:text-4xl lg:text-5xl">{text(section, 'servicesTitle', 'Mira una idea y reconoce qué podemos construir o transformar.')}</h3>
             </div>
-            <p className="max-w-2xl text-sm leading-7 opacity-50 sm:text-base">Las imágenes se reutilizan automáticamente desde la biblioteca de Inspiración. Así la portada conecta cada tipo de trabajo con una referencia visual real sin duplicar archivos ni crear otra galería.</p>
+            <p data-cms-field="servicesDescription" className="max-w-2xl text-sm leading-7 opacity-50 sm:text-base">{text(section, 'servicesDescription', 'Las imágenes se reutilizan automáticamente desde la biblioteca de Inspiración para relacionar cada servicio con una referencia visual realmente compatible.')}</p>
           </div>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -208,9 +221,9 @@ export default function HomeInspirationsSection({ section }: { section: HomeVisu
                     <span className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,color-mix(in_srgb,var(--inspiration-accent)_28%,transparent),transparent_40%),linear-gradient(135deg,#191b1f,#090a0c)]" />
                   )}
                   <span className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
-                  <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.14em] text-white/75 backdrop-blur-md">Referencia visual</span>
+                  <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.14em] text-white/75 backdrop-blur-md">{album ? 'Referencia visual' : 'Sin referencia aún'}</span>
                   <span className="absolute inset-x-0 bottom-0 p-4 text-white">
-                    <span className="block text-[8px] font-black uppercase tracking-[.14em] text-[var(--inspiration-accent)]">{album ? 'Abrir inspiración' : 'Servicio Fabrick'}</span>
+                    <span className="block text-[8px] font-black uppercase tracking-[.14em] text-[var(--inspiration-accent)]">{album ? 'Abrir inspiración' : 'Ver servicio'}</span>
                     <strong className="mt-1 line-clamp-2 block text-sm leading-tight">{album?.title || service.title}</strong>
                   </span>
                 </Link>

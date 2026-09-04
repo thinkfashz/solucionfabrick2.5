@@ -159,6 +159,9 @@ export const DEFAULT_HOME_PAGE: HomePageContent = {
         ctaLabel: 'Ver todas las inspiraciones',
         ctaHref: '/proyectos',
         emptyText: 'Sube imágenes desde Proyectos en el administrador para mostrarlas automáticamente aquí.',
+        servicesEyebrow: 'Servicios + referencias visuales',
+        servicesTitle: 'Mira una idea y reconoce qué podemos construir o transformar.',
+        servicesDescription: 'Las imágenes se reutilizan automáticamente desde la biblioteca de Inspiración para relacionar cada servicio con una referencia visual realmente compatible.',
       },
     },
     {

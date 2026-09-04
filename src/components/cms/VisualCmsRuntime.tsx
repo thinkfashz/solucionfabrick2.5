@@ -82,6 +82,8 @@ function applyStylePatch(element: HTMLElement, patch: VisualCmsStylePatch | unde
     ['opacity', 'opacity'],
     ['boxShadow', 'box-shadow'],
     ['objectFit', 'object-fit'],
+    ['transform', 'transform'],
+    ['transformOrigin', 'transform-origin'],
   ];
   for (const [source, cssProperty] of entries) {
     const value = cleanCssValue(patch[source]);
@@ -357,6 +359,8 @@ function selectionPayload(element: HTMLElement) {
       opacity: computed.opacity,
       boxShadow: computed.boxShadow,
       objectFit: computed.objectFit as VisualCmsStylePatch['objectFit'],
+      transform: computed.transform === 'none' ? 'scale(1)' : computed.transform,
+      transformOrigin: computed.transformOrigin,
     },
   };
 }
@@ -482,12 +486,43 @@ export default function VisualCmsRuntime() {
       element.style.setProperty('cursor', 'crosshair', 'important');
     };
 
+    let pinchStartDistance = 0;
+    let pinchStartScale = 1;
+    const distance = (touches: TouchList) => Math.hypot(
+      touches[0].clientX - touches[1].clientX,
+      touches[0].clientY - touches[1].clientY,
+    );
+    const scaleFrom = (value: string) => {
+      const matrix = value.match(/^matrix\(([^)]+)\)$/);
+      if (matrix) return Number.parseFloat(matrix[1].split(',')[0]) || 1;
+      const match = value.match(/scale\(([-\d.]+)\)/);
+      return match ? Number.parseFloat(match[1]) || 1 : 1;
+    };
+    const touchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 2 || !selectedRef.current) return;
+      pinchStartDistance = Math.max(1, distance(event.touches));
+      pinchStartScale = scaleFrom(window.getComputedStyle(selectedRef.current).transform);
+    };
+    const touchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 2 || !selectedRef.current || !pinchStartDistance) return;
+      event.preventDefault();
+      const scale = Math.min(3, Math.max(0.35, pinchStartScale * distance(event.touches) / pinchStartDistance));
+      window.parent.postMessage({ type: 'cms:visual-pinch', selector: uniqueSelector(selectedRef.current), scale: Number(scale.toFixed(3)) }, window.location.origin);
+    };
+    const touchEnd = () => { pinchStartDistance = 0; };
+
     document.addEventListener('click', click, true);
     document.addEventListener('mouseover', hover, true);
+    document.addEventListener('touchstart', touchStart, { capture: true, passive: true });
+    document.addEventListener('touchmove', touchMove, { capture: true, passive: false });
+    document.addEventListener('touchend', touchEnd, true);
     window.parent.postMessage({ type: 'cms:visual-ready', route: routeKey(pathname) }, window.location.origin);
     return () => {
       document.removeEventListener('click', click, true);
       document.removeEventListener('mouseover', hover, true);
+      document.removeEventListener('touchstart', touchStart, true);
+      document.removeEventListener('touchmove', touchMove, true);
+      document.removeEventListener('touchend', touchEnd, true);
       mark(null);
     };
   }, [pathname, domEpoch]);

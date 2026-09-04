@@ -35,6 +35,7 @@ export default function VisualCmsWorkspaceBridge() {
         }
         @media (max-width: 900px) {
           main[data-admin-content][data-visual-cms-workspace="1"] [data-sf-visual-editor-root="1"] {
+            height: calc(100svh - 64px) !important;
             height: calc(100dvh - 64px) !important;
           }
         }

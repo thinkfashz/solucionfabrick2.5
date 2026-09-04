@@ -27,6 +27,8 @@ export interface VisualCmsStylePatch {
   opacity?: string;
   boxShadow?: string;
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  transform?: string;
+  transformOrigin?: string;
 }
 
 export interface VisualCmsElementOverride {

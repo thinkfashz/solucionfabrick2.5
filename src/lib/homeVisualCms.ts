@@ -219,8 +219,21 @@ export const DEFAULT_HOME_PAGE: HomePageContent = {
   ],
 };
 
+function cloneDefaultHomePage(): HomePageContent {
+  return {
+    schemaVersion: 1,
+    sections: DEFAULT_HOME_PAGE.sections.map((section) => ({
+      ...section,
+      style: { ...section.style },
+      content: JSON.parse(JSON.stringify(section.content)) as Record<string, unknown>,
+    })),
+  };
+}
+
 export function normalizeHomePage(value: unknown): HomePageContent {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return DEFAULT_HOME_PAGE;
+  // Never expose the module-level defaults as a mutable editor draft. Both the
+  // live preview and local recovery update nested section content frequently.
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return cloneDefaultHomePage();
   const raw = value as Partial<HomePageContent>;
   const input = Array.isArray(raw.sections) ? raw.sections : [];
   const byId = new Map(input.filter(Boolean).map((section) => [section.id, section]));

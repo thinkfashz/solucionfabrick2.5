@@ -40,8 +40,11 @@ const PAGE_PRESETS = [
   ['/', 'Inicio'],
   ['/tienda', 'Tienda'],
   ['/checkout', 'Checkout'],
+  ['/tienda/catalogo', 'Catálogo'],
   ['/servicios', 'Servicios'],
   ['/presupuesto', 'Presupuesto'],
+  ['/herramientas/aire-acondicionado', 'Aire acondicionado'],
+  ['/herramientas/radier', 'Calculadora radier'],
   ['/proyectos', 'Proyectos'],
   ['/contacto', 'Contacto'],
   ['/evolucion', 'Evolución'],
@@ -225,10 +228,20 @@ export default function UniversalVisualEditorClient() {
         setStatus(`Editando ${selected.tag}: ${selected.label || selected.selector}`);
         if (window.innerWidth < 1280) setMobilePanel('inspector');
       }
+      if (data?.type === 'cms:visual-pinch' && typeof (data as { scale?: unknown }).scale === 'number' && selection) {
+        const pinch = data as { selector?: string; scale: number };
+        if (!pinch.selector || pinch.selector === selection.selector) {
+          const scale = Math.min(3, Math.max(0.35, pinch.scale));
+          const nextStyle = { ...(override?.styles?.[device] || {}), transform: `scale(${scale})`, transformOrigin: 'center center' };
+          setStyleScope(device);
+          updateSelected({ styles: { [device]: nextStyle } });
+          setStatus(`Escala táctil: ${Math.round(scale * 100)}% · ${device}`);
+        }
+      }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [currentRoute, draft, sendPreview]);
+  }, [currentRoute, device, draft, override, selection, sendPreview]);
 
   function updateSelected(patch: Partial<VisualCmsElementOverride>) {
     if (!selection || !targetSelector) return;
@@ -478,6 +491,8 @@ export default function UniversalVisualEditorClient() {
             <div className="grid grid-cols-2 gap-1.5"><Field label="Ancho" value={valueFor('width')} onChange={(value) => patchStyle('width', value)} placeholder="100%" /><Field label="Ancho máx." value={valueFor('maxWidth')} onChange={(value) => patchStyle('maxWidth', value)} placeholder="1280px" /></div>
             <div className="grid grid-cols-2 gap-1.5"><Field label="Altura" value={valueFor('height')} onChange={(value) => patchStyle('height', value)} placeholder="auto" /><Field label="Altura mín." value={valueFor('minHeight')} onChange={(value) => patchStyle('minHeight', value)} placeholder="240px" /></div>
             <div className="grid grid-cols-2 gap-1.5"><Field label="Gap" value={valueFor('gap')} onChange={(value) => patchStyle('gap', value)} placeholder="16px" /><Field label="Opacidad" value={valueFor('opacity')} onChange={(value) => patchStyle('opacity', value)} placeholder="1" /></div>
+            <div className="grid grid-cols-2 gap-1.5"><Field label="Escala" value={valueFor('transform')} onChange={(value) => patchStyle('transform', value)} placeholder="scale(1)" /><Field label="Origen escala" value={valueFor('transformOrigin')} onChange={(value) => patchStyle('transformOrigin', value)} placeholder="center center" /></div>
+            <p className="rounded-lg border border-white/8 bg-black/25 p-2 text-[8px] leading-4 text-white/38">En móvil también puedes seleccionar el elemento y abrir o cerrar dos dedos sobre él. La escala queda guardada en la capa del dispositivo activo.</p>
           </div>
         ) : null}
       </div>

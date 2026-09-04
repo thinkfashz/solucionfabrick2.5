@@ -234,7 +234,7 @@ export default function UniversalVisualEditorClient() {
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; route?: string; element?: Selection } | null;
+      const data = event.data as { type?: string; route?: string; element?: Selection; action?: string; value?: string; selector?: string; x?: number; y?: number } | null;
       if (data?.type === 'cms:preview-ready' || data?.type === 'cms:visual-ready') {
         setIframeReady(true);
         sendPreview(draft);
@@ -251,11 +251,39 @@ export default function UniversalVisualEditorClient() {
         setStatus(`Editando ${selected.tag}: ${selected.label || selected.selector}`);
         if (window.innerWidth < 1280) setMobilePanel('inspector');
       }
+      if (data?.type === 'cms:visual-inline-action' && selection) {
+        const value = typeof data.value === 'string' ? data.value : '';
+        switch (data.action) {
+          case 'text': updateSelected({ text: value }); break;
+          case 'color': patchStyle('color', value); break;
+          case 'background': patchStyle('backgroundColor', value); break;
+          case 'font-size': patchStyle('fontSize', value); break;
+          case 'font-weight': patchStyle('fontWeight', value); break;
+          case 'text-align': patchStyle('textAlign', value); break;
+          case 'border-radius': patchStyle('borderRadius', value); break;
+          case 'image':
+          case 'focus-text': setInspectorTab('content'); break;
+          case 'advanced': setInspectorTab('appearance'); break;
+          default: break;
+        }
+        if (window.innerWidth < 1280) setMobilePanel('inspector');
+      }
+      if (data?.type === 'cms:visual-image-position' && selection?.isImage && typeof data.x === 'number' && typeof data.y === 'number') {
+        if (!data.selector || data.selector === selection.selector) {
+          patchStyle('objectPosition', `${Math.round(data.x)}% ${Math.round(data.y)}%`);
+          setStatus(`Imagen reposicionada: ${Math.round(data.x)}% · ${Math.round(data.y)}%`);
+        }
+      }
       if (data?.type === 'cms:visual-pinch' && typeof (data as { scale?: unknown }).scale === 'number' && selection) {
         const pinch = data as { selector?: string; scale: number };
         if (!pinch.selector || pinch.selector === selection.selector) {
           const scale = Math.min(3, Math.max(0.35, pinch.scale));
-          const nextStyle = { ...(override?.styles?.[device] || {}), transform: `scale(${scale})`, transformOrigin: 'center center' };
+          const nextStyle = {
+            ...(override?.styles?.[device] || {}),
+            ...(selection.isImage ? { objectFit: 'cover' as const } : {}),
+            transform: `scale(${scale})`,
+            transformOrigin: 'center center',
+          };
           setStyleScope(device);
           updateSelected({ styles: { [device]: nextStyle } });
           setStatus(`Escala táctil: ${Math.round(scale * 100)}% · ${device}`);
@@ -327,6 +355,7 @@ export default function UniversalVisualEditorClient() {
         case 'Color borde': patchStyle('borderColor', value); break;
         case 'Sombra': patchStyle('boxShadow', value); break;
         case 'Ajuste': patchStyle('objectFit', value); break;
+        case 'Encuadre': patchStyle('objectPosition', value); break;
         case 'Padding': patchStyle('padding', value); break;
         case 'Margen': patchStyle('margin', value); break;
         case 'Ancho': patchStyle('width', value); break;
@@ -482,7 +511,7 @@ export default function UniversalVisualEditorClient() {
 
             {!editingSimilar && selection.textEditable ? <label className="grid gap-1"><span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-[.12em] text-white/38"><Type className="h-3 w-3" /> Texto</span><textarea value={override?.text ?? selection.text ?? ''} onChange={(event) => updateSelected({ text: event.target.value })} rows={3} className="min-h-20 resize-y rounded-lg border border-white/10 bg-black/30 p-2.5 text-[11px] leading-4 text-white outline-none focus:border-[#FFB000]/60" /></label> : null}
             {!editingSimilar && selection.isLink ? <Field label="Destino del enlace" value={override?.href ?? selection.href ?? ''} onChange={(value) => updateSelected({ href: value })} placeholder="/contacto" /> : null}
-            {!editingSimilar && selection.isImage ? <div className="grid grid-cols-2 gap-1.5"><div className="col-span-2"><Field label="URL / Cloudinary" value={override?.src ?? selection.src ?? ''} onChange={(value) => updateSelected({ src: value })} /></div><Field label="Texto alternativo" value={override?.alt ?? selection.alt ?? ''} onChange={(value) => updateSelected({ alt: value })} /><SelectField label="Ajuste" value={valueFor('objectFit') || 'cover'} onChange={(value) => patchStyle('objectFit', value)} options={[["cover","Cubrir"],["contain","Contener"],["fill","Estirar"],["none","Original"],["scale-down","Reducir"]]} /></div> : null}
+            {!editingSimilar && selection.isImage ? <div className="grid gap-2 rounded-xl border border-[#FFB000]/15 bg-[#FFB000]/5 p-2.5"><div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[.12em] text-[#FFB000]"><ImageIcon className="h-3.5 w-3.5" /> Imagen seleccionada</div><Field label="URL / Cloudinary" value={override?.src ?? selection.src ?? ''} onChange={(value) => updateSelected({ src: value })} /><div className="grid grid-cols-2 gap-1.5"><Field label="Texto alternativo" value={override?.alt ?? selection.alt ?? ''} onChange={(value) => updateSelected({ alt: value })} /><SelectField label="Ajuste" value={valueFor('objectFit') || 'cover'} onChange={(value) => patchStyle('objectFit', value)} options={[["cover","Cubrir"],["contain","Contener"],["fill","Estirar"],["none","Original"],["scale-down","Reducir"]]} /></div><Field label="Encuadre" value={valueFor('objectPosition') || '50% 50%'} onChange={(value) => patchStyle('objectPosition', value)} placeholder="50% 50%" /><div className="grid grid-cols-3 gap-1">{[["0% 0%","↖"],["50% 0%","↑"],["100% 0%","↗"],["0% 50%","←"],["50% 50%","•"],["100% 50%","→"],["0% 100%","↙"],["50% 100%","↓"],["100% 100%","↘"]].map(([position, label]) => <button key={position} type="button" onClick={() => patchStyle('objectPosition', position)} className={`h-8 rounded-lg border text-xs ${valueFor('objectPosition') === position ? 'border-[#FFB000] bg-[#FFB000] text-black' : 'border-white/10 bg-black/20 text-white/55'}`} aria-label={`Encuadre ${position}`}>{label}</button>)}</div><p className="text-[8px] leading-4 text-white/42">Arrastra la imagen con mouse o un dedo para mover el encuadre. Ábrela o ciérrala con dos dedos para cambiar su escala sin alterar el espacio del texto.</p></div> : null}
             {selection.isIcon ? <div className="grid gap-1.5 rounded-lg border border-[#FFB000]/12 bg-[#FFB000]/5 p-2"><div className="flex items-center gap-1 text-[8px] font-black uppercase text-[#FFB000]"><ImageIcon className="h-3 w-3" /> Icono</div><Field label="Reemplazar por SVG / PNG" value={override?.iconUrl ?? ''} onChange={(value) => updateSelected({ iconUrl: value })} placeholder="https://.../icono.svg" /><Field label="Descripción accesible" value={override?.iconAlt ?? ''} onChange={(value) => updateSelected({ iconAlt: value })} /></div> : null}
 
             <label className="flex items-center justify-between rounded-lg border border-white/8 bg-black/25 px-2.5 py-2"><span><b className="block text-[9px]">Ocultar {editingSimilar ? `${selection.similarCount} similares` : 'elemento'}</b><small className="text-[8px] text-white/30">No elimina lógica ni datos</small></span><input type="checkbox" checked={override?.hidden === true} onChange={(event) => updateSelected({ hidden: event.target.checked })} /></label>

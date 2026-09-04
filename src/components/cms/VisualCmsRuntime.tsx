@@ -451,11 +451,13 @@ export default function VisualCmsRuntime() {
       if (selectedRef.current && selectedRef.current !== next) {
         selectedRef.current.style.removeProperty('outline');
         selectedRef.current.style.removeProperty('outline-offset');
+        selectedRef.current.style.removeProperty('touch-action');
       }
       selectedRef.current = next;
       if (next) {
         next.style.setProperty('outline', '2px solid #ffb000', 'important');
         next.style.setProperty('outline-offset', '3px', 'important');
+        if (next instanceof HTMLImageElement) next.style.setProperty('touch-action', 'none', 'important');
       }
     };
 
@@ -509,7 +511,6 @@ export default function VisualCmsRuntime() {
       const origin = imagePosition(selected);
       imageDrag = { pointerId: event.pointerId, element: selected, startX: event.clientX, startY: event.clientY, originX: origin.x, originY: origin.y };
       selected.setPointerCapture?.(event.pointerId);
-      selected.style.setProperty('touch-action', 'none', 'important');
       selected.style.setProperty('cursor', 'move', 'important');
     };
     const pointerMove = (event: PointerEvent) => {

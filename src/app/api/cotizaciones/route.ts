@@ -3,12 +3,17 @@ import type { NextRequest } from 'next/server';
 import { saveBudget, BudgetError } from '@/lib/budget';
 import { getInsforgeUserFromRequest } from '@/lib/insforgeAuth';
 import { getTenantIdFromHeaders } from '@/lib/tenant-edge';
+import { getClientIp } from '@/lib/adminAuth';
+import { checkPersistentRateLimit } from '@/lib/adminRateLimitStore';
 import { sendEmail } from '@/lib/emailDriver';
 import { getResendCredentials } from '@/lib/resendCredentials';
 import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+const RATE_LIMIT_MAX = 8;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 /**
  * POST /api/cotizaciones — Persiste una cotización del carrito de servicios.
@@ -56,7 +61,11 @@ function escapeHtml(value: unknown) {
 }
 
 function clp(value: number) {
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Math.round(value || 0));
+  return new Intl.NumberFormat('es-CL', {
+    style: 'currency',
+    currency: 'CLP',
+    maximumFractionDigits: 0,
+  }).format(Math.round(value || 0));
 }
 
 function numericMeta(item: IncomingItem, key: string) {
@@ -80,7 +89,10 @@ function itemRange(item: IncomingItem) {
   const selectedLow = numericMeta(item, 'selectedLow') || numericMeta(item, 'marketLow');
   const selectedHigh = numericMeta(item, 'selectedHigh') || numericMeta(item, 'marketHigh');
   const fallback = unitPrice * quantity;
-  return { low: selectedLow || fallback, high: selectedHigh || selectedLow || fallback };
+  return {
+    low: selectedLow || fallback,
+    high: selectedHigh || selectedLow || fallback,
+  };
 }
 
 function rangeText(low: number, high: number) {
@@ -103,7 +115,11 @@ function buildEmailHtml(params: {
 
   const rows = (items: IncomingItem[]) => items.map((item) => {
     const range = itemRange(item);
-    const mode = stringMeta(item, 'priceMode') === 'labor' ? 'Mano de obra' : String(item.kind) === 'service' ? 'Trabajo vendido' : 'Producto';
+    const mode = stringMeta(item, 'priceMode') === 'labor'
+      ? 'Mano de obra'
+      : String(item.kind) === 'service'
+        ? 'Trabajo vendido'
+        : 'Producto';
     const quantity = typeof item.quantity === 'number' ? item.quantity : 1;
     return `<tr>
       <td style="padding:12px 0;border-bottom:1px solid #ece6dd;vertical-align:top;">
@@ -144,8 +160,9 @@ function buildEmailHtml(params: {
           ${customerBlock}
           ${section('Servicios', rows(serviceRows), 'Sin servicios seleccionados.')}
           ${section('Productos / insumos', rows(materialRows), 'Sin productos seleccionados.')}
-          <div style="margin-top:26px;padding-top:18px;border-top:1px solid #ded6cc;display:flex;justify-content:space-between;gap:16px;align-items:flex-end;">
-            <div><div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;color:#81786f;">Total referencial</div><div style="margin-top:5px;font-size:25px;font-weight:900;color:#111214;">${escapeHtml(rangeText(params.totalLow, params.totalHigh))}</div></div>
+          <div style="margin-top:26px;padding-top:18px;border-top:1px solid #ded6cc;">
+            <div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1.2px;color:#81786f;">Total referencial</div>
+            <div style="margin-top:5px;font-size:25px;font-weight:900;color:#111214;">${escapeHtml(rangeText(params.totalLow, params.totalHigh))}</div>
           </div>
           <a href="${escapeHtml(params.quoteUrl)}" style="display:block;margin-top:22px;padding:14px 18px;border-radius:999px;background:#111214;color:#f5a13d;text-decoration:none;text-align:center;font-size:13px;font-weight:900;">Ver presupuesto guardado</a>
           <p style="margin:18px 0 0;font-size:11px;line-height:1.6;color:#8a8177;">Esta referencia no es un documento tributario ni reemplaza la revisión técnica. El valor final puede variar según acceso, estado actual, terreno, terminaciones y alcance definitivo.</p>
@@ -157,6 +174,20 @@ function buildEmailHtml(params: {
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rate = await checkPersistentRateLimit({
+      namespace: 'public:cotizaciones',
+      identity: ip,
+      max: RATE_LIMIT_MAX,
+      windowMs: RATE_LIMIT_WINDOW_MS,
+    });
+    if (!rate.ok) {
+      return NextResponse.json(
+        { error: 'Demasiadas solicitudes. Intenta nuevamente en unos minutos.', retry_after: rate.retryAfterSec },
+        { status: 429, headers: { 'Retry-After': String(rate.retryAfterSec) } },
+      );
+    }
+
     const raw = await request.json().catch(() => ({}));
     const result = parse(cotizacionSchema, raw);
     if (!result.ok) return validationError(result.errors);
@@ -174,7 +205,9 @@ export async function POST(request: NextRequest) {
 
     const lines = items.map((it) => {
       const kind = String(it.kind ?? 'service');
-      const meta = it.meta && typeof it.meta === 'object' && !Array.isArray(it.meta) ? it.meta as Record<string, unknown> : {};
+      const meta = it.meta && typeof it.meta === 'object' && !Array.isArray(it.meta)
+        ? it.meta as Record<string, unknown>
+        : {};
       const noteParts: string[] = [];
       if (it.notes) noteParts.push(String(it.notes));
       if (Object.keys(meta).length > 0) {

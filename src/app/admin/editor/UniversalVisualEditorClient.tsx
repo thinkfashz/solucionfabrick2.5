@@ -524,41 +524,41 @@ export default function UniversalVisualEditorClient() {
   );
 
   return (
-    <div data-visual-cms-editor-root="1" className="relative flex h-[calc(100dvh-5.25rem)] min-h-[520px] flex-col overflow-hidden rounded-xl bg-[#08090A] text-white md:h-[calc(100dvh-6rem)] xl:min-h-[650px]">
+    <div data-visual-cms-editor-root="1" className="relative flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden bg-[#08090A] text-white sm:rounded-xl xl:h-[calc(100dvh-6rem)] xl:min-h-[620px]">
       <header className="flex min-h-12 shrink-0 items-center gap-2 border-b border-white/8 bg-[#08090A]/96 px-2.5 py-1.5 backdrop-blur-xl sm:min-h-14 sm:px-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#FFB000]" /><p className="text-[8px] font-black uppercase tracking-[.15em] text-[#FFB000]">Visual CMS</p></div>
           <h1 className="truncate text-[11px] font-black sm:text-sm">Editor universal · <span className="text-white/45">{currentRoute}</span></h1>
         </div>
         <Link href="/admin/editor/home-structure" className="hidden h-9 items-center gap-1.5 rounded-lg border border-white/10 px-3 text-[9px] font-black text-white/55 lg:inline-flex"><LayoutGrid className="h-3.5 w-3.5" /> Estructura Home</Link>
-        <button type="button" onClick={() => { setDraft(published); setStatus('Borrador restaurado a la versión publicada.'); }} disabled={!dirty || publishing} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/10 text-white/50 disabled:opacity-25 sm:w-auto sm:px-3" title="Restaurar versión publicada"><RotateCcw className="h-3.5 w-3.5" /><span className="hidden sm:ml-1.5 sm:inline text-[9px] font-black">Restaurar</span></button>
-        <button type="button" onClick={publish} disabled={!dirty || publishing} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#FFB000] px-3 text-[9px] font-black text-black disabled:opacity-35">{publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}<span>Publicar</span></button>
+        <button type="button" onClick={() => { setDraft(published); setStatus('Borrador restaurado a la versión publicada.'); }} disabled={!dirty || publishing} className="hidden h-10 shrink-0 items-center rounded-xl border border-white/10 px-3 text-[9px] font-black text-white/50 disabled:opacity-25 sm:inline-flex" title="Restaurar versión publicada"><RotateCcw className="h-3.5 w-3.5" /><span className="ml-1.5">Restaurar</span></button>
+        <button type="button" onClick={publish} disabled={!dirty || publishing} className="hidden h-10 shrink-0 items-center gap-1.5 rounded-xl bg-[#FFB000] px-4 text-[9px] font-black text-black shadow-[0_8px_30px_rgba(255,176,0,.18)] disabled:opacity-35 sm:inline-flex">{publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}<span>Publicar</span></button>
       </header>
 
-      <div className="relative grid min-h-0 flex-1 xl:grid-cols-[220px_minmax(0,1fr)_330px] 2xl:grid-cols-[240px_minmax(0,1fr)_360px]">
+      <div className="relative grid min-h-0 flex-1 xl:grid-cols-[228px_minmax(0,1fr)_340px] 2xl:grid-cols-[252px_minmax(0,1fr)_380px]">
         <aside className="hidden min-h-0 overflow-hidden border-r border-white/8 bg-[#0B0C0E] p-2.5 xl:block">{pagesPanel}</aside>
 
         <main className="flex min-h-0 min-w-0 flex-col bg-[#111214]">
           <div className="flex min-h-11 shrink-0 items-center gap-2 border-b border-white/7 px-2 py-1.5">
-            <button type="button" onClick={() => setMobilePanel('pages')} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-[8px] font-black text-white/60 xl:hidden"><LayoutGrid className="h-3.5 w-3.5" /> Páginas</button>
+            <button type="button" onClick={() => setMobilePanel('pages')} className="hidden h-9 items-center gap-1.5 rounded-xl border border-white/10 px-3 text-[8px] font-black text-white/60 sm:inline-flex xl:hidden"><LayoutGrid className="h-3.5 w-3.5" /> Páginas</button>
             <div className="flex rounded-lg border border-white/10 bg-black/25 p-0.5">
               {(['mobile', 'tablet', 'desktop'] as VisualCmsDevice[]).map((item) => {
                 const Icon = item === 'mobile' ? Smartphone : item === 'tablet' ? Tablet : Monitor;
-                return <button key={item} type="button" onClick={() => chooseDevice(item)} className={`grid h-7 w-8 place-items-center rounded-md ${device === item ? 'bg-[#FFB000] text-black' : 'text-white/38'}`} title={item}><Icon className="h-3.5 w-3.5" /></button>;
+                return <button key={item} type="button" onClick={() => chooseDevice(item)} className={`grid h-8 w-9 place-items-center rounded-lg transition ${device === item ? 'bg-[#FFB000] text-black shadow-sm' : 'text-white/38 hover:text-white/70'}`} title={item}><Icon className="h-3.5 w-3.5" /></button>;
               })}
             </div>
             <span className="hidden max-w-[34vw] truncate text-[8px] font-bold text-white/30 sm:block">{status}</span>
             <span className={`ml-auto rounded-full px-2 py-1 text-[7px] font-black uppercase tracking-[.1em] ${dirty ? 'bg-[#FFB000]/12 text-[#FFB000]' : 'bg-emerald-500/10 text-emerald-300'}`}>{dirty ? 'Sin publicar' : 'Publicado'}</span>
-            <button type="button" onClick={() => setMobilePanel('inspector')} className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[8px] font-black xl:hidden ${selection ? 'border-[#FFB000]/35 bg-[#FFB000]/8 text-[#FFB000]' : 'border-white/10 text-white/45'}`}><SlidersHorizontal className="h-3.5 w-3.5" /> Inspector</button>
+            <button type="button" onClick={() => setMobilePanel('inspector')} className={`hidden h-9 items-center gap-1.5 rounded-xl border px-3 text-[8px] font-black sm:inline-flex xl:hidden ${selection ? 'border-[#FFB000]/35 bg-[#FFB000]/8 text-[#FFB000]' : 'border-white/10 text-white/45'}`}><SlidersHorizontal className="h-3.5 w-3.5" /> Inspector</button>
           </div>
 
-          <div className="flex min-h-0 flex-1 justify-center overflow-hidden bg-[#050506] p-1.5 sm:p-2.5">
-            <div className="h-full min-h-0 overflow-hidden rounded-lg bg-white shadow-2xl transition-[width] duration-300" style={{ width: widthFor[device], maxWidth: '100%' }}>
+          <div className="flex min-h-0 flex-1 justify-center overflow-hidden bg-[radial-gradient(circle_at_top,rgba(255,176,0,.08),transparent_34%),#050506] p-0 sm:p-2.5">
+            <div className="h-full min-h-0 overflow-hidden bg-white shadow-2xl transition-[width] duration-300 sm:rounded-xl sm:ring-1 sm:ring-white/10" style={{ width: widthFor[device], maxWidth: '100%' }}>
               <iframe ref={iframeRef} key={`${route}-${device}`} src={previewSrc} title={`Visual CMS ${route}`} className="h-full min-h-0 w-full border-0 bg-white" onLoad={() => setIframeReady(true)} />
             </div>
           </div>
 
-          <div className="flex min-h-9 shrink-0 items-center gap-2 border-t border-white/7 px-2 text-[8px] text-white/28 xl:hidden">
+          <div className="hidden min-h-9 shrink-0 items-center gap-2 border-t border-white/7 px-2 text-[8px] text-white/28 sm:flex xl:hidden">
             <span className="truncate">{status}</span>
             {selection ? <button type="button" onClick={() => setMobilePanel('inspector')} className="ml-auto shrink-0 font-black text-[#FFB000]">Editar selección</button> : <span className="ml-auto shrink-0">Toca un elemento</span>}
           </div>
@@ -567,18 +567,26 @@ export default function UniversalVisualEditorClient() {
         <aside className="hidden min-h-0 overflow-hidden border-l border-white/8 bg-[#0B0C0E] p-2.5 xl:block">{inspectorPanel}</aside>
 
         {mobilePanel ? (
-          <div className="absolute inset-0 z-40 flex flex-col bg-black/55 backdrop-blur-[2px] xl:hidden" onMouseDown={(event) => { if (event.currentTarget === event.target) setMobilePanel(null); }}>
-            <div className="mt-auto flex max-h-[72%] min-h-[300px] flex-col rounded-t-2xl border-t border-white/12 bg-[#0B0C0E] shadow-[0_-20px_60px_rgba(0,0,0,.45)]">
-              <div className="flex min-h-11 shrink-0 items-center gap-2 border-b border-white/8 px-3">
+          <div className="absolute inset-0 z-40 flex flex-col bg-black/65 backdrop-blur-sm xl:hidden" onMouseDown={(event) => { if (event.currentTarget === event.target) setMobilePanel(null); }}>
+            <div className="mt-auto flex max-h-[86%] min-h-[360px] flex-col rounded-t-[24px] border-t border-white/12 bg-[#0B0C0E] pb-[env(safe-area-inset-bottom)] shadow-[0_-24px_80px_rgba(0,0,0,.65)] sm:max-h-[78%]">
+              <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-white/15" />
+              <div className="flex min-h-12 shrink-0 items-center gap-2 border-b border-white/8 px-3">
                 <span className="text-[9px] font-black uppercase tracking-[.12em] text-white/55">{mobilePanel === 'pages' ? 'Páginas' : 'Inspector'}</span>
                 <span className="truncate text-[8px] text-white/25">{mobilePanel === 'inspector' && selection ? selection.label : currentRoute}</span>
                 <button type="button" onClick={() => setMobilePanel(null)} className="ml-auto grid h-8 w-8 place-items-center rounded-lg bg-white/5 text-white/55" aria-label="Cerrar panel"><X className="h-4 w-4" /></button>
               </div>
-              <div className="min-h-0 flex-1 overflow-hidden p-2.5">{mobilePanel === 'pages' ? pagesPanel : inspectorPanel}</div>
+              <div className="min-h-0 flex-1 overflow-hidden p-3">{mobilePanel === 'pages' ? pagesPanel : inspectorPanel}</div>
             </div>
           </div>
         ) : null}
       </div>
+
+      <nav className="grid min-h-[62px] shrink-0 grid-cols-4 border-t border-white/10 bg-[#0B0C0E]/98 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:hidden" aria-label="Herramientas del editor móvil">
+        <button type="button" onClick={() => setMobilePanel('pages')} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[8px] font-black text-white/55"><LayoutGrid className="h-4 w-4" />Páginas</button>
+        <button type="button" onClick={() => setMobilePanel('inspector')} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[8px] font-black ${selection ? 'text-[#FFB000]' : 'text-white/40'}`}><SlidersHorizontal className="h-4 w-4" />Editar</button>
+        <button type="button" onClick={() => { setDraft(published); setStatus('Borrador restaurado a la versión publicada.'); }} disabled={!dirty || publishing} className="flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[8px] font-black text-white/45 disabled:opacity-25"><RotateCcw className="h-4 w-4" />Restaurar</button>
+        <button type="button" onClick={publish} disabled={!dirty || publishing} className="m-1 flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl bg-[#FFB000] text-[8px] font-black text-black disabled:opacity-35">{publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Publicar</button>
+      </nav>
     </div>
   );
 }

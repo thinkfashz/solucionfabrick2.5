@@ -8,11 +8,12 @@ import {
   textContent,
   type HomeVisualSection,
 } from '@/lib/homeVisualCms';
+import { HOME_PREMIUM_VISUALS } from '@/lib/homePremiumVisuals';
 
 const SERVICE_VISUALS = [
-  { src: '/images/landing/fabrick-home-showcase.webp', href: '/servicios/ampliaciones', label: 'Construcción' },
-  { src: '/images/fabrick-construction-hero.webp', href: '/servicios', label: 'Remodelación' },
-  { src: '/images/landing/fabrick-house-plan.webp', href: '/servicios', label: 'Terminaciones' },
+  { src: HOME_PREMIUM_VISUALS.construction, href: '/servicios/ampliaciones', label: 'Construcción' },
+  { src: HOME_PREMIUM_VISUALS.remodel, href: '/servicios', label: 'Remodelación' },
+  { src: HOME_PREMIUM_VISUALS.finishes, href: '/servicios', label: 'Interiores' },
 ];
 
 export default function FabrickStorySection({ section }: { section?: HomeVisualSection }) {

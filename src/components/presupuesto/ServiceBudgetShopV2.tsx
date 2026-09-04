@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRight,
+  BadgeCheck,
   Calculator,
   Check,
   ChevronRight,
@@ -20,9 +20,8 @@ import {
   ReceiptText,
   Ruler,
   Search,
-  Send,
+  ShieldCheck,
   ShoppingBag,
-  Sparkles,
   Trash2,
   UserRound,
 } from 'lucide-react';
@@ -151,14 +150,14 @@ function trackBudget(event: string, meta: Record<string, unknown> = {}) {
 function directLabel(service: BudgetService) {
   if (service.unit === 'm²') return 'Superficie total';
   if (service.unit === 'm³') return 'Volumen total';
-  if (service.unit === 'ml') return 'Metros lineales totales';
-  return 'Cantidad total';
+  if (service.unit === 'ml') return 'Metros lineales';
+  return 'Cantidad';
 }
 function directHint(service: BudgetService) {
-  if (service.unit === 'm²') return 'Si ya conoces los m², ingrésalos directamente.';
-  if (service.unit === 'm³') return 'Si ya conoces el volumen, ingrésalo directamente.';
-  if (service.unit === 'ml') return 'Si ya mediste el recorrido, ingresa los metros lineales.';
-  return 'Ingresa la cantidad de puntos o unidades.';
+  if (service.unit === 'm²') return 'Escribe los m² si ya tienes la superficie calculada.';
+  if (service.unit === 'm³') return 'Escribe el volumen total si ya lo conoces.';
+  if (service.unit === 'ml') return 'Escribe el recorrido total medido.';
+  return 'Indica cuántos puntos o unidades necesitas.';
 }
 
 export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetShopV2Props) {
@@ -464,57 +463,79 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
   }
 
   return (
-    <div className="bg-[#F6F2EB] text-[#0B0C0E]">
-      <style>{`@media print{body *{visibility:hidden!important}.sf-budget-receipt,.sf-budget-receipt *{visibility:visible!important}.sf-budget-receipt{position:absolute!important;inset:0 auto auto 0!important;width:100%!important;max-width:none!important;box-shadow:none!important}.sf-budget-no-print{display:none!important}}`}</style>
+    <div className="bg-[#F7F6F2] text-[#151714]">
+      <style>{`
+        @media print{body *{visibility:hidden!important}.sf-budget-receipt,.sf-budget-receipt *{visibility:visible!important}.sf-budget-receipt{position:absolute!important;inset:0 auto auto 0!important;width:100%!important;max-width:none!important;box-shadow:none!important}.sf-budget-no-print{display:none!important}}
+        .sf-input{width:100%;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.045);padding:.82rem .9rem;font-size:.78rem;color:white;outline:none;transition:border-color .2s ease,background .2s ease}.sf-input::placeholder{color:rgba(255,255,255,.28)}.sf-input:focus{border-color:rgba(221,164,71,.58);background:rgba(255,255,255,.065)}
+      `}</style>
 
-      <section className="relative isolate overflow-hidden bg-[#0B0C0E] px-4 pb-16 pt-24 text-[#F7F4EE] sm:px-6 lg:px-8 lg:pb-20 lg:pt-28">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(242,140,40,.18),transparent_28rem),radial-gradient(circle_at_88%_72%,rgba(197,150,76,.09),transparent_24rem)]" />
-        <div className="relative mx-auto max-w-[1320px]">
-          <p className="text-[9px] font-black uppercase tracking-[.22em] text-[#F5A13D]">Panel de presupuesto Fabrick</p>
-          <div className="mt-4 grid gap-9 lg:grid-cols-[1fr_.72fr] lg:items-end">
+      <section className="relative isolate overflow-hidden bg-[#111310] px-4 pb-12 pt-24 text-[#F7F6F2] sm:px-6 lg:px-8 lg:pb-16 lg:pt-28">
+        <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_12%_0%,rgba(221,164,71,.18),transparent_30rem),linear-gradient(180deg,rgba(255,255,255,.025),transparent_44%)]" />
+        <div className="relative mx-auto max-w-[1240px]">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_360px] lg:items-end">
             <div>
-              <h1 className="max-w-[12ch] text-4xl font-black leading-[.94] tracking-[-.06em] sm:text-6xl lg:text-7xl">Elige, calcula y arma un presupuesto que se entienda.</h1>
-              <p className="mt-5 max-w-2xl text-sm leading-7 text-white/52 sm:text-base">Cada servicio usa la unidad que realmente corresponde: m², m³, metros lineales, puntos o unidades. Puedes calcular desde tus medidas o ingresar directamente el total que ya conoces.</p>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.035] px-3 py-2 text-[10px] font-semibold text-white/58">
+                <Calculator className="h-3.5 w-3.5 text-[#DDA447]" /> Cotizador de obra y servicios
+              </div>
+              <h1 className="mt-5 max-w-[17ch] text-[clamp(2.45rem,6vw,5.1rem)] font-semibold leading-[.98] tracking-[-.055em]">Parte por lo que necesitas. Nosotros ordenamos el cálculo.</h1>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-white/52 sm:text-[15px]">Selecciona una partida, mide el trabajo y compara dos formas de contratarlo. Al final tendrás una referencia clara con servicios, productos y total estimado.</p>
             </div>
-            <div className="rounded-[1.6rem] border border-white/[.08] bg-white/[.035] p-5 sm:p-6">
-              <p className="text-[9px] font-black uppercase tracking-[.16em] text-[#F5A13D]">Proyecto actual · {reference}</p>
-              <p className="mt-3 text-3xl font-black tracking-[-.04em]">{items.length ? rangeText(totals.low, totals.high) : 'Aún sin partidas'}</p>
-              <p className="mt-2 text-xs leading-5 text-white/38">{serviceItems.length} servicios · {productItems.length} productos seleccionados · valores referenciales con IVA contenido.</p>
+
+            <div className="rounded-[22px] border border-white/10 bg-white/[.04] p-5 lg:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] font-semibold text-white/45">Presupuesto {reference}</span>
+                <span className="h-2 w-2 rounded-full bg-[#DDA447]" />
+              </div>
+              <p className="mt-5 text-[12px] font-medium text-white/42">Referencia actual</p>
+              <p className="mt-1 text-2xl font-semibold tracking-[-.035em] sm:text-3xl">{items.length ? rangeText(totals.low, totals.high) : 'Comienza con un servicio'}</p>
+              <div className="mt-5 flex items-center gap-4 border-t border-white/8 pt-4 text-[10px] text-white/38">
+                <span>{serviceItems.length} servicios</span><span>{productItems.length} productos</span><span>IVA contenido</span>
+              </div>
             </div>
           </div>
 
-          <div className="mt-10 grid gap-px overflow-hidden rounded-[1.4rem] border border-white/[.08] bg-white/[.08] sm:grid-cols-3">
-            <FlowStep icon={ClipboardList} number="01" title="Elige la partida" text="Busca el servicio por área y revisa cómo se cobra." />
-            <FlowStep icon={Calculator} number="02" title="Ingresa medidas" text="Calcula dimensiones o escribe directamente el total." />
-            <FlowStep icon={ReceiptText} number="03" title="Confirma tu boleta" text="Agrega productos, completa tus datos y recibe una copia." />
+          <div className="mt-9 grid gap-2 sm:grid-cols-3">
+            <FlowStep icon={ClipboardList} number="01" title="Elige" text="Selecciona el trabajo que quieres cotizar." />
+            <FlowStep icon={Ruler} number="02" title="Mide" text="Ingresa medidas o el total que ya calculaste." />
+            <FlowStep icon={ReceiptText} number="03" title="Revisa" text="Compara, agrega productos y confirma." />
           </div>
         </div>
       </section>
 
-      <section className="px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[1320px]">
-          <header className="grid gap-6 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
-            <div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#B96A16]">Catálogo de servicios</p><h2 className="mt-3 max-w-[12ch] text-4xl font-black leading-[.96] tracking-[-.05em] sm:text-5xl">¿Qué quieres calcular?</h2></div>
-            <p className="max-w-2xl text-sm leading-7 text-[#655D55]">Cada tarjeta muestra la unidad de cobro y separa <b className="text-[#211E1A]">solo ejecución</b> de <b className="text-[#211E1A]">trabajo vendido</b>, para que no compares conceptos distintos.</p>
-          </header>
+      <SectorBrands />
+
+      <section className="px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <div className="mx-auto max-w-[1240px]">
+          <SectionIntro eyebrow="Servicios" title="Primero, elige el trabajo." text="Filtra por área y selecciona una partida. Cada servicio muestra cómo se mide y desde qué rango se calcula; los detalles aparecen después, en la calculadora." />
 
           <div className="mt-7 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <button type="button" onClick={() => chooseCategory('Todas')} className={`shrink-0 rounded-full px-4 py-2.5 text-[10px] font-black ${category === 'Todas' ? 'bg-[#0B0C0E] text-[#F5A13D]' : 'border border-black/[.08] bg-white text-[#665D54]'}`}>Todas <span className="opacity-45">{BUDGET_SERVICES.length}</span></button>
-            {SERVICE_CATEGORIES.map((item) => <button key={item} type="button" onClick={() => chooseCategory(item)} className={`shrink-0 rounded-full px-4 py-2.5 text-[10px] font-black ${category === item ? 'bg-[#0B0C0E] text-[#F5A13D]' : 'border border-black/[.08] bg-white text-[#665D54]'}`}>{item} <span className="opacity-45">{categoryCounts[item]}</span></button>)}
+            <CategoryButton active={category === 'Todas'} label="Todos" count={BUDGET_SERVICES.length} onClick={() => chooseCategory('Todas')} />
+            {SERVICE_CATEGORIES.map((item) => <CategoryButton key={item} active={category === item} label={item} count={categoryCounts[item]} onClick={() => chooseCategory(item)} />)}
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {visibleServices.map((item) => {
               const ItemIcon = item.icon;
               const active = item.id === service.id;
               const inBudget = serviceItems.some((line) => metaString(line, 'serviceId') === item.id);
               return (
-                <button key={item.id} type="button" onClick={() => chooseService(item)} className={`group min-h-[210px] rounded-[1.55rem] border p-5 text-left transition duration-200 ${active ? 'border-[#0B0C0E] bg-[#0B0C0E] text-white shadow-[0_18px_45px_rgba(0,0,0,.12)]' : 'border-black/[.055] bg-white hover:-translate-y-0.5 hover:border-[#F28C28]/25'}`}>
-                  <div className="flex items-start justify-between gap-3"><span className={`grid h-11 w-11 place-items-center rounded-xl ${active ? 'bg-[#F5A13D] text-black' : 'bg-[#F3EEE7] text-[#B96A16]'}`}><ItemIcon className="h-5 w-5" /></span><span className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[.11em] opacity-45">{inBudget ? <Check className="h-3 w-3 text-emerald-500" /> : null}/{item.unit}</span></div>
-                  <p className={`mt-4 text-[8px] font-black uppercase tracking-[.13em] ${active ? 'text-[#F5A13D]' : 'text-[#A6651D]'}`}>{item.category}</p>
-                  <h3 className="mt-1.5 text-base font-black tracking-[-.025em]">{item.short}</h3>
-                  <p className={`mt-2 line-clamp-2 text-[11px] leading-5 ${active ? 'text-white/45' : 'text-black/45'}`}>{item.description}</p>
-                  <div className={`mt-4 border-t pt-3 text-[9px] leading-5 ${active ? 'border-white/10' : 'border-black/[.06]'}`}><b>{money(item.laborMin)}–{money(item.laborMax)}</b> mano de obra<br/><span className={active ? 'text-[#F5C17A]' : 'text-[#8C591C]'}><b>{money(item.marketMin)}–{money(item.marketMax)}</b> trabajo vendido</span></div>
+                <button key={item.id} type="button" onClick={() => chooseService(item)} className={`group relative flex min-h-[176px] flex-col rounded-[20px] border p-4 text-left transition sm:p-5 ${active ? 'border-[#DDA447] bg-[#FFFDF8] shadow-[0_14px_40px_rgba(61,49,28,.08)] ring-1 ring-[#DDA447]/15' : 'border-[#151714]/[.07] bg-white hover:-translate-y-0.5 hover:border-[#151714]/15'}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className={`grid h-10 w-10 place-items-center rounded-[12px] ${active ? 'bg-[#151714] text-[#E7B65C]' : 'bg-[#F1EFE8] text-[#555C52]'}`}><ItemIcon className="h-[18px] w-[18px]" /></span>
+                    <div className="flex items-center gap-2">
+                      {inBudget ? <span className="inline-flex h-6 items-center gap-1 rounded-full bg-[#E8F0E5] px-2 text-[9px] font-semibold text-[#4E6549]"><Check className="h-3 w-3"/> Añadido</span> : null}
+                      <span className="rounded-full bg-[#F2F0EA] px-2 py-1 text-[9px] font-semibold text-[#686E64]">/{item.unit}</span>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-[9px] font-semibold uppercase tracking-[.12em] text-[#898E84]">{item.category}</p>
+                    <h3 className="mt-1 text-[15px] font-semibold tracking-[-.02em] text-[#151714]">{item.short}</h3>
+                    <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-[#777C73]">{item.description}</p>
+                  </div>
+                  <div className="mt-auto flex items-end justify-between gap-3 border-t border-[#151714]/[.06] pt-4">
+                    <div><span className="block text-[9px] text-[#8A8F86]">Mano de obra desde</span><b className="mt-0.5 block text-sm font-semibold text-[#2B2E2A]">{money(item.laborMin)}</b></div>
+                    <ChevronRight className={`h-4 w-4 ${active ? 'text-[#B77A1F]' : 'text-[#A4A89F]'}`} />
+                  </div>
                 </button>
               );
             })}
@@ -522,105 +543,139 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
         </div>
       </section>
 
-      <section ref={calculatorRef} className="scroll-mt-24 bg-[#ECE5DC] px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[1320px]">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.12fr)_minmax(360px,.68fr)] lg:items-start">
-            <div className="rounded-[2rem] border border-black/[.055] bg-white p-5 shadow-[0_24px_70px_rgba(58,42,25,.07)] sm:p-7 lg:p-9">
-              <div className="flex items-start gap-4 border-b border-black/[.07] pb-6"><span className="grid h-13 w-13 shrink-0 place-items-center rounded-[1rem] bg-[#0B0C0E] text-[#F5A13D]"><Icon className="h-5 w-5" /></span><div><p className="text-[9px] font-black uppercase tracking-[.14em] text-[#B96A16]">{service.category} · se cobra por {service.unit}</p><h2 className="mt-1 text-2xl font-black tracking-[-.04em] sm:text-3xl">{service.title}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#655D55]">{service.description}</p></div></div>
+      <section ref={calculatorRef} className="scroll-mt-24 border-y border-[#151714]/[.06] bg-[#EEECE6] px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <div className="mx-auto max-w-[1240px]">
+          <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-[#8A6A36]">Calculadora</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-.045em] sm:text-4xl">Mide {service.short.toLowerCase()}.</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#747970]">La calculadora adapta sus campos a la unidad real de esta partida. Puedes cambiar la modalidad antes de agregarla al presupuesto.</p>
+            </div>
+            <div className="inline-flex items-center gap-2 text-[10px] text-[#777C73]"><span className="grid h-8 w-8 place-items-center rounded-full bg-white"><Icon className="h-4 w-4 text-[#5D645A]"/></span>{service.category} · {service.unit}</div>
+          </div>
 
-              <div className="mt-7 grid gap-6 xl:grid-cols-[1fr_.9fr]">
-                <div>
-                  {supportsDirect ? <div className="mb-5 grid grid-cols-2 gap-2 rounded-[1.25rem] bg-[#F3EEE7] p-2"><ModeButton active={entryMode === 'dimensions'} icon={Ruler} label="Calcular por medidas" onClick={() => setEntryMode('dimensions')} /><ModeButton active={entryMode === 'direct'} icon={CircleDollarSign} label={`Ingresar ${service.unit} total`} onClick={() => setEntryMode('direct')} /></div> : null}
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+            <div className="overflow-hidden rounded-[24px] border border-[#151714]/[.07] bg-white">
+              <div className="border-b border-[#151714]/[.07] px-5 py-5 sm:px-7">
+                <p className="text-[10px] font-semibold text-[#8D9289]">Servicio seleccionado</p>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1"><h3 className="text-xl font-semibold tracking-[-.03em] sm:text-2xl">{service.title}</h3><span className="rounded-full bg-[#F3F1EB] px-2.5 py-1 text-[9px] font-semibold text-[#6D7269]">Se cobra por {service.unit}</span></div>
+                <p className="mt-2 max-w-3xl text-xs leading-5 text-[#777C73]">{service.description}</p>
+              </div>
 
-                  {service.measurement === 'count' ? (
-                    <NumberField label={directLabel(service)} hint={directHint(service)} value={values.quantity} step={1} onChange={(value) => updateValue('quantity', value)} />
-                  ) : entryMode === 'direct' && supportsDirect ? (
-                    <div className="rounded-[1.35rem] border border-[#F28C28]/20 bg-[#FFF8EC] p-5"><NumberField label={directLabel(service)} hint={directHint(service)} value={directQuantity} step={service.unit === 'm³' ? 0.1 : 0.5} onChange={setDirectQuantity} suffix={service.unit} />{service.measurement === 'slab' ? <div className="mt-4"><NumberField label="Espesor del radier" hint="Se usa para ajustar el rango aunque ingreses los m² directamente." value={values.height} step={0.01} onChange={(value) => updateValue('height', value)} suffix="m" /></div> : null}</div>
-                  ) : (
-                    <div className="grid gap-4 sm:grid-cols-2">{fields.map((field) => <NumberField key={field.key} label={field.label} hint={field.hint} value={values[field.key]} step={field.step} onChange={(value) => updateValue(field.key, value)} />)}</div>
-                  )}
+              <div className="grid lg:grid-cols-[1.06fr_.94fr]">
+                <div className="border-b border-[#151714]/[.07] p-5 sm:p-7 lg:border-b-0 lg:border-r">
+                  <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-semibold text-[#666C63]">1. Medición</p><span className="text-[9px] text-[#9A9E96]">{number(measurement.quantity)} {service.unit}</span></div>
+                  {supportsDirect ? <div className="mt-4 grid grid-cols-2 gap-1 rounded-[14px] bg-[#F2F0EA] p-1"><ModeButton active={entryMode === 'dimensions'} icon={Ruler} label="Por medidas" onClick={() => setEntryMode('dimensions')} /><ModeButton active={entryMode === 'direct'} icon={CircleDollarSign} label={`Total ${service.unit}`} onClick={() => setEntryMode('direct')} /></div> : null}
 
-                  <div className="mt-5 rounded-[1.35rem] bg-[#F6F2EC] p-5"><p className="text-[9px] font-black uppercase tracking-[.13em] text-[#A6651D]">Cómo se calculó</p><p className="mt-2 text-sm font-black">{measurement.formula}</p><p className="mt-1 text-xs leading-5 text-[#6B625A]">{measurement.detail}</p>{measurement.secondary ? <p className="mt-1 text-[10px] text-[#8C6B42]">{measurement.secondary}</p> : null}</div>
+                  <div className="mt-5">
+                    {service.measurement === 'count' ? (
+                      <NumberField label={directLabel(service)} hint={directHint(service)} value={values.quantity} step={1} onChange={(value) => updateValue('quantity', value)} />
+                    ) : entryMode === 'direct' && supportsDirect ? (
+                      <div className="grid gap-4"><NumberField label={directLabel(service)} hint={directHint(service)} value={directQuantity} step={service.unit === 'm³' ? 0.1 : 0.5} onChange={setDirectQuantity} suffix={service.unit} />{service.measurement === 'slab' ? <NumberField label="Espesor" hint="Ajusta la referencia del radier." value={values.height} step={0.01} onChange={(value) => updateValue('height', value)} suffix="m" /> : null}</div>
+                    ) : (
+                      <div className="grid gap-4 sm:grid-cols-2">{fields.map((field) => <NumberField key={field.key} label={field.label} hint={field.hint} value={values[field.key]} step={field.step} onChange={(value) => updateValue(field.key, value)} />)}</div>
+                    )}
+                  </div>
+
+                  <div className="mt-5 rounded-[16px] bg-[#F6F4EF] p-4">
+                    <div className="flex items-center gap-2 text-[9px] font-semibold text-[#7C8278]"><Calculator className="h-3.5 w-3.5"/> Resultado de la medición</div>
+                    <p className="mt-2 text-sm font-semibold text-[#2B2E2A]">{measurement.formula}</p>
+                    <p className="mt-1 text-[11px] leading-5 text-[#777C73]">{measurement.detail}</p>
+                    {measurement.secondary ? <p className="mt-1 text-[10px] text-[#927043]">{measurement.secondary}</p> : null}
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-[.14em] text-black/42">Modalidad de referencia</p>
-                  <div className="mt-2 grid grid-cols-2 gap-2 rounded-[1.3rem] bg-[#F0EBE4] p-2"><PriceModeButton active={priceMode === 'labor'} title="Mano de obra" text="Solo ejecución" onClick={() => setPriceMode('labor')} /><PriceModeButton active={priceMode === 'complete'} title="Trabajo vendido" text="Ejecución + base" onClick={() => setPriceMode('complete')} /></div>
-                  <p className="mt-3 flex gap-2 text-[10px] leading-5 text-black/45"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D8791E]" />{priceModeDescription(priceMode)}</p>
-                  <div className="mt-5 grid gap-2"><RangeCard label="Mano de obra" low={laborLow} high={laborHigh} active={priceMode === 'labor'} /><RangeCard label="Trabajo vendido" low={completeLow} high={completeHigh} active={priceMode === 'complete'} /></div>
+                <div className="p-5 sm:p-7">
+                  <p className="text-[10px] font-semibold text-[#666C63]">2. Forma de contratar</p>
+                  <div className="mt-4 grid grid-cols-2 gap-2"><PriceModeButton active={priceMode === 'labor'} title="Solo ejecución" text="Mano de obra" onClick={() => setPriceMode('labor')} /><PriceModeButton active={priceMode === 'complete'} title="Trabajo vendido" text="Ejecución + base" onClick={() => setPriceMode('complete')} /></div>
+                  <p className="mt-3 flex gap-2 text-[10px] leading-5 text-[#777C73]"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A87B32]" />{priceModeDescription(priceMode)}</p>
+                  <div className="mt-5 grid gap-2"><RangeCard label="Solo ejecución" low={laborLow} high={laborHigh} active={priceMode === 'labor'} /><RangeCard label="Trabajo vendido" low={completeLow} high={completeHigh} active={priceMode === 'complete'} /></div>
                 </div>
               </div>
 
-              <div className="mt-7 flex flex-col gap-3 border-t border-black/[.07] pt-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.13em] text-black/38">Seleccionado</p><p className="mt-1 text-2xl font-black tracking-[-.04em]">{rangeText(selectedLow, selectedHigh)}</p></div><button type="button" disabled={measurement.quantity <= 0} onClick={addCurrentService} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#0B0C0E] px-6 text-xs font-black text-[#F5A13D] disabled:opacity-30">{addedId === service.id ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}{addedId === service.id ? 'Actualizado en presupuesto' : 'Agregar al presupuesto'}</button></div>
+              <div className="flex flex-col gap-4 border-t border-[#151714]/[.07] bg-[#FBFAF7] p-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                <div><p className="text-[10px] text-[#848980]">Referencia seleccionada</p><p className="mt-1 text-2xl font-semibold tracking-[-.04em]">{rangeText(selectedLow, selectedHigh)}</p></div>
+                <button type="button" disabled={measurement.quantity <= 0} onClick={addCurrentService} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] bg-[#171916] px-5 text-xs font-semibold text-white transition hover:bg-black disabled:opacity-30">{addedId === service.id ? <Check className="h-4 w-4 text-[#E7B65C]" /> : <Plus className="h-4 w-4 text-[#E7B65C]" />}{addedId === service.id ? 'Partida actualizada' : 'Agregar partida'}</button>
+              </div>
             </div>
 
-            <aside className="rounded-[1.8rem] bg-[#0B0C0E] p-5 text-white lg:sticky lg:top-24 sm:p-6">
-              <p className="text-[9px] font-black uppercase tracking-[.15em] text-[#F5A13D]">Resumen en curso</p>
-              <p className="mt-2 text-3xl font-black tracking-[-.045em]">{items.length ? rangeText(totals.low, totals.high) : money(0)}</p>
-              <p className="mt-2 text-[10px] leading-5 text-white/38">{serviceItems.length} servicios · {productItems.length} productos. La diferencia entre modalidades queda visible en la boleta final.</p>
-              <div className="mt-5 divide-y divide-white/[.08] border-y border-white/[.08]">{serviceItems.slice(-4).map((item) => { const range = lineRange(item); return <div key={item.id} className="py-3"><div className="flex justify-between gap-3"><span className="text-xs font-bold">{item.title}</span><span className="text-[10px] text-[#F5C17A]">{rangeText(range.low, range.high)}</span></div><p className="mt-1 text-[9px] text-white/32">{number(item.quantity)} {item.unit} · {lineMode(item) === 'labor' ? 'mano de obra' : 'trabajo vendido'}</p></div>; })}</div>
-              <button type="button" onClick={() => { trackBudget('budget_receipt_viewed', { total_low: totals.low, total_high: totals.high }); receiptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-[#F5A13D] px-5 text-xs font-black text-black">Ver boleta completa <ChevronRight className="h-4 w-4" /></button>
+            <aside className="rounded-[22px] bg-[#171916] p-5 text-white xl:sticky xl:top-24 sm:p-6">
+              <div className="flex items-center justify-between"><p className="text-[10px] font-semibold text-white/44">Resumen</p><ReceiptText className="h-4 w-4 text-[#DDA447]"/></div>
+              <p className="mt-3 text-3xl font-semibold tracking-[-.045em]">{items.length ? rangeText(totals.low, totals.high) : money(0)}</p>
+              <p className="mt-2 text-[10px] leading-5 text-white/40">{serviceItems.length} servicios · {productItems.length} productos</p>
+              <div className="mt-5 divide-y divide-white/[.07] border-y border-white/[.07]">{serviceItems.slice(-4).map((item) => { const range = lineRange(item); return <div key={item.id} className="py-3"><div className="flex justify-between gap-3"><span className="text-[11px] font-medium text-white/76">{item.title}</span><span className="text-[10px] font-medium text-[#E5B45C]">{rangeText(range.low, range.high)}</span></div><p className="mt-1 text-[9px] text-white/30">{number(item.quantity)} {item.unit} · {lineMode(item) === 'labor' ? 'ejecución' : 'trabajo vendido'}</p></div>; })}</div>
+              <button type="button" onClick={() => { trackBudget('budget_receipt_viewed', { total_low: totals.low, total_high: totals.high }); receiptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[13px] bg-[#DDA447] px-5 text-xs font-semibold text-[#191A17]">Revisar presupuesto <ChevronRight className="h-4 w-4" /></button>
             </aside>
           </div>
         </div>
       </section>
 
-      <section className="px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[1320px]">
-          <header className="grid gap-6 lg:grid-cols-[.72fr_1.28fr] lg:items-end"><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#B96A16]">Productos e insumos</p><h2 className="mt-3 max-w-[12ch] text-4xl font-black leading-[.96] tracking-[-.05em] sm:text-5xl">Completa el proyecto sin mezclar conceptos.</h2></div><div><p className="max-w-2xl text-sm leading-7 text-[#655D55]">Los productos se agregan como líneas independientes. Así la boleta distingue claramente el costo del servicio de los materiales o equipos seleccionados.</p><label className="mt-4 flex max-w-md items-center gap-2 rounded-full border border-black/[.08] bg-white px-4 py-3"><Search className="h-4 w-4 text-[#B96A16]"/><input value={productQuery} onChange={(event) => setProductQuery(event.target.value)} placeholder="Buscar producto o categoría" className="min-w-0 flex-1 bg-transparent text-xs outline-none"/></label></div></header>
+      <section className="px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <div className="mx-auto max-w-[1240px]">
+          <div className="grid gap-6 lg:grid-cols-[.75fr_1.25fr] lg:items-end">
+            <SectionIntro eyebrow="Productos" title="Añade solo lo que aporta al proyecto." text="Los productos quedan separados de la mano de obra. Así puedes ver cuánto corresponde a ejecución y cuánto a materiales o equipos." />
+            <label className="flex h-12 w-full items-center gap-3 rounded-[14px] border border-[#151714]/[.08] bg-white px-4 lg:ml-auto lg:max-w-md"><Search className="h-4 w-4 text-[#72776E]"/><input value={productQuery} onChange={(event) => setProductQuery(event.target.value)} placeholder="Buscar producto o categoría" className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-[#A2A69E]"/></label>
+          </div>
 
-          <div className="-mx-4 mt-8 grid auto-cols-[minmax(250px,78vw)] grid-flow-col gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid-flow-row sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
+          <div className="-mx-4 mt-7 grid auto-cols-[minmax(252px,78vw)] grid-flow-col gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid-flow-row sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
             {visibleProducts.map((product) => {
               const price = finalProductPrice(product);
               const current = productItems.find((item) => metaString(item, 'productId') === product.id);
-              return <article key={product.id} className="overflow-hidden rounded-[1.5rem] border border-black/[.055] bg-white p-2.5"><div className="relative aspect-[4/3] overflow-hidden rounded-[1.15rem] bg-[#F3EEE7]">{product.img ? <img src={product.img} alt={displayProductName(product.name)} loading="lazy" decoding="async" className="h-full w-full object-contain p-4"/> : <div className="grid h-full place-items-center"><Package className="h-8 w-8 text-black/20"/></div>}<span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.09em] text-[#82531D] backdrop-blur">{product.category}</span></div><div className="px-1 pb-1 pt-4"><h3 className="line-clamp-2 min-h-10 text-sm font-black leading-5">{displayProductName(product.name)}</h3><p className="mt-2 line-clamp-1 text-[10px] text-black/38">{product.tagline}</p><div className="mt-4 flex items-end justify-between gap-3 border-t border-black/[.06] pt-3"><div><b className="text-lg tracking-[-.03em]">{money(price)}</b><span className="block text-[8px] font-black uppercase tracking-[.09em] text-emerald-700">IVA incluido</span></div><button type="button" disabled={product.stock === 0} onClick={() => addProduct(product)} className="grid h-10 w-10 place-items-center rounded-full bg-[#0B0C0E] text-[#F5A13D] disabled:opacity-25" aria-label={`Agregar ${displayProductName(product.name)}`}>{current ? <span className="text-[10px] font-black">{number(current.quantity)}</span> : <Plus className="h-4 w-4"/>}</button></div></div></article>;
+              const outOfStock = product.stock === 0;
+              return (
+                <article key={product.id} className="group overflow-hidden rounded-[20px] border border-[#151714]/[.07] bg-white p-2.5 transition hover:-translate-y-0.5 hover:border-[#151714]/15">
+                  <div className="relative aspect-[1.08/1] overflow-hidden rounded-[15px] bg-[#F1F0EB]">{product.img ? <img src={product.img} alt={displayProductName(product.name)} loading="lazy" decoding="async" className="h-full w-full object-contain p-5 transition duration-300 group-hover:scale-[1.02]"/> : <div className="grid h-full place-items-center"><Package className="h-8 w-8 text-black/18"/></div>}<span className="absolute left-3 top-3 rounded-full bg-white/92 px-2.5 py-1 text-[8px] font-semibold text-[#6C7168] shadow-sm">{product.category}</span>{current ? <span className="absolute right-3 top-3 grid h-7 min-w-7 place-items-center rounded-full bg-[#171916] px-2 text-[9px] font-semibold text-white">{number(current.quantity)}</span> : null}</div>
+                  <div className="px-1 pb-1 pt-4"><h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 tracking-[-.015em]">{displayProductName(product.name)}</h3><p className="mt-1 line-clamp-1 text-[10px] text-[#868B82]">{product.tagline || 'Producto disponible para complementar tu presupuesto'}</p><div className="mt-4 flex items-center justify-between gap-3 border-t border-[#151714]/[.06] pt-3"><div><b className="text-base font-semibold tracking-[-.025em]">{money(price)}</b><span className={`mt-0.5 block text-[8px] font-medium ${outOfStock ? 'text-[#A35E58]' : 'text-[#65775D]'}`}>{outOfStock ? 'Sin stock' : 'IVA incluido'}</span></div><button type="button" disabled={outOfStock} onClick={() => addProduct(product)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[12px] bg-[#171916] px-3 text-[10px] font-semibold text-white disabled:opacity-30">{current ? <><Plus className="h-3.5 w-3.5 text-[#E7B65C]"/> Añadir otro</> : <><Plus className="h-3.5 w-3.5 text-[#E7B65C]"/> Añadir</>}</button></div></div>
+                </article>
+              );
             })}
           </div>
         </div>
       </section>
 
-      <section ref={receiptRef} className="scroll-mt-24 bg-[#171719] px-4 py-14 text-[#F7F4EE] sm:px-6 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-[1320px]">
-          <header className="grid gap-6 lg:grid-cols-[.72fr_1.28fr] lg:items-end"><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#F5A13D]">Boleta referencial</p><h2 className="mt-3 max-w-[12ch] text-4xl font-black leading-[.96] tracking-[-.05em] sm:text-5xl">Tu proyecto, separado partida por partida.</h2></div><p className="max-w-2xl text-sm leading-7 text-white/45">No es un documento tributario ni una cotización final. Es una referencia comercial para entender servicios, productos, modalidad de cobro y diferencia de valores antes de confirmar una visita.</p></header>
+      <section ref={receiptRef} className="scroll-mt-24 bg-[#151714] px-4 py-12 text-[#F7F6F2] sm:px-6 lg:px-8 lg:py-16">
+        <div className="mx-auto max-w-[1240px]">
+          <div className="grid gap-6 lg:grid-cols-[.7fr_1.3fr] lg:items-end">
+            <div><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-[#DDA447]">Resumen final</p><h2 className="mt-2 max-w-[13ch] text-3xl font-semibold tracking-[-.045em] sm:text-4xl">Todo el proyecto, en una sola lectura.</h2></div>
+            <p className="max-w-2xl text-sm leading-6 text-white/45">La referencia separa ejecución, trabajo vendido y productos. El valor definitivo se confirma después de revisar condiciones reales, alcance y terminaciones.</p>
+          </div>
 
-          <div className="mt-9 grid gap-5 xl:grid-cols-[1.12fr_.88fr] xl:items-start">
-            <article className="sf-budget-receipt overflow-hidden rounded-[1.8rem] bg-[#F9F6F0] text-[#0B0C0E] shadow-[0_24px_65px_rgba(0,0,0,.22)]">
-              <div className="flex items-start justify-between gap-4 bg-[#0B0C0E] p-5 text-white sm:p-7"><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-[#F5A13D]">Soluciones Fabrick · presupuesto referencial</p><h3 className="mt-2 text-2xl font-black">Resumen del proyecto</h3><p className="mt-2 text-[9px] text-white/35">Referencia {reference}</p></div><span className="grid h-11 w-11 place-items-center rounded-full bg-[#F5A13D] text-black"><ReceiptText className="h-4 w-4" /></span></div>
+          <div className="mt-8 grid gap-4 xl:grid-cols-[1.08fr_.92fr] xl:items-start">
+            <article className="sf-budget-receipt overflow-hidden rounded-[22px] bg-[#FAF9F6] text-[#151714]">
+              <div className="flex items-start justify-between gap-4 border-b border-[#151714]/[.07] p-5 sm:p-7"><div><p className="text-[9px] font-semibold uppercase tracking-[.13em] text-[#8F7040]">Soluciones Fabrick · referencia {reference}</p><h3 className="mt-2 text-xl font-semibold tracking-[-.03em] sm:text-2xl">Presupuesto del proyecto</h3></div><span className="grid h-10 w-10 place-items-center rounded-[12px] bg-[#ECE8DE] text-[#6D725F]"><ReceiptText className="h-4 w-4" /></span></div>
 
               <div className="p-5 sm:p-7">
                 <ReceiptSection title="Servicios" icon={Calculator} empty="Aún no agregas servicios.">
                   {serviceItems.map((item) => {
                     const range = lineRange(item); const alt = alternateRange(item); const mode = lineMode(item);
-                    return <div key={item.id} className="border-b border-black/[.07] py-4 last:border-0"><div className="flex items-start justify-between gap-4"><div><span className={`inline-flex rounded-full px-2 py-1 text-[8px] font-black uppercase ${mode === 'labor' ? 'bg-black/[.06] text-black/55' : 'bg-[#F2DFBB] text-[#805112]'}`}>{mode === 'labor' ? 'Mano de obra' : 'Trabajo vendido'}</span><h4 className="mt-2 text-sm font-black">{item.title}</h4><p className="mt-1 text-[10px] text-black/42">{number(item.quantity)} {item.unit} · {metaString(item, 'formula')}</p></div><button type="button" onClick={() => removeItem(item.id)} className="sf-budget-no-print text-red-700" aria-label={`Quitar ${item.title}`}><Trash2 className="h-4 w-4"/></button></div><div className="mt-3 flex items-end justify-between gap-4"><div><b className="text-base">{rangeText(range.low, range.high)}</b><p className="mt-1 text-[9px] text-black/38">Alternativa {alt.mode === 'labor' ? 'mano de obra' : 'trabajo vendido'}: {rangeText(alt.low, alt.high)}</p></div><button type="button" onClick={() => editItem(item)} className="sf-budget-no-print text-[9px] font-black uppercase text-[#A6651D]">Editar</button></div></div>;
+                    return <div key={item.id} className="border-b border-black/[.07] py-4 last:border-0"><div className="flex items-start justify-between gap-4"><div><span className={`inline-flex rounded-full px-2 py-1 text-[8px] font-semibold ${mode === 'labor' ? 'bg-[#ECEBE6] text-[#666B63]' : 'bg-[#F0E5CF] text-[#7C5C28]'}`}>{mode === 'labor' ? 'Solo ejecución' : 'Trabajo vendido'}</span><h4 className="mt-2 text-sm font-semibold">{item.title}</h4><p className="mt-1 text-[10px] text-black/42">{number(item.quantity)} {item.unit} · {metaString(item, 'formula')}</p></div><button type="button" onClick={() => removeItem(item.id)} className="sf-budget-no-print text-[#A35E58]" aria-label={`Quitar ${item.title}`}><Trash2 className="h-4 w-4"/></button></div><div className="mt-3 flex items-end justify-between gap-4"><div><b className="text-sm font-semibold">{rangeText(range.low, range.high)}</b><p className="mt-1 text-[9px] text-black/36">Alternativa: {rangeText(alt.low, alt.high)}</p></div><button type="button" onClick={() => editItem(item)} className="sf-budget-no-print text-[9px] font-semibold text-[#8D6B36]">Editar cálculo</button></div></div>;
                   })}
                 </ReceiptSection>
 
-                <ReceiptSection title="Productos / insumos" icon={Package} empty="No agregaste productos al presupuesto.">
-                  {productItems.map((item) => <div key={item.id} className="flex items-center gap-3 border-b border-black/[.07] py-4 last:border-0">{item.image ? <img src={item.image} alt="" className="h-12 w-12 rounded-xl bg-[#F1ECE5] object-contain p-1.5"/> : <span className="grid h-12 w-12 place-items-center rounded-xl bg-[#F1ECE5]"><Package className="h-4 w-4"/></span>}<div className="min-w-0 flex-1"><h4 className="truncate text-xs font-black">{item.title}</h4><p className="mt-1 text-[9px] text-black/38">{money(item.refPrice || 0)} c/u</p><div className="sf-budget-no-print mt-2 inline-flex items-center gap-3 rounded-full border border-black/10 px-2 py-1"><button type="button" onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}><Minus className="h-3 w-3"/></button><b className="text-[10px]">{number(item.quantity)}</b><button type="button" onClick={() => updateQuantity(item.id, item.quantity + 1)}><Plus className="h-3 w-3"/></button></div></div><div className="text-right"><b className="text-sm">{money((item.refPrice || 0) * item.quantity)}</b><button type="button" onClick={() => removeItem(item.id)} className="sf-budget-no-print mt-2 ml-auto block text-red-700"><Trash2 className="h-3.5 w-3.5"/></button></div></div>)}
+                <ReceiptSection title="Productos" icon={Package} empty="No agregaste productos al presupuesto.">
+                  {productItems.map((item) => <div key={item.id} className="flex items-center gap-3 border-b border-black/[.07] py-4 last:border-0">{item.image ? <img src={item.image} alt="" className="h-12 w-12 rounded-[12px] bg-[#F1EFEA] object-contain p-1.5"/> : <span className="grid h-12 w-12 place-items-center rounded-[12px] bg-[#F1EFEA]"><Package className="h-4 w-4"/></span>}<div className="min-w-0 flex-1"><h4 className="truncate text-xs font-semibold">{item.title}</h4><p className="mt-1 text-[9px] text-black/38">{money(item.refPrice || 0)} c/u</p><div className="sf-budget-no-print mt-2 inline-flex items-center gap-3 rounded-full border border-black/10 px-2 py-1"><button type="button" onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}><Minus className="h-3 w-3"/></button><b className="text-[10px]">{number(item.quantity)}</b><button type="button" onClick={() => updateQuantity(item.id, item.quantity + 1)}><Plus className="h-3 w-3"/></button></div></div><div className="text-right"><b className="text-sm font-semibold">{money((item.refPrice || 0) * item.quantity)}</b><button type="button" onClick={() => removeItem(item.id)} className="sf-budget-no-print mt-2 ml-auto block text-[#A35E58]"><Trash2 className="h-3.5 w-3.5"/></button></div></div>)}
                 </ReceiptSection>
 
-                {!items.length ? <div className="py-8 text-center"><ShoppingBag className="mx-auto h-8 w-8 text-black/18"/><p className="mt-3 font-black">Tu presupuesto está vacío.</p><p className="mt-1 text-xs text-black/40">Agrega una partida o producto para generar la referencia.</p></div> : null}
+                {!items.length ? <div className="py-8 text-center"><ShoppingBag className="mx-auto h-8 w-8 text-black/18"/><p className="mt-3 text-sm font-semibold">Tu presupuesto está vacío</p><p className="mt-1 text-xs text-black/40">Selecciona un servicio o agrega un producto para comenzar.</p></div> : null}
 
-                <div className="mt-5 border-t border-black/10 pt-5"><ReceiptRow label="Servicios" value={rangeText(serviceTotals.low, serviceTotals.high)} muted /><ReceiptRow label="Productos" value={money(productTotal)} muted /><ReceiptRow label="Neto contenido" value={rangeText(taxLow.net, taxHigh.net)} muted /><ReceiptRow label="IVA 19% contenido" value={rangeText(taxLow.iva, taxHigh.iva)} muted /><ReceiptRow label="Total referencial" value={rangeText(totals.low, totals.high)} strong /><p className="mt-3 text-[9px] leading-4 text-black/38">Los productos tienen precio publicado. Los servicios conservan un rango porque el valor final depende de terreno, acceso, estado actual, terminaciones y alcance confirmado.</p></div>
-                <div className="sf-budget-no-print mt-5 grid grid-cols-2 gap-2"><button type="button" disabled={!items.length} onClick={() => window.print()} className="min-h-11 rounded-full border border-black/12 text-[10px] font-black disabled:opacity-30">Guardar PDF</button><button type="button" disabled={!items.length} onClick={() => { clear(); setSubmission(null); }} className="min-h-11 rounded-full border border-black/12 text-[10px] font-black text-red-700 disabled:opacity-30">Vaciar</button></div>
+                <div className="mt-5 rounded-[16px] bg-[#F0EEE8] p-4 sm:p-5"><ReceiptRow label="Servicios" value={rangeText(serviceTotals.low, serviceTotals.high)} muted /><ReceiptRow label="Productos" value={money(productTotal)} muted /><ReceiptRow label="Neto contenido" value={rangeText(taxLow.net, taxHigh.net)} muted /><ReceiptRow label="IVA 19% contenido" value={rangeText(taxLow.iva, taxHigh.iva)} muted /><ReceiptRow label="Total referencial" value={rangeText(totals.low, totals.high)} strong /></div>
+                <p className="mt-3 text-[9px] leading-4 text-black/38">Los servicios mantienen un rango porque terreno, acceso, estado actual, terminaciones y alcance pueden cambiar el valor definitivo.</p>
+                <div className="sf-budget-no-print mt-5 grid grid-cols-2 gap-2"><button type="button" disabled={!items.length} onClick={() => window.print()} className="min-h-11 rounded-[12px] border border-black/10 text-[10px] font-semibold disabled:opacity-30">Guardar PDF</button><button type="button" disabled={!items.length} onClick={() => { clear(); setSubmission(null); }} className="min-h-11 rounded-[12px] border border-black/10 text-[10px] font-semibold text-[#A35E58] disabled:opacity-30">Vaciar</button></div>
               </div>
             </article>
 
-            <section ref={formRef} className="scroll-mt-24 rounded-[1.8rem] border border-white/[.08] bg-white/[.035] p-5 sm:p-7 xl:sticky xl:top-24">
-              <p className="text-[9px] font-black uppercase tracking-[.16em] text-[#F5A13D]">Confirmar presupuesto</p>
-              <h3 className="mt-2 text-2xl font-black tracking-[-.035em]">Recibe una copia y conversemos sobre el proyecto.</h3>
-              <p className="mt-3 text-xs leading-6 text-white/42">Completa tus datos una sola vez. Al confirmar registramos la solicitud, enviamos la copia del presupuesto a tu correo y avisamos al equipo Fabrick.</p>
+            <section ref={formRef} className="scroll-mt-24 rounded-[22px] border border-white/[.09] bg-white/[.035] p-5 sm:p-7 xl:sticky xl:top-24">
+              <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-[12px] bg-[#DDA447] text-[#171916]"><Mail className="h-4 w-4"/></span><div><p className="text-[10px] font-semibold text-white/42">Confirmar solicitud</p><h3 className="text-xl font-semibold tracking-[-.03em]">Recibe tu copia y continúa con nosotros.</h3></div></div>
+              <p className="mt-4 text-xs leading-6 text-white/42">Completa tus datos. Guardaremos la solicitud, enviaremos la referencia al correo indicado y podrás continuar por WhatsApp si lo prefieres.</p>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2"><FormField icon={UserRound} label="Nombre completo *"><input value={customer.name} onChange={(event) => setCustomer((current) => ({ ...current, name: event.target.value }))} placeholder="Nombre y apellido" className="sf-input"/></FormField><FormField icon={Mail} label="Correo *"><input type="email" value={customer.email} onChange={(event) => setCustomer((current) => ({ ...current, email: event.target.value }))} placeholder="tu@email.cl" className="sf-input"/></FormField><FormField icon={Phone} label="Teléfono"><input value={customer.phone} onChange={(event) => setCustomer((current) => ({ ...current, phone: event.target.value }))} placeholder="+56 9 ..." className="sf-input"/></FormField><FormField icon={MapPin} label="Comuna / ciudad"><input value={customer.place} onChange={(event) => setCustomer((current) => ({ ...current, place: event.target.value }))} placeholder="Ej. Linares" className="sf-input"/></FormField></div>
-              <label className="mt-4 grid gap-2"><span className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.11em] text-white/42"><FileText className="h-3.5 w-3.5 text-[#F5A13D]"/>Detalles del proyecto</span><textarea value={customer.note} onChange={(event) => setCustomer((current) => ({ ...current, note: event.target.value }))} rows={4} placeholder="Estado actual, fecha ideal, dudas, referencias…" className="resize-none rounded-[1.1rem] border border-white/[.09] bg-black/25 px-4 py-3 text-xs leading-6 text-white outline-none placeholder:text-white/22 focus:border-[#F5A13D]/40"/></label>
+              <label className="mt-4 grid gap-2"><span className="flex items-center gap-2 text-[9px] font-semibold text-white/44"><FileText className="h-3.5 w-3.5 text-[#DDA447]"/>Detalles del proyecto</span><textarea value={customer.note} onChange={(event) => setCustomer((current) => ({ ...current, note: event.target.value }))} rows={4} placeholder="Estado actual, fecha ideal, referencias o dudas…" className="resize-none rounded-[14px] border border-white/[.10] bg-white/[.045] px-4 py-3 text-xs leading-6 text-white outline-none placeholder:text-white/28 focus:border-[#DDA447]/55"/></label>
 
-              <style>{`.sf-input{width:100%;border-radius:.9rem;border:1px solid rgba(255,255,255,.09);background:rgba(0,0,0,.25);padding:.75rem .9rem;font-size:.75rem;color:white;outline:none}.sf-input::placeholder{color:rgba(255,255,255,.22)}.sf-input:focus{border-color:rgba(245,161,61,.4)}`}</style>
+              {submitError ? <div className="mt-4 rounded-[12px] border border-red-400/20 bg-red-400/[.08] px-4 py-3 text-xs leading-5 text-red-200">{submitError}</div> : null}
+              {submission ? <div className="mt-4 rounded-[14px] border border-emerald-300/20 bg-emerald-300/[.07] p-4"><div className="flex gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-300 text-black"><Check className="h-4 w-4"/></span><div><b className="text-sm font-semibold">Presupuesto registrado</b><p className="mt-1 text-[10px] leading-5 text-white/46">Folio {submission.quoteId.slice(0, 8).toUpperCase()}. {submission.customerNotified ? 'La copia fue enviada al correo indicado.' : 'La solicitud quedó guardada para revisión.'}</p></div></div></div> : null}
 
-              {submitError ? <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[.08] px-4 py-3 text-xs leading-5 text-red-200">{submitError}</div> : null}
-              {submission ? <div className="mt-4 rounded-[1.15rem] border border-emerald-300/20 bg-emerald-300/[.07] p-4"><div className="flex gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-300 text-black"><Check className="h-4 w-4"/></span><div><b className="text-sm">Presupuesto registrado</b><p className="mt-1 text-[10px] leading-5 text-white/46">Folio {submission.quoteId.slice(0, 8).toUpperCase()}. {submission.customerNotified ? 'La copia fue enviada al correo indicado.' : 'La solicitud quedó guardada y el equipo podrá revisarla.'}</p></div></div></div> : null}
-
-              <div className="mt-5 grid gap-2"><button type="button" disabled={!items.length || Boolean(sending)} onClick={() => void submitBudget('email')} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#F5A13D] px-5 text-xs font-black text-black disabled:opacity-30"><Mail className="h-4 w-4"/>{sending === 'email' ? 'Enviando…' : 'Confirmar y recibir por correo'}</button><button type="button" disabled={!items.length || Boolean(sending)} onClick={() => void submitBudget('whatsapp')} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/[.12] bg-white/[.035] px-5 text-xs font-black text-white disabled:opacity-30"><MessageCircle className="h-4 w-4 text-[#F5A13D]"/>{sending === 'whatsapp' ? 'Registrando…' : 'Confirmar y continuar por WhatsApp'}</button></div>
-              <p className="mt-4 flex gap-2 text-[9px] leading-5 text-white/28"><Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#F5A13D]"/>El presupuesto es referencial. El valor final se confirma después de revisar alcance, condiciones del lugar y especificaciones del trabajo.</p>
+              <div className="mt-5 grid gap-2"><button type="button" disabled={!items.length || Boolean(sending)} onClick={() => void submitBudget('email')} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[13px] bg-[#DDA447] px-5 text-xs font-semibold text-[#171916] disabled:opacity-30"><Mail className="h-4 w-4"/>{sending === 'email' ? 'Enviando…' : 'Confirmar y recibir por correo'}</button><button type="button" disabled={!items.length || Boolean(sending)} onClick={() => void submitBudget('whatsapp')} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[13px] border border-white/[.12] bg-white/[.035] px-5 text-xs font-semibold text-white disabled:opacity-30"><MessageCircle className="h-4 w-4 text-[#DDA447]"/>{sending === 'whatsapp' ? 'Registrando…' : 'Confirmar y abrir WhatsApp'}</button></div>
+              <p className="mt-4 flex gap-2 text-[9px] leading-5 text-white/28"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#DDA447]"/>La referencia no reemplaza una visita técnica ni constituye documento tributario.</p>
             </section>
           </div>
         </div>
@@ -629,28 +684,42 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
   );
 }
 
+function SectorBrands() {
+  const brands = [
+    { name: 'Bosch', src: 'https://cdn.simpleicons.org/bosch/EA0016' },
+    { name: 'Caterpillar', src: 'https://cdn.simpleicons.org/caterpillar/FFCD11' },
+    { name: 'Bentley', src: 'https://cdn.simpleicons.org/bentley/333333' },
+  ];
+  return <section className="border-b border-[#151714]/[.06] bg-white px-4 py-5 sm:px-6 lg:px-8"><div className="mx-auto flex max-w-[1240px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-[9px] font-semibold uppercase tracking-[.12em] text-[#8C9188]">Referencias del sector</p><p className="mt-1 text-[10px] text-[#9A9E96]">Herramientas, maquinaria y tecnología reconocidas en construcción.</p></div><div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{brands.map((brand) => <div key={brand.name} className="flex h-10 shrink-0 items-center gap-2 rounded-[11px] border border-[#151714]/[.07] bg-[#F8F7F3] px-3"><img src={brand.src} alt={`${brand.name} logo`} loading="lazy" className="h-4 w-4 object-contain"/><span className="text-[10px] font-semibold text-[#575C54]">{brand.name}</span></div>)}</div></div><div className="mx-auto mt-2 max-w-[1240px] text-[8px] leading-4 text-[#A1A59D]">Marcas mostradas como referencias visuales del ecosistema de construcción; no implican afiliación, representación ni disponibilidad comercial.</div></section>;
+}
+function SectionIntro({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
+  return <div className="grid gap-4 lg:grid-cols-[.72fr_1.28fr] lg:items-end"><div><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-[#8A6A36]">{eyebrow}</p><h2 className="mt-2 max-w-[16ch] text-3xl font-semibold tracking-[-.045em] sm:text-4xl">{title}</h2></div><p className="max-w-2xl text-sm leading-6 text-[#777C73]">{text}</p></div>;
+}
 function FlowStep({ icon: Icon, number: step, title, text }: { icon: typeof ClipboardList; number: string; title: string; text: string }) {
-  return <div className="bg-[#111214] p-5 sm:p-6"><div className="flex items-center justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#F5A13D]/12 text-[#F5A13D]"><Icon className="h-4 w-4"/></span><span className="text-[9px] font-black text-white/20">{step}</span></div><b className="mt-4 block text-sm">{title}</b><p className="mt-2 text-[10px] leading-5 text-white/38">{text}</p></div>;
+  return <div className="rounded-[16px] border border-white/[.08] bg-white/[.035] p-4 sm:p-5"><div className="flex items-center justify-between"><span className="grid h-9 w-9 place-items-center rounded-[11px] bg-white/[.06] text-[#DDA447]"><Icon className="h-4 w-4"/></span><span className="text-[9px] font-medium text-white/22">{step}</span></div><b className="mt-4 block text-sm font-semibold">{title}</b><p className="mt-1 text-[10px] leading-5 text-white/38">{text}</p></div>;
+}
+function CategoryButton({ active, label, count, onClick }: { active: boolean; label: string; count: number; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className={`shrink-0 rounded-full border px-3.5 py-2 text-[10px] font-semibold transition ${active ? 'border-[#171916] bg-[#171916] text-white' : 'border-[#151714]/[.08] bg-white text-[#70756C] hover:border-[#151714]/15'}`}>{label}<span className={`ml-2 ${active ? 'text-[#DDA447]' : 'text-[#A1A59D]'}`}>{count}</span></button>;
 }
 function ModeButton({ active, icon: Icon, label, onClick }: { active: boolean; icon: typeof Ruler; label: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className={`flex min-h-11 items-center justify-center gap-2 rounded-[.9rem] px-3 text-[10px] font-black transition ${active ? 'bg-[#0B0C0E] text-[#F5A13D]' : 'text-[#6B625A]'}`}><Icon className="h-3.5 w-3.5"/>{label}</button>;
+  return <button type="button" onClick={onClick} className={`flex min-h-10 items-center justify-center gap-2 rounded-[11px] px-3 text-[10px] font-semibold transition ${active ? 'bg-white text-[#20221F] shadow-sm' : 'text-[#7A8076]'}`}><Icon className="h-3.5 w-3.5"/>{label}</button>;
 }
 function PriceModeButton({ active, title, text, onClick }: { active: boolean; title: string; text: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className={`rounded-[1rem] px-3 py-3 text-left transition ${active ? 'bg-white shadow-sm ring-1 ring-black/[.04]' : 'text-black/48'}`}><b className="block text-[10px]">{title}</b><span className="mt-1 block text-[8px] opacity-55">{text}</span></button>;
+  return <button type="button" onClick={onClick} className={`rounded-[14px] border p-3 text-left transition ${active ? 'border-[#DDA447]/45 bg-[#FFF9EE]' : 'border-[#151714]/[.07] bg-[#F7F6F2] text-[#6F756C]'}`}><div className="flex items-center justify-between gap-2"><b className="text-[10px] font-semibold">{title}</b>{active ? <BadgeCheck className="h-3.5 w-3.5 text-[#9A6B25]"/> : null}</div><span className="mt-1 block text-[9px] opacity-60">{text}</span></button>;
 }
 function RangeCard({ label, low, high, active }: { label: string; low: number; high: number; active: boolean }) {
-  return <div className={`rounded-[1.15rem] border p-4 ${active ? 'border-[#F28C28]/25 bg-[#FFF8EE]' : 'border-black/[.055] bg-[#F7F3EE]'}`}><div className="flex items-center justify-between gap-3"><span className="text-[9px] font-black uppercase tracking-[.1em] text-black/42">{label}</span>{active ? <Check className="h-3.5 w-3.5 text-[#B96A16]"/> : null}</div><b className="mt-2 block text-lg tracking-[-.03em]">{rangeText(low, high)}</b></div>;
+  return <div className={`rounded-[14px] border p-4 ${active ? 'border-[#DDA447]/38 bg-[#FFF9EE]' : 'border-[#151714]/[.07] bg-[#F8F7F4]'}`}><div className="flex items-center justify-between gap-3"><span className="text-[9px] font-medium text-[#777C73]">{label}</span>{active ? <Check className="h-3.5 w-3.5 text-[#9A6B25]"/> : null}</div><b className="mt-2 block text-base font-semibold tracking-[-.025em]">{rangeText(low, high)}</b></div>;
 }
 function NumberField({ label, hint, value, step, suffix, onChange }: { label: string; hint: string; value: number; step: number; suffix?: string; onChange: (value: number) => void }) {
-  return <label className="grid gap-2"><span className="text-[9px] font-black uppercase tracking-[.1em] text-black/48">{label}</span><div className="flex items-center rounded-[1rem] border border-black/[.08] bg-white px-3"><input type="number" min="0" step={step} value={Number.isFinite(value) ? value : 0} onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))} className="min-h-12 min-w-0 flex-1 bg-transparent text-base font-black outline-none"/>{suffix ? <span className="text-[10px] font-black text-black/35">{suffix}</span> : null}</div><span className="text-[9px] leading-4 text-black/35">{hint}</span></label>;
+  return <label className="grid gap-2"><span className="text-[10px] font-medium text-[#666C63]">{label}</span><div className="flex items-center rounded-[13px] border border-[#151714]/[.09] bg-[#FCFBF8] px-3 transition focus-within:border-[#DDA447]/60"><input type="number" min="0" step={step} value={Number.isFinite(value) ? value : 0} onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))} className="min-h-12 min-w-0 flex-1 bg-transparent text-base font-semibold outline-none"/>{suffix ? <span className="text-[10px] font-semibold text-[#888D84]">{suffix}</span> : null}</div><span className="text-[9px] leading-4 text-[#999D95]">{hint}</span></label>;
 }
 function ReceiptSection({ title, icon: Icon, empty, children }: { title: string; icon: typeof Package; empty: string; children: React.ReactNode }) {
   const hasChildren = Array.isArray(children) ? children.length > 0 : Boolean(children);
-  return <section className="border-b border-black/[.08] py-5 first:pt-0"><div className="mb-3 flex items-center gap-2"><Icon className="h-4 w-4 text-[#B96A16]"/><h3 className="text-[9px] font-black uppercase tracking-[.14em] text-black/45">{title}</h3></div>{hasChildren ? children : <p className="text-xs text-black/35">{empty}</p>}</section>;
+  return <section className="border-b border-black/[.08] py-5 first:pt-0"><div className="mb-3 flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[#EFEEE9]"><Icon className="h-3.5 w-3.5 text-[#676D63]"/></span><h3 className="text-[10px] font-semibold text-[#62675F]">{title}</h3></div>{hasChildren ? children : <p className="text-xs text-black/35">{empty}</p>}</section>;
 }
 function ReceiptRow({ label, value, muted = false, strong = false }: { label: string; value: string; muted?: boolean; strong?: boolean }) {
-  return <div className={`flex items-baseline justify-between gap-4 py-1.5 ${strong ? 'mt-2 border-t border-black/10 pt-4' : ''}`}><span className={`${strong ? 'text-sm font-black' : 'text-[10px]'} ${muted ? 'text-black/40' : ''}`}>{label}</span><span className={`${strong ? 'text-2xl font-black tracking-[-.04em]' : 'text-xs font-bold'} text-right`}>{value}</span></div>;
+  return <div className={`flex items-baseline justify-between gap-4 py-1.5 ${strong ? 'mt-2 border-t border-black/10 pt-4' : ''}`}><span className={`${strong ? 'text-sm font-semibold' : 'text-[10px]'} ${muted ? 'text-black/42' : ''}`}>{label}</span><span className={`${strong ? 'text-xl font-semibold tracking-[-.035em] sm:text-2xl' : 'text-xs font-semibold'} text-right`}>{value}</span></div>;
 }
 function FormField({ icon: Icon, label, children }: { icon: typeof Mail; label: string; children: React.ReactNode }) {
-  return <label className="grid gap-2"><span className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.11em] text-white/42"><Icon className="h-3.5 w-3.5 text-[#F5A13D]"/>{label}</span>{children}</label>;
+  return <label className="grid gap-2"><span className="flex items-center gap-2 text-[9px] font-medium text-white/44"><Icon className="h-3.5 w-3.5 text-[#DDA447]"/>{label}</span>{children}</label>;
 }

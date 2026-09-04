@@ -16,6 +16,8 @@ const ALLOWED_EVENTS = new Set([
   'install_prompt_available', 'install_prompt_shown', 'install_accepted', 'install_dismissed',
   'install_banner_dismissed', 'installed', 'push_granted', 'push_denied', 'push_unsubscribed',
   'onboarding_started', 'onboarding_completed', 'onboarding_skipped', 'page_view', 'session_end',
+  'budget_category_selected', 'budget_service_selected', 'budget_service_added',
+  'budget_product_added', 'budget_receipt_viewed', 'budget_submitted', 'budget_whatsapp_opened',
 ]);
 
 function ipHash(request: Request) {

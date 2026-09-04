@@ -23,6 +23,12 @@ export default function FabrickStorySection({ section }: { section?: HomeVisualS
   const textColor = current.style.textColor || '#111214';
   const accent = current.style.accent || '#9A5B22';
   const sectionAnchor = current.id === 'home-story' ? 'nosotros' : current.id;
+  const primaryLabel = textContent(current, 'primaryLabel', 'Ver servicios');
+  const secondaryLabel = textContent(current, 'secondaryLabel', 'Cotizar proyecto');
+  const legacyPrimaryHref = textContent(current, 'primaryHref', '/servicios');
+  const legacySecondaryHref = textContent(current, 'secondaryHref', '/presupuesto');
+  const primaryHref = primaryLabel === 'Ver servicios' && legacyPrimaryHref === '/presupuesto' ? '/servicios' : legacyPrimaryHref;
+  const secondaryHref = secondaryLabel === 'Cotizar proyecto' && legacySecondaryHref === '/proyectos' ? '/presupuesto' : legacySecondaryHref;
 
   return (
     <section id={sectionAnchor} data-cms-section="home-story" className="px-4 py-18 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
@@ -35,8 +41,8 @@ export default function FabrickStorySection({ section }: { section?: HomeVisualS
           <div className="lg:pb-1">
             <p data-cms-field="description" className="max-w-2xl text-sm leading-7 opacity-50 sm:text-base">{textContent(current, 'description')}</p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Link data-cms-field="primaryLabel" href={textContent(current, 'primaryHref', '/servicios')} className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#111214] px-5 text-xs font-black text-[#F6F1E8] transition hover:bg-[#2A2B2E] sm:px-6 sm:text-sm">{textContent(current, 'primaryLabel', 'Ver servicios')}</Link>
-              <Link data-cms-field="secondaryLabel" href={textContent(current, 'secondaryHref', '/presupuesto')} className="inline-flex min-h-11 items-center justify-center rounded-full border border-current/12 px-5 text-xs font-black transition hover:bg-black/[.035] sm:px-6 sm:text-sm">{textContent(current, 'secondaryLabel', 'Cotizar proyecto')}</Link>
+              <Link data-cms-field="primaryLabel" href={primaryHref} className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#111214] px-5 text-xs font-black text-[#F6F1E8] transition hover:bg-[#2A2B2E] sm:px-6 sm:text-sm">{primaryLabel}</Link>
+              <Link data-cms-field="secondaryLabel" href={secondaryHref} className="inline-flex min-h-11 items-center justify-center rounded-full border border-current/12 px-5 text-xs font-black transition hover:bg-black/[.035] sm:px-6 sm:text-sm">{secondaryLabel}</Link>
             </div>
           </div>
         </div>

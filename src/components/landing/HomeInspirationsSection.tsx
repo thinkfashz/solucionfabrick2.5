@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Images, Loader2 } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Images, Loader2 } from 'lucide-react';
 import type { HomeVisualSection } from '@/lib/homeVisualCms';
 
 type Album = {
@@ -129,12 +129,12 @@ export default function HomeInspirationsSection({ section }: { section: HomeVisu
     return () => controller.abort();
   }, []);
 
-  const featuredAlbums = useMemo(() => albums.slice(0, 5), [albums]);
+  const featuredAlbums = useMemo(() => albums.slice(0, 6), [albums]);
   const serviceReferences = useMemo(() => matchServicesToAlbums(albums), [albums]);
   const colors = useMemo(() => ({
-    backgroundColor: section.style.background || '#111214',
-    color: section.style.textColor || '#FFF9EE',
-    '--inspiration-accent': section.style.accent || '#FFB000',
+    backgroundColor: section.style.background || '#111316',
+    color: section.style.textColor || '#F7F4EE',
+    '--inspiration-accent': section.style.accent || '#F5A13D',
   }) as CSSProperties, [section.style.accent, section.style.background, section.style.textColor]);
 
   const backgroundImage = cleanImage(section.style.backgroundImage || '');
@@ -142,99 +142,80 @@ export default function HomeInspirationsSection({ section }: { section: HomeVisu
   return (
     <section
       data-cms-section="home-inspiration"
-      className="relative isolate overflow-hidden px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-28"
+      className="relative isolate overflow-hidden px-4 py-20 sm:px-6 lg:px-8 lg:py-28"
       style={{
         ...colors,
-        ...(backgroundImage ? { backgroundImage: `linear-gradient(rgba(8,9,10,.78),rgba(8,9,10,.9)),url("${backgroundImage}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
+        ...(backgroundImage ? { backgroundImage: `linear-gradient(rgba(10,11,13,.84),rgba(10,11,13,.94)),url("${backgroundImage}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
       }}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_8%,color-mix(in_srgb,var(--inspiration-accent)_18%,transparent),transparent_34%)]" />
-      <div className="relative mx-auto max-w-[1380px]">
-        <header className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.62fr)] lg:items-end">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_88%_4%,color-mix(in_srgb,var(--inspiration-accent)_12%,transparent),transparent_32rem)]" />
+      <div className="relative mx-auto max-w-[1320px]">
+        <header className="grid gap-7 border-b border-white/[.08] pb-8 lg:grid-cols-[.82fr_1.18fr] lg:items-end">
           <div>
-            <p data-cms-field="eyebrow" className="text-[10px] font-black uppercase tracking-[.22em] text-[var(--inspiration-accent)]">{text(section, 'eyebrow', 'Inspiración Fabrick')}</p>
-            <h2 data-cms-field="title" className="mt-4 max-w-[14ch] text-4xl font-black leading-[.94] tracking-[-.055em] sm:text-5xl lg:text-7xl">{text(section, 'title', 'Encuentra una idea y conviértela en tu proyecto.')}</h2>
+            <p data-cms-field="eyebrow" className="text-[9px] font-black uppercase tracking-[.22em] text-[var(--inspiration-accent)]">{text(section, 'eyebrow', 'Inspiración Fabrick')}</p>
+            <h2 data-cms-field="title" className="mt-3 max-w-[13ch] text-4xl font-black leading-[.95] tracking-[-.055em] sm:text-6xl">{text(section, 'title', 'Encuentra una idea y conviértela en tu proyecto.')}</h2>
           </div>
-          <div className="lg:pb-2">
-            <p data-cms-field="description" className="max-w-xl text-sm leading-7 opacity-55 sm:text-base">{text(section, 'description', 'Explora proyectos, ambientes y terminaciones relacionadas con nuestros servicios.')}</p>
-            <Link data-cms-field="ctaLabel" href={text(section, 'ctaHref', '/proyectos')} className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--inspiration-accent)] px-5 text-xs font-black text-black transition hover:brightness-110">
-              {text(section, 'ctaLabel', 'Ver todas las inspiraciones')} <ArrowRight className="h-4 w-4" />
+          <div className="lg:pb-1">
+            <p data-cms-field="description" className="max-w-xl text-sm leading-7 opacity-52 sm:text-base">{text(section, 'description', 'Explora proyectos, ambientes y terminaciones relacionadas con nuestros servicios.')}</p>
+            <Link data-cms-field="ctaLabel" href={text(section, 'ctaHref', '/proyectos')} className="mt-5 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[.12em] text-[var(--inspiration-accent)] transition hover:gap-2.5">
+              {text(section, 'ctaLabel', 'Ver todas las inspiraciones')} <ArrowUpRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </header>
 
         {loading ? (
-          <div className="mt-10 flex min-h-56 items-center justify-center rounded-[1.75rem] border border-white/10 bg-white/[.03]"><Loader2 className="h-5 w-5 animate-spin text-[var(--inspiration-accent)]" /><span className="ml-2 text-xs font-bold opacity-45">Cargando inspiraciones…</span></div>
+          <div className="mt-8 flex min-h-56 items-center justify-center rounded-[1.6rem] border border-white/[.08] bg-white/[.025]"><Loader2 className="h-5 w-5 animate-spin text-[var(--inspiration-accent)]" /><span className="ml-2 text-xs font-bold opacity-40">Cargando inspiraciones…</span></div>
         ) : featuredAlbums.length ? (
-          <div className="mt-10 grid auto-rows-[170px] grid-cols-2 gap-2 sm:auto-rows-[230px] sm:gap-3 lg:grid-cols-4 lg:grid-rows-2">
+          <div className="-mx-4 mt-8 grid auto-cols-[minmax(270px,82vw)] grid-flow-col gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid-flow-row sm:grid-cols-2 sm:px-0 lg:grid-cols-3">
             {featuredAlbums.map((album, index) => (
               <Link
                 key={album.key}
                 href={`/inspiraciones/${encodeURIComponent(album.key)}`}
                 data-cms-container={`inspiration-${index}`}
-                className={`group relative isolate min-w-0 overflow-hidden rounded-[1.25rem] bg-white/5 ${index === 0 ? 'col-span-2 row-span-2' : ''} ${index === 1 && featuredAlbums.length < 5 ? 'col-span-2' : ''}`}
+                className="group min-w-0"
               >
-                <img data-cms-field={`inspiration-${index}-image`} src={album.cover} alt={`${album.title}, inspiración para proyectos Soluciones Fabrick`} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]" />
-                <span className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
-                <span className="absolute inset-x-0 bottom-0 p-3 text-white sm:p-5">
-                  <span className="text-[8px] font-black uppercase tracking-[.16em] text-[var(--inspiration-accent)]">{album.category} · {album.count} imágenes</span>
-                  <strong data-cms-field={`inspiration-${index}-title`} className={`mt-1 block font-black leading-tight tracking-[-.03em] ${index === 0 ? 'text-xl sm:text-3xl' : 'text-sm sm:text-lg'}`}>{album.title}</strong>
-                  {index === 0 && album.description ? <span className="mt-2 hidden max-w-xl text-xs leading-5 text-white/60 sm:line-clamp-2">{album.description}</span> : null}
-                </span>
+                <figure className="relative aspect-[4/3] overflow-hidden rounded-[1.35rem] bg-white/[.04]">
+                  <img data-cms-field={`inspiration-${index}-image`} src={album.cover} alt={`${album.title}, inspiración para proyectos Soluciones Fabrick`} loading={index < 2 ? 'eager' : 'lazy'} decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.025]" />
+                  <span className="absolute inset-0 bg-gradient-to-t from-black/72 via-transparent to-transparent" />
+                  <span className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-black/35 text-white opacity-70 backdrop-blur-md transition group-hover:bg-[var(--inspiration-accent)] group-hover:text-black group-hover:opacity-100"><ArrowUpRight className="h-4 w-4" /></span>
+                </figure>
+                <div className="px-1 pt-3.5">
+                  <span className="text-[8px] font-black uppercase tracking-[.14em] text-[var(--inspiration-accent)]">{album.category} · {album.count} imágenes</span>
+                  <strong data-cms-field={`inspiration-${index}-title`} className="mt-1.5 line-clamp-2 block text-base font-black leading-tight tracking-[-.03em] sm:text-lg">{album.title}</strong>
+                </div>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="mt-10 flex min-h-56 flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-white/15 bg-white/[.03] px-6 text-center">
+          <div className="mt-8 flex min-h-56 flex-col items-center justify-center rounded-[1.6rem] border border-dashed border-white/15 bg-white/[.025] px-6 text-center">
             <Images className="h-7 w-7 text-[var(--inspiration-accent)]" />
-            <p data-cms-field="emptyText" className="mt-3 max-w-md text-sm leading-6 opacity-50">{text(section, 'emptyText', 'Sube imágenes desde Proyectos en el administrador para mostrarlas automáticamente aquí.')}</p>
+            <p data-cms-field="emptyText" className="mt-3 max-w-md text-sm leading-6 opacity-45">{text(section, 'emptyText', 'Sube imágenes desde Proyectos en el administrador para mostrarlas automáticamente aquí.')}</p>
           </div>
         )}
 
-        <div className="mt-16 border-t border-white/10 pt-10 sm:mt-20 sm:pt-12">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,.72fr)_minmax(320px,1.28fr)] lg:items-end">
+        <div className="mt-14 border-t border-white/[.08] pt-9 sm:mt-16">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p data-cms-field="servicesEyebrow" className="text-[10px] font-black uppercase tracking-[.22em] text-[var(--inspiration-accent)]">{text(section, 'servicesEyebrow', 'Servicios + referencias visuales')}</p>
-              <h3 data-cms-field="servicesTitle" className="mt-3 max-w-[12ch] text-3xl font-black leading-[.96] tracking-[-.045em] sm:text-4xl lg:text-5xl">{text(section, 'servicesTitle', 'Mira una idea y reconoce qué podemos construir o transformar.')}</h3>
+              <p data-cms-field="servicesEyebrow" className="text-[9px] font-black uppercase tracking-[.2em] text-[var(--inspiration-accent)]">{text(section, 'servicesEyebrow', 'Servicios + referencias visuales')}</p>
+              <h3 data-cms-field="servicesTitle" className="mt-2 max-w-[20ch] text-2xl font-black leading-tight tracking-[-.04em] sm:text-3xl">{text(section, 'servicesTitle', 'Mira una idea y reconoce qué podemos construir o transformar.')}</h3>
             </div>
-            <p data-cms-field="servicesDescription" className="max-w-2xl text-sm leading-7 opacity-50 sm:text-base">{text(section, 'servicesDescription', 'Las imágenes se reutilizan automáticamente desde la biblioteca de Inspiración para relacionar cada servicio con una referencia visual realmente compatible.')}</p>
+            <p data-cms-field="servicesDescription" className="max-w-xl text-xs leading-6 opacity-42 sm:text-sm">{text(section, 'servicesDescription', 'Las imágenes se reutilizan desde Inspiración para relacionar cada servicio con una referencia visual compatible.')}</p>
           </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-7 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {serviceReferences.map(({ service, album }, index) => (
-              <article key={service.key} data-cms-container={`service-reference-${index}`} className="overflow-hidden rounded-[1.4rem] border border-white/10 bg-white/[.035]">
-                <Link
-                  href={album ? `/inspiraciones/${encodeURIComponent(album.key)}` : service.href}
-                  className="group relative block aspect-[4/3] overflow-hidden bg-white/5"
-                  aria-label={album ? `Ver inspiración ${album.title}` : `Ver ${service.title}`}
-                >
-                  {album?.cover ? (
-                    <img
-                      data-cms-field={`service-reference-${index}-image`}
-                      src={album.cover}
-                      alt={`${service.title}: referencia visual ${album.title}`}
-                      loading="lazy"
-                      decoding="async"
-                      className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.045]"
-                    />
-                  ) : (
-                    <span className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,color-mix(in_srgb,var(--inspiration-accent)_28%,transparent),transparent_40%),linear-gradient(135deg,#191b1f,#090a0c)]" />
-                  )}
-                  <span className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
-                  <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.14em] text-white/75 backdrop-blur-md">{album ? 'Referencia visual' : 'Sin referencia aún'}</span>
-                  <span className="absolute inset-x-0 bottom-0 p-4 text-white">
-                    <span className="block text-[8px] font-black uppercase tracking-[.14em] text-[var(--inspiration-accent)]">{album ? 'Abrir inspiración' : 'Ver servicio'}</span>
-                    <strong className="mt-1 line-clamp-2 block text-sm leading-tight">{album?.title || service.title}</strong>
+              <article key={service.key} data-cms-container={`service-reference-${index}`} className="group rounded-[1.25rem] border border-white/[.08] bg-white/[.025] p-2 transition hover:bg-white/[.045]">
+                <Link href={album ? `/inspiraciones/${encodeURIComponent(album.key)}` : service.href} className="flex min-h-[92px] items-center gap-3" aria-label={album ? `Ver inspiración ${album.title}` : `Ver ${service.title}`}>
+                  <span className="relative h-[76px] w-[76px] shrink-0 overflow-hidden rounded-[1rem] bg-white/[.04]">
+                    {album?.cover ? <img data-cms-field={`service-reference-${index}-image`} src={album.cover} alt={`${service.title}: referencia visual ${album.title}`} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]" /> : <span className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,color-mix(in_srgb,var(--inspiration-accent)_22%,transparent),transparent_45%),#181A1E]" />}
                   </span>
+                  <span className="min-w-0 flex-1 pr-1">
+                    <span className="text-[8px] font-black uppercase tracking-[.13em] text-[var(--inspiration-accent)]">{album ? 'Ver referencia' : 'Servicio'}</span>
+                    <strong className="mt-1 block text-sm leading-tight">{service.title}</strong>
+                    <span className="mt-1 line-clamp-1 block text-[10px] opacity-38">{album?.title || service.description}</span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0 opacity-35 transition group-hover:translate-x-0.5 group-hover:opacity-80" />
                 </Link>
-                <div className="p-4 sm:p-5">
-                  <span className="text-[9px] font-black uppercase tracking-[.16em] opacity-35">Servicio {String(index + 1).padStart(2, '0')}</span>
-                  <h4 className="mt-2 text-lg font-black leading-tight tracking-[-.03em]">{service.title}</h4>
-                  <p className="mt-2 text-xs leading-6 opacity-50">{service.description}</p>
-                  <Link href={service.href} className="mt-4 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[.12em] text-[var(--inspiration-accent)] transition hover:gap-2.5">
-                    Ver servicio <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
               </article>
             ))}
           </div>

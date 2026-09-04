@@ -171,9 +171,6 @@ export default function HomeVisualEditorClient() {
       setSelectedId(sectionId);
       setSelectedField(`${container}-container`);
       setStatus('Inspector de tarjeta abierto.');
-      if (window.matchMedia('(max-width: 1023px)').matches) {
-        window.setTimeout(() => document.getElementById('home-visual-inspector-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
-      }
       return;
     }
 
@@ -248,9 +245,6 @@ export default function HomeVisualEditorClient() {
       setSelectedId(sectionId);
       setSelectedField(field);
       setStatus('Inspector avanzado de texto abierto.');
-      if (window.matchMedia('(max-width: 1023px)').matches) {
-        window.setTimeout(() => document.getElementById('home-visual-inspector-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
-      }
       return;
     }
 
@@ -434,7 +428,6 @@ export default function HomeVisualEditorClient() {
     }
     setSelectedField(null);
     setStatus('Inspector de diseño del bloque abierto.');
-    window.setTimeout(() => document.getElementById('home-visual-inspector-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   }
 
   async function publish() {

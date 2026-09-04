@@ -82,6 +82,7 @@ function applyStylePatch(element: HTMLElement, patch: VisualCmsStylePatch | unde
     ['opacity', 'opacity'],
     ['boxShadow', 'box-shadow'],
     ['objectFit', 'object-fit'],
+    ['objectPosition', 'object-position'],
     ['transform', 'transform'],
     ['transformOrigin', 'transform-origin'],
   ];
@@ -359,6 +360,7 @@ function selectionPayload(element: HTMLElement) {
       opacity: computed.opacity,
       boxShadow: computed.boxShadow,
       objectFit: computed.objectFit as VisualCmsStylePatch['objectFit'],
+      objectPosition: computed.objectPosition,
       transform: computed.transform === 'none' ? 'scale(1)' : computed.transform,
       transformOrigin: computed.transformOrigin,
     },
@@ -449,11 +451,13 @@ export default function VisualCmsRuntime() {
       if (selectedRef.current && selectedRef.current !== next) {
         selectedRef.current.style.removeProperty('outline');
         selectedRef.current.style.removeProperty('outline-offset');
+        selectedRef.current.style.removeProperty('touch-action');
       }
       selectedRef.current = next;
       if (next) {
         next.style.setProperty('outline', '2px solid #ffb000', 'important');
         next.style.setProperty('outline-offset', '3px', 'important');
+        if (next instanceof HTMLImageElement) next.style.setProperty('touch-action', 'none', 'important');
       }
     };
 
@@ -467,6 +471,12 @@ export default function VisualCmsRuntime() {
     };
 
     const click = (event: MouseEvent) => {
+      if (didDrag) {
+        didDrag = false;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       const element = resolveElement(event.target);
       if (!element || BLOCKED_TAGS.has(element.tagName) || element.closest('[data-cms-editor-ignore]')) return;
       event.preventDefault();
@@ -488,6 +498,38 @@ export default function VisualCmsRuntime() {
 
     let pinchStartDistance = 0;
     let pinchStartScale = 1;
+    let didDrag = false;
+    let imageDrag: { pointerId: number; element: HTMLImageElement; startX: number; startY: number; originX: number; originY: number } | null = null;
+    const imagePosition = (element: HTMLImageElement) => {
+      const match = window.getComputedStyle(element).objectPosition.match(/([\d.]+)%\s+([\d.]+)%/);
+      return { x: match ? Number(match[1]) : 50, y: match ? Number(match[2]) : 50 };
+    };
+    const pointerDown = (event: PointerEvent) => {
+      if (event.pointerType === 'touch' && !event.isPrimary) return;
+      const selected = selectedRef.current;
+      if (!(selected instanceof HTMLImageElement) || event.target !== selected) return;
+      const origin = imagePosition(selected);
+      imageDrag = { pointerId: event.pointerId, element: selected, startX: event.clientX, startY: event.clientY, originX: origin.x, originY: origin.y };
+      selected.setPointerCapture?.(event.pointerId);
+      selected.style.setProperty('cursor', 'move', 'important');
+    };
+    const pointerMove = (event: PointerEvent) => {
+      if (!imageDrag || event.pointerId !== imageDrag.pointerId || pinchStartDistance) return;
+      const rect = imageDrag.element.getBoundingClientRect();
+      const dx = event.clientX - imageDrag.startX;
+      const dy = event.clientY - imageDrag.startY;
+      if (Math.abs(dx) + Math.abs(dy) < 3) return;
+      event.preventDefault();
+      didDrag = true;
+      const x = Math.min(100, Math.max(0, imageDrag.originX + dx / Math.max(1, rect.width) * 100));
+      const y = Math.min(100, Math.max(0, imageDrag.originY + dy / Math.max(1, rect.height) * 100));
+      window.parent.postMessage({ type: 'cms:visual-image-position', selector: uniqueSelector(imageDrag.element), x, y }, window.location.origin);
+    };
+    const pointerUp = (event: PointerEvent) => {
+      if (!imageDrag || event.pointerId !== imageDrag.pointerId) return;
+      imageDrag.element.releasePointerCapture?.(event.pointerId);
+      imageDrag = null;
+    };
     const distance = (touches: TouchList) => Math.hypot(
       touches[0].clientX - touches[1].clientX,
       touches[0].clientY - touches[1].clientY,
@@ -500,6 +542,7 @@ export default function VisualCmsRuntime() {
     };
     const touchStart = (event: TouchEvent) => {
       if (event.touches.length !== 2 || !selectedRef.current) return;
+      imageDrag = null;
       pinchStartDistance = Math.max(1, distance(event.touches));
       pinchStartScale = scaleFrom(window.getComputedStyle(selectedRef.current).transform);
     };
@@ -513,6 +556,10 @@ export default function VisualCmsRuntime() {
 
     document.addEventListener('click', click, true);
     document.addEventListener('mouseover', hover, true);
+    document.addEventListener('pointerdown', pointerDown, true);
+    document.addEventListener('pointermove', pointerMove, { capture: true, passive: false });
+    document.addEventListener('pointerup', pointerUp, true);
+    document.addEventListener('pointercancel', pointerUp, true);
     document.addEventListener('touchstart', touchStart, { capture: true, passive: true });
     document.addEventListener('touchmove', touchMove, { capture: true, passive: false });
     document.addEventListener('touchend', touchEnd, true);
@@ -520,6 +567,10 @@ export default function VisualCmsRuntime() {
     return () => {
       document.removeEventListener('click', click, true);
       document.removeEventListener('mouseover', hover, true);
+      document.removeEventListener('pointerdown', pointerDown, true);
+      document.removeEventListener('pointermove', pointerMove, true);
+      document.removeEventListener('pointerup', pointerUp, true);
+      document.removeEventListener('pointercancel', pointerUp, true);
       document.removeEventListener('touchstart', touchStart, true);
       document.removeEventListener('touchmove', touchMove, true);
       document.removeEventListener('touchend', touchEnd, true);

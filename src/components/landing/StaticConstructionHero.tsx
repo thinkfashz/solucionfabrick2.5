@@ -82,11 +82,8 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
           </div>
 
           <div className="border-t border-white/[.08] p-5 sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p data-cms-field="sideEyebrow" className="text-[9px] font-black uppercase tracking-[.2em]" style={{ color: accent }}>{textContent(current, 'sideEyebrow', 'Empieza por lo que necesitas')}</p>
-                <p className="mt-1 text-[9px] leading-4 text-white/28">La fotografía queda libre de texto para que puedas verla y cambiarla desde el CMS.</p>
-              </div>
+            <div className="flex items-center justify-between gap-4">
+              <p data-cms-field="sideEyebrow" className="text-[9px] font-black uppercase tracking-[.2em]" style={{ color: accent }}>{textContent(current, 'sideEyebrow', 'Empieza por lo que necesitas')}</p>
               <span className="rounded-full border border-white/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.12em] text-white/35">Visual</span>
             </div>
 

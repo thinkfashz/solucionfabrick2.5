@@ -1,4 +1,4 @@
-import { loadInspirationCatalog } from '@/lib/inspirationCatalog';
+import { loadInspirationCatalog, publicInspirationCatalog } from '@/lib/inspirationCatalog';
 import { getPublicProjects } from '@/lib/projectsServer';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +44,7 @@ export async function GET() {
   lines.push('', '## Inspiraciones visuales');
 
   try {
-    const catalog = await loadInspirationCatalog({ maxResults: 100 });
+    const catalog = publicInspirationCatalog(await loadInspirationCatalog({ maxResults: 100 }));
     for (const album of catalog.albums) {
       lines.push(`- ${album.title}: ${BASE_URL}/inspiraciones/${album.key}`);
       if (album.description) lines.push(`  ${album.description}`);

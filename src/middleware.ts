@@ -10,6 +10,7 @@ const CUSTOM_DOMAIN_CACHE_TTL = 300
 // it may later navigate to /admin/inventario/scan without a full reload.
 const DEFAULT_PERMISSIONS_POLICY = 'camera=(self), microphone=(), geolocation=(self), interest-cohort=()'
 const INVENTORY_SCANNER_PERMISSIONS_POLICY = 'camera=(self), microphone=(), geolocation=(self), interest-cohort=()'
+const PRIVATE_INSPIRATION_PATH = '/inspiraciones/soluciones-constructivas-fabrick'
 
 const VIEWER_BLOCKED_ADMIN_PATHS = [
   '/admin/equipo',
@@ -186,6 +187,11 @@ export async function middleware(request: NextRequest) {
   const csp = buildCsp({ nonce, isDev })
   const pathname = request.nextUrl.pathname
   const method = request.method.toUpperCase()
+
+  if (pathname === PRIVATE_INSPIRATION_PATH || pathname.startsWith(`${PRIVATE_INSPIRATION_PATH}/`)) {
+    const notFoundResponse = NextResponse.rewrite(new URL('/404-preview', request.url), { status: 404 })
+    return isHtml ? withSecurityHeaders(notFoundResponse, nonce, csp, pathname) : notFoundResponse
+  }
 
   const sessionCookie = request.cookies.get('admin_session')
   let sessionPayload: EdgeSessionPayload = {}

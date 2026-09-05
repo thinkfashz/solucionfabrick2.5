@@ -91,7 +91,7 @@ export const HOME_PREMIUM_VISUALS = {
   metalcon: cloudinaryHomeVisual(SOURCES.metalcon, 1200, 1500),
   construction: cloudinaryHomeVisual(SOURCES.architecture, 1100, 1350),
   remodel: cloudinaryHomeVisual(SOURCES.kitchen, 1100, 1350),
-  finishes: cloudinaryHomeVisual(SOURCES.living, 1100, 1350),
+  finishes: cloudinaryHomeVisual(SOURCES.planning, 1100, 1350),
   bedroom: cloudinaryHomeVisual(SOURCES.bedroom),
   kitchen: cloudinaryHomeVisual(SOURCES.kitchen),
   bathroom: cloudinaryHomeVisual(SOURCES.bathroom),

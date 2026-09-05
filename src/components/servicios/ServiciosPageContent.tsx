@@ -1,14 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import {
-  ArrowDown,
   ArrowRight,
   Building2,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Droplets,
   Hammer,
   Home,
@@ -16,15 +12,13 @@ import {
   MessageCircle,
   Paintbrush,
   PanelsTopLeft,
-  ShieldCheck,
-  Sparkles,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import FabrickLogo from '@/components/FabrickLogo';
+import { HOME_PREMIUM_VISUALS } from '@/lib/homePremiumVisuals';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
-import styles from './ServiciosImmersive.module.css';
 
 type ServiceChapter = {
   id: string;
@@ -36,208 +30,258 @@ type ServiceChapter = {
   description: string;
   functions: string[];
   outcomes: string[];
-  bg: string;
-  accent: string;
-  text: string;
-  muted: string;
-  iconColor: string;
+  visual: string;
   icon: LucideIcon;
 };
 
 const SERVICES: ServiceChapter[] = [
   {
-    id: 'albanileria', budgetId: 'albanileria', title: 'Albañilería y obra gruesa', shortTitle: 'Albañilería', eyebrow: 'Muros · pisos · reparaciones',
+    id: 'albanileria',
+    budgetId: 'albanileria',
+    title: 'Albañilería y obra gruesa',
+    shortTitle: 'Albañilería',
+    eyebrow: 'Muros · pisos · reparaciones',
     promise: 'Construimos y recuperamos las superficies que sostienen el proyecto.',
     description: 'La albañilería reúne trabajos húmedos y de obra base para levantar, corregir o preparar un espacio. El alcance se define según soporte, materialidad, humedad, cargas y terminación requerida.',
-    functions: ['Construcción y reparación de muros, bloques y elementos de cierre.', 'Sobrecimientos, radieres, afinados y preparación de superficies.', 'Enchapes, cerámicas, porcelanatos y revestimientos adheridos.', 'Corrección de fisuras, desprendimientos y encuentros visibles.'],
+    functions: ['Construcción y reparación de muros y cierres.', 'Sobrecimientos, radieres, afinados y preparación de superficies.', 'Cerámicas, porcelanatos y revestimientos adheridos.', 'Corrección de fisuras, desprendimientos y encuentros visibles.'],
     outcomes: ['Base preparada', 'Muros aplomados', 'Superficies niveladas', 'Terminación coordinada'],
-    bg: '#a64f2c', accent: '#ffd166', text: '#FFF9EE', muted: 'rgba(255,248,237,.72)', iconColor: '#291207', icon: Hammer,
+    visual: HOME_PREMIUM_VISUALS.foundation,
+    icon: Hammer,
   },
   {
-    id: 'carpinteria', budgetId: 'carpinteria', title: 'Carpintería y mobiliario', shortTitle: 'Carpintería', eyebrow: 'Madera · puertas · muebles',
+    id: 'carpinteria',
+    budgetId: 'carpinteria',
+    title: 'Carpintería y mobiliario',
+    shortTitle: 'Carpintería',
+    eyebrow: 'Madera · puertas · muebles',
     promise: 'Convertimos medidas reales en soluciones que aprovechan mejor el espacio.',
-    description: 'La carpintería combina fabricación, ajuste e instalación para resolver puertas, ventanas, divisiones, clósets y mobiliario a medida considerando uso, herrajes, humedad, peso y mantenimiento.',
-    functions: ['Puertas, marcos, ventanas y ajustes de elementos existentes.', 'Clósets, repisas, escritorios y almacenamiento a medida.', 'Divisiones, revestimientos decorativos y remates interiores.', 'Muebles de baño y cocina coordinados con las instalaciones.'],
+    description: 'La carpintería combina fabricación, ajuste e instalación para resolver puertas, divisiones, clósets y mobiliario a medida considerando uso, herrajes, humedad, peso y mantenimiento.',
+    functions: ['Puertas, marcos, ventanas y ajustes de elementos existentes.', 'Clósets, repisas, escritorios y almacenamiento a medida.', 'Divisiones y remates interiores.', 'Muebles de baño y cocina coordinados con instalaciones.'],
     outcomes: ['Medición en terreno', 'Diseño funcional', 'Herrajes definidos', 'Montaje y ajustes'],
-    bg: '#6a3f27', accent: '#e8b36d', text: '#fff8ef', muted: 'rgba(255,248,239,.7)', iconColor: '#25140b', icon: PanelsTopLeft,
+    visual: HOME_PREMIUM_VISUALS.bedroom,
+    icon: PanelsTopLeft,
   },
   {
-    id: 'gasfiteria', budgetId: 'gasfiteria', title: 'Gasfitería y redes sanitarias', shortTitle: 'Gasfitería', eyebrow: 'Agua · desagüe · artefactos',
+    id: 'gasfiteria',
+    budgetId: 'gasfiteria',
+    title: 'Gasfitería y redes sanitarias',
+    shortTitle: 'Gasfitería',
+    eyebrow: 'Agua · desagüe · artefactos',
     promise: 'Ordenamos el recorrido del agua para evitar pérdidas y daños posteriores.',
     description: 'La gasfitería interviene redes de agua potable, desagües y conexiones sanitarias. Antes de ejecutar se revisan presión, diámetros, pendientes, puntos existentes y compatibilidad con los artefactos.',
-    functions: ['Instalación y modificación de redes de agua fría y caliente.', 'Detección y reparación de filtraciones visibles o localizadas.', 'Distribución sanitaria, desagües, ventilaciones y pendientes.', 'Instalación de lavaplatos, sanitarios, duchas y griferías.'],
+    functions: ['Redes de agua fría y caliente.', 'Detección y reparación de filtraciones.', 'Distribución sanitaria, desagües y pendientes.', 'Instalación de lavaplatos, sanitarios, duchas y griferías.'],
     outcomes: ['Red trazada', 'Conexiones probadas', 'Pendientes verificadas', 'Artefactos instalados'],
-    bg: '#087f9c', accent: '#82e9f5', text: '#ecfeff', muted: 'rgba(236,254,255,.74)', iconColor: '#062b33', icon: Droplets,
+    visual: HOME_PREMIUM_VISUALS.bathroom,
+    icon: Droplets,
   },
   {
-    id: 'electricidad', budgetId: 'electricidad', title: 'Electricidad e iluminación', shortTitle: 'Electricidad', eyebrow: 'Circuitos · puntos · tableros',
+    id: 'electricidad',
+    budgetId: 'electricidad',
+    title: 'Electricidad e iluminación',
+    shortTitle: 'Electricidad',
+    eyebrow: 'Circuitos · puntos · tableros',
     promise: 'Diseñamos recorridos claros para que cada punto tenga una función conocida.',
     description: 'Los trabajos eléctricos se organizan por circuitos, consumos, protecciones y recorridos. La propuesta distingue instalaciones nuevas, reparaciones, ampliaciones y equipos con alimentación dedicada.',
-    functions: ['Instalación o traslado de enchufes, interruptores y luces.', 'Canalización, cableado y distribución de circuitos acordados.', 'Revisión de fallas visibles y puntos sin funcionamiento.', 'Preparación para climatización, cocina, bombas y equipos.'],
+    functions: ['Instalación o traslado de enchufes, interruptores y luces.', 'Canalización, cableado y distribución de circuitos.', 'Revisión de fallas visibles y puntos sin funcionamiento.', 'Preparación para climatización, cocina, bombas y equipos.'],
     outcomes: ['Circuitos identificados', 'Puntos operativos', 'Protecciones revisadas', 'Carga coordinada'],
-    bg: '#172554', accent: '#FFD05A', text: '#FFF9EE', muted: 'rgba(248,250,252,.7)', iconColor: '#172554', icon: Zap,
+    visual: HOME_PREMIUM_VISUALS.kitchen,
+    icon: Zap,
   },
   {
-    id: 'fundaciones', budgetId: 'cimientos', title: 'Fundaciones y obra base', shortTitle: 'Fundaciones', eyebrow: 'Terreno · apoyos · hormigón',
+    id: 'fundaciones',
+    budgetId: 'cimientos',
+    title: 'Fundaciones y obra base',
+    shortTitle: 'Fundaciones',
+    eyebrow: 'Terreno · apoyos · hormigón',
     promise: 'Preparamos la base para que la construcción transmita sus cargas de forma ordenada.',
-    description: 'Las fundaciones conectan la estructura con el terreno. La solución depende del proyecto, suelo, desniveles, humedad, cargas y sistema constructivo, por lo que se confirma después de revisar las condiciones reales.',
-    functions: ['Trazado, excavación y preparación del terreno definido.', 'Zapatas, vigas, sobrecimientos y apoyos para estructuras.', 'Radieres, capas de base, estabilizado, refuerzos y juntas.', 'Coordinación de pasadas, drenajes y niveles antes de hormigonar.'],
+    description: 'Las fundaciones conectan la estructura con el terreno. La solución depende del proyecto, suelo, desniveles, humedad, cargas y sistema constructivo y se confirma tras revisar las condiciones reales.',
+    functions: ['Trazado, excavación y preparación del terreno.', 'Zapatas, vigas, sobrecimientos y apoyos.', 'Radieres, bases, estabilizado, refuerzos y juntas.', 'Coordinación de pasadas, drenajes y niveles.'],
     outcomes: ['Niveles definidos', 'Apoyos dimensionados', 'Base compactada', 'Hormigón coordinado'],
-    bg: '#5b3828', accent: '#d6a36f', text: '#fff7ed', muted: 'rgba(255,247,237,.71)', iconColor: '#29170e', icon: Layers3,
+    visual: HOME_PREMIUM_VISUALS.foundation,
+    icon: Layers3,
   },
   {
-    id: 'estructuras', budgetId: 'metalcon', title: 'Estructuras Metalcon y ampliaciones', shortTitle: 'Estructuras', eyebrow: 'Perfiles · refuerzos · aislación',
+    id: 'estructuras',
+    budgetId: 'metalcon',
+    title: 'Estructuras Metalcon y ampliaciones',
+    shortTitle: 'Metalcon',
+    eyebrow: 'Perfiles · refuerzos · aislación',
     promise: 'Damos forma al proyecto con una estructura liviana preparada para recibir sus capas.',
     description: 'La construcción en perfiles galvanizados organiza muros, techumbres y ampliaciones por capas. La propuesta contempla modulación, arriostramiento, vanos, aislación, barreras y terminaciones desde el inicio.',
-    functions: ['Muros perimetrales e interiores en estructura galvanizada.', 'Ampliaciones, recintos anexos y soluciones prefabricadas.', 'Cerchas, envigados, refuerzos y preparación de vanos.', 'Coordinación de aislación, placas, revestimientos y redes.'],
+    functions: ['Muros interiores y perimetrales en perfiles galvanizados.', 'Ampliaciones y recintos anexos.', 'Cerchas, envigados, refuerzos y vanos.', 'Coordinación de aislación, placas, revestimientos y redes.'],
     outcomes: ['Modulación definida', 'Refuerzos ubicados', 'Capas coordinadas', 'Vanos preparados'],
-    bg: '#29323d', accent: '#d8dee7', text: '#FFF9EE', muted: 'rgba(248,250,252,.68)', iconColor: '#18202a', icon: Building2,
+    visual: HOME_PREMIUM_VISUALS.metalcon,
+    icon: Building2,
   },
   {
-    id: 'techumbre', budgetId: 'techumbre', title: 'Techumbre, filtraciones y protección', shortTitle: 'Techumbre', eyebrow: 'Cubierta · canaletas · sellos',
+    id: 'techumbre',
+    budgetId: 'techumbre',
+    title: 'Techumbre, filtraciones y protección',
+    shortTitle: 'Techumbre',
+    eyebrow: 'Cubierta · canaletas · sellos',
     promise: 'Protegemos el interior atacando el recorrido del agua, no solo la mancha visible.',
     description: 'Una filtración puede originarse lejos del punto donde aparece. La revisión considera cubierta, fijaciones, pendientes, encuentros, cumbreras, canaletas, sellos y condiciones de acceso.',
-    functions: ['Diagnóstico de filtraciones y revisión de puntos críticos.', 'Cambio parcial o renovación de cubiertas según su estado.', 'Canaletas, bajadas, cumbreras, tapacanes y remates.', 'Sellos, fijaciones, membranas y coordinación de aislación.'],
+    functions: ['Diagnóstico de filtraciones y puntos críticos.', 'Cambio parcial o renovación de cubiertas.', 'Canaletas, bajadas, cumbreras y remates.', 'Sellos, fijaciones, membranas y aislación.'],
     outcomes: ['Origen identificado', 'Cubierta asegurada', 'Evacuación ordenada', 'Remates protegidos'],
-    bg: '#171717', accent: '#fb923c', text: '#fff7ed', muted: 'rgba(255,247,237,.68)', iconColor: '#2a1305', icon: Home,
+    visual: HOME_PREMIUM_VISUALS.architecture,
+    icon: Home,
   },
   {
-    id: 'terminaciones', budgetId: 'terminaciones', title: 'Terminaciones y renovación interior', shortTitle: 'Terminaciones', eyebrow: 'Pintura · pisos · revestimientos',
+    id: 'terminaciones',
+    budgetId: 'terminaciones',
+    title: 'Terminaciones y renovación interior',
+    shortTitle: 'Terminaciones',
+    eyebrow: 'Pintura · pisos · revestimientos',
     promise: 'Unificamos superficies y detalles para que el proyecto se vea realmente terminado.',
     description: 'Las terminaciones reúnen las capas visibles y los remates que definen la percepción final. Antes de instalar o pintar se revisan humedad, planeidad, adherencia, encuentros y compatibilidad entre materiales.',
-    functions: ['Empaste, reparación superficial y pintura interior o exterior.', 'Pisos vinílicos, flotantes, cerámicos y porcelanatos.', 'Revestimientos, siding, molduras y guardapolvos.', 'Cielos, placas, sellos y correcciones finales de presentación.'],
+    functions: ['Empaste, reparación y pintura interior o exterior.', 'Pisos vinílicos, flotantes, cerámicos y porcelanatos.', 'Revestimientos, siding, molduras y guardapolvos.', 'Cielos, placas, sellos y correcciones finales.'],
     outcomes: ['Superficie preparada', 'Material compatible', 'Encuentros resueltos', 'Entrega limpia'],
-    bg: '#f2eee6', accent: '#b68b55', text: '#201b16', muted: 'rgba(32,27,22,.68)', iconColor: '#201b16', icon: Paintbrush,
+    visual: HOME_PREMIUM_VISUALS.living,
+    icon: Paintbrush,
   },
 ];
 
-function customStyle(service: ServiceChapter): CSSProperties {
-  return { '--service-bg': service.bg, '--service-text': service.text, '--service-muted': service.muted, '--service-accent': service.accent, '--service-icon': service.iconColor, '--accent': service.accent, '--icon-color': service.iconColor } as CSSProperties;
-}
-
-function orbitStyle(service: ServiceChapter, index: number): CSSProperties {
-  const angle = (360 / SERVICES.length) * index;
-  return { '--angle': `${angle}deg`, '--counter-angle': `${-angle}deg`, '--accent': service.accent, '--icon-color': service.iconColor } as CSSProperties;
-}
-
 export function ServiciosPageContent() {
-  const rootRef = useRef<HTMLElement>(null);
-  const spinSectionRef = useRef<HTMLElement>(null);
-  const ringRef = useRef<HTMLDivElement>(null);
-  const mobileTrackRef = useRef<HTMLDivElement>(null);
-  const activeIndexRef = useRef(0);
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  const setActive = (index: number) => {
-    const next = (index + SERVICES.length) % SERVICES.length;
-    activeIndexRef.current = next;
-    setActiveIndex(next);
-  };
-
-  const activeService = SERVICES[activeIndex];
-  const ActiveIcon = activeService.icon;
-
-  const scrollToService = (index: number) => {
-    setActive(index);
-    document.getElementById(`servicio-${SERVICES[index].id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const moveMobile = (direction: number) => {
-    const next = (activeIndexRef.current + direction + SERVICES.length) % SERVICES.length;
-    setActive(next);
-    const card = mobileTrackRef.current?.children.item(next) as HTMLElement | null;
-    card?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-  };
-
-  const handleMobileScroll = (container: HTMLDivElement) => {
-    const center = container.scrollLeft + container.clientWidth / 2;
-    let closest = activeIndexRef.current;
-    let distance = Number.POSITIVE_INFINITY;
-    Array.from(container.children).forEach((child, index) => {
-      const card = child as HTMLElement;
-      const nextDistance = Math.abs(card.offsetLeft + card.offsetWidth / 2 - center);
-      if (nextDistance < distance) { distance = nextDistance; closest = index; }
-    });
-    if (closest !== activeIndexRef.current) setActive(closest);
-  };
-
-  useEffect(() => {
-    let initialized = false;
-    let timer = 0;
-    let context: { revert?: () => void } | undefined;
-    let mediaCleanup: (() => void) | undefined;
-    const init = () => {
-      if (initialized || !rootRef.current) return;
-      const runtime = window as unknown as { gsap?: any; ScrollTrigger?: any };
-      const gsap = runtime.gsap;
-      const ScrollTrigger = runtime.ScrollTrigger;
-      if (!gsap || !ScrollTrigger) return;
-      initialized = true;
-      window.clearInterval(timer);
-      gsap.registerPlugin(ScrollTrigger);
-      context = gsap.context(() => {
-        gsap.fromTo('[data-services-hero-reveal]', { autoAlpha: 0, y: 32 }, { autoAlpha: 1, y: 0, duration: .8, stagger: .09, ease: 'power3.out', delay: .15 });
-        const panels = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[data-service-panel]') || []);
-        panels.forEach((panel, index) => {
-          const service = SERVICES[index];
-          const activate = () => { setActive(index); gsap.to(rootRef.current, { backgroundColor: service.bg, duration: .65, overwrite: true }); };
-          ScrollTrigger.create({ trigger: panel, start: 'top 58%', end: 'bottom 42%', onEnter: activate, onEnterBack: activate });
-          gsap.fromTo(panel.querySelectorAll('[data-service-reveal]'), { autoAlpha: 0, y: 34 }, { autoAlpha: 1, y: 0, duration: .7, stagger: .075, ease: 'power3.out', scrollTrigger: { trigger: panel, start: 'top 76%', once: true } });
-          const visual = panel.querySelector('[data-service-visual]');
-          if (visual) gsap.to(visual, { yPercent: -5, ease: 'none', scrollTrigger: { trigger: panel, start: 'top bottom', end: 'bottom top', scrub: 1.2 } });
-        });
-        const media = gsap.matchMedia();
-        mediaCleanup = () => media.revert();
-        media.add('(min-width: 1024px) and (prefers-reduced-motion: no-preference)', () => {
-          const faces = ringRef.current?.querySelectorAll('[data-spin-face]') || [];
-          const timeline = gsap.timeline({ scrollTrigger: { trigger: spinSectionRef.current, start: 'top top', end: `+=${SERVICES.length * 430}`, pin: true, scrub: 1, anticipatePin: 1, snap: { snapTo: 1 / (SERVICES.length - 1), duration: { min: .12, max: .38 }, delay: .04 }, onUpdate: (self: { progress: number }) => { const index = Math.min(SERVICES.length - 1, Math.round(self.progress * (SERVICES.length - 1))); if (index !== activeIndexRef.current) setActive(index); } } });
-          timeline.to(ringRef.current, { rotation: -360, ease: 'none' }, 0);
-          timeline.to(faces, { rotation: '+=360', ease: 'none' }, 0);
-          return () => timeline.kill();
-        });
-      }, rootRef.current);
-      window.setTimeout(() => ScrollTrigger.refresh(), 180);
-    };
-    timer = window.setInterval(init, 120);
-    init();
-    return () => { window.clearInterval(timer); mediaCleanup?.(); context?.revert?.(); };
-  }, []);
-
   return (
-    <main ref={rootRef} className={styles.root}>
+    <main className="min-h-screen bg-[#F6F1E8] text-[#111214]">
       <Navbar />
-      <section className={styles.hero}>
-        <div className={styles.texture} aria-hidden />
-        <div className={styles.heroInner}>
-          <div>
-            <p data-services-hero-reveal className={styles.heroLabel}><ShieldCheck className="h-4 w-4" /> Construcción, reparación y terminaciones</p>
-            <div data-services-hero-reveal className={styles.heroBand}><h1 className={styles.heroTitle}>Servicios</h1></div>
-            <p data-services-hero-reveal className={styles.heroCopy}>Cada especialidad cumple una función distinta. Recorre la página para entender qué resuelve y abre su calculadora para añadirla al carrito del proyecto.</p>
-            <div data-services-hero-reveal className={styles.heroActions}><a href="#mapa-servicios" className={styles.primaryButton}>Explorar especialidades <ArrowDown className="h-4 w-4" /></a><Link href="/presupuesto" className={styles.secondaryButton}>Abrir carrito de servicios <ArrowRight className="h-4 w-4" /></Link></div>
+
+      <section className="relative overflow-hidden bg-[#0E0E10] px-4 pb-14 pt-28 text-[#F6F1E8] sm:px-6 sm:pb-20 sm:pt-32 lg:px-8">
+        <div className="mx-auto grid max-w-[1320px] gap-9 lg:min-h-[620px] lg:grid-cols-[.92fr_1.08fr] lg:items-center lg:gap-14">
+          <div className="max-w-3xl">
+            <p className="text-[10px] font-black uppercase tracking-[.22em] text-[#D77A2D]">Servicios Soluciones Fabrick</p>
+            <h1 className="mt-5 max-w-[11ch] text-[clamp(3rem,8vw,6.6rem)] font-black leading-[.9] tracking-[-.065em]">
+              Una solución clara para cada etapa de tu proyecto.
+            </h1>
+            <p className="mt-6 max-w-2xl text-sm leading-7 text-white/58 sm:text-lg sm:leading-8">
+              Construcción, ampliaciones, instalaciones y terminaciones organizadas por necesidad. Revisa qué resuelve cada especialidad y pasa directo a una cotización referencial.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/presupuesto" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#D77A2D] px-6 text-xs font-black text-[#111214] transition hover:brightness-110 sm:text-sm">
+                Cotizar proyecto <ArrowRight className="h-4 w-4" />
+              </Link>
+              <a href="#especialidades" className="inline-flex min-h-12 items-center rounded-full border border-white/14 px-6 text-xs font-black text-white transition hover:bg-white/[.06] sm:text-sm">
+                Explorar servicios
+              </a>
+            </div>
+            <div className="mt-10 grid max-w-2xl grid-cols-2 gap-x-5 gap-y-4 border-t border-white/10 pt-5 sm:grid-cols-4">
+              {['Obra base', 'Estructuras', 'Instalaciones', 'Terminaciones'].map((item) => (
+                <span key={item} className="text-[9px] font-black uppercase tracking-[.12em] text-white/38">{item}</span>
+              ))}
+            </div>
           </div>
-          <aside data-services-hero-reveal className={styles.heroAside}>
-            <p className={styles.kicker}>Una ruta por capas</p><h2>Del terreno a la terminación final.</h2><p>El orden correcto reduce retrabajos: primero base y estructura, luego redes, protección y finalmente las capas visibles.</p>
-            <div className={styles.heroProof}><div className={styles.heroProofItem}><CheckCircle2 className="h-4 w-4 text-yellow-300" /> Alcance explicado antes de ejecutar.</div><div className={styles.heroProofItem}><CheckCircle2 className="h-4 w-4 text-yellow-300" /> Especialidades sumadas en un mismo presupuesto.</div><div className={styles.heroProofItem}><CheckCircle2 className="h-4 w-4 text-yellow-300" /> Valor final sujeto a medidas y condiciones reales.</div></div>
-          </aside>
+
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/[.08] bg-white/[.03] shadow-[0_30px_90px_rgba(0,0,0,.34)]">
+            <div className="relative aspect-[4/5] min-h-[430px] lg:min-h-[570px]">
+              <img src={HOME_PREMIUM_VISUALS.architecture} alt="Arquitectura y construcción residencial Soluciones Fabrick" className="absolute inset-0 h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/12 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
+                <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#E6B56F]">Del terreno a la terminación</p>
+                <p className="mt-3 max-w-[17ch] text-2xl font-black leading-tight tracking-[-.04em] sm:text-4xl">Un solo criterio visual y constructivo.</p>
+                <p className="mt-3 max-w-lg text-xs leading-6 text-white/55 sm:text-sm">La especialidad cambia; la forma de ordenar el proyecto, medir y ejecutar se mantiene.</p>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="absolute inset-x-0 bottom-0"><div className={styles.hazardTape} /></div>
       </section>
 
-      <section id="mapa-servicios" ref={spinSectionRef} className={styles.spinSection}>
-        <div className={styles.texture} aria-hidden />
-        <header className={styles.spinHeader}><div><p className={styles.kicker}>Mapa interactivo de servicios</p><h2>Gira por cada especialidad y descubre su función.</h2></div><p>En escritorio, el scroll vertical hace girar el carrusel. En móvil, desliza horizontalmente para proyectar el servicio activo.</p></header>
-        <div className={styles.spinDesktop}><div className={styles.spinStage}><div ref={ringRef} className={styles.orbit}>{SERVICES.map((service, index) => { const Icon = service.icon; const active = activeIndex === index; return <div key={service.id} className={styles.orbitSlot} style={orbitStyle(service, index)}><button type="button" data-spin-face className={`${styles.orbitCard} ${active ? styles.orbitCardActive : ''}`} onMouseEnter={() => setActive(index)} onFocus={() => setActive(index)} onClick={() => scrollToService(index)} aria-current={active ? 'true' : undefined}><span><Icon className="h-5 w-5" /></span><b>{service.shortTitle}</b><small>{service.eyebrow}</small></button></div>; })}</div><article className={styles.centerCard} style={customStyle(activeService)} aria-live="polite"><span className={styles.centerIcon}><ActiveIcon className="h-8 w-8" /></span><p className={styles.kicker}>{activeService.eyebrow}</p><h3>{activeService.shortTitle}</h3><p>{activeService.promise}</p><Link href={`/presupuesto?servicio=${activeService.budgetId}`} className={styles.lightButton}>Calcular este servicio <ArrowRight className="h-4 w-4" /></Link></article></div></div>
-        <div className={styles.mobileCarousel}><div ref={mobileTrackRef} className={styles.mobileTrack} onScroll={(event) => handleMobileScroll(event.currentTarget)}>{SERVICES.map((service, index) => { const Icon = service.icon; const active = activeIndex === index; return <button key={service.id} type="button" className={`${styles.mobileServiceCard} ${active ? styles.mobileServiceCardActive : ''}`} style={customStyle(service)} onClick={() => setActive(index)} aria-current={active ? 'true' : undefined}><span><Icon className="h-5 w-5" /></span><b>{service.shortTitle}</b><small>{service.eyebrow}</small></button>; })}</div><article className={styles.mobileProjection} style={customStyle(activeService)} aria-live="polite"><div className={styles.mobileProjectionHeader}><span className={styles.mobileProjectionIcon}><ActiveIcon className="h-6 w-6" /></span><span className={styles.kicker}>{String(activeIndex + 1).padStart(2, '0')} / {String(SERVICES.length).padStart(2, '0')}</span></div><h3>{activeService.shortTitle}</h3><p>{activeService.promise}</p><div className="mt-5 flex flex-wrap gap-2"><button type="button" className={`${styles.lightButton} border-0`} onClick={() => scrollToService(activeIndex)}>Ver funciones <ArrowDown className="h-4 w-4" /></button><Link href={`/presupuesto?servicio=${activeService.budgetId}`} className={styles.darkButton}>Calcular <ArrowRight className="h-4 w-4" /></Link></div></article><div className={styles.carouselControls}><button type="button" onClick={() => moveMobile(-1)} aria-label="Servicio anterior"><ChevronLeft className="h-5 w-5" /></button><span>{activeIndex + 1} de {SERVICES.length}</span><button type="button" onClick={() => moveMobile(1)} aria-label="Servicio siguiente"><ChevronRight className="h-5 w-5" /></button></div></div>
+      <nav id="especialidades" className="sticky top-[64px] z-30 border-b border-black/[.08] bg-[#F6F1E8]/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1320px] gap-5 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
+          {SERVICES.map((service, index) => (
+            <a key={service.id} href={`#servicio-${service.id}`} className="shrink-0 py-2 text-[9px] font-black uppercase tracking-[.14em] text-black/42 transition hover:text-black">
+              {String(index + 1).padStart(2, '0')} · {service.shortTitle}
+            </a>
+          ))}
+        </div>
+      </nav>
+
+      <section className="mx-auto max-w-[1320px] px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+        <div className="grid gap-10 border-b border-black/10 pb-12 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#9A5B22]">Especialidades</p>
+            <h2 className="mt-3 max-w-[12ch] text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl">Elige por lo que necesitas resolver.</h2>
+          </div>
+          <p className="max-w-2xl text-sm leading-7 text-black/50 sm:text-base">
+            En lugar de mostrar una lista de oficios aislados, cada bloque explica alcance, puntos de revisión y resultado esperado. Así puedes comparar mejor antes de solicitar una visita o armar tu presupuesto.
+          </p>
+        </div>
+
+        <div className="divide-y divide-black/10">
+          {SERVICES.map((service, index) => {
+            const Icon = service.icon;
+            const whatsapp = buildWhatsAppLink(`Hola Soluciones Fabrick, quiero evaluar un trabajo de ${service.title}. Necesito orientación sobre alcance, medidas y próximos pasos.`);
+            return (
+              <article id={`servicio-${service.id}`} key={service.id} className="scroll-mt-36 py-10 sm:py-14 lg:py-16">
+                <div className="grid gap-7 lg:grid-cols-[.82fr_1.18fr] lg:items-stretch lg:gap-10">
+                  <div className={`relative overflow-hidden rounded-[1.7rem] bg-[#171719] ${index % 2 ? 'lg:order-2' : ''}`}>
+                    <div className="relative aspect-[4/3] min-h-[300px] lg:h-full lg:min-h-[430px]">
+                      <img src={service.visual} alt={`${service.title} · Soluciones Fabrick`} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-700 hover:scale-[1.025]" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/10 to-transparent" />
+                      <div className="absolute left-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/34 text-[#E6B56F] backdrop-blur-md sm:left-5 sm:top-5">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+                        <span className="text-[9px] font-black uppercase tracking-[.16em] text-white/45">{String(index + 1).padStart(2, '0')} · {service.eyebrow}</span>
+                        <p className="mt-3 max-w-[18ch] text-2xl font-black leading-tight tracking-[-.04em] text-white sm:text-3xl">{service.promise}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={`flex flex-col justify-center ${index % 2 ? 'lg:order-1' : ''}`}>
+                    <p className="text-[9px] font-black uppercase tracking-[.18em] text-[#9A5B22]">{service.shortTitle}</p>
+                    <h3 className="mt-3 max-w-[15ch] text-3xl font-black leading-[.98] tracking-[-.05em] sm:text-5xl">{service.title}</h3>
+                    <p className="mt-5 max-w-2xl text-sm leading-7 text-black/52 sm:text-base">{service.description}</p>
+
+                    <div className="mt-7 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                      {service.functions.map((item) => (
+                        <div key={item} className="flex gap-3 border-t border-black/10 pt-3 text-xs leading-6 text-black/58 sm:text-sm">
+                          <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[#9A5B22]" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-7 flex flex-wrap gap-2">
+                      {service.outcomes.map((item) => (
+                        <span key={item} className="rounded-full border border-black/10 px-3 py-2 text-[9px] font-black uppercase tracking-[.1em] text-black/45">{item}</span>
+                      ))}
+                    </div>
+
+                    <div className="mt-8 flex flex-wrap gap-2.5">
+                      <Link href={`/presupuesto?servicio=${service.budgetId}`} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#111214] px-5 text-xs font-black text-[#F6F1E8] transition hover:bg-[#2A2B2E]">
+                        Cotizar este trabajo <ArrowRight className="h-4 w-4" />
+                      </Link>
+                      <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-black/12 px-5 text-xs font-black transition hover:bg-black/[.04]">
+                        <MessageCircle className="h-4 w-4" /> Consultar
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
       </section>
 
-      {SERVICES.map((service, index) => {
-        const Icon = service.icon;
-        const quoteLink = buildWhatsAppLink(`Hola Soluciones Fabrick, quiero evaluar un trabajo de ${service.title}. Necesito orientación sobre alcance, medidas y próximos pasos.`);
-        return <section key={service.id} id={`servicio-${service.id}`} data-service-panel className={styles.servicePanel} style={customStyle(service)} aria-labelledby={`titulo-${service.id}`}><div className={styles.serviceGrid}><div data-service-visual className={styles.serviceVisual}><span className={styles.serviceNumber}>{String(index + 1).padStart(2, '0')}</span><span className={styles.serviceIcon}><Icon className="h-10 w-10" /></span><div className={styles.serviceVisualTitle}><p>{service.eyebrow}</p><h2 id={`titulo-${service.id}`}>{service.shortTitle}</h2></div></div><div className={styles.serviceContent}><p data-service-reveal className={styles.eyebrow}>Qué función cumple</p><h3 data-service-reveal>{service.promise}</h3><p data-service-reveal className={styles.serviceDescription}>{service.description}</p><div data-service-reveal className={styles.functionGrid}>{service.functions.map((item) => <div key={item} className={styles.functionItem}><CheckCircle2 className="h-4 w-4" /><span>{item}</span></div>)}</div><div data-service-reveal className={styles.outcomeBox}><strong>Resultado que debe quedar definido</strong><div className={styles.outcomeTags}>{service.outcomes.map((item) => <span key={item}>{item}</span>)}</div></div><div data-service-reveal className={styles.serviceActions}><Link href={`/presupuesto?servicio=${service.budgetId}`} className={styles.lightButton}>Calcular y añadir <Sparkles className="h-4 w-4" /></Link><a href={quoteLink} target="_blank" rel="noopener noreferrer" className={styles.darkButton}>Consultar por WhatsApp <MessageCircle className="h-4 w-4" /></a></div></div></div><div className="absolute inset-x-0 bottom-0 opacity-70"><div className={styles.hazardTape} /></div></section>;
-      })}
+      <section className="bg-[#D9CCBF] px-4 py-14 sm:px-6 sm:py-18 lg:px-8">
+        <div className="mx-auto grid max-w-[1320px] gap-7 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#7C4A1F]">Varias áreas, un mismo proyecto</p>
+            <h2 className="mt-3 max-w-[13ch] text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl">Arma las partidas que necesitas y ordénalas en una sola cotización.</h2>
+            <p className="mt-5 max-w-2xl text-sm leading-7 text-black/52 sm:text-base">El presupuesto permite combinar estructura, instalaciones, terminaciones y productos sin perder el detalle de cada partida.</p>
+          </div>
+          <Link href="/presupuesto" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#111214] px-6 text-xs font-black text-[#F6F1E8] sm:text-sm">
+            Abrir presupuesto <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </section>
 
-      <section className={styles.finalCta}><div className={styles.texture} aria-hidden /><div className={styles.finalCtaInner}><div><p className={styles.kicker} style={{ color: '#08090A' }}>Un proyecto puede mezclar varias áreas</p><h2>Calcula cada partida y arma una sola solicitud.</h2><p>Añade servicios por separado, revisa el rango total y envía el carrito completo para validar medidas, fotografías, acceso y estado actual.</p></div><div className={styles.finalCtaActions}><Link href="/presupuesto" className={styles.primaryButton}>Crear carrito de servicios <Sparkles className="h-4 w-4" /></Link><a href={buildWhatsAppLink('Hola Soluciones Fabrick, tengo un proyecto que combina varias especialidades y quiero ordenar el alcance.')} target="_blank" rel="noopener noreferrer" className={styles.secondaryButton}>Hablar por WhatsApp <MessageCircle className="h-4 w-4" /></a></div></div></section>
-      <footer className={styles.footer}><div className={styles.footerInner}><FabrickLogo className="pointer-events-none" /><span>Servicios sujetos a revisión de medidas, acceso, materialidad y condiciones reales.</span></div></footer>
+      <footer className="bg-[#0E0E10] px-4 py-10 text-white sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-[1320px] flex-col items-start justify-between gap-5 md:flex-row md:items-center">
+          <FabrickLogo className="pointer-events-none" />
+          <p className="max-w-lg text-xs leading-6 text-white/35">Cada alcance y valor debe confirmarse según medidas, condiciones reales del lugar y requerimientos del proyecto.</p>
+        </div>
+      </footer>
     </main>
   );
 }

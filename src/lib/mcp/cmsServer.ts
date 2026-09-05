@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { authenticateMcpRequest, requireMcpScope, type McpAccess } from '@/lib/mcp/access';
 import { auditMcpAction, claimMcpRateLimit } from '@/lib/mcp/governance';
 import { getSiteSectionFresh, setSiteSection } from '@/lib/siteStructure';
-import { DEFAULT_HOME_PAGE, normalizeHomePage } from '@/lib/homeVisualCms';
+import { normalizeHomePage } from '@/lib/homeVisualCms';
 
 function textResult(value: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }] };
@@ -44,7 +44,7 @@ function cmsHandler(access: McpAccess) {
         },
         async () => runTool(access, 'cms_home_get', 'read', {}, async () => {
           requireMcpScope(access, 'site:read');
-          const current = await getSiteSectionFresh('home-page', DEFAULT_HOME_PAGE);
+          const current = await getSiteSectionFresh('home-page');
           return { key: 'home-page', content: normalizeHomePage(current) };
         }),
       );
@@ -64,7 +64,7 @@ function cmsHandler(access: McpAccess) {
         async ({ content, commit, reason }) => runTool(access, 'cms_home_update', commit ? 'commit' : 'preview', { content, commit, reason }, async () => {
           requireMcpScope(access, 'site:read');
           const normalized = normalizeHomePage(content);
-          const current = normalizeHomePage(await getSiteSectionFresh('home-page', DEFAULT_HOME_PAGE));
+          const current = normalizeHomePage(await getSiteSectionFresh('home-page'));
           if (!commit) {
             return {
               ok: true,

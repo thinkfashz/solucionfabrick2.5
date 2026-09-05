@@ -10,6 +10,7 @@ import {
   type HomeVisualSection,
 } from '@/lib/homeVisualCms';
 import { getAdvancedStyle } from '@/lib/homeVisualLayout';
+import { HOME_PREMIUM_VISUALS } from '@/lib/homePremiumVisuals';
 
 interface StaticConstructionHeroProps {
   section?: HomeVisualSection;
@@ -22,20 +23,25 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
   const highlights = stringList(current, 'highlights');
   const backgroundImage = current.style.backgroundImage?.trim();
   const overlay = Math.max(0, Math.min(100, Number(current.style.overlay ?? 58))) / 100;
-  const accent = current.style.accent || '#F28C28';
+  const accent = current.style.accent || '#D77A2D';
   const configuredBackground = current.style.background || '';
-  const background = !configuredBackground || configuredBackground.toUpperCase() === '#08090A' ? '#0B0C0E' : configuredBackground;
-  const textColor = current.style.textColor || '#F7F4EE';
+  const normalizedBackground = configuredBackground.toUpperCase();
+  const background = !configuredBackground || normalizedBackground === '#08090A' || normalizedBackground === '#2F4F6F' ? '#0E0E10' : configuredBackground;
+  const textColor = current.style.textColor || '#F6F1E8';
   const backgroundFit = advanced.backgroundFit === 'contain' ? 'contain' : 'cover';
   const positionX = clampPercent(advanced.backgroundPositionX, 50);
   const positionY = clampPercent(advanced.backgroundPositionY, 50);
   const sectionAnchor = current.id === 'home-hero' ? 'inicio' : current.id;
+  const visualImage = HOME_PREMIUM_VISUALS.hero;
+  const primaryLabel = textContent(current, 'primaryLabel', 'Cotizar proyecto');
+  const legacyPrimaryHref = textContent(current, 'primaryHref', '/presupuesto');
+  const primaryHref = primaryLabel === 'Cotizar proyecto' && legacyPrimaryHref === '#cotizador' ? '/presupuesto' : legacyPrimaryHref;
 
   return (
     <section
       id={sectionAnchor}
       data-cms-section="home-hero"
-      className="relative isolate overflow-hidden px-4 pb-14 pt-20 sm:px-6 sm:pb-18 sm:pt-24 lg:px-8 lg:pb-24 lg:pt-28"
+      className="relative isolate overflow-hidden px-4 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-28 lg:px-8 lg:pb-24 lg:pt-32"
       style={{ backgroundColor: background, color: textColor }}
     >
       {backgroundImage ? (
@@ -49,37 +55,49 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
           }}
         />
       ) : null}
-      <div className="pointer-events-none absolute inset-0 -z-20" style={{ background: backgroundImage ? `linear-gradient(rgba(8,9,10,${overlay}),rgba(8,9,10,${overlay}))` : `radial-gradient(circle at 12% 9%,${accent}22,transparent 31rem),radial-gradient(circle at 86% 76%,${accent}10,transparent 27rem)` }} />
-      <div className="pointer-events-none absolute inset-0 -z-10 opacity-[.028] [background-image:linear-gradient(rgba(255,255,255,.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.5)_1px,transparent_1px)] [background-size:72px_72px]" />
+      <div className="pointer-events-none absolute inset-0 -z-20" style={{ background: backgroundImage ? `linear-gradient(rgba(8,9,10,${overlay}),rgba(8,9,10,${Math.min(0.9, overlay + 0.12)}))` : `radial-gradient(circle at 12% 8%,${accent}1F,transparent 31rem),radial-gradient(circle at 90% 82%,${accent}0D,transparent 28rem)` }} />
+      <div className="pointer-events-none absolute inset-0 -z-10 opacity-[.018] [background-image:linear-gradient(rgba(255,255,255,.55)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.55)_1px,transparent_1px)] [background-size:84px_84px]" />
 
-      <div className="mx-auto grid max-w-[1320px] items-center gap-10 lg:min-h-[620px] lg:grid-cols-[minmax(0,1.08fr)_minmax(340px,.62fr)] lg:gap-16">
+      <div className="mx-auto grid max-w-[1320px] items-center gap-10 lg:min-h-[610px] lg:grid-cols-[minmax(0,1.04fr)_minmax(360px,.76fr)] lg:gap-14">
         <div className="max-w-4xl">
           <p data-cms-field="eyebrow" className="text-[9px] font-black uppercase tracking-[.2em] sm:text-[10px] sm:tracking-[.24em]" style={{ color: accent }}>{textContent(current, 'eyebrow')}</p>
-          <h1 data-cms-field="title" className="mt-4 max-w-[11ch] text-[clamp(2.75rem,13vw,7.1rem)] font-black leading-[.88] tracking-[-.068em] sm:mt-5 sm:leading-[.85]" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>{textContent(current, 'title')}</h1>
-          <p data-cms-field="description" className="mt-6 max-w-2xl text-[15px] leading-7 opacity-66 sm:mt-7 sm:text-lg sm:leading-8">{textContent(current, 'description')}</p>
-          <div className="mt-7 grid grid-cols-2 gap-2 sm:mt-9 sm:flex sm:gap-3">
-            <Link data-cms-field="primaryLabel" href={textContent(current, 'primaryHref', '#cotizador')} className="inline-flex min-h-12 items-center justify-center rounded-full px-4 text-center text-[11px] font-black leading-4 text-[#0B0C0E] transition hover:brightness-105 sm:min-h-14 sm:px-7 sm:text-sm" style={{ backgroundColor: accent }}>{textContent(current, 'primaryLabel', 'Calcular referencia')}</Link>
-            <Link data-cms-field="secondaryLabel" href={textContent(current, 'secondaryHref', '/proyectos')} className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/12 bg-white/[.025] px-4 text-center text-[11px] font-black leading-4 transition hover:bg-white/[.055] sm:min-h-14 sm:px-7 sm:text-sm">{textContent(current, 'secondaryLabel', 'Ver proyectos')}</Link>
+          <h1 data-cms-field="title" className="mt-4 max-w-[12ch] text-[clamp(2.7rem,9vw,5.9rem)] font-black leading-[.91] tracking-[-.064em] sm:mt-5" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>{textContent(current, 'title')}</h1>
+          <p data-cms-field="description" className="mt-6 max-w-2xl text-[15px] leading-7 opacity-62 sm:text-lg sm:leading-8">{textContent(current, 'description')}</p>
+
+          <div className="mt-7 flex flex-col gap-2.5 sm:mt-9 sm:flex-row sm:flex-wrap">
+            <Link data-cms-field="primaryLabel" href={primaryHref} className="inline-flex min-h-12 items-center justify-center rounded-full px-6 text-center text-xs font-black text-[#111214] transition hover:brightness-105 sm:min-h-13 sm:px-7 sm:text-sm" style={{ backgroundColor: accent }}>{primaryLabel}</Link>
+            <Link data-cms-field="secondaryLabel" href={textContent(current, 'secondaryHref', '/proyectos')} className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/12 bg-white/[.025] px-6 text-center text-xs font-black transition hover:bg-white/[.055] sm:min-h-13 sm:px-7 sm:text-sm">{textContent(current, 'secondaryLabel', 'Ver inspiraciones')}</Link>
           </div>
+
           {highlights.length ? (
-            <div className="mt-8 grid grid-cols-3 gap-px overflow-hidden border-y border-white/[.07] bg-white/[.07] sm:mt-11 sm:flex sm:flex-wrap sm:gap-x-7 sm:gap-y-2 sm:border-t sm:border-b-0 sm:bg-transparent sm:pt-5">
-              {highlights.map((item, index) => <span data-cms-container={`highlights-${index}`} data-cms-field={`highlights-${index}`} key={`${item}-${index}`} className="px-2 py-3 text-center text-[8px] font-bold uppercase leading-4 tracking-[.08em] opacity-42 sm:bg-transparent sm:px-0 sm:py-0 sm:text-left sm:text-[10px] sm:tracking-[.14em]">{item}</span>)}
+            <div className="mt-9 flex flex-wrap gap-x-5 gap-y-2 border-t border-white/[.08] pt-5 sm:mt-11 sm:gap-x-7">
+              {highlights.map((item, index) => (
+                <span data-cms-container={`highlights-${index}`} data-cms-field={`highlights-${index}`} key={`${item}-${index}`} className="inline-flex items-center gap-2 text-[9px] font-black uppercase tracking-[.12em] opacity-42 sm:text-[10px]">
+                  <span className="h-1 w-1 rounded-full" style={{ backgroundColor: accent }} />{item}
+                </span>
+              ))}
             </div>
           ) : null}
         </div>
 
-        <aside className="rounded-[1.5rem] border border-white/[.08] bg-white/[.025] p-5 backdrop-blur-sm lg:p-6">
-          <p data-cms-field="sideEyebrow" className="text-[9px] font-black uppercase tracking-[.2em]" style={{ color: accent }}>{textContent(current, 'sideEyebrow', '¿Qué quieres hacer?')}</p>
-          <div className="mt-3 divide-y divide-white/[.08] sm:mt-4">
-            {needs.map(({ title, text }, index) => (
-              <div data-cms-container={`needs-${index}`} key={`${title}-${index}`} className="grid grid-cols-[92px_1fr] gap-3 py-4 sm:grid-cols-[108px_1fr] sm:py-5">
-                <h2 data-cms-field={`needs-${index}-title`} className="text-sm font-black sm:text-lg">{title}</h2>
-                <p data-cms-field={`needs-${index}-text`} className="text-xs leading-5 opacity-46 sm:leading-6">{text}</p>
+        <div className="relative overflow-hidden rounded-[2rem] border border-white/[.08] bg-white/[.025] shadow-[0_28px_80px_rgba(0,0,0,.28)]">
+          <div className="relative aspect-[4/5] min-h-[430px] lg:min-h-[560px]">
+            <img src={visualImage} alt="Vivienda contemporánea de referencia · Soluciones Fabrick" className="absolute inset-0 h-full w-full object-cover" loading="eager" decoding="async" fetchPriority="high" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/22 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+              <p data-cms-field="sideEyebrow" className="text-[9px] font-black uppercase tracking-[.2em]" style={{ color: accent }}>{textContent(current, 'sideEyebrow', 'Empieza por lo que necesitas')}</p>
+              <div className="mt-4 grid gap-2">
+                {needs.map(({ title, text }, index) => (
+                  <div data-cms-container={`needs-${index}`} key={`${title}-${index}`} className="grid grid-cols-[88px_1fr] gap-3 rounded-2xl border border-white/[.08] bg-black/24 px-3.5 py-3 backdrop-blur-sm">
+                    <h2 data-cms-field={`needs-${index}-title`} className="text-xs font-black sm:text-sm">{title}</h2>
+                    <p data-cms-field={`needs-${index}-text`} className="text-[10px] leading-5 opacity-56 sm:text-[11px]">{text}</p>
+                  </div>
+                ))}
               </div>
-            ))}
+              <a data-cms-field="whatsappLabel" href={textContent(current, 'whatsappHref')} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex text-[10px] font-black uppercase tracking-[.12em] underline decoration-white/20 underline-offset-4 transition hover:decoration-white/60">{textContent(current, 'whatsappLabel', 'Hablar por WhatsApp')}</a>
+            </div>
           </div>
-          <a data-cms-field="whatsappLabel" href={textContent(current, 'whatsappHref')} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#F7F4EE] px-5 text-xs font-black text-[#0B0C0E] transition hover:brightness-95 sm:min-h-12 sm:text-sm">{textContent(current, 'whatsappLabel', 'Hablar por WhatsApp')}</a>
-        </aside>
+        </div>
       </div>
     </section>
   );

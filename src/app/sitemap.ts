@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { insforge } from '@/lib/insforge';
 import { listContent } from '@/lib/content';
-import { loadInspirationCatalog } from '@/lib/inspirationCatalog';
+import { loadInspirationCatalog, publicInspirationCatalog } from '@/lib/inspirationCatalog';
 import { getPublicProjects } from '@/lib/projectsServer';
 
 const BASE_URL = 'https://www.solucionesfabrick.com';
@@ -48,6 +48,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     loadInspirationCatalog({ maxResults: 100 }),
   ]);
   const { data: projects, source: projectSource } = projectResult;
+  const publicInspirations = publicInspirationCatalog(inspirationCatalog);
   const verifiedProjects = projectSource === 'db' ? projects : [];
 
   // Seed projects keep /proyectos useful when the DB is empty, but they are
@@ -61,13 +62,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const imagesByAlbum = new Map<string, string[]>();
-  for (const asset of inspirationCatalog.assets) {
+  for (const asset of publicInspirations.assets) {
     const current = imagesByAlbum.get(asset.album) || [];
     current.push(asset.url);
     imagesByAlbum.set(asset.album, current);
   }
 
-  const inspirationRoutes: MetadataRoute.Sitemap = inspirationCatalog.albums.map((album) => ({
+  const inspirationRoutes: MetadataRoute.Sitemap = publicInspirations.albums.map((album) => ({
     url: `${BASE_URL}/inspiraciones/${album.key}`,
     lastModified: now,
     changeFrequency: 'weekly',
@@ -77,7 +78,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const projectIndexImages = [
     ...verifiedProjects.map((project) => project.hero_image),
-    ...inspirationCatalog.albums.map((album) => album.cover),
+    ...publicInspirations.albums.map((album) => album.cover),
   ].filter(Boolean);
 
   const staticWithProjectImages = staticRoutes.map((route) => route.url === `${BASE_URL}/proyectos`

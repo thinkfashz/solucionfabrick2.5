@@ -38,6 +38,7 @@ export default function FabrickStorySection({ section }: { section?: HomeVisualS
   const legacySecondaryHref = textContent(current, 'secondaryHref', '/presupuesto');
   const primaryHref = primaryLabel === 'Ver servicios' && legacyPrimaryHref === '/presupuesto' ? '/servicios' : legacyPrimaryHref;
   const secondaryHref = secondaryLabel === 'Cotizar proyecto' && legacySecondaryHref === '/proyectos' ? '/presupuesto' : legacySecondaryHref;
+  const selectedVisual = current.style.backgroundImage?.trim();
 
   return (
     <section id={sectionAnchor} data-cms-section="home-story" className="px-4 py-18 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
@@ -59,18 +60,20 @@ export default function FabrickStorySection({ section }: { section?: HomeVisualS
         <div className="mt-9 grid gap-3 md:grid-cols-3">
           {areas.map(({ title, text }, index) => {
             const visual = serviceVisual(title, text, index);
+            const image = index === 0 && selectedVisual ? selectedVisual : visual.src;
             return (
-              <Link href={visual.href} key={`${title}-${index}`} data-cms-container={`areas-${index}`} className="group relative min-h-[330px] overflow-hidden rounded-[1.6rem] bg-[#151518] text-white sm:min-h-[390px]">
-                <img src={visual.src} alt={`${title} · Soluciones Fabrick`} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.035]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/24 to-black/8" />
-                <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+              <Link href={visual.href} key={`${title}-${index}`} data-cms-container={`areas-${index}`} className="group overflow-hidden rounded-[1.6rem] border border-black/[.06] bg-[#151518] text-white shadow-[0_18px_45px_rgba(26,22,18,.08)]">
+                <div className="aspect-[4/3] overflow-hidden bg-black/30">
+                  <img src={image} alt={`${title} · Soluciones Fabrick`} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.025]" />
+                </div>
+                <div className="border-t border-white/[.07] p-5 sm:p-6">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[8px] font-black uppercase tracking-[.16em] text-[#E6B56F]">{visual.label}</span>
-                    <span className="text-[9px] font-black opacity-38">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="text-[9px] font-black opacity-28">{String(index + 1).padStart(2, '0')}</span>
                   </div>
                   <h3 data-cms-field={`areas-${index}-title`} className="mt-3 max-w-[16ch] text-xl font-black leading-tight tracking-[-.035em] sm:text-2xl">{title}</h3>
-                  <p data-cms-field={`areas-${index}-text`} className="mt-2 max-w-sm text-xs leading-6 text-white/58 sm:text-sm">{text}</p>
-                  <span className="mt-5 inline-flex text-[9px] font-black uppercase tracking-[.12em] text-white/72 transition group-hover:text-white">Ver servicio →</span>
+                  <p data-cms-field={`areas-${index}-text`} className="mt-2 max-w-sm text-xs leading-6 text-white/50 sm:text-sm">{text}</p>
+                  <span className="mt-5 inline-flex text-[9px] font-black uppercase tracking-[.12em] text-white/62 transition group-hover:text-white">Ver servicio →</span>
                 </div>
               </Link>
             );

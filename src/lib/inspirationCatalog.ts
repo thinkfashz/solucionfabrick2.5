@@ -5,6 +5,13 @@ import { getCloudinaryCredentials } from '@/lib/cloudinaryCredentials';
 export const DEFAULT_INSPIRATIONS_FOLDER = process.env.CLOUDINARY_PROJECTS_FOLDER || 'fabrick/inspiraciones';
 const FALLBACK_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME || 'disghf6xc';
 
+// Internal image libraries may feed public page artwork, but they are not
+// browsable inspiration albums. Their files stay deliverable through the CDN
+// because the public pages render them directly.
+export const PRIVATE_INSPIRATION_ALBUMS = new Set([
+  'soluciones-constructivas-fabrick',
+]);
+
 export const INSPIRATION_CATEGORIES = [
   { key: 'cocinas', label: 'Ideas de cocina', words: ['cocina', 'kitchen', 'meson', 'mueble-cocina'] },
   { key: 'casas', label: 'Ideas de casas', words: ['casa', 'vivienda', 'fachada', 'home'] },
@@ -116,6 +123,19 @@ export type InspirationCatalog = {
   warning?: string;
   error?: string;
 };
+
+export function isPrivateInspirationAlbum(album: string | null | undefined) {
+  return PRIVATE_INSPIRATION_ALBUMS.has(cleanSlug(album, ''));
+}
+
+export function publicInspirationCatalog(catalog: InspirationCatalog): InspirationCatalog {
+  const assets = catalog.assets.filter((asset) => !isPrivateInspirationAlbum(asset.album));
+  return {
+    ...catalog,
+    assets,
+    albums: catalog.albums.filter((album) => !isPrivateInspirationAlbum(album.key)),
+  };
+}
 
 export function cleanFolder(input: string | null | undefined) {
   const value = (input || DEFAULT_INSPIRATIONS_FOLDER)

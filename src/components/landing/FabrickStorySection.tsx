@@ -16,6 +16,14 @@ const SERVICE_VISUALS = [
   { src: HOME_PREMIUM_VISUALS.finishes, href: '/servicios', label: 'Interiores' },
 ];
 
+function serviceVisual(title: string, description: string, fallbackIndex: number) {
+  const value = `${title} ${description}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (/instal|termin|electric|gasfit|climat|interior/.test(value)) return SERVICE_VISUALS[2];
+  if (/remodel|cocina|bano|terraza|revest/.test(value)) return SERVICE_VISUALS[1];
+  if (/constru|amplia|estructura|radier|obra/.test(value)) return SERVICE_VISUALS[0];
+  return SERVICE_VISUALS[fallbackIndex % SERVICE_VISUALS.length];
+}
+
 export default function FabrickStorySection({ section }: { section?: HomeVisualSection }) {
   const current = section ?? getHomeSection(DEFAULT_HOME_PAGE, 'story');
   const areas = objectList(current, 'areas');
@@ -50,7 +58,7 @@ export default function FabrickStorySection({ section }: { section?: HomeVisualS
 
         <div className="mt-9 grid gap-3 md:grid-cols-3">
           {areas.map(({ title, text }, index) => {
-            const visual = SERVICE_VISUALS[index % SERVICE_VISUALS.length];
+            const visual = serviceVisual(title, text, index);
             return (
               <Link href={visual.href} key={`${title}-${index}`} data-cms-container={`areas-${index}`} className="group relative min-h-[330px] overflow-hidden rounded-[1.6rem] bg-[#151518] text-white sm:min-h-[390px]">
                 <img src={visual.src} alt={`${title} · Soluciones Fabrick`} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.035]" />

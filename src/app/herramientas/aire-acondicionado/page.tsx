@@ -1,18 +1,18 @@
 import type { Metadata } from 'next';
-import PublicBudgetCalculatorClient from '@/components/store/PublicBudgetCalculatorClient';
+import PublicBudgetCalculatorV2 from '@/components/store/PublicBudgetCalculatorV2';
 
 export const metadata: Metadata = {
-  title: 'Calculadora de aire acondicionado | Orientación de capacidad',
-  description: 'Obtén una orientación inicial de capacidad para aire acondicionado y solicita una evaluación técnica de instalación y climatización en Maule, Linares y Talca.',
+  title: 'Calculadora BTU de aire acondicionado | Soluciones Fabrick',
+  description: 'Calcula BTU, compara capacidades, estima consumo mensual y revisa un visor 3D antes de cotizar la instalación de aire acondicionado.',
   alternates: { canonical: 'https://www.solucionesfabrick.com/herramientas/aire-acondicionado' },
   openGraph: {
-    title: 'Calculadora de aire acondicionado | Soluciones Fabrick',
-    description: 'Una orientación inicial para planificar la climatización de tu hogar o espacio.',
+    title: 'Calculadora BTU de aire acondicionado | Soluciones Fabrick',
+    description: 'Mide tu espacio, compara 9.000 a 24.000 BTU, estima consumo y revisa el espacio en 3D.',
     url: 'https://www.solucionesfabrick.com/herramientas/aire-acondicionado',
-    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Calculadora de aire acondicionado Soluciones Fabrick' }],
+    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Calculadora BTU de aire acondicionado Soluciones Fabrick' }],
   },
 };
 
 export default function Page() {
-  return <PublicBudgetCalculatorClient kind="aire" />;
+  return <PublicBudgetCalculatorV2 kind="aire" />;
 }

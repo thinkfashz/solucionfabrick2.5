@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bot, Braces, Home, LayoutDashboard } from 'lucide-react';
 import HomeVisualEditorClient from './HomeVisualEditorClient';
 import UniversalVisualEditorClient from './UniversalVisualEditorClient';
@@ -13,8 +13,25 @@ const workspaces: Array<{ id: Workspace; label: string; hint: string; icon: type
   { id: 'ai', label: 'IA / MCP', hint: 'Modelos, herramientas y automatización', icon: Bot },
 ];
 
+const FABRICK_PALETTE = [
+  { value: '#0E0E10', label: 'Carbón' },
+  { value: '#111214', label: 'Negro suave' },
+  { value: '#F6F1E8', label: 'Marfil' },
+  { value: '#EEE7DD', label: 'Arena' },
+  { value: '#D77A2D', label: 'Cobre Fabrick' },
+  { value: '#C69A52', label: 'Oro técnico' },
+];
+
 export default function UnifiedCmsEditorClient() {
   const [workspace, setWorkspace] = useState<Workspace>('home');
+
+  useEffect(() => {
+    if (workspace !== 'home') return;
+    const timer = window.setTimeout(() => {
+      document.querySelectorAll<HTMLDetailsElement>('.sf-home-cms details[open]').forEach((detail) => detail.removeAttribute('open'));
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [workspace]);
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-[#08090A] text-white">
@@ -45,18 +62,26 @@ export default function UnifiedCmsEditorClient() {
               );
             })}
           </div>
+
+          <div className="hidden items-center gap-1.5 rounded-xl border border-white/8 bg-black/25 px-2.5 py-2 2xl:flex" aria-label="Paleta Fabrick">
+            {FABRICK_PALETTE.map((color) => <span key={color.value} title={`${color.label} · ${color.value}`} className="h-5 w-5 rounded-full border border-white/15 shadow-inner" style={{ backgroundColor: color.value }} />)}
+          </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-[1800px]">
-        {workspace === 'home' ? <HomeVisualEditorClient /> : null}
+        {workspace === 'home' ? <div className="sf-home-cms"><HomeVisualEditorClient /></div> : null}
         {workspace === 'site' ? <UniversalVisualEditorClient /> : null}
         {workspace === 'ai' ? (
           <div className="h-[calc(100dvh-9rem)] min-h-[620px] overflow-hidden bg-[#0B0C0E] sm:m-3 sm:rounded-2xl sm:border sm:border-white/8">
+            <div className="flex min-h-11 items-center justify-between gap-3 border-b border-white/8 bg-[#111214] px-4 text-[9px] font-black uppercase tracking-[.13em] text-white/40">
+              <span>Asistente IA · proveedores configurados</span>
+              <span className="rounded-full border border-[#D77A2D]/25 bg-[#D77A2D]/8 px-2.5 py-1 text-[#DFA36D]">MCP CMS · /api/mcp/cms</span>
+            </div>
             <iframe
               src="/admin/mcp/harness?embed=cms"
               title="Asistente IA y MCP de Soluciones Fabrick"
-              className="h-full w-full border-0 bg-[#F6F1E8]"
+              className="h-[calc(100%-2.75rem)] w-full border-0 bg-[#F6F1E8]"
             />
           </div>
         ) : null}

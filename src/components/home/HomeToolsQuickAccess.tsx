@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Calculator, ClipboardList, Ruler } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { navigateWithTransition } from '@/lib/routeTransition';
@@ -23,6 +24,6 @@ export default function HomeToolsQuickAccess() {
   );
 }
 
-function QuickTool({ icon, label, detail, onClick }: { icon: React.ReactNode; label: string; detail: string; onClick: () => void }) {
+function QuickTool({ icon, label, detail, onClick }: { icon: ReactNode; label: string; detail: string; onClick: () => void }) {
   return <button type="button" onClick={onClick} className="group flex w-full items-center gap-3 border-b border-white/[.055] px-4 py-3.5 text-left transition last:border-0 hover:bg-white/[.055]"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#F5871F] text-[#111214]">{icon}</span><span className="min-w-0"><b className="block text-[11px]">{label}</b><small className="mt-0.5 block text-[8px] uppercase tracking-[.08em] text-white/30">{detail}</small></span></button>;
 }

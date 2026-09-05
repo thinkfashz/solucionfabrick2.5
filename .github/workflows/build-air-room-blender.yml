@@ -1,12 +1,6 @@
 name: Build premium air room GLB
 
 on:
-  push:
-    branches:
-      - fix/unified-home-cms-media-ai
-    paths:
-      - scripts/blender/build-air-room-premium.py
-      - .github/workflows/build-air-room-blender.yml
   workflow_dispatch:
 
 permissions:

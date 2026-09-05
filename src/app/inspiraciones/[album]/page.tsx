@@ -7,7 +7,7 @@ import { StoreBottomNav, StorefrontHeader } from '@/components/store/StorefrontC
 import StoreFooter from '@/components/store/StoreFooter';
 import AlbumExperience from '@/components/proyectos/AlbumExperience';
 import InterestStars from '@/components/proyectos/InterestStars';
-import { loadInspirationCatalog, type InspirationAlbum, type InspirationAsset } from '@/lib/inspirationCatalog';
+import { isPrivateInspirationAlbum, loadInspirationCatalog, type InspirationAlbum, type InspirationAsset } from '@/lib/inspirationCatalog';
 
 export const dynamic = 'force-dynamic';
 const BASE_URL = 'https://www.solucionesfabrick.com';
@@ -15,6 +15,7 @@ const WHATSAPP_PHONE = '56930121625';
 type PageProps = { params: Promise<{ album: string }> };
 
 const loadAlbum = cache(async (slug: string) => {
+  if (isPrivateInspirationAlbum(slug)) return { album: null, assets: [], source: 'cloudinary' as const };
   const catalog = await loadInspirationCatalog({ maxResults: 100 });
   const album = catalog.albums.find((item) => item.key === slug) || null;
   const assets = catalog.assets.filter((item) => item.album === slug).sort((a, b) => a.sort_order - b.sort_order);

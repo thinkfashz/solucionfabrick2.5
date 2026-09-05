@@ -11,6 +11,7 @@ import {
   contextString,
   loadInspirationCatalog,
   normalizeInspirationAsset,
+  publicInspirationCatalog,
   tagString,
   type CloudinaryResource,
   type InspirationMetadataPayload,
@@ -63,22 +64,26 @@ function payloadFromForm(form: FormData, fileName: string): InspirationMetadataP
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const catalog = await loadInspirationCatalog({
+  const [catalog, session] = await Promise.all([
+    loadInspirationCatalog({
     folder: url.searchParams.get('folder') || DEFAULT_INSPIRATIONS_FOLDER,
     maxResults: Number(url.searchParams.get('max') || '100'),
     nextCursor: url.searchParams.get('next_cursor') || undefined,
-  });
+    }),
+    requireAdmin(request),
+  ]);
+  const visibleCatalog = session ? catalog : publicInspirationCatalog(catalog);
 
   return NextResponse.json({
-    assets: catalog.assets,
-    albums: catalog.albums,
-    categories: catalog.categories,
-    next_cursor: catalog.nextCursor,
-    source: catalog.source,
-    folder: catalog.folder,
-    ...(catalog.warning ? { warning: catalog.warning } : {}),
-    ...(catalog.error ? { error: catalog.error } : {}),
-  });
+    assets: visibleCatalog.assets,
+    albums: visibleCatalog.albums,
+    categories: visibleCatalog.categories,
+    next_cursor: visibleCatalog.nextCursor,
+    source: visibleCatalog.source,
+    folder: visibleCatalog.folder,
+    ...(visibleCatalog.warning ? { warning: visibleCatalog.warning } : {}),
+    ...(visibleCatalog.error ? { error: visibleCatalog.error } : {}),
+  }, { headers: { 'Cache-Control': 'private, no-store', Vary: 'Cookie' } });
 }
 
 export async function POST(request: NextRequest) {

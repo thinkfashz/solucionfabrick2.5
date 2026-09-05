@@ -33,7 +33,7 @@ export interface HomeVisualSection {
 }
 
 export interface HomePageContent {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   sections: HomeVisualSection[];
 }
 
@@ -41,7 +41,7 @@ const dark = { background: '#0E0E10', textColor: '#F6F1E8', accent: '#D77A2D', a
 const light = { background: '#F6F1E8', textColor: '#111214', accent: '#9A5B22', animation: 'fade-up' as const, duration: 0.6 };
 
 export const DEFAULT_HOME_PAGE: HomePageContent = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   sections: [
     {
       id: 'home-hero',
@@ -331,7 +331,7 @@ const LEGACY_ARRAY_KEYS: Record<string, string[]> = {
 
 function cloneDefaultHomePage(): HomePageContent {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sections: DEFAULT_HOME_PAGE.sections.map((section) => ({
       ...section,
       style: { ...section.style },
@@ -403,11 +403,12 @@ export function normalizeHomePage(value: unknown): HomePageContent {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return cloneDefaultHomePage();
   const raw = value as Partial<HomePageContent>;
   const input = Array.isArray(raw.sections) ? raw.sections : [];
+  const migrateLegacyOrder = raw.schemaVersion !== 2;
   const byId = new Map(input.filter(Boolean).map((section) => [section.id, section]));
   const sections = DEFAULT_HOME_PAGE.sections.map((fallback) => {
     const current = byId.get(fallback.id);
     if (!current) return fallback;
-    const knownLegacyOrder = LEGACY_ORDERS[fallback.id]?.includes(Number(current.order));
+    const knownLegacyOrder = migrateLegacyOrder && LEGACY_ORDERS[fallback.id]?.includes(Number(current.order));
     return {
       ...fallback,
       ...current,
@@ -420,7 +421,7 @@ export function normalizeHomePage(value: unknown): HomePageContent {
     if (!current || sections.some((section) => section.id === current.id)) continue;
     sections.push(current);
   }
-  return { schemaVersion: 1, sections: sections.sort((a, b) => a.order - b.order) };
+  return { schemaVersion: 2, sections: sections.sort((a, b) => a.order - b.order) };
 }
 
 export function getHomeSection(config: HomePageContent, type: HomeVisualSectionType): HomeVisualSection {

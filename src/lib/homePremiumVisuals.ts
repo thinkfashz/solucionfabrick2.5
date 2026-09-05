@@ -16,63 +16,74 @@ type PremiumVisualSource = {
   publicId: string;
   version: number;
   alt: string;
+  format: 'png';
 };
 
 const SOURCES: Record<PremiumVisualKey, PremiumVisualSource> = {
   metalcon: {
-    publicId: 'home-metalcon-estructura',
-    version: 1788557201,
+    publicId: 'fabrick/inspiraciones/soluciones-constructivas-fabrick/lipcqzj8cduni5qq4p4z',
+    version: 1788576758,
     alt: 'Estructura metálica de referencia para soluciones Steel Frame y Metalcon',
+    format: 'png',
   },
   bedroom: {
-    publicId: 'home-habitacion-premium',
-    version: 1788557214,
-    alt: 'Dormitorio contemporáneo con madera y luz natural',
+    publicId: 'fabrick/inspiraciones/soluciones-constructivas-fabrick/vfs3gu7bys4w6uzwxczp',
+    version: 1788576776,
+    alt: 'Ampliación modular de vivienda con estructura liviana',
+    format: 'png',
   },
   kitchen: {
-    publicId: 'home-cocina-premium',
-    version: 1788557223,
-    alt: 'Cocina contemporánea con mobiliario oscuro y madera',
+    publicId: 'fabrick/inspiraciones/soluciones-constructivas-fabrick/omvwj3xo1fbfdggdb6gh',
+    version: 1788576760,
+    alt: 'Remodelación integral de cocina',
+    format: 'png',
   },
   bathroom: {
-    publicId: 'home-bano-premium',
-    version: 1788557233,
-    alt: 'Baño contemporáneo con revestimientos de piedra',
+    publicId: 'fabrick/inspiraciones/soluciones-constructivas-fabrick/hnsturtgbn59vcbulebd',
+    version: 1788576764,
+    alt: 'Instalación sanitaria y fosa séptica para vivienda',
+    format: 'png',
   },
   terrace: {
-    publicId: 'home-terraza-premium',
-    version: 1788557248,
-    alt: 'Terraza exterior con pérgola y mobiliario contemporáneo',
+    publicId: 'fabrick/inspiraciones/soluciones-constructivas-fabrick/ahjepmbwdfn1ssm5eqff',
+    version: 1788576773,
+    alt: 'Instalación de techumbre metálica',
+    format: 'png',
   },
   planning: {
-    publicId: 'home-planificacion-proyecto',
-    version: 1788557260,
-    alt: 'Planificación de proyecto y revisión de planos de construcción',
+    publicId: 'fabrick/inspiraciones/soluciones-constructivas-fabrick/jrywfzyxfj67xi1dahlo',
+    version: 1788576791,
+    alt: 'Herramientas de construcción organizadas para ejecución de obra',
+    format: 'png',
   },
   living: {
-    publicId: 'home-living-premium',
-    version: 1788557270,
-    alt: 'Living contemporáneo de tonos cálidos y composición minimalista',
+    publicId: 'fabrick/inspiraciones/soluciones-constructivas-fabrick/zyhy19suipjwe6uig46o',
+    version: 1788576770,
+    alt: 'Aislación térmica instalada en estructura de vivienda',
+    format: 'png',
   },
   house: {
-    publicId: 'home-casa-piscina-premium',
-    version: 1788557281,
-    alt: 'Vivienda contemporánea con terraza y piscina',
+    publicId: 'fabrick/inspiraciones/soluciones-constructivas-fabrick/do0t4rhd9msr6fztfekk',
+    version: 1788576754,
+    alt: 'Casa terminada con diseño contemporáneo',
+    format: 'png',
   },
   architecture: {
-    publicId: 'home-arquitectura-premium',
-    version: 1788557295,
-    alt: 'Arquitectura residencial contemporánea de líneas limpias',
+    publicId: 'fabrick/inspiraciones/soluciones-constructivas-fabrick/rjxdub89a9yn2yumhikl',
+    version: 1788576785,
+    alt: 'Perfiles Metalcon para estructura de vivienda',
+    format: 'png',
   },
   foundation: {
-    publicId: 'home-radier-fundacion',
-    version: 1788557304,
-    alt: 'Preparación de radier y fundación con refuerzo estructural',
+    publicId: 'fabrick/inspiraciones/soluciones-constructivas-fabrick/vjdsqq3fxqinofacq1qc',
+    version: 1788576767,
+    alt: 'Instalación eléctrica durante la construcción de una vivienda',
+    format: 'png',
   },
 };
 
 function cloudinaryHomeVisual(source: PremiumVisualSource, width = 1600, height = 1000) {
-  return `${CLOUDINARY_BASE}/c_fill,g_auto,h_${height},w_${width}/f_auto,q_auto/v${source.version}/${source.publicId}.jpg`;
+  return `${CLOUDINARY_BASE}/c_fill,g_auto,h_${height},w_${width}/f_auto,q_auto/v${source.version}/${source.publicId}.${source.format}`;
 }
 
 export const HOME_PREMIUM_VISUALS = {

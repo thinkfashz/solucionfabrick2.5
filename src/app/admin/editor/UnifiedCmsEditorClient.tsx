@@ -35,7 +35,7 @@ export default function UnifiedCmsEditorClient() {
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-[#08090A] text-white">
-      <div className="sticky top-0 z-[70] border-b border-white/8 bg-[#08090A]/96 px-2 py-2 backdrop-blur-xl sm:px-3">
+      <div className="sticky top-0 z-[70] min-h-[58px] border-b border-white/8 bg-[#08090A]/96 px-2 py-2 backdrop-blur-xl sm:px-3">
         <div className="mx-auto flex max-w-[1800px] items-center gap-2">
           <div className="hidden min-w-0 sm:block sm:w-[220px] xl:w-[260px]">
             <div className="flex items-center gap-2 text-[#D77A2D]"><Braces className="h-4 w-4" /><span className="text-[9px] font-black uppercase tracking-[.18em]">CMS Fabrick</span></div>
@@ -70,8 +70,8 @@ export default function UnifiedCmsEditorClient() {
       </div>
 
       <div className="mx-auto max-w-[1800px]">
-        {workspace === 'home' ? <div className="sf-home-cms"><HomeVisualEditorClient /></div> : null}
-        {workspace === 'site' ? <UniversalVisualEditorClient /> : null}
+        {workspace === 'home' ? <div className="sf-home-cms [&_header]:top-[58px]"><HomeVisualEditorClient /></div> : null}
+        {workspace === 'site' ? <div className="[&_header]:top-[58px]"><UniversalVisualEditorClient /></div> : null}
         {workspace === 'ai' ? (
           <div className="h-[calc(100dvh-9rem)] min-h-[620px] overflow-hidden bg-[#0B0C0E] sm:m-3 sm:rounded-2xl sm:border sm:border-white/8">
             <div className="flex min-h-11 items-center justify-between gap-3 border-b border-white/8 bg-[#111214] px-4 text-[9px] font-black uppercase tracking-[.13em] text-white/40">

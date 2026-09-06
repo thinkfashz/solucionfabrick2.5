@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import AirGameExperienceV3 from '@/components/store/AirGameExperienceV3';
+import AirGameExperienceV4 from '@/components/store/AirGameExperienceV4';
 
 export const metadata: Metadata = {
   title: 'Experiencia inmersiva de aire acondicionado | Soluciones Fabrick',
@@ -14,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <AirGameExperienceV3 />;
+  return <AirGameExperienceV4 />;
 }

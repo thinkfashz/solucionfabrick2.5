@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
@@ -12,7 +12,7 @@ import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { ArrowLeft, Calculator, ChevronLeft, ChevronRight, Fan, Gamepad2, Leaf, Move, Snowflake, Speaker, Thermometer, VolumeX, Wind, X } from 'lucide-react';
+import { ArrowLeft, Calculator, ChevronLeft, ChevronRight, Fan, Gamepad2, Leaf, Move, Speaker, Thermometer, VolumeX, Wind, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { navigateWithTransition } from '@/lib/routeTransition';
 
@@ -118,7 +118,7 @@ function PostFX() {
   const composer = useRef<EffectComposer | null>(null);
   useEffect(() => {
     const c = new EffectComposer(gl); const render = new RenderPass(scene, camera); const ssao = new SSAOPass(scene, camera, size.width, size.height); ssao.kernelRadius = 10; ssao.minDistance = .002; ssao.maxDistance = .17; ssao.enabled = size.width > 720;
-    const bloom = new UnrealBloomPass(new THREE.Vector2(size.width, size.height), .26, .55, .88); const smaa = new SMAAPass(size.width, size.height); const output = new OutputPass();
+    const bloom = new UnrealBloomPass(new THREE.Vector2(size.width, size.height), .26, .55, .88); const smaa = new SMAAPass(); const output = new OutputPass();
     c.addPass(render); c.addPass(ssao); c.addPass(bloom); c.addPass(smaa); c.addPass(output); composer.current = c;
     return () => { c.dispose(); composer.current = null; };
   }, [camera, gl, scene, size.height, size.width]);
@@ -139,12 +139,11 @@ function SunsetOutside({ roomWidth, roomDepth, roomHeight }: { roomWidth: number
 
 function WindowOpening({ roomWidth, roomDepth, roomHeight }: { roomWidth: number; roomDepth: number; roomHeight: number }) {
   const windowD = Math.min(roomDepth * .56, 3.2); const windowH = Math.min(roomHeight * .64, 1.8); const bottom = .42; const sideD = Math.max(.2, (roomDepth - windowD) / 2); const topH = Math.max(.15, roomHeight - bottom - windowH);
-  const wall = <meshPhysicalMaterial color="#D7CEC2" roughness={.88} />;
   return <group>
-    <mesh position={[-roomWidth / 2, bottom / 2, 0]} receiveShadow><boxGeometry args={[.12, bottom, roomDepth]} />{wall}</mesh>
-    <mesh position={[-roomWidth / 2, bottom + windowH + topH / 2, 0]} receiveShadow><boxGeometry args={[.12, topH, roomDepth]} />{wall}</mesh>
-    <mesh position={[-roomWidth / 2, bottom + windowH / 2, -(windowD / 2 + sideD / 2)]} receiveShadow><boxGeometry args={[.12, windowH, sideD]} />{wall}</mesh>
-    <mesh position={[-roomWidth / 2, bottom + windowH / 2, windowD / 2 + sideD / 2]} receiveShadow><boxGeometry args={[.12, windowH, sideD]} />{wall}</mesh>
+    <mesh position={[-roomWidth / 2, bottom / 2, 0]} receiveShadow><boxGeometry args={[.12, bottom, roomDepth]} /><meshPhysicalMaterial color="#D7CEC2" roughness={.88} /></mesh>
+    <mesh position={[-roomWidth / 2, bottom + windowH + topH / 2, 0]} receiveShadow><boxGeometry args={[.12, topH, roomDepth]} /><meshPhysicalMaterial color="#D7CEC2" roughness={.88} /></mesh>
+    <mesh position={[-roomWidth / 2, bottom + windowH / 2, -(windowD / 2 + sideD / 2)]} receiveShadow><boxGeometry args={[.12, windowH, sideD]} /><meshPhysicalMaterial color="#D7CEC2" roughness={.88} /></mesh>
+    <mesh position={[-roomWidth / 2, bottom + windowH / 2, windowD / 2 + sideD / 2]} receiveShadow><boxGeometry args={[.12, windowH, sideD]} /><meshPhysicalMaterial color="#D7CEC2" roughness={.88} /></mesh>
     <group position={[-roomWidth / 2 + .065, bottom + windowH / 2, 0]} rotation={[0, Math.PI / 2, 0]}>
       <mesh><planeGeometry args={[windowD, windowH]} /><meshPhysicalMaterial color="#B9D6E2" transmission={.82} transparent opacity={.34} roughness={.025} metalness={.02} thickness={.025} /></mesh>
       {[-.33,.33].map((p) => <mesh key={p} position={[windowD * p, 0, .035]}><boxGeometry args={[.035, windowH, .025]} /><meshStandardMaterial color="#2C2825" metalness={.4} roughness={.38} /></mesh>)}
@@ -218,7 +217,7 @@ function DynamicRoom({ roomWidth, roomDepth, roomHeight, option, mode, fanSpeed,
   </group>;
 }
 
-function Avatar({ speed }: { speed: React.MutableRefObject<number> }) {
+function Avatar({ speed }: { speed: MutableRefObject<number> }) {
   const leftLeg = useRef<THREE.Group>(null); const rightLeg = useRef<THREE.Group>(null); const leftArm = useRef<THREE.Group>(null); const rightArm = useRef<THREE.Group>(null);
   useFrame(({ clock }) => { const a = Math.sin(clock.elapsedTime * 8) * .48 * Math.min(1, speed.current * 2.2); if (leftLeg.current) leftLeg.current.rotation.x = a; if (rightLeg.current) rightLeg.current.rotation.x = -a; if (leftArm.current) leftArm.current.rotation.x = -a*.7; if (rightArm.current) rightArm.current.rotation.x = a*.7; });
   return <group>

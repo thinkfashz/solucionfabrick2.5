@@ -1,24 +1,11 @@
 import { redirect } from 'next/navigation';
 import { isAdminSession } from '@/lib/adminAuth';
-import UniversalVisualEditorClient from './UniversalVisualEditorClient';
-import VisualCmsCloudinaryBridge from './VisualCmsCloudinaryBridge';
-import VisualCmsCloudinaryPolish from './VisualCmsCloudinaryPolish';
-import VisualCmsHomeStructureBridge from './VisualCmsHomeStructureBridge';
-import VisualCmsWorkspaceBridge from './VisualCmsWorkspaceBridge';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminEditorPage() {
   if (!(await isAdminSession())) {
-    redirect('/admin/login?from=/admin/editor');
+    redirect('/admin/login?from=/admin/editor/home-structure');
   }
-  return (
-    <>
-      <UniversalVisualEditorClient />
-      <VisualCmsCloudinaryBridge />
-      <VisualCmsCloudinaryPolish />
-      <VisualCmsHomeStructureBridge />
-      <VisualCmsWorkspaceBridge />
-    </>
-  );
+  redirect('/admin/editor/home-structure');
 }

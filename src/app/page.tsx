@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { headers } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import HomeVisualRuntime from '@/components/cms/HomeVisualRuntime';
+import HomeToolsQuickAccess from '@/components/home/HomeToolsQuickAccess';
 import { StoreBottomNav } from '@/components/store/StorefrontChrome';
 import { getCmsSettings, renderCopyright } from '@/lib/cms';
 import { getSiteSection } from '@/lib/siteStructure';
@@ -28,6 +29,7 @@ export default async function Home() {
       <div className="min-h-screen overflow-x-hidden bg-[#08090A] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-[#FFB000] selection:text-[#08090A] md:pb-0">
         <Navbar />
         <HomeVisualRuntime initialConfig={homeConfig} copyrightText={copyrightText} socialLinks={socialLinks} />
+        <HomeToolsQuickAccess />
         <StoreBottomNav />
       </div>
     </>

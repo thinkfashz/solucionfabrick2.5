@@ -8,24 +8,18 @@ import {
   textContent,
   type HomeVisualSection,
 } from '@/lib/homeVisualCms';
+import { getAdvancedStyle } from '@/lib/homeVisualLayout';
 import { HOME_PREMIUM_VISUALS } from '@/lib/homePremiumVisuals';
 
-const SERVICE_VISUALS = [
-  { src: HOME_PREMIUM_VISUALS.construction, href: '/servicios/ampliaciones', label: 'Construcción' },
-  { src: HOME_PREMIUM_VISUALS.remodel, href: '/servicios', label: 'Remodelación' },
-  { src: HOME_PREMIUM_VISUALS.finishes, href: '/servicios', label: 'Interiores' },
+const SERVICE_META = [
+  { href: '/servicios/ampliaciones', label: 'Construcción' },
+  { href: '/servicios', label: 'Remodelación' },
+  { href: '/servicios', label: 'Instalaciones' },
 ];
-
-function serviceVisual(title: string, description: string, fallbackIndex: number) {
-  const value = `${title} ${description}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  if (/instal|termin|electric|gasfit|climat|interior/.test(value)) return SERVICE_VISUALS[2];
-  if (/remodel|cocina|bano|terraza|revest/.test(value)) return SERVICE_VISUALS[1];
-  if (/constru|amplia|estructura|radier|obra/.test(value)) return SERVICE_VISUALS[0];
-  return SERVICE_VISUALS[fallbackIndex % SERVICE_VISUALS.length];
-}
 
 export default function FabrickStorySection({ section }: { section?: HomeVisualSection }) {
   const current = section ?? getHomeSection(DEFAULT_HOME_PAGE, 'story');
+  const advanced = getAdvancedStyle(current.style);
   const areas = objectList(current, 'areas');
   const configuredBackground = current.style.background || '';
   const background = !configuredBackground || configuredBackground.toUpperCase() === '#FFF9EE' ? '#FAF8F4' : configuredBackground;
@@ -38,6 +32,10 @@ export default function FabrickStorySection({ section }: { section?: HomeVisualS
   const legacySecondaryHref = textContent(current, 'secondaryHref', '/presupuesto');
   const primaryHref = primaryLabel === 'Ver servicios' && legacyPrimaryHref === '/presupuesto' ? '/servicios' : legacyPrimaryHref;
   const secondaryHref = secondaryLabel === 'Cotizar proyecto' && legacySecondaryHref === '/proyectos' ? '/presupuesto' : legacySecondaryHref;
+  const visualImage = current.style.backgroundImage?.trim() || HOME_PREMIUM_VISUALS.construction;
+  const visualFit = advanced.backgroundFit === 'contain' ? 'contain' : 'cover';
+  const visualX = clampPercent(advanced.backgroundPositionX, 50);
+  const visualY = clampPercent(advanced.backgroundPositionY, 50);
 
   return (
     <section id={sectionAnchor} data-cms-section="home-story" className="px-4 py-18 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
@@ -56,27 +54,49 @@ export default function FabrickStorySection({ section }: { section?: HomeVisualS
           </div>
         </div>
 
-        <div className="mt-9 grid gap-3 md:grid-cols-3">
-          {areas.map(({ title, text }, index) => {
-            const visual = serviceVisual(title, text, index);
-            return (
-              <Link href={visual.href} key={`${title}-${index}`} data-cms-container={`areas-${index}`} className="group relative min-h-[330px] overflow-hidden rounded-[1.6rem] bg-[#151518] text-white sm:min-h-[390px]">
-                <img src={visual.src} alt={`${title} · Soluciones Fabrick`} loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.035]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/24 to-black/8" />
-                <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+        <div className="mt-9 grid gap-4 lg:grid-cols-[1.12fr_.88fr] lg:items-stretch">
+          <div className="relative min-h-[340px] overflow-hidden rounded-[1.8rem] border border-black/[.06] bg-[#151518] shadow-[0_20px_55px_rgba(26,22,18,.09)] sm:min-h-[440px]">
+            <img
+              src={visualImage}
+              alt="Servicio destacado de Soluciones Fabrick"
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full"
+              style={{ objectFit: visualFit, objectPosition: `${visualX}% ${visualY}%` }}
+            />
+          </div>
+
+          <div className="grid gap-3">
+            {areas.map(({ title, text }, index) => {
+              const meta = SERVICE_META[index] || SERVICE_META[SERVICE_META.length - 1];
+              return (
+                <Link
+                  href={meta.href}
+                  key={`${title}-${index}`}
+                  data-cms-container={`areas-${index}`}
+                  className="group flex min-h-[150px] flex-col justify-between rounded-[1.45rem] border border-black/[.07] bg-[#151518] p-5 text-white shadow-[0_12px_35px_rgba(26,22,18,.06)] transition hover:-translate-y-0.5 hover:border-[#D77A2D]/25 sm:p-6"
+                >
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[8px] font-black uppercase tracking-[.16em] text-[#E6B56F]">{visual.label}</span>
-                    <span className="text-[9px] font-black opacity-38">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="text-[8px] font-black uppercase tracking-[.16em] text-[#E6B56F]">{meta.label}</span>
+                    <span className="text-[9px] font-black opacity-25">{String(index + 1).padStart(2, '0')}</span>
                   </div>
-                  <h3 data-cms-field={`areas-${index}-title`} className="mt-3 max-w-[16ch] text-xl font-black leading-tight tracking-[-.035em] sm:text-2xl">{title}</h3>
-                  <p data-cms-field={`areas-${index}-text`} className="mt-2 max-w-sm text-xs leading-6 text-white/58 sm:text-sm">{text}</p>
-                  <span className="mt-5 inline-flex text-[9px] font-black uppercase tracking-[.12em] text-white/72 transition group-hover:text-white">Ver servicio →</span>
-                </div>
-              </Link>
-            );
-          })}
+                  <div className="mt-5">
+                    <h3 data-cms-field={`areas-${index}-title`} className="max-w-[18ch] text-lg font-black leading-tight tracking-[-.03em] sm:text-xl">{title}</h3>
+                    <p data-cms-field={`areas-${index}-text`} className="mt-2 max-w-md text-[11px] leading-5 text-white/48 sm:text-xs sm:leading-6">{text}</p>
+                  </div>
+                  <span className="mt-4 inline-flex text-[9px] font-black uppercase tracking-[.12em] text-white/58 transition group-hover:text-white">Ver servicio →</span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>
   );
+}
+
+function clampPercent(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.min(100, parsed));
 }

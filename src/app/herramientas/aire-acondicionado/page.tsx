@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import AirCatalogExperienceV7 from '@/components/store/AirCatalogExperienceV7';
 
+// V7: visor universal rápido conectado únicamente a productos reales del catálogo.
 export const metadata: Metadata = {
   title: 'Catálogo 3D de aire acondicionado | Soluciones Fabrick',
   description: 'Calcula BTU, compara aires acondicionados, cobertura, personas, consumo, ruido y eficiencia en un catálogo 3D visual rápido para móvil y PC.',

@@ -22,7 +22,7 @@ export default async function Home() {
     <>
       <script type="application/ld+json" nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="min-h-screen overflow-x-hidden bg-[#08090A] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-[#FFE600] selection:text-[#08090A] md:pb-0">
-        <Navbar />
+        <Navbar reference />
         <HomePremiumV10 copyrightText={copyrightText} socialLinks={socialLinks} />
         <StoreBottomNav />
       </div>

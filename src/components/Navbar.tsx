@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   X,
+  Search,
   Menu,
   Home,
   Wrench,
@@ -81,7 +82,7 @@ function DrawerSectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function Navbar() {
+export default function Navbar({ reference = false }: { reference?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -126,7 +127,7 @@ export default function Navbar() {
       <nav
         className={[
           'fixed left-0 top-0 z-50 flex w-full items-center justify-between',
-          'px-4 py-3 md:px-12',
+          reference ? 'px-5 py-2 md:px-10 lg:px-[max(2rem,calc((100vw-1280px)/2))]' : 'px-4 py-3 md:px-12',
           'bg-black/82 backdrop-blur-md',
           'border-b transition-[box-shadow,border-color,background-color] duration-300',
           scrolled
@@ -134,12 +135,12 @@ export default function Navbar() {
             : 'border-transparent shadow-none',
         ].join(' ')}
       >
-        <div className="hidden lg:block">
+        <div className={reference ? "block mr-auto lg:mr-0 [&>button>span>span]:w-[150px] lg:[&>button>span>span]:w-[170px]" : "hidden lg:block"}>
           <NavbarBrandLogo onClick={() => handleNav('/')} />
         </div>
 
         {/* Mobile left: menu */}
-        <div className="flex items-center lg:hidden">
+        <div className={reference ? "order-3 flex items-center lg:hidden" : "flex items-center lg:hidden"}>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -162,13 +163,13 @@ export default function Navbar() {
         </div>
 
         {/* Mobile centered brand */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 lg:hidden">
+        <div className={reference ? "hidden" : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 lg:hidden"}>
           <NavbarBrandLogo compact onClick={() => handleNav('/')} />
         </div>
 
         {/* Desktop links */}
         <div className="hidden items-center gap-6 lg:flex">
-          {MAIN_MENU_ITEMS.map(({ label, href }) => (
+          {(reference ? [{label:'Inicio',href:'/'},{label:'Productos',href:'/tienda'},{label:'Soluciones',href:'/servicios'},{label:'Nosotros',href:'/fundador'},{label:'Proyectos',href:'/proyectos'},{label:'Contacto',href:'/contacto'}] : MAIN_MENU_ITEMS).map(({ label, href }) => (
             <button
               key={href + label}
               onClick={() => handleNav(href)}
@@ -195,15 +196,16 @@ export default function Navbar() {
           </button>
 
           <button
-            onClick={() => handleNav('/contacto')}
+            onClick={() => handleNav(reference ? '/#cotizador' : '/contacto')}
             className="rounded-full bg-[var(--accent)] px-5 py-2 text-[10px] font-black uppercase tracking-widest text-black transition-all hover:-translate-y-0.5 hover:bg-white"
           >
-            Cotizar ahora
+            {reference ? 'Solicitar cotización →' : 'Cotizar ahora'}
           </button>
         </div>
 
+        {reference && <button type="button" onClick={() => handleNav('/tienda')} aria-label="Buscar productos" className="order-1 grid h-10 w-10 place-items-center text-white lg:hidden"><Search size={21} /></button>}
         {/* Mobile right: cart */}
-        <div className="flex items-center lg:hidden">
+        <div className={reference ? "order-2 mr-1 flex items-center lg:hidden" : "flex items-center lg:hidden"}>
           <button
             type="button"
             onClick={() => (cartCtx ? cartCtx.openCart() : handleNav('/tienda'))}

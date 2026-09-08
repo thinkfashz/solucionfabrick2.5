@@ -1,0 +1,41 @@
+name: Commerce P0
+
+on:
+  pull_request:
+    paths:
+      - 'src/app/api/checkout/**'
+      - 'src/app/api/payments/**'
+      - 'src/app/api/readiness/**'
+      - 'src/lib/commerceReservations.ts'
+      - 'src/lib/paymentValidation.ts'
+      - 'src/lib/orders/paymentReconciliation.ts'
+      - 'src/lib/insforge.ts'
+      - 'src/lib/mercadoPagoCredentials.ts'
+      - 'src/lib/orderTracking.ts'
+      - 'src/lib/billing/**'
+      - 'scripts/ensure-commerce-p0-schema.mjs'
+      - 'tests/unit/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-commerce-p0:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - name: Revenue P0 regression tests
+        run: pnpm vitest run tests/unit/checkout.test.ts tests/unit/commerce.test.ts tests/unit/mercadopago.test.ts tests/unit/mercadopagoStatus.test.ts tests/unit/paymentValidation.test.ts tests/unit/insforgeFailClosed.test.ts tests/unit/orderTrackingFailClosed.test.ts tests/unit/commerceP0Schema.test.ts

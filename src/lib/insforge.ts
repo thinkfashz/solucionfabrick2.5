@@ -1,9 +1,10 @@
 import { createClient, InsForgeClient } from '@insforge/sdk';
 
-// Hardcoded fallbacks so the app works even if env vars aren't set in Vercel.
-// Override by setting NEXT_PUBLIC_INSFORGE_URL and NEXT_PUBLIC_INSFORGE_ANON_KEY.
+// Public fallbacks keep anonymous/catalog reads backwards-compatible. The
+// administrative client is different: in production it must have the service
+// credential and must never silently downgrade to this public key.
 const INSFORGE_URL =
-  process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
+  process.env.NEXT_PUBLIC_INSFORGE_URL || process.env.INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
 const INSFORGE_ANON_KEY =
   process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY || 'ik_7e23032539c2dc64d5d27ca29d07b928';
 
@@ -18,6 +19,15 @@ export function getMissingAdminEnvVars(): string[] {
     if (!process.env.INSFORGE_API_KEY) missing.push('INSFORGE_API_KEY');
   }
   return missing;
+}
+
+export function getInsforgeAdminKey(): string {
+  const serviceKey = process.env.INSFORGE_API_KEY?.trim();
+  if (serviceKey) return serviceKey;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('INSFORGE_API_KEY_REQUIRED');
+  }
+  return INSFORGE_ANON_KEY;
 }
 
 let _insforge: InsForgeClient | undefined;
@@ -40,10 +50,9 @@ export const insforgeAdmin: InsForgeClient = new Proxy({} as InsForgeClient, {
     if (!_insforgeAdmin) {
       _insforgeAdmin = createClient({
         baseUrl: INSFORGE_URL,
-        anonKey: process.env.INSFORGE_API_KEY || INSFORGE_ANON_KEY,
+        anonKey: getInsforgeAdminKey(),
       });
     }
     return (_insforgeAdmin as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
-

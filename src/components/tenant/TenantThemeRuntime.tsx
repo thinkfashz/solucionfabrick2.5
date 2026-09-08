@@ -17,12 +17,12 @@ type BrandingResponse = {
 };
 
 const DEFAULTS = {
-  primary: '#F5871F',
-  secondary: '#F5871F',
-  accent: '#FFD05A',
+  primary: '#FFE600',
+  secondary: '#FFD400',
+  accent: '#FFF45C',
   background: '#08090A',
   surface: '#111214',
-  text: '#fff7ed',
+  text: '#fffdf0',
   name: 'Soluciones Fabrick',
 };
 
@@ -38,11 +38,17 @@ function setVar(name: string, value: string) {
   document.documentElement.style.setProperty(name, value);
 }
 
+function isFabrickBrand(branding?: Branding) {
+  const name = (branding?.name || DEFAULTS.name).trim().toLowerCase();
+  return name === 'soluciones fabrick' || name === 'fabrick';
+}
+
 function applyTheme(branding?: Branding) {
   const theme = branding?.theme;
-  setVar('--tenant-primary', theme?.primary || branding?.primaryColor || DEFAULTS.primary);
-  setVar('--tenant-secondary', theme?.secondary || DEFAULTS.secondary);
-  setVar('--tenant-accent', theme?.accent || DEFAULTS.accent);
+  const fabrick = isFabrickBrand(branding);
+  setVar('--tenant-primary', fabrick ? DEFAULTS.primary : (theme?.primary || branding?.primaryColor || DEFAULTS.primary));
+  setVar('--tenant-secondary', fabrick ? DEFAULTS.secondary : (theme?.secondary || DEFAULTS.secondary));
+  setVar('--tenant-accent', fabrick ? DEFAULTS.accent : (theme?.accent || DEFAULTS.accent));
   setVar('--tenant-bg', theme?.background || DEFAULTS.background);
   setVar('--tenant-surface', theme?.surface || DEFAULTS.surface);
   setVar('--tenant-text', theme?.text || DEFAULTS.text);

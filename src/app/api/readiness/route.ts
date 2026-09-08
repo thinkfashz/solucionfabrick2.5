@@ -21,6 +21,14 @@ function configured(...keys: string[]) {
   return keys.some((key) => Boolean(process.env[key]?.trim()));
 }
 
+function trackingSigningSource() {
+  if (configured('ORDER_TRACKING_SECRET')) return 'ORDER_TRACKING_SECRET';
+  if (configured('NEXTAUTH_SECRET')) return 'NEXTAUTH_SECRET';
+  if (configured('PAYMENTS_WEBHOOK_SECRET')) return 'PAYMENTS_WEBHOOK_SECRET';
+  if (configured('ADMIN_SESSION_SECRET')) return 'ADMIN_SESSION_SECRET';
+  return null;
+}
+
 export async function GET() {
   const timestamp = new Date().toISOString();
   const missingAdmin = getMissingAdminEnvVars();
@@ -35,7 +43,8 @@ export async function GET() {
   ]);
 
   const mpWebhookReady = Boolean('webhookSecret' in mpCredentials && mpCredentials.webhookSecret);
-  const trackingReady = configured('ORDER_TRACKING_SECRET', 'NEXTAUTH_SECRET', 'PAYMENTS_WEBHOOK_SECRET');
+  const trackingSource = trackingSigningSource();
+  const trackingReady = Boolean(trackingSource);
   const cloudinaryReady = configured('CLOUDINARY_CLOUD_NAME', 'NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME');
   const genericWebhookReady = configured('PAYMENTS_WEBHOOK_SECRET');
   const billingReal = Boolean(billing && billing.code !== 'mock');
@@ -64,6 +73,11 @@ export async function GET() {
         latencyMs: mp.latencyMs,
         webhookConfigured: mpWebhookReady,
       },
+      order_tracking: {
+        configured: trackingReady,
+        source: trackingSource,
+        dedicatedSecret: trackingSource === 'ORDER_TRACKING_SECRET',
+      },
       dte: {
         status: billingReal ? 'configured' : 'blocked_external',
         provider: billing?.code || 'unavailable',
@@ -76,7 +90,7 @@ export async function GET() {
       admin: missingAdmin,
       dte: billingReal ? [] : ['Credenciales reales del proveedor DTE (Haulmer/SII)'],
       mercadoPagoWebhook: mpWebhookReady ? [] : ['MERCADO_PAGO_WEBHOOK_SECRET / credencial webhook en Integraciones'],
-      tracking: trackingReady ? [] : ['ORDER_TRACKING_SECRET (o NEXTAUTH_SECRET/PAYMENTS_WEBHOOK_SECRET)'],
+      tracking: trackingReady ? [] : ['ORDER_TRACKING_SECRET (o un secreto servidor existente)'],
     },
   }, {
     status: ready ? 200 : 503,

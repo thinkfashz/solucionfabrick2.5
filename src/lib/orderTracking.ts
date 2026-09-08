@@ -5,6 +5,7 @@ function secret() {
     process.env.ORDER_TRACKING_SECRET ||
     process.env.NEXTAUTH_SECRET ||
     process.env.PAYMENTS_WEBHOOK_SECRET ||
+    process.env.ADMIN_SESSION_SECRET ||
     ''
   ).trim();
   if (configured) return configured;

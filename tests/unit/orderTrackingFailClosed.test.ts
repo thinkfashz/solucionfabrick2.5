@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const keys = ['ORDER_TRACKING_SECRET', 'NEXTAUTH_SECRET', 'PAYMENTS_WEBHOOK_SECRET'] as const;
+const keys = ['ORDER_TRACKING_SECRET', 'NEXTAUTH_SECRET', 'PAYMENTS_WEBHOOK_SECRET', 'ADMIN_SESSION_SECRET'] as const;
 const originals = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
 const originalNodeEnv = process.env.NODE_ENV;
 
@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe('order tracking signing', () => {
-  it('falla cerrado en producción cuando no existe secreto de firma', async () => {
+  it('falla cerrado en producción cuando no existe ningún secreto de servidor', async () => {
     vi.resetModules();
     vi.stubEnv('NODE_ENV', 'production');
     for (const key of keys) vi.stubEnv(key, '');
@@ -32,5 +32,15 @@ describe('order tracking signing', () => {
     const { createOrderTrackingToken, parseOrderTrackingToken } = await import('@/lib/orderTracking');
     const token = createOrderTrackingToken('FBK-1');
     expect(parseOrderTrackingToken(token)).toEqual({ orderId: 'FBK-1' });
+  });
+
+  it('puede reutilizar ADMIN_SESSION_SECRET como fallback seguro existente', async () => {
+    vi.resetModules();
+    vi.stubEnv('NODE_ENV', 'production');
+    for (const key of keys) vi.stubEnv(key, '');
+    vi.stubEnv('ADMIN_SESSION_SECRET', 'admin-server-secret-for-tests-123456');
+    const { createOrderTrackingToken, parseOrderTrackingToken } = await import('@/lib/orderTracking');
+    const token = createOrderTrackingToken('FBK-2');
+    expect(parseOrderTrackingToken(token)).toEqual({ orderId: 'FBK-2' });
   });
 });

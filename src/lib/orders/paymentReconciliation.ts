@@ -1,42 +1,18 @@
 import 'server-only';
 import { insforgeAdmin } from '@/lib/insforge';
 import { dispatchHookAsync } from '@/lib/extensionsBus';
-import { getMercadoPagoPayment, mapMercadoPagoStatus, type MercadoPagoPaymentResponse } from '@/lib/mercadopago';
+import { fetchMercadoPagoAccount, getMercadoPagoPayment, mapMercadoPagoStatus, type MercadoPagoPaymentResponse } from '@/lib/mercadopago';
+import { getMercadoPagoCredentials } from '@/lib/mercadoPagoCredentials';
 import { confirmPaidOrderAndSendReceiptAsync } from '@/lib/orders/paidConfirmation';
 import { syncOrderToSalesPipelineAsync } from '@/lib/orders/salesPipeline';
 import { resolveDispatchCode } from '@/lib/orders/dispatchCode';
+import { commitOrderReservation, releaseOrderReservation } from '@/lib/commerceReservations';
+import { isTerminalPaymentFailure, validateMercadoPagoPaymentForOrder } from '@/lib/paymentValidation';
 
 type OrderRow = Record<string, unknown>;
 
 function str(value: unknown, fallback = '') {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback;
-}
-
-function num(value: unknown, fallback = 0) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function hasMissingColumn(error?: { message?: string } | null) {
-  return /column .* does not exist|schema cache|Could not find|PGRST204/i.test(error?.message || '');
-}
-
-function paymentPayerName(payment: MercadoPagoPaymentResponse) {
-  const payer = payment.payer;
-  const full = [payer?.first_name, payer?.last_name].filter(Boolean).join(' ').trim();
-  return full || payer?.email || 'Cliente Mercado Pago';
-}
-
-function paymentPayerPhone(payment: MercadoPagoPaymentResponse) {
-  const phone = payment.payer?.phone;
-  return str(phone?.number || phone?.area_code ? `${phone?.area_code || ''}${phone?.number || ''}` : '');
-}
-
-function workflowStatusFromPayment(paymentStatus?: string) {
-  const mapped = mapMercadoPagoStatus(paymentStatus);
-  if (mapped === 'pagada') return 'en_preparacion';
-  if (mapped === 'fallida' || mapped === 'reembolsada' || mapped === 'contracargo') return 'cancelado';
-  return 'pendiente';
 }
 
 function isPaidLike(order?: OrderRow) {
@@ -45,77 +21,54 @@ function isPaidLike(order?: OrderRow) {
   return ['pagada', 'confirmado', 'confirmada', 'en_preparacion', 'preparacion', 'preparación', 'enviado', 'entregado'].includes(status) || paymentStatus === 'approved';
 }
 
+function hasMissingColumn(error?: { message?: string } | null) {
+  return /column .* does not exist|schema cache|Could not find|PGRST204/i.test(error?.message || '');
+}
+
 export async function loadOrderById(orderId: string) {
   const { data, error } = await insforgeAdmin.database.from('orders').select('*').eq('id', orderId).limit(1);
   if (error) throw new Error(error.message || 'No se pudo leer la orden.');
   return Array.isArray(data) ? data[0] as OrderRow | undefined : undefined;
 }
 
-async function insertOrder(row: Record<string, unknown>) {
-  const { error } = await insforgeAdmin.database.from('orders').insert([row]);
-  if (!error) return { stripped: false };
-  if (!hasMissingColumn(error)) throw new Error(`No se pudo recuperar la orden pagada: ${error.message}`);
+async function updateOrder(orderId: string, payload: Record<string, unknown>) {
+  const { error } = await insforgeAdmin.database.from('orders').update(payload).eq('id', orderId);
+  if (!error) return;
+  if (!hasMissingColumn(error)) throw new Error(`No se pudo actualizar la orden: ${error.message}`);
 
-  const fallback = { ...row };
-  delete fallback.dispatch_code;
-  const retry = await insforgeAdmin.database.from('orders').insert([fallback]);
-  if (retry.error) throw new Error(`No se pudo recuperar la orden pagada: ${retry.error.message}`);
-  return { stripped: true };
+  // Compatibility only for deployments where the new P0 migration has not yet
+  // refreshed the REST schema cache. Financial validation still remains fail-closed.
+  const safeFallback: Record<string, unknown> = {};
+  for (const key of ['status', 'payment_id', 'payment_status', 'dispatch_code', 'updated_at']) {
+    if (key in payload) safeFallback[key] = payload[key];
+  }
+  const retry = await insforgeAdmin.database.from('orders').update(safeFallback).eq('id', orderId);
+  if (retry.error) throw new Error(`No se pudo actualizar la orden: ${retry.error.message}`);
 }
 
-async function createRecoveredOrderFromPayment(payment: MercadoPagoPaymentResponse, orderId: string) {
-  const now = new Date().toISOString();
-  const amount = Math.round(num(payment.transaction_amount, 0));
-  const metadata = payment.metadata || {};
-  const status = workflowStatusFromPayment(payment.status);
-  const dispatchCode = status === 'en_preparacion' ? resolveDispatchCode({}, orderId) : '';
-  const row = {
-    id: orderId,
-    customer_name: paymentPayerName(payment),
-    customer_email: str(payment.payer?.email).toLowerCase() || null,
-    customer_phone: paymentPayerPhone(payment) || null,
-    region: str(metadata.region),
-    shipping_address: str(metadata.shipping_address) || null,
-    items: [{ productoId: 'mp-recovery', nombre: 'Compra Mercado Pago recuperada', cantidad: 1, precioUnitario: amount }],
-    subtotal: amount,
-    tax: 0,
-    shipping_fee: 0,
-    total: amount,
-    currency: payment.currency_id || 'CLP',
-    status,
-    dispatch_code: dispatchCode || null,
-    payment_id: String(payment.id),
-    payment_status: payment.status || 'unknown',
-    created_at: now,
-    updated_at: now,
-  };
-
-  await insertOrder(row);
-  return row;
+async function paymentMerchantId() {
+  try {
+    const credentials = await getMercadoPagoCredentials();
+    if (!credentials.accessToken) return null;
+    const account = await fetchMercadoPagoAccount(credentials.accessToken);
+    return account?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
-async function updateOrderFromPayment(orderId: string, payment: MercadoPagoPaymentResponse, existing?: OrderRow) {
-  const workflowStatus = workflowStatusFromPayment(payment.status);
-  const dispatchCode = workflowStatus === 'en_preparacion' ? resolveDispatchCode(existing || {}, orderId) : str(existing?.dispatch_code || existing?.codigo_despacho);
-  const payload: Record<string, unknown> = {
-    status: workflowStatus,
+function paymentAuditPayload(payment: MercadoPagoPaymentResponse, validation: ReturnType<typeof validateMercadoPagoPaymentForOrder>) {
+  return {
     payment_id: String(payment.id),
     payment_status: payment.status || 'unknown',
+    expected_payment_amount: validation.expectedAmount,
+    received_payment_amount: validation.receivedAmount,
+    expected_payment_currency: validation.expectedCurrency,
+    received_payment_currency: validation.receivedCurrency || null,
+    payment_validation_result: validation,
+    payment_review_reason: validation.valid ? null : validation.errors.join(','),
     updated_at: new Date().toISOString(),
   };
-  if (dispatchCode) payload.dispatch_code = dispatchCode;
-
-  const { error } = await insforgeAdmin.database.from('orders').update(payload).eq('id', orderId);
-  if (error && !hasMissingColumn(error)) throw new Error(`No se pudo actualizar la orden: ${error.message}`);
-  if (error && hasMissingColumn(error)) {
-    const fallback = { ...payload };
-    delete fallback.dispatch_code;
-    const retry = await insforgeAdmin.database.from('orders').update(fallback).eq('id', orderId);
-    if (retry.error) throw new Error(`No se pudo actualizar la orden: ${retry.error.message}`);
-  }
-
-  const order = await loadOrderById(orderId);
-  return { order, orderStatus: workflowStatus, dispatchCode };
 }
 
 export async function reconcileMercadoPagoPaymentRecord(payment: MercadoPagoPaymentResponse, expectedOrderId?: string | null, source = 'webhook') {
@@ -125,34 +78,143 @@ export async function reconcileMercadoPagoPaymentRecord(payment: MercadoPagoPaym
     throw new Error('El pago no corresponde al pedido que se está intentando confirmar.');
   }
 
-  const existing = await loadOrderById(orderId).catch(() => undefined);
-  const wasAlreadyPaid = isPaidLike(existing);
-  let order = existing;
-  let dispatchCode = str(existing?.dispatch_code || existing?.codigo_despacho);
-
-  if (!order) {
-    order = await createRecoveredOrderFromPayment(payment, orderId);
-    dispatchCode = str(order.dispatch_code || order.codigo_despacho);
-  } else {
-    const updated = await updateOrderFromPayment(orderId, payment, existing);
-    order = updated.order || order;
-    dispatchCode = updated.dispatchCode || dispatchCode;
+  const existing = await loadOrderById(orderId);
+  if (!existing) {
+    // Revenue P0: never manufacture an order from a payment event. A payment
+    // without a persisted order must go to manual investigation.
+    throw new Error('ORDER_NOT_FOUND_FOR_PAYMENT');
   }
 
-  const paymentMappedStatus = mapMercadoPagoStatus(payment.status);
-  const orderStatus = workflowStatusFromPayment(payment.status);
-  if (paymentMappedStatus === 'pagada') {
-    syncOrderToSalesPipelineAsync({ ...(order || {}), id: orderId, status: orderStatus, dispatch_code: dispatchCode, payment_id: String(payment.id), payment_status: payment.status }, {
+  const wasAlreadyPaid = isPaidLike(existing);
+  const merchantId = await paymentMerchantId();
+  const validation = validateMercadoPagoPaymentForOrder({
+    id: orderId,
+    total: existing.total as number | string | null | undefined,
+    currency: existing.currency as string | null | undefined,
+  }, payment, merchantId);
+
+  const referenceAmountCurrencyOrMerchantMismatch =
+    !validation.checks.externalReference ||
+    !validation.checks.amount ||
+    !validation.checks.currency ||
+    validation.checks.merchant === false;
+
+  const audit = paymentAuditPayload(payment, validation);
+  const paymentStatus = String(payment.status || '').toLowerCase();
+
+  if (referenceAmountCurrencyOrMerchantMismatch) {
+    await updateOrder(orderId, {
+      ...audit,
+      status: 'payment_review_required',
+      payment_review_reason: validation.errors.join(','),
+    });
+    return {
+      ok: false,
+      orderId,
+      dispatchCode: str(existing.dispatch_code || existing.codigo_despacho),
+      paymentId: String(payment.id),
+      paymentStatus: payment.status || 'unknown',
+      orderStatus: 'payment_review_required',
+      recovered: false,
+      alreadyPaid: wasAlreadyPaid,
+      validation,
+      stockCommitted: false,
+      reviewRequired: true,
+    };
+  }
+
+  if (isTerminalPaymentFailure(paymentStatus)) {
+    const mapped = mapMercadoPagoStatus(payment.status);
+    await releaseOrderReservation(orderId, `payment_${paymentStatus || 'failed'}`).catch((error) => {
+      console.warn('[payments] reservation release warning', orderId, error);
+    });
+    await updateOrder(orderId, {
+      ...audit,
+      status: mapped,
+      payment_review_reason: null,
+    });
+    return {
+      ok: true,
+      orderId,
+      dispatchCode: str(existing.dispatch_code || existing.codigo_despacho),
+      paymentId: String(payment.id),
+      paymentStatus: payment.status || 'unknown',
+      orderStatus: mapped,
+      recovered: false,
+      alreadyPaid: wasAlreadyPaid,
+      validation,
+      stockCommitted: false,
+      reviewRequired: false,
+    };
+  }
+
+  if (paymentStatus !== 'approved') {
+    const mapped = mapMercadoPagoStatus(payment.status);
+    await updateOrder(orderId, {
+      ...audit,
+      status: mapped === 'pendiente' ? 'pendiente_pago' : mapped,
+      payment_review_reason: null,
+    });
+    return {
+      ok: true,
+      orderId,
+      dispatchCode: str(existing.dispatch_code || existing.codigo_despacho),
+      paymentId: String(payment.id),
+      paymentStatus: payment.status || 'unknown',
+      orderStatus: mapped === 'pendiente' ? 'pendiente_pago' : mapped,
+      recovered: false,
+      alreadyPaid: wasAlreadyPaid,
+      validation,
+      stockCommitted: false,
+      reviewRequired: false,
+    };
+  }
+
+  let commitResult;
+  try {
+    commitResult = await commitOrderReservation(orderId);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'reservation_commit_failed';
+    await updateOrder(orderId, {
+      ...audit,
+      status: 'payment_review_required',
+      payment_review_reason: `stock_reservation_commit_failed:${reason}`.slice(0, 500),
+    });
+    return {
+      ok: false,
+      orderId,
+      dispatchCode: str(existing.dispatch_code || existing.codigo_despacho),
+      paymentId: String(payment.id),
+      paymentStatus: payment.status || 'unknown',
+      orderStatus: 'payment_review_required',
+      recovered: false,
+      alreadyPaid: wasAlreadyPaid,
+      validation,
+      stockCommitted: false,
+      reviewRequired: true,
+      warning: reason,
+    };
+  }
+
+  const dispatchCode = resolveDispatchCode(existing, orderId);
+  await updateOrder(orderId, {
+    ...audit,
+    status: 'en_preparacion',
+    payment_review_reason: null,
+    dispatch_code: dispatchCode || null,
+  });
+
+  const shouldNotify = !wasAlreadyPaid && !commitResult.duplicate;
+  if (shouldNotify) {
+    const paidOrder = { ...existing, id: orderId, status: 'en_preparacion', dispatch_code: dispatchCode, payment_id: String(payment.id), payment_status: payment.status };
+    syncOrderToSalesPipelineAsync(paidOrder, {
       stage: 'Compra pagada',
       probability: 92,
       attended: true,
       nextAction: 'Preparar despacho y enviar seguimiento al cliente',
     });
-
-    if (!wasAlreadyPaid) {
-      confirmPaidOrderAndSendReceiptAsync(orderId);
-      dispatchHookAsync('order.paid', { orderId, dispatchCode, paymentId: String(payment.id), paymentStatus: payment.status || 'unknown', provider: 'mercadopago', source });
-    }
+    confirmPaidOrderAndSendReceiptAsync(orderId);
+    dispatchHookAsync('order.paid', { orderId, dispatchCode, paymentId: String(payment.id), paymentStatus: payment.status || 'unknown', provider: 'mercadopago', source });
   }
 
   return {
@@ -161,9 +223,13 @@ export async function reconcileMercadoPagoPaymentRecord(payment: MercadoPagoPaym
     dispatchCode,
     paymentId: String(payment.id),
     paymentStatus: payment.status || 'unknown',
-    orderStatus,
-    recovered: !existing,
+    orderStatus: 'en_preparacion',
+    recovered: false,
     alreadyPaid: wasAlreadyPaid,
+    validation,
+    stockCommitted: true,
+    stockCommitDuplicate: commitResult.duplicate,
+    reviewRequired: false,
   };
 }
 

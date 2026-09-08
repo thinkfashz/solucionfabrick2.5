@@ -24,18 +24,20 @@ export default function MetalconSeismicStory({ section }: { section?: HomeVisual
   const legacySecondaryHref = textContent(current, 'secondaryHref', '/presupuesto?servicio=metalcon');
   const primaryHref = primaryLabel === 'Ver solución Metalcon' && legacyPrimaryHref === '/presupuesto?servicio=metalcon' ? '/servicios/metalcon' : legacyPrimaryHref;
   const secondaryHref = secondaryLabel === 'Cotizar estructura' && legacySecondaryHref === '/servicios/metalcon' ? '/presupuesto?servicio=metalcon' : legacySecondaryHref;
+  const visualImage = current.style.backgroundImage?.trim() || HOME_PREMIUM_VISUALS.metalcon;
 
   return (
     <section aria-labelledby={titleId} data-cms-section="home-seismic" className="px-4 py-18 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
       <div className="mx-auto max-w-[1320px]">
         <div className="grid gap-8 lg:grid-cols-[.78fr_1.22fr] lg:items-stretch lg:gap-10">
-          <div className="relative min-h-[390px] overflow-hidden rounded-[1.8rem] border border-white/[.08] bg-white/[.025] lg:min-h-[540px]">
-            <img src={HOME_PREMIUM_VISUALS.metalcon} alt="Estructura Steel Frame y Metalcon · Soluciones Fabrick" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/36 to-black/8" />
-            <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
+          <div className="overflow-hidden rounded-[1.8rem] border border-white/[.08] bg-white/[.025]">
+            <div className="aspect-[4/3] min-h-[300px] overflow-hidden bg-black/25 lg:min-h-[370px]">
+              <img src={visualImage} alt="Estructura Steel Frame y Metalcon · Soluciones Fabrick" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            </div>
+            <div className="border-t border-white/[.08] p-5 sm:p-7">
               <p data-cms-field="eyebrow" className="text-[9px] font-black uppercase tracking-[.2em]" style={{ color: accent }}>{textContent(current, 'eyebrow')}</p>
               <h2 data-cms-field="title" id={titleId} className="mt-3 max-w-[12ch] text-3xl font-black leading-[.96] tracking-[-.05em] sm:text-5xl">{textContent(current, 'title')}</h2>
-              <p data-cms-field="paragraph1" className="mt-4 max-w-xl text-xs leading-6 text-white/58 sm:text-sm sm:leading-7">{textContent(current, 'paragraph1')}</p>
+              <p data-cms-field="paragraph1" className="mt-4 max-w-xl text-xs leading-6 opacity-52 sm:text-sm sm:leading-7">{textContent(current, 'paragraph1')}</p>
             </div>
           </div>
 

@@ -1,0 +1,54 @@
+:root,
+:root.dark,
+:root.gold,
+:root.arena {
+  --fabrick-gold: #FFE600;
+  --fabrick-gold-light: #FFF45C;
+  --fabrick-orange: #FFD400;
+  --accent: #FFE600;
+  --accent2: #FFD400;
+  --tenant-primary: #FFE600;
+  --tenant-secondary: #FFD400;
+  --tenant-accent: #FFF45C;
+}
+
+::selection {
+  background: #FFE600;
+  color: #08090A;
+}
+
+.fabrick-pill {
+  border-radius: 9999px;
+  transition: transform 180ms ease, background-color 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.fabrick-pill:hover {
+  transform: translateY(-1px);
+}
+
+.fabrick-pill:active {
+  transform: translateY(0) scale(.985);
+}
+
+.home-v10 {
+  --accent: #FFE600;
+  --accent2: #FFD400;
+  --tenant-primary: #FFE600;
+  --tenant-secondary: #FFD400;
+  color-scheme: dark;
+}
+
+.home-v10 a,
+.home-v10 button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-v10 *,
+  .fabrick-pill {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

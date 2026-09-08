@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, Check, Plus } from 'lucide-react';
+import { ArrowRight, Check, Plus } from 'lucide-react';
 import { navigateWithTransition } from '@/lib/routeTransition';
 import { useCatalogProducts, type CatalogProduct } from '@/hooks/useCatalogProducts';
 import { useCartContext } from '@/context/CartContext';
@@ -44,7 +44,7 @@ export default function TiendaSection({ limit = 4, title = 'Destacados', descrip
     addedTimer.current = window.setTimeout(() => setAddedProductId(null), 1800);
   };
 
-  if (visibleProducts.length === 0) return <div className="border-t border-black/10 py-8 text-center text-sm font-black text-black/45">El catálogo se está actualizando. <Link href={primaryCtaHref} className="text-[#9A5B22]">Ir a la tienda</Link></div>;
+  if (visibleProducts.length === 0) return <div className="border-t border-white/10 py-8 text-center text-sm font-bold text-white/45">El catálogo se está actualizando. <Link href={primaryCtaHref} className="text-[#FFE600]">Ir a la tienda</Link></div>;
 
   if (variant === 'banner') return <FeaturedProductsCarousel products={visibleProducts} title={title} description={description} ctaHref={primaryCtaHref} ctaLabel={primaryCtaLabel} addedProductId={addedProductId} onAdd={addProduct} onBuy={goToProduct} />;
 
@@ -52,51 +52,51 @@ export default function TiendaSection({ limit = 4, title = 'Destacados', descrip
     <section className="py-2 md:py-3">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[9px] font-black uppercase tracking-[.16em] text-[#9A5B22]">{title}</p>
-          {description ? <p className="mt-1 line-clamp-1 max-w-xl text-[10px] leading-5 text-black/34">{description}</p> : null}
+          <p className="text-[9px] font-black uppercase tracking-[.16em] text-[#FFE600]">{title}</p>
+          {description ? <p className="mt-1 line-clamp-1 max-w-xl text-[10px] leading-5 text-white/38">{description}</p> : null}
         </div>
-        <Link href={primaryCtaHref} className="inline-flex shrink-0 items-center gap-1 text-[9px] font-black uppercase tracking-[.11em] text-[#9A5B22] transition hover:gap-2">{primaryCtaLabel}<ArrowUpRight className="h-3.5 w-3.5" /></Link>
+        <Link href={primaryCtaHref} className="inline-flex shrink-0 items-center gap-1 text-[9px] font-black uppercase tracking-[.11em] text-[#FFE600] transition hover:gap-2">{primaryCtaLabel}<ArrowRight className="h-3.5 w-3.5" /></Link>
       </div>
 
-      <div className="-mx-4 grid auto-cols-[minmax(250px,78vw)] grid-flow-col gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid-flow-row sm:grid-cols-2 sm:px-0 lg:grid-cols-4">
+      <div className="-mx-4 grid auto-cols-[minmax(250px,78vw)] grid-flow-col gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:grid-flow-row sm:grid-cols-2 sm:px-0 lg:grid-cols-3">
         {visibleProducts.map((product) => {
           const price = finalProductPrice(product);
           const discount = Number(product.discountPercentage ?? product.discount_percentage ?? 0);
           const added = addedProductId === product.id;
           return (
-            <article key={product.id} className="group min-w-0 overflow-hidden rounded-[1.5rem] bg-white transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_46px_rgba(40,30,20,.08)]">
-              <button type="button" onClick={() => goToProduct(product)} className="relative aspect-[4/3] w-full overflow-hidden bg-[#EAE4DA] text-left" aria-label={`Ver ${displayProductName(product.name)}`}>
-                {product.img ? <img src={product.img} alt={displayProductName(product.name)} width={560} height={420} loading="lazy" decoding="async" fetchPriority="low" className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-[1.025]" /> : null}
-                {discount > 0 ? <span className="absolute left-3 top-3 rounded-full bg-[#111214] px-2.5 py-1 text-[8px] font-black text-white">-{discount}%</span> : null}
+            <article key={product.id} className="group min-w-0 overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#121315] transition duration-200 hover:-translate-y-0.5 hover:border-[#FFE600]/35 hover:shadow-[0_20px_60px_rgba(0,0,0,.25)]">
+              <button type="button" onClick={() => goToProduct(product)} className="relative aspect-[4/3] w-full overflow-hidden bg-[radial-gradient(circle_at_50%_40%,#292B2D,#111214_70%)] text-left" aria-label={`Ver ${displayProductName(product.name)}`}>
+                {product.img ? <img src={product.img} alt={displayProductName(product.name)} width={560} height={420} loading="lazy" decoding="async" fetchPriority="low" className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-[1.035]" /> : null}
+                {discount > 0 ? <span className="absolute left-3 top-3 rounded-full bg-[#FFE600] px-2.5 py-1 text-[8px] font-black text-black">-{discount}%</span> : null}
               </button>
 
               <div className="p-4 sm:p-5">
-                <p className="text-[8px] font-black uppercase tracking-[.14em] text-[#9A5B22]">{product.category}</p>
-                <button type="button" onClick={() => goToProduct(product)} className="mt-1.5 line-clamp-2 min-h-[2.6rem] text-left text-base font-black leading-[1.2] tracking-[-.025em] text-[#111214]">{displayProductName(product.name)}</button>
+                <p className="text-[8px] font-black uppercase tracking-[.14em] text-[#FFE600]">{product.category}</p>
+                <button type="button" onClick={() => goToProduct(product)} className="mt-1.5 line-clamp-2 min-h-[2.6rem] text-left text-base font-black leading-[1.2] tracking-[-.025em] text-white">{displayProductName(product.name)}</button>
 
                 <div className="mt-5 flex items-end justify-between gap-3">
                   <div>
-                    <strong className="block text-xl font-black tracking-[-.04em] text-[#111214]">{CLP(price)}</strong>
-                    <span className="mt-0.5 block text-[8px] font-black uppercase tracking-[.1em] text-black/34">IVA incluido</span>
+                    <strong className="block text-xl font-black tracking-[-.04em] text-white">{CLP(price)}</strong>
+                    <span className="mt-0.5 block text-[8px] font-black uppercase tracking-[.1em] text-white/30">IVA incluido</span>
                   </div>
                   <button
                     type="button"
                     disabled={product.stock === 0}
                     onClick={() => addProduct(product)}
                     aria-label={product.stock === 0 ? 'Sin stock' : `Agregar ${displayProductName(product.name)}`}
-                    className={`grid h-10 w-10 shrink-0 place-items-center rounded-full transition disabled:opacity-30 ${added ? 'bg-emerald-600 text-white' : 'bg-[#111214] text-[#E6B56F] hover:bg-[#2B2C2F]'}`}
+                    className={`grid h-11 w-11 shrink-0 place-items-center rounded-full transition disabled:opacity-30 ${added ? 'bg-emerald-500 text-black' : 'bg-[#FFE600] text-black hover:bg-[#FFF45C]'}`}
                   >
                     {added ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                   </button>
                 </div>
-                <button type="button" onClick={() => goToProduct(product)} className="mt-4 text-[9px] font-black uppercase tracking-[.11em] text-black/38 transition group-hover:text-black/70">Ver detalle →</button>
+                <button type="button" onClick={() => goToProduct(product)} className="mt-4 text-[9px] font-black uppercase tracking-[.11em] text-white/35 transition group-hover:text-[#FFE600]">Ver detalle →</button>
               </div>
             </article>
           );
         })}
       </div>
 
-      <p className="mt-2 text-[9px] text-black/30 sm:hidden">Desliza para ver más productos →</p>
+      <p className="mt-2 text-[9px] text-white/25 sm:hidden">Desliza para ver más productos →</p>
     </section>
   );
 }

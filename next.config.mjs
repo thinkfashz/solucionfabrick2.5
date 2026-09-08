@@ -58,6 +58,13 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   images: {
     qualities: [72, 100],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/disghf6xc/**',
+      },
+    ],
   },
   // Tree-shake bigger ecosystems (lucide-react ships hundreds of icons,
   // recharts pulls a heavy d3 graph) so admin bundles only ship what's used.

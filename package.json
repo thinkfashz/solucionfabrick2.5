@@ -6,7 +6,8 @@
   "engines": { "node": "24.x" },
   "scripts": {
     "dev": "next dev",
-    "build": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build && node scripts/ensure-intelligence-schema.mjs && node scripts/ensure-market-intel-schema.mjs && node scripts/ensure-inventory-schema.mjs && node scripts/ensure-ml-schema.mjs && node scripts/ensure-mcp-governance-schema.mjs",
+    "test:commerce-p0": "vitest run tests/unit/checkout.test.ts tests/unit/shipping.test.ts tests/unit/checkoutStatus.test.ts tests/unit/mercadopago.test.ts tests/unit/mercadopagoStatus.test.ts tests/unit/paymentValidation.test.ts tests/unit/insforgeFailClosed.test.ts tests/unit/orderTrackingFailClosed.test.ts tests/unit/commerceP0Schema.test.ts",
+    "build": "pnpm test:commerce-p0 && node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build && node scripts/ensure-intelligence-schema.mjs && node scripts/ensure-market-intel-schema.mjs && node scripts/ensure-inventory-schema.mjs && node scripts/ensure-commerce-p0-schema.mjs && node scripts/ensure-ml-schema.mjs && node scripts/ensure-mcp-governance-schema.mjs",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
@@ -95,7 +96,7 @@
     "@types/node": "^22.19.3",
     "@types/nodemailer": "^8.0.0",
     "@types/react": "^19.0.14",
-    "@types/react-dom": "^19.0.14",
+    "@types/react-dom": "^19.0.0",
     "@types/three": "^0.184.1",
     "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^5.1.2",

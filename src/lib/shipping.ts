@@ -33,6 +33,7 @@ export interface ShippingLineInput {
 }
 
 const NOW_REFERENCE = '2026-06-16';
+const PRODUCT_SHIPPING_MODES = new Set<ProductShippingMode>(['inherit', 'test', 'production', 'fixed', 'free']);
 
 export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
   mode: 'test',
@@ -57,21 +58,57 @@ export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
   ],
 };
 
+function normalizeRate(rate: Partial<ShippingRegionRate>, fallback?: ShippingRegionRate, configUpdatedAt?: string): ShippingRegionRate {
+  const region = String(rate.region || fallback?.region || '').trim().toUpperCase() || 'VII';
+  const testFeeRaw = rate.testFee ?? fallback?.testFee ?? 0;
+  const productionFeeRaw = rate.productionFee ?? fallback?.productionFee ?? testFeeRaw;
+  return {
+    region,
+    label: String(rate.label || fallback?.label || region || 'Región'),
+    testFee: Math.max(0, Math.round(Number(testFeeRaw) || 0)),
+    productionFee: Math.max(0, Math.round(Number(productionFeeRaw) || 0)),
+    eta: String(rate.eta || fallback?.eta || '7 a 21 días hábiles'),
+    updatedAt: String(rate.updatedAt || configUpdatedAt || fallback?.updatedAt || new Date().toISOString().slice(0, 10)),
+    source: rate.source === 'manual' || rate.source === 'carrier_api' ? rate.source : fallback?.source ?? 'reference',
+  };
+}
+
+/**
+ * Persisted shipping configuration may come from old installs whose seed only
+ * stored a subset of regions (historically VII + RM). Always merge persisted
+ * rows over the complete current reference table so a missing region can never
+ * silently fall back to the first/cheapest configured region.
+ */
 export function normalizeShippingConfig(value: unknown): ShippingConfig {
-  if (!value || typeof value !== 'object') return DEFAULT_SHIPPING_CONFIG;
+  if (!value || typeof value !== 'object') return {
+    ...DEFAULT_SHIPPING_CONFIG,
+    rates: DEFAULT_SHIPPING_CONFIG.rates.map((rate) => ({ ...rate })),
+  };
+
   const raw = value as Partial<ShippingConfig>;
-  const rates = Array.isArray(raw.rates) && raw.rates.length > 0 ? raw.rates : DEFAULT_SHIPPING_CONFIG.rates;
+  const rawRates = Array.isArray(raw.rates) ? raw.rates : [];
+  const persistedByRegion = new Map<string, Partial<ShippingRegionRate>>();
+  for (const rate of rawRates) {
+    if (!rate || typeof rate !== 'object') continue;
+    const key = String(rate.region || '').trim().toUpperCase();
+    if (key) persistedByRegion.set(key, rate);
+  }
+
+  const defaultKeys = new Set(DEFAULT_SHIPPING_CONFIG.rates.map((rate) => rate.region.toUpperCase()));
+  const rates = DEFAULT_SHIPPING_CONFIG.rates.map((fallback) => {
+    const persisted = persistedByRegion.get(fallback.region.toUpperCase());
+    return normalizeRate(persisted ?? {}, fallback, raw.updatedAt);
+  });
+
+  // Preserve deliberately configured future/custom regions without allowing
+  // them to replace the canonical Chile coverage above.
+  for (const [key, rate] of persistedByRegion) {
+    if (!defaultKeys.has(key)) rates.push(normalizeRate(rate, undefined, raw.updatedAt));
+  }
+
   return {
     mode: raw.mode === 'production' ? 'production' : 'test',
-    rates: rates.map((rate) => ({
-      region: String(rate.region || '').trim() || 'VII',
-      label: String(rate.label || rate.region || 'Región'),
-      testFee: Math.max(0, Math.round(Number(rate.testFee || 0))),
-      productionFee: Math.max(0, Math.round(Number(rate.productionFee || rate.testFee || 0))),
-      eta: String(rate.eta || '7 a 21 días hábiles'),
-      updatedAt: String(rate.updatedAt || raw.updatedAt || new Date().toISOString().slice(0, 10)),
-      source: rate.source === 'manual' || rate.source === 'carrier_api' ? rate.source : 'reference',
-    })),
+    rates,
     lowValueThreshold: Math.max(0, Math.round(Number(raw.lowValueThreshold ?? DEFAULT_SHIPPING_CONFIG.lowValueThreshold))),
     lowValueSurcharge: Math.max(0, Math.round(Number(raw.lowValueSurcharge ?? DEFAULT_SHIPPING_CONFIG.lowValueSurcharge))),
     extraUnitFee: Math.max(0, Math.round(Number(raw.extraUnitFee ?? DEFAULT_SHIPPING_CONFIG.extraUnitFee))),
@@ -81,24 +118,41 @@ export function normalizeShippingConfig(value: unknown): ShippingConfig {
 
 export function getRegionRate(region: string, config: ShippingConfig = DEFAULT_SHIPPING_CONFIG) {
   const normalized = String(region || 'VII').trim().toUpperCase();
-  return config.rates.find((rate) => rate.region.toUpperCase() === normalized) ?? config.rates[0] ?? DEFAULT_SHIPPING_CONFIG.rates[0];
+  return config.rates.find((rate) => rate.region.toUpperCase() === normalized) ?? config.rates.find((rate) => rate.region.toUpperCase() === 'VII') ?? DEFAULT_SHIPPING_CONFIG.rates[0];
 }
 
-function hasManualShippingFee(item: ShippingLineInput) {
+function hasManualShippingFee(item: Pick<ShippingLineInput, 'shippingFee'>) {
   return item.shippingFee !== null && item.shippingFee !== undefined && Number.isFinite(Number(item.shippingFee));
 }
 
+/**
+ * Product shipping semantics are explicit and stable:
+ * - an explicit mode always wins (including `free` and `inherit`);
+ * - only legacy rows with no mode can infer `fixed` from an existing fee;
+ * - a product without shipping metadata inherits the global region config.
+ *
+ * This avoids two dangerous historical behaviours: treating missing metadata as
+ * free shipping and converting an explicitly free product to fixed merely
+ * because an old fee value was still stored in the row.
+ */
+export function normalizeProductShippingMode(mode: unknown, shippingFee?: unknown): ProductShippingMode {
+  const normalized = typeof mode === 'string' ? mode.trim().toLowerCase() as ProductShippingMode : null;
+  if (normalized && PRODUCT_SHIPPING_MODES.has(normalized)) return normalized;
+  if (shippingFee !== null && shippingFee !== undefined && Number.isFinite(Number(shippingFee))) return 'fixed';
+  return 'inherit';
+}
+
 function usesGlobalShippingRate(item: ShippingLineInput) {
-  const mode = item.shippingMode ?? (hasManualShippingFee(item) ? 'fixed' : 'free');
+  const mode = normalizeProductShippingMode(item.shippingMode, item.shippingFee);
   return mode === 'inherit' || mode === 'test' || mode === 'production';
 }
 
 export function resolveProductShippingFee(item: ShippingLineInput, region: string, config: ShippingConfig = DEFAULT_SHIPPING_CONFIG) {
-  const mode = item.shippingMode ?? (hasManualShippingFee(item) ? 'fixed' : 'free');
+  const mode = normalizeProductShippingMode(item.shippingMode, item.shippingFee);
 
   if (mode === 'free') return 0;
-  if (mode === 'fixed' || (mode === 'inherit' && hasManualShippingFee(item))) {
-    return Math.max(0, Math.round(Number(item.shippingFee || 0)));
+  if (mode === 'fixed') {
+    return hasManualShippingFee(item) ? Math.max(0, Math.round(Number(item.shippingFee))) : 0;
   }
 
   const regionKey = String(region || 'VII').trim().toUpperCase();
@@ -112,12 +166,20 @@ export function resolveProductShippingFee(item: ShippingLineInput, region: strin
 
 export function calculateShippingTotal(items: ShippingLineInput[], region: string, subtotal: number, config: ShippingConfig = DEFAULT_SHIPPING_CONFIG) {
   if (!items.length) return 0;
-  const itemFees = items.map((item) => resolveProductShippingFee(item, region, config));
-  const base = Math.max(0, ...itemFees);
-  const totalUnits = items.reduce((acc, item) => acc + Math.max(1, Number(item.cantidad || 1)), 0);
-  const extraUnits = Math.max(0, totalUnits - 1) * config.extraUnitFee;
-  const shouldUseLowValueSurcharge = items.some(usesGlobalShippingRate);
+
+  const resolved = items.map((item) => ({
+    item,
+    mode: normalizeProductShippingMode(item.shippingMode, item.shippingFee),
+    fee: resolveProductShippingFee(item, region, config),
+  }));
+
+  const chargeable = resolved.filter(({ mode, fee }) => mode !== 'free' && fee > 0);
+  const base = chargeable.length ? Math.max(...chargeable.map(({ fee }) => fee)) : 0;
+  const totalChargeableUnits = chargeable.reduce((acc, { item }) => acc + Math.max(1, Math.floor(Number(item.cantidad || 1))), 0);
+  const extraUnits = base > 0 ? Math.max(0, totalChargeableUnits - 1) * config.extraUnitFee : 0;
+  const shouldUseLowValueSurcharge = resolved.some(({ item }) => usesGlobalShippingRate(item));
   const lowValue = shouldUseLowValueSurcharge && subtotal > 0 && subtotal < config.lowValueThreshold ? config.lowValueSurcharge : 0;
+
   return Math.max(base + extraUnits, lowValue);
 }
 

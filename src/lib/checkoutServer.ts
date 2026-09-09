@@ -1,7 +1,7 @@
 import 'server-only';
 import { insforgeAdmin } from '@/lib/insforge';
 import type { LineItem } from '@/lib/checkout';
-import type { ProductShippingMode } from '@/lib/shipping';
+import { normalizeProductShippingMode, type ProductShippingMode } from '@/lib/shipping';
 
 export class CheckoutHydrationError extends Error {
   status = 422;
@@ -46,9 +46,7 @@ function finalUnitPrice(row: ProductCheckoutRow) {
 }
 
 function resolveCheckoutShippingMode(row: ProductCheckoutRow): ProductShippingMode {
-  if (row.shipping_fee !== null && row.shipping_fee !== undefined && Number.isFinite(Number(row.shipping_fee))) return 'fixed';
-  if (row.shipping_mode && row.shipping_mode !== 'inherit') return row.shipping_mode;
-  return 'free';
+  return normalizeProductShippingMode(row.shipping_mode, row.shipping_fee);
 }
 
 /**

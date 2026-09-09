@@ -1,12 +1,16 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 function secret() {
-  return (
+  const configured = (
     process.env.ORDER_TRACKING_SECRET ||
     process.env.NEXTAUTH_SECRET ||
     process.env.PAYMENTS_WEBHOOK_SECRET ||
-    'soluciones-fabrick-local-tracking-secret'
-  );
+    process.env.ADMIN_SESSION_SECRET ||
+    ''
+  ).trim();
+  if (configured) return configured;
+  if (process.env.NODE_ENV === 'production') throw new Error('ORDER_TRACKING_SECRET_REQUIRED');
+  return 'soluciones-fabrick-local-tracking-secret';
 }
 
 function base64Url(value: string) {

@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { CART_SESSION_KEY } from '@/context/CartContext';
 import { calculateCheckoutSummary, type LineItem } from '@/lib/checkout';
-import { DEFAULT_SHIPPING_CONFIG, getRegionRate } from '@/lib/shipping';
+import { DEFAULT_SHIPPING_CONFIG, getRegionRate, normalizeShippingConfig, type ShippingConfig } from '@/lib/shipping';
 import type { Product } from '@/hooks/useRealtimeProducts';
 
 type AirProduct = Product & {
@@ -42,16 +42,17 @@ type AirProduct = Product & {
   btu?: number | null;
 };
 type Item = { product: AirProduct; quantity: number };
-type PayState = 'idle' | 'creating' | 'pending' | 'approved' | 'failed' | 'abandoned';
+type PayState = 'idle' | 'creating' | 'pending' | 'approved' | 'failed' | 'abandoned' | 'review';
 type DocumentType = 'boleta' | 'factura';
-type StatusPayload = { state: 'approved' | 'failed' | 'refunded' | 'abandoned' | 'pending'; status: string; paymentStatus: string; total: number; iva: number; despacho: number };
+type StatusPayload = { state: 'approved' | 'failed' | 'refunded' | 'abandoned' | 'pending' | 'review'; status: string; paymentStatus: string; total: number; iva: number; despacho: number; reviewRequired?: boolean };
 type CheckoutResponse = { data?: { id?: string }; payment?: { checkoutUrl?: string | null }; error?: string; validationErrors?: Array<{ message?: string }> };
 type Capacity = 9000 | 12000 | 18000 | 24000;
+type CheckoutAttempt = { signature: string; orderKey: string };
 
 const PENDING_KEY = 'sf-pending-payment-order';
+const ATTEMPT_KEY = 'sf-checkout-attempt-v2';
 const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const discounted = (item: Item) => Math.round(item.product.price * (1 - Number(item.product.discount_percentage || 0) / 100));
-const REGION_OPTIONS = DEFAULT_SHIPPING_CONFIG.rates.map((rate) => ({ value: rate.region, label: rate.label }));
 const CLOUD = 'https://res.cloudinary.com/disghf6xc/image/upload';
 const CHECKOUT_BG = `${CLOUD}/c_fill,g_auto,w_1920,h_1200/e_blur:6/q_auto:good/f_auto/v1788671813/air-bedroom-background.jpg`;
 const AIR_VISUALS: Record<Capacity, string> = {
@@ -62,7 +63,7 @@ const AIR_VISUALS: Record<Capacity, string> = {
 };
 const STATE_ASSETS = {
   processing: `${CLOUD}/f_auto/q_auto:good/v1788676838/payment-processing-v8.png`,
-  approved: `${CLOUD}/f_auto/q_auto:good/v1788676801/payment-approved-v8.png`,
+  approved: `${CLOUD}/f_auto/q_auto:best/v1788676801/payment-approved-v8.png`,
   rejected: `${CLOUD}/f_auto/q_auto:good/v1788676857/payment-rejected-v8.png`,
   abandoned: `${CLOUD}/f_auto/q_auto:good/v1788676877/payment-abandoned-v8.png`,
   secure: `${CLOUD}/f_auto/q_auto:good/v1788676897/payment-secure-v8.png`,
@@ -99,11 +100,37 @@ function parseEnergy(product?: AirProduct) {
   if (direct) return direct;
   return airText(product).match(/\bA\+{0,3}\b/i)?.[0]?.toUpperCase() || '—';
 }
+function checkoutAttemptSignature(lines: LineItem[], region: string, email: string, shippingAddress: string, documentType: DocumentType) {
+  return JSON.stringify({
+    items: lines.map((item) => [String(item.productoId), Math.trunc(Number(item.cantidad)), Math.round(Number(item.precioUnitario))]),
+    region: region.trim().toUpperCase(),
+    email: email.trim().toLowerCase(),
+    shippingAddress: shippingAddress.trim().toLowerCase(),
+    documentType,
+  });
+}
+function stableCheckoutOrderKey(signature: string) {
+  try {
+    const raw = sessionStorage.getItem(ATTEMPT_KEY);
+    const existing = raw ? JSON.parse(raw) as Partial<CheckoutAttempt> : null;
+    if (existing?.signature === signature && typeof existing.orderKey === 'string' && /^FBK-[A-Za-z0-9._@-]+$/.test(existing.orderKey)) {
+      return existing.orderKey;
+    }
+    const orderKey = `FBK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    sessionStorage.setItem(ATTEMPT_KEY, JSON.stringify({ signature, orderKey } satisfies CheckoutAttempt));
+    return orderKey;
+  } catch {
+    return `FBK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  }
+}
 
 export default function CheckoutAppV2() {
   const search = useSearchParams();
   const [items, setItems] = useState<Item[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [shippingConfig, setShippingConfig] = useState<ShippingConfig>(DEFAULT_SHIPPING_CONFIG);
+  const [shippingReady, setShippingReady] = useState(false);
+  const [shippingLoadError, setShippingLoadError] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -146,6 +173,27 @@ export default function CheckoutAppV2() {
     setHydrated(true);
   }, [search]);
 
+  useEffect(() => {
+    let active = true;
+    async function loadShippingConfig() {
+      try {
+        const response = await fetch('/api/shipping/rates', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`shipping_rates_${response.status}`);
+        const payload = await response.json();
+        if (!active) return;
+        setShippingConfig(normalizeShippingConfig(payload));
+        setShippingReady(true);
+        setShippingLoadError('');
+      } catch {
+        if (!active) return;
+        setShippingReady(false);
+        setShippingLoadError('No pudimos verificar las tarifas de despacho. Recarga la página antes de pagar.');
+      }
+    }
+    void loadShippingConfig();
+    return () => { active = false; };
+  }, []);
+
   const lines = useMemo<LineItem[]>(() => items.map((item) => ({
     productoId: item.product.id,
     cantidad: item.quantity,
@@ -158,8 +206,9 @@ export default function CheckoutAppV2() {
     shippingRegionOverrides: item.product.shipping_region_overrides ?? null,
   })), [items]);
 
-  const summary = useMemo(() => calculateCheckoutSummary(lines, region), [lines, region]);
-  const regionRate = useMemo(() => getRegionRate(region), [region]);
+  const regionOptions = useMemo(() => shippingConfig.rates.map((rate) => ({ value: rate.region, label: rate.label })), [shippingConfig]);
+  const summary = useMemo(() => calculateCheckoutSummary(lines, region, shippingConfig), [lines, region, shippingConfig]);
+  const regionRate = useMemo(() => getRegionRate(region, shippingConfig), [region, shippingConfig]);
   const contactChecks = [name.trim().length > 2, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), phone.replace(/\D/g, '').length >= 8];
   const deliveryChecks = [commune.trim().length > 2, address.trim().length > 5];
   const invoiceChecks = documentType === 'boleta' ? [true] : [
@@ -173,7 +222,7 @@ export default function CheckoutAppV2() {
   const deliveryReady = deliveryChecks.every(Boolean);
   const billingReady = invoiceChecks.every(Boolean);
   const activeStep = !contactReady ? 0 : !deliveryReady ? 1 : 2;
-  const valid = items.length > 0 && contactReady && deliveryReady && billingReady;
+  const valid = items.length > 0 && contactReady && deliveryReady && billingReady && shippingReady;
   const shippingAddress = [address.trim(), commune.trim()].filter(Boolean).join(', ');
   const unitCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -186,7 +235,7 @@ export default function CheckoutAppV2() {
   const inverter = /inverter/i.test(airText(featuredItem?.product));
 
   useEffect(() => {
-    if (!orderId || state === 'approved' || state === 'failed') return;
+    if (!orderId || state === 'approved' || state === 'failed' || state === 'review') return;
     let active = true;
     async function check() {
       try {
@@ -198,7 +247,10 @@ export default function CheckoutAppV2() {
         if (data.state === 'approved') {
           setState('approved');
           sessionStorage.removeItem(PENDING_KEY);
+          sessionStorage.removeItem(ATTEMPT_KEY);
           sessionStorage.removeItem(CART_SESSION_KEY);
+        } else if (data.state === 'review') {
+          setState('review');
         } else if (data.state === 'failed' || data.state === 'refunded') {
           setState('failed');
           sessionStorage.removeItem(PENDING_KEY);
@@ -219,12 +271,14 @@ export default function CheckoutAppV2() {
 
   async function pay() {
     if (!valid || state === 'creating') {
-      setError(documentType === 'factura' && !billingReady ? 'Completa los datos tributarios de la factura.' : 'Completa contacto, comuna y dirección para continuar.');
+      setError(!shippingReady ? (shippingLoadError || 'Estamos verificando la tarifa de despacho. Intenta nuevamente en un momento.') : documentType === 'factura' && !billingReady ? 'Completa los datos tributarios de la factura.' : 'Completa contacto, comuna y dirección para continuar.');
       return;
     }
     setError('');
     setState('creating');
     try {
+      const attemptSignature = checkoutAttemptSignature(lines, region, email, shippingAddress, documentType);
+      const clientOrderKey = stableCheckoutOrderKey(attemptSignature);
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -237,7 +291,7 @@ export default function CheckoutAppV2() {
             ? { documentType, rut: taxRut, razonSocial: taxBusinessName, giro: taxGiro, direccion: taxAddress, comuna: taxCommune }
             : { documentType: 'boleta' },
           paymentMethod: 'mercadopago',
-          clientOrderKey: `FBK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+          clientOrderKey,
         }),
       });
       const payload = await response.json() as CheckoutResponse;
@@ -262,12 +316,13 @@ export default function CheckoutAppV2() {
     return <ImmersiveShell><div className="grid min-h-screen place-items-center"><img src={STATE_ASSETS.processing} alt="" className="h-40 w-40 object-contain" /></div></ImmersiveShell>;
   }
 
-  if (['pending', 'abandoned', 'approved', 'failed'].includes(state)) {
+  if (['pending', 'abandoned', 'approved', 'failed', 'review'].includes(state)) {
     const ok = state === 'approved';
     const fail = state === 'failed';
+    const review = state === 'review';
     const abandoned = state === 'abandoned';
-    const asset = ok ? STATE_ASSETS.approved : fail ? STATE_ASSETS.rejected : abandoned ? STATE_ASSETS.abandoned : STATE_ASSETS.processing;
-    return <StatusView asset={asset} orderId={orderId} title={ok ? 'Compra confirmada' : fail ? 'Pago no aprobado' : abandoned ? 'Pago sin finalizar' : 'Confirmando tu pago'} eyebrow={ok ? 'Pago aprobado' : fail ? 'Revisa tu medio de pago' : abandoned ? 'Orden guardada' : 'Verificación segura'} description={ok ? 'El pago fue confirmado. Tu pedido continúa a preparación y coordinación de entrega.' : fail ? 'Puedes volver a intentar el pago sin duplicar la compra.' : abandoned ? 'La orden sigue identificada y puedes retomar el pago cuando quieras.' : 'Estamos consultando automáticamente la confirmación de Mercado Pago.'} total={status?.total || summary.total} iva={status?.iva || summary.iva} shipping={status?.despacho || summary.despacho} paymentUrl={paymentUrl} approved={ok} failed={fail} productVisual={productVisual} />;
+    const asset = ok ? STATE_ASSETS.approved : fail ? STATE_ASSETS.rejected : abandoned ? STATE_ASSETS.abandoned : review ? STATE_ASSETS.secure : STATE_ASSETS.processing;
+    return <StatusView asset={asset} orderId={orderId} title={ok ? 'Compra confirmada' : fail ? 'Pago no aprobado' : review ? 'Pago en revisión' : abandoned ? 'Pago sin finalizar' : 'Confirmando tu pago'} eyebrow={ok ? 'Pago aprobado · stock confirmado' : fail ? 'Revisa tu medio de pago' : review ? 'Validación de seguridad' : abandoned ? 'Orden guardada' : 'Verificación segura'} description={ok ? 'El pago fue validado y el inventario quedó confirmado. Tu pedido continúa a preparación y coordinación de entrega.' : fail ? 'Puedes volver a intentar el pago sin duplicar la compra.' : review ? 'Mercado Pago informó un movimiento, pero la orden todavía no se confirma. Estamos verificando conciliación e inventario antes de generar despacho o descontar stock.' : abandoned ? 'La orden sigue identificada y puedes retomar el pago cuando quieras.' : 'Estamos consultando automáticamente la confirmación de Mercado Pago.'} total={status?.total || summary.total} iva={status?.iva || summary.iva} shipping={status?.despacho || summary.despacho} paymentUrl={paymentUrl} approved={ok} failed={fail} review={review} productVisual={productVisual} />;
   }
 
   if (!items.length) {
@@ -290,13 +345,14 @@ export default function CheckoutAppV2() {
       <section className="rounded-[2rem] border border-white/12 bg-[#101216]/88 p-4 shadow-[0_28px_90px_rgba(0,0,0,.38)] backdrop-blur-2xl sm:p-6 lg:sticky lg:top-5"><div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4"><div><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#F5A24A]">Resumen de compra</p><h2 className="mt-1 text-xl font-black">{unitCount} {unitCount===1?'producto':'productos'}</h2></div><a href="/tienda" className="text-[9px] font-black text-[#FFC27A]">Editar carrito</a></div>
         <div className="divide-y divide-white/8">{items.map((item)=>{const air=isAirProduct(item.product);const itemCap=getCapacity(item.product);const image=air?AIR_VISUALS[itemCap]:(item.product.image_url||'/images/landing/fabrick-home-showcase.webp');return <div key={item.product.id} className="flex items-center gap-3 py-4"><div className="grid h-16 w-20 shrink-0 place-items-center rounded-xl bg-white/[.94] p-1"><img src={image} alt="" className="max-h-14 w-full object-contain"/></div><div className="min-w-0 flex-1"><p className="line-clamp-2 text-xs font-black leading-4">{item.product.name}</p><p className="mt-1 text-[9px] text-white/38">Cantidad {item.quantity}{air?` · ${itemCap.toLocaleString('es-CL')} BTU`:''}</p></div><b className="text-xs">{CLP.format(discounted(item)*item.quantity)}</b></div>;})}</div>
         <div className="grid gap-3 border-t border-white/10 pt-4"><SectionTitle number="01" title="Tus datos" complete={contactReady}/><div className="grid gap-3 sm:grid-cols-2"><DarkField icon={<User/>} label="Nombre completo" value={name} set={setName} placeholder="Ej. Juan Pérez" ok={contactChecks[0]} autoComplete="name"/><DarkField icon={<Mail/>} label="Correo electrónico" value={email} set={setEmail} placeholder="tu@email.cl" ok={contactChecks[1]} type="email" autoComplete="email"/><DarkField icon={<Phone/>} label="Teléfono" value={phone} set={setPhone} placeholder="+56 9 1234 5678" ok={contactChecks[2]} type="tel" autoComplete="tel"/></div>
-          <SectionTitle number="02" title="Entrega" complete={deliveryReady}/><div className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1.5 text-[9px] font-bold text-white/52"><span>Región</span><select value={region} onChange={(event)=>setRegion(event.target.value)} className="min-h-11 rounded-xl border border-white/10 bg-white/[.065] px-3 text-xs text-white outline-none focus:border-[#F58B24]">{REGION_OPTIONS.map((option)=><option className="bg-[#15171a]" key={option.value} value={option.value}>{option.label}</option>)}</select></label><DarkField icon={<MapPin/>} label="Comuna / ciudad" value={commune} set={setCommune} placeholder="Ej. Linares" ok={deliveryChecks[0]} autoComplete="address-level2"/></div><label className="grid gap-1.5 text-[9px] font-bold text-white/52"><span className="flex items-center">Dirección completa{deliveryChecks[1]?<Check className="ml-auto h-3.5 w-3.5 text-emerald-400"/>:null}</span><textarea value={address} onChange={(event)=>setAddress(event.target.value)} rows={2} autoComplete="street-address" placeholder="Calle, número, departamento/casa y referencia" className="resize-none rounded-xl border border-white/10 bg-white/[.065] p-3 text-xs text-white outline-none placeholder:text-white/22 focus:border-[#F58B24]"/></label><p className="text-[9px] text-white/34">Entrega referencial: {regionRate.eta}. La tarifa y el stock se validan nuevamente al crear la orden.</p>
+          <SectionTitle number="02" title="Entrega" complete={deliveryReady}/><div className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1.5 text-[9px] font-bold text-white/52"><span>Región</span><select value={region} onChange={(event)=>setRegion(event.target.value)} className="min-h-11 rounded-xl border border-white/10 bg-white/[.065] px-3 text-xs text-white outline-none focus:border-[#F58B24]">{regionOptions.map((option)=><option className="bg-[#15171a]" key={option.value} value={option.value}>{option.label}</option>)}</select></label><DarkField icon={<MapPin/>} label="Comuna / ciudad" value={commune} set={setCommune} placeholder="Ej. Linares" ok={deliveryChecks[0]} autoComplete="address-level2"/></div><label className="grid gap-1.5 text-[9px] font-bold text-white/52"><span className="flex items-center">Dirección completa{deliveryChecks[1]?<Check className="ml-auto h-3.5 w-3.5 text-emerald-400"/>:null}</span><textarea value={address} onChange={(event)=>setAddress(event.target.value)} rows={2} autoComplete="street-address" placeholder="Calle, número, departamento/casa y referencia" className="resize-none rounded-xl border border-white/10 bg-white/[.065] p-3 text-xs text-white outline-none placeholder:text-white/22 focus:border-[#F58B24]"/></label><p className="text-[9px] text-white/34">Entrega: {regionRate.eta}. Tarifa cargada desde la configuración activa y validada nuevamente al crear la orden.</p>
           <SectionTitle number="03" title="Documento y pago" complete={billingReady}/><div className="grid grid-cols-2 gap-2"><button type="button" onClick={()=>{setDocumentType('boleta');setError('')}} className={`rounded-xl border p-3 text-left ${documentType==='boleta'?'border-[#F58B24] bg-[#F58B24]/12':'border-white/10 bg-white/[.035]'}`}><ReceiptText className="h-4 w-4 text-[#F6A54E]"/><b className="mt-2 block text-xs">Boleta</b><span className="mt-1 block text-[8px] text-white/34">Consumidor final</span></button><button type="button" onClick={()=>{setDocumentType('factura');setError('')}} className={`rounded-xl border p-3 text-left ${documentType==='factura'?'border-[#F58B24] bg-[#F58B24]/12':'border-white/10 bg-white/[.035]'}`}><Building2 className="h-4 w-4 text-[#F6A54E]"/><b className="mt-2 block text-xs">Factura</b><span className="mt-1 block text-[8px] text-white/34">Empresa / actividad</span></button></div>
           {documentType==='factura'?<div className="grid gap-3 rounded-2xl border border-white/10 bg-white/[.035] p-3 sm:grid-cols-2"><DarkField icon={<FileText/>} label="RUT empresa" value={taxRut} set={setTaxRut} placeholder="12345678-9" ok={invoiceChecks[0]}/><DarkField icon={<Building2/>} label="Razón social" value={taxBusinessName} set={setTaxBusinessName} placeholder="Empresa SpA" ok={invoiceChecks[1]}/><DarkField icon={<FileText/>} label="Giro" value={taxGiro} set={setTaxGiro} placeholder="Construcción / comercio" ok={invoiceChecks[2]}/><DarkField icon={<MapPin/>} label="Comuna tributaria" value={taxCommune} set={setTaxCommune} placeholder="Comuna" ok={invoiceChecks[4]}/><div className="sm:col-span-2"><DarkField icon={<MapPin/>} label="Dirección tributaria" value={taxAddress} set={setTaxAddress} placeholder="Calle y número" ok={invoiceChecks[3]}/></div></div>:null}
           <div className="flex items-center gap-3 rounded-2xl border border-[#F58B24]/30 bg-[#F58B24]/8 p-3"><img src={STATE_ASSETS.secure} alt="" className="h-11 w-11 object-contain"/><div><b className="text-xs">Mercado Pago</b><p className="mt-1 text-[9px] leading-4 text-white/38">La orden se registra antes de abrir la pasarela. Fabrick no almacena los datos de tu tarjeta.</p></div></div>
+          {shippingLoadError?<p className="rounded-xl border border-amber-400/25 bg-amber-500/10 p-3 text-xs font-bold leading-5 text-amber-100">{shippingLoadError}</p>:null}
           {error?<p className="rounded-xl border border-red-400/25 bg-red-500/10 p-3 text-xs font-bold leading-5 text-red-200">{error}</p>:null}
-          <div className="space-y-2 border-t border-white/10 pt-4 text-xs"><SummaryRow label="Productos" value={CLP.format(summary.subtotal)}/><SummaryRow label="Despacho" value={summary.despacho?CLP.format(summary.despacho):'Gratis'}/><SummaryRow label="IVA incluido (19%)" value={CLP.format(summary.iva)} muted/><SummaryRow label="Documento" value={documentType==='factura'?'Factura':'Boleta'}/><div className="flex items-end justify-between border-t border-white/10 pt-3"><span className="font-bold">Total final</span><b className="text-3xl tracking-[-.05em] text-[#FF9A38]">{CLP.format(summary.total)}</b></div></div>
-          <button disabled={!valid || state==='creating'} onClick={()=>void pay()} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(90deg,#F58B24,#FF9F43)] px-4 font-black text-[#111214] shadow-[0_12px_40px_rgba(245,139,36,.22)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35">{state==='creating'?<Loader2 className="animate-spin" size={19}/>:<CreditCard size={19}/>} {state==='creating'?'Preparando pago…':'Continuar a Mercado Pago'}<ChevronRight size={17}/></button>{!valid?<p className="text-center text-[9px] leading-4 text-white/30">Completa contacto, entrega y documento antes de continuar.</p>:<p className="text-center text-[9px] leading-4 text-white/30">El total ya incluye IVA. El servidor vuelve a verificar valores antes de crear la orden.</p>}
+          <div className="space-y-2 border-t border-white/10 pt-4 text-xs"><SummaryRow label="Productos" value={CLP.format(summary.subtotal)}/><SummaryRow label="Despacho" value={!shippingReady?'Verificando…':summary.despacho?CLP.format(summary.despacho):'Gratis'}/><SummaryRow label="IVA incluido (19%)" value={shippingReady?CLP.format(summary.iva):'—'} muted/><SummaryRow label="Documento" value={documentType==='factura'?'Factura':'Boleta'}/><div className="flex items-end justify-between border-t border-white/10 pt-3"><span className="font-bold">Total final</span><b className="text-3xl tracking-[-.05em] text-[#FF9A38]">{shippingReady?CLP.format(summary.total):'—'}</b></div></div>
+          <button disabled={!valid || state==='creating'} onClick={()=>void pay()} className="flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(90deg,#F58B24,#FF9F43)] px-4 font-black text-[#111214] shadow-[0_12px_40px_rgba(245,139,36,.22)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-35">{state==='creating'?<Loader2 className="animate-spin" size={19}/>:<CreditCard size={19}/>} {state==='creating'?'Preparando pago…':!shippingReady?'Verificando despacho…':'Continuar a Mercado Pago'}<ChevronRight size={17}/></button>{!valid?<p className="text-center text-[9px] leading-4 text-white/30">{!shippingReady?'Esperando la tarifa activa de despacho.':'Completa contacto, entrega y documento antes de continuar.'}</p>:<p className="text-center text-[9px] leading-4 text-white/30">El total ya incluye IVA. El servidor vuelve a verificar catálogo, stock, despacho y total antes de crear la orden.</p>}
         </div>
       </section>
     </main>
@@ -304,7 +360,7 @@ export default function CheckoutAppV2() {
 }
 
 function ImmersiveShell({children}:{children:React.ReactNode}) { return <div className="relative min-h-screen overflow-x-hidden bg-[#08090a] text-white"><style>{`@keyframes checkoutParticle{0%{opacity:0;transform:translate3d(0,-10px,0) scale(.7)}18%{opacity:.9}100%{opacity:0;transform:translate3d(12px,170px,0) scale(1.25)}}@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}`}</style><div className="pointer-events-none fixed inset-0"><img src={CHECKOUT_BG} alt="" className="h-full w-full scale-[1.025] object-cover opacity-65"/><div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(6,7,8,.72),rgba(8,9,10,.36)_48%,rgba(6,7,8,.78)),linear-gradient(180deg,rgba(5,6,7,.45),rgba(5,6,7,.72))]"/><div className="absolute inset-0 shadow-[inset_0_0_220px_rgba(0,0,0,.75)]"/></div>{children}</div>; }
-function StatusView({asset,orderId,title,eyebrow,description,total,iva,shipping,paymentUrl,approved,failed,productVisual}:{asset:string;orderId:string;title:string;eyebrow:string;description:string;total:number;iva:number;shipping:number;paymentUrl:string;approved:boolean;failed:boolean;productVisual:string}) { return <ImmersiveShell><main className="relative z-10 mx-auto grid min-h-screen max-w-[1180px] place-items-center px-4 py-8"><section className="grid w-full overflow-hidden rounded-[2rem] border border-white/12 bg-[#101216]/88 shadow-[0_36px_120px_rgba(0,0,0,.48)] backdrop-blur-2xl md:grid-cols-[.9fr_1.1fr]"><div className="relative grid min-h-[330px] place-items-center overflow-hidden border-b border-white/10 p-6 md:min-h-[620px] md:border-b-0 md:border-r"><img src={productVisual} alt="" className="relative z-10 max-h-44 w-full max-w-[520px] object-contain drop-shadow-[0_30px_42px_rgba(0,0,0,.5)] md:max-h-64"/><div className="pointer-events-none absolute left-1/2 top-1/2 h-60 w-3/4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F58B24]/10 blur-[90px]"/><img src="/brand/soluciones-fabrick-web.svg" alt="Soluciones Fabrick" className="absolute left-5 top-5 h-10 w-auto max-w-[200px] object-contain"/></div><div className="p-6 text-center sm:p-9"><img src={asset} alt="" className="mx-auto h-32 w-32 object-contain sm:h-40 sm:w-40"/><p className={`mt-3 text-[9px] font-black uppercase tracking-[.2em] ${approved?'text-emerald-400':failed?'text-red-300':'text-[#FFC27A]'}`}>{eyebrow}</p><h1 className="mt-2 text-3xl font-black tracking-[-.045em] sm:text-4xl">{title}</h1><p className="mx-auto mt-3 max-w-md text-xs leading-6 text-white/45">{description}</p><p className="mt-4 text-[9px] font-bold text-white/26">Orden {orderId || 'en proceso'}</p>{!approved && !failed?<span className="mt-4 inline-flex items-center gap-2 text-[9px] text-white/35"><RefreshCw className="h-3.5 w-3.5 animate-spin"/> Actualización automática</span>:null}<div className="mt-6 grid grid-cols-3 gap-2"><StateMetric label="Total" value={CLP.format(total)}/><StateMetric label="IVA incluido" value={CLP.format(iva)}/><StateMetric label="Despacho" value={CLP.format(shipping)}/></div><div className="mt-6 flex gap-2">{approved?<a href="/mi-cuenta" className="flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#F58B24] px-4 text-sm font-black text-[#111214]">Ver mi pedido</a>:<>{paymentUrl?<a href={paymentUrl} className="flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#F58B24] px-4 text-sm font-black text-[#111214]">Retomar pago</a>:null}<a href="/tienda" className="flex min-h-12 flex-1 items-center justify-center rounded-full border border-white/12 bg-white/[.05] px-4 text-sm font-black">Volver a tienda</a></>}</div></div></section></main></ImmersiveShell>; }
+function StatusView({asset,orderId,title,eyebrow,description,total,iva,shipping,paymentUrl,approved,failed,review,productVisual}:{asset:string;orderId:string;title:string;eyebrow:string;description:string;total:number;iva:number;shipping:number;paymentUrl:string;approved:boolean;failed:boolean;review:boolean;productVisual:string}) { return <ImmersiveShell><main className="relative z-10 mx-auto grid min-h-screen max-w-[1180px] place-items-center px-4 py-8"><section className="grid w-full overflow-hidden rounded-[2rem] border border-white/12 bg-[#101216]/88 shadow-[0_36px_120px_rgba(0,0,0,.48)] backdrop-blur-2xl md:grid-cols-[.9fr_1.1fr]"><div className="relative grid min-h-[330px] place-items-center overflow-hidden border-b border-white/10 p-6 md:min-h-[620px] md:border-b-0 md:border-r"><img src={productVisual} alt="" className="relative z-10 max-h-44 w-full max-w-[520px] object-contain drop-shadow-[0_30px_42px_rgba(0,0,0,.5)] md:max-h-64"/><div className="pointer-events-none absolute left-1/2 top-1/2 h-60 w-3/4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F58B24]/10 blur-[90px]"/><img src="/brand/soluciones-fabrick-web.svg" alt="Soluciones Fabrick" className="absolute left-5 top-5 h-10 w-auto max-w-[200px] object-contain"/></div><div className="p-6 text-center sm:p-9"><img src={asset} alt="" className="mx-auto h-32 w-32 object-contain sm:h-40 sm:w-40"/><p className={`mt-3 text-[9px] font-black uppercase tracking-[.2em] ${approved?'text-emerald-400':failed?'text-red-300':review?'text-amber-300':'text-[#FFC27A]'}`}>{eyebrow}</p><h1 className="mt-2 text-3xl font-black tracking-[-.045em] sm:text-4xl">{title}</h1><p className="mx-auto mt-3 max-w-md text-xs leading-6 text-white/45">{description}</p><p className="mt-4 text-[9px] font-bold text-white/26">Orden {orderId || 'en proceso'}</p>{!approved && !failed && !review?<span className="mt-4 inline-flex items-center gap-2 text-[9px] text-white/35"><RefreshCw className="h-3.5 w-3.5 animate-spin"/> Actualización automática</span>:null}<div className="mt-6 grid grid-cols-3 gap-2"><StateMetric label="Total" value={CLP.format(total)}/><StateMetric label="IVA incluido" value={CLP.format(iva)}/><StateMetric label="Despacho" value={CLP.format(shipping)}/></div><div className="mt-6 flex gap-2">{approved?<a href="/mi-cuenta" className="flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#F58B24] px-4 text-sm font-black text-[#111214]">Ver mi pedido</a>:review?<><a href="/verificar-pedido" className="flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#F58B24] px-4 text-sm font-black text-[#111214]">Verificar pedido</a><a href="/contacto" className="flex min-h-12 flex-1 items-center justify-center rounded-full border border-white/12 bg-white/[.05] px-4 text-sm font-black">Contactar</a></>:<>{paymentUrl?<a href={paymentUrl} className="flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#F58B24] px-4 text-sm font-black text-[#111214]">Retomar pago</a>:null}<a href="/tienda" className="flex min-h-12 flex-1 items-center justify-center rounded-full border border-white/12 bg-white/[.05] px-4 text-sm font-black">Volver a tienda</a></>}</div></div></section></main></ImmersiveShell>; }
 function HeroMetric({icon,value,label}:{icon:React.ReactNode;value:string;label:string}) { return <div className="rounded-[1.15rem] border border-white/10 bg-black/38 p-2.5 text-center backdrop-blur-xl"><span className="mx-auto block w-fit text-[#78DFFF] [&>svg]:h-4 [&>svg]:w-4">{icon}</span><b className="mt-1.5 block truncate text-[10px] sm:text-xs">{value}</b><span className="mt-0.5 block text-[7px] text-white/28">{label}</span></div>; }
 function TrustDark({icon,title}:{icon:React.ReactNode;title:string}) { return <div className="bg-black/22 p-2.5 text-center"><span className="mx-auto block w-fit text-[#F6A54E] [&>svg]:h-4 [&>svg]:w-4">{icon}</span><b className="mt-1.5 block text-[8px] text-white/48">{title}</b></div>; }
 function SectionTitle({number,title,complete}:{number:string;title:string;complete:boolean}) { return <div className="mt-1 flex items-center gap-2 border-t border-white/8 pt-3 first:border-0 first:pt-0"><span className="grid h-6 w-6 place-items-center rounded-full border border-[#F58B24]/45 bg-[#F58B24]/10 text-[8px] font-black text-[#FFC27A]">{complete?<Check size={12}/>:number}</span><b className="text-xs">{title}</b>{complete?<CheckCircle2 className="ml-auto h-4 w-4 text-emerald-400"/>:null}</div>; }

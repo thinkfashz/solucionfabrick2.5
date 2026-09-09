@@ -4,13 +4,19 @@ import { readFileSync } from 'node:fs';
 const store = readFileSync('src/components/store/TiendaClientV2.tsx', 'utf8');
 const storePreview = readFileSync('src/components/store/StoreInspirationPreview.tsx', 'utf8');
 const gallery = readFileSync('src/components/proyectos/CloudinaryProjectsGallery.tsx', 'utf8');
+const projectPage = readFileSync('src/app/proyectos/page.tsx', 'utf8');
 const detail = readFileSync('src/app/inspiraciones/[album]/page.tsx', 'utf8');
+const spin = readFileSync('src/components/proyectos/AlbumSpinViewer.tsx', 'utf8');
 const comments = readFileSync('src/components/proyectos/InspirationComments.tsx', 'utf8');
 const keywords = readFileSync('src/components/proyectos/InspirationKeywordNavigator.tsx', 'utf8');
 const footer = readFileSync('src/components/proyectos/InspirationFooter.tsx', 'utf8');
 const commentsApi = readFileSync('src/app/api/inspiraciones/comments/route.ts', 'utf8');
 const admin = readFileSync('src/app/admin/comentarios-inspiracion/page.tsx', 'utf8');
 const schema = readFileSync('scripts/ensure-inspiration-comments-schema.mjs', 'utf8');
+const home = readFileSync('src/components/landing/HomePremiumV10.tsx', 'utf8');
+const seismicStory = readFileSync('src/components/landing/MetalconSeismicStory.tsx', 'utf8');
+const budgetPage = readFileSync('src/app/presupuesto/page.tsx', 'utf8');
+const budgetGuide = readFileSync('src/components/presupuesto/BudgetPageGuide.tsx', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
 
 describe('inspiration visual and comments contract', () => {
@@ -30,6 +36,16 @@ describe('inspiration visual and comments contract', () => {
     expect(gallery).toContain('miniaturas del mismo álbum');
     expect(gallery).toContain('Cotizar idea');
     expect(detail).toContain('bg-[#05090C] text-white');
+    expect(projectPage).toContain('.sf-album-grid');
+    expect(projectPage).toContain('aspect-ratio:16/10');
+  });
+
+  it('keeps the desktop inspiration viewer inside one viewport instead of requiring long scroll choreography', () => {
+    expect(spin).toContain('Vista 3D · botones y miniaturas');
+    expect(spin).toContain('h-[clamp(640px,calc(100vh-112px),820px)]');
+    expect(spin).toContain('No necesitas desplazarte varios largos de pantalla');
+    expect(spin).not.toContain("window.addEventListener('scroll'");
+    expect(spin).not.toContain('trackHeight');
   });
 
   it('removes decorative guide-like title icons from inspiration headings', () => {
@@ -55,6 +71,31 @@ describe('inspiration visual and comments contract', () => {
     expect(detail).toContain('InspirationFooter');
     expect(footer).toContain('De la referencia a la obra');
     expect(footer).toContain('Calcular mi proyecto');
+  });
+
+  it('surfaces inspiration, calculators, Metalcon and the seismic simulator from the homepage', () => {
+    expect(home).toContain("href: '/proyectos'");
+    expect(home).toContain("href: '/herramientas/aire-acondicionado'");
+    expect(home).toContain("href: '/herramientas/radier'");
+    expect(home).toContain("href: '/herramientas/metalcon'");
+    expect(home).toContain("href: '/herramientas/metalcon/monitoreo'");
+    expect(home).toContain('Simulador sísmico 4D');
+    expect(home).toContain('Simular sismo');
+    expect(seismicStory).toContain("'/herramientas/metalcon/monitoreo'");
+    expect(seismicStory).toContain('Simular sismo y daños');
+  });
+
+  it('turns the budget page into a guided service-to-email-or-whatsapp journey', () => {
+    expect(budgetPage).toContain('BudgetPageGuide');
+    expect(budgetPage).toContain('id="budget-core"');
+    expect(budgetGuide).toContain('Elige el trabajo. Mide. Compara. Decide.');
+    expect(budgetGuide).toContain('Ejecución desde');
+    expect(budgetGuide).toContain('Trabajo vendido');
+    expect(budgetGuide).toContain('Recibir por correo');
+    expect(budgetGuide).toContain('Continuar por WhatsApp');
+    expect(budgetGuide).toContain("'metalcon'");
+    expect(budgetGuide).toContain("'radier'");
+    expect(budgetGuide).toContain("'aire'");
   });
 
   it('stores public contributions as pending and exposes only published comments publicly', () => {

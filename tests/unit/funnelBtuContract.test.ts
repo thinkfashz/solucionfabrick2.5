@@ -55,10 +55,25 @@ describe('Funnel BTU contract', () => {
 
   it('conecta referencias reales Ahorro/Recomendado/Premium al catálogo', () => {
     const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
-    expect(funnel).toContain("'Ahorro'");
-    expect(funnel).toContain("'Recomendado'");
-    expect(funnel).toContain("'Premium'");
+    expect(funnel).toContain("label: 'Ahorro'");
+    expect(funnel).toContain("label: 'Recomendado'");
+    expect(funnel).toContain("label: 'Premium'");
     expect(funnel).toContain('recommendAirProductTiers');
+    expect(funnel).toContain('distinctTierEntries');
+  });
+
+  it('mantiene separado el BTU objetivo de la capacidad real mostrada', () => {
+    const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
+    expect(funnel).toContain('targetCapacityLabel');
+    expect(funnel).toContain('displayedProductCapacityLabel');
+    expect(funnel).toContain('BTU real');
+    expect(funnel).toContain('No cambiamos tu cálculo para forzar una venta');
+  });
+
+  it('calcula consumo con la capacidad real del equipo mostrado cuando existe', () => {
+    const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
+    expect(funnel).toContain('capacityBtu: primary?.capacity ||');
+    expect(funnel).toContain('electricityRateClpKwh: DEFAULT_ELECTRICITY_RATE_CLP_KWH');
   });
 
   it('explica inverter con ahorro estimado y advertencia de variabilidad', () => {

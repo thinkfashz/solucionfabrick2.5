@@ -58,21 +58,57 @@ export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
   ],
 };
 
+function normalizeRate(rate: Partial<ShippingRegionRate>, fallback?: ShippingRegionRate, configUpdatedAt?: string): ShippingRegionRate {
+  const region = String(rate.region || fallback?.region || '').trim().toUpperCase() || 'VII';
+  const testFeeRaw = rate.testFee ?? fallback?.testFee ?? 0;
+  const productionFeeRaw = rate.productionFee ?? fallback?.productionFee ?? testFeeRaw;
+  return {
+    region,
+    label: String(rate.label || fallback?.label || region || 'Región'),
+    testFee: Math.max(0, Math.round(Number(testFeeRaw) || 0)),
+    productionFee: Math.max(0, Math.round(Number(productionFeeRaw) || 0)),
+    eta: String(rate.eta || fallback?.eta || '7 a 21 días hábiles'),
+    updatedAt: String(rate.updatedAt || configUpdatedAt || fallback?.updatedAt || new Date().toISOString().slice(0, 10)),
+    source: rate.source === 'manual' || rate.source === 'carrier_api' ? rate.source : fallback?.source ?? 'reference',
+  };
+}
+
+/**
+ * Persisted shipping configuration may come from old installs whose seed only
+ * stored a subset of regions (historically VII + RM). Always merge persisted
+ * rows over the complete current reference table so a missing region can never
+ * silently fall back to the first/cheapest configured region.
+ */
 export function normalizeShippingConfig(value: unknown): ShippingConfig {
-  if (!value || typeof value !== 'object') return DEFAULT_SHIPPING_CONFIG;
+  if (!value || typeof value !== 'object') return {
+    ...DEFAULT_SHIPPING_CONFIG,
+    rates: DEFAULT_SHIPPING_CONFIG.rates.map((rate) => ({ ...rate })),
+  };
+
   const raw = value as Partial<ShippingConfig>;
-  const rates = Array.isArray(raw.rates) && raw.rates.length > 0 ? raw.rates : DEFAULT_SHIPPING_CONFIG.rates;
+  const rawRates = Array.isArray(raw.rates) ? raw.rates : [];
+  const persistedByRegion = new Map<string, Partial<ShippingRegionRate>>();
+  for (const rate of rawRates) {
+    if (!rate || typeof rate !== 'object') continue;
+    const key = String(rate.region || '').trim().toUpperCase();
+    if (key) persistedByRegion.set(key, rate);
+  }
+
+  const defaultKeys = new Set(DEFAULT_SHIPPING_CONFIG.rates.map((rate) => rate.region.toUpperCase()));
+  const rates = DEFAULT_SHIPPING_CONFIG.rates.map((fallback) => {
+    const persisted = persistedByRegion.get(fallback.region.toUpperCase());
+    return normalizeRate(persisted ?? {}, fallback, raw.updatedAt);
+  });
+
+  // Preserve deliberately configured future/custom regions without allowing
+  // them to replace the canonical Chile coverage above.
+  for (const [key, rate] of persistedByRegion) {
+    if (!defaultKeys.has(key)) rates.push(normalizeRate(rate, undefined, raw.updatedAt));
+  }
+
   return {
     mode: raw.mode === 'production' ? 'production' : 'test',
-    rates: rates.map((rate) => ({
-      region: String(rate.region || '').trim() || 'VII',
-      label: String(rate.label || rate.region || 'Región'),
-      testFee: Math.max(0, Math.round(Number(rate.testFee || 0))),
-      productionFee: Math.max(0, Math.round(Number(rate.productionFee || rate.testFee || 0))),
-      eta: String(rate.eta || '7 a 21 días hábiles'),
-      updatedAt: String(rate.updatedAt || raw.updatedAt || new Date().toISOString().slice(0, 10)),
-      source: rate.source === 'manual' || rate.source === 'carrier_api' ? rate.source : 'reference',
-    })),
+    rates,
     lowValueThreshold: Math.max(0, Math.round(Number(raw.lowValueThreshold ?? DEFAULT_SHIPPING_CONFIG.lowValueThreshold))),
     lowValueSurcharge: Math.max(0, Math.round(Number(raw.lowValueSurcharge ?? DEFAULT_SHIPPING_CONFIG.lowValueSurcharge))),
     extraUnitFee: Math.max(0, Math.round(Number(raw.extraUnitFee ?? DEFAULT_SHIPPING_CONFIG.extraUnitFee))),
@@ -82,7 +118,7 @@ export function normalizeShippingConfig(value: unknown): ShippingConfig {
 
 export function getRegionRate(region: string, config: ShippingConfig = DEFAULT_SHIPPING_CONFIG) {
   const normalized = String(region || 'VII').trim().toUpperCase();
-  return config.rates.find((rate) => rate.region.toUpperCase() === normalized) ?? config.rates[0] ?? DEFAULT_SHIPPING_CONFIG.rates[0];
+  return config.rates.find((rate) => rate.region.toUpperCase() === normalized) ?? config.rates.find((rate) => rate.region.toUpperCase() === 'VII') ?? DEFAULT_SHIPPING_CONFIG.rates[0];
 }
 
 function hasManualShippingFee(item: Pick<ShippingLineInput, 'shippingFee'>) {

@@ -6,8 +6,9 @@ import { getMercadoPagoCredentials } from '@/lib/mercadoPagoCredentials';
 import { confirmPaidOrderAndSendReceiptAsync } from '@/lib/orders/paidConfirmation';
 import { syncOrderToSalesPipelineAsync } from '@/lib/orders/salesPipeline';
 import { resolveDispatchCode } from '@/lib/orders/dispatchCode';
-import { commitOrderReservation, releaseOrderReservation } from '@/lib/commerceReservations';
+import { commitOrderReservation, createOrderWithReservations, releaseOrderReservation } from '@/lib/commerceReservations';
 import { isTerminalPaymentFailure, validateMercadoPagoPaymentForOrder } from '@/lib/paymentValidation';
+import type { LineItem } from '@/lib/checkout';
 
 type OrderRow = Record<string, unknown>;
 
@@ -17,12 +18,38 @@ function str(value: unknown, fallback = '') {
 
 function isPaidLike(order?: OrderRow) {
   const status = String(order?.status || '').toLowerCase();
-  const paymentStatus = String(order?.payment_status || '').toLowerCase();
-  return ['pagada', 'confirmado', 'confirmada', 'en_preparacion', 'preparacion', 'preparación', 'enviado', 'entregado'].includes(status) || paymentStatus === 'approved';
+  // Revenue P0 invariant: provider payment_status=approved is not enough. The
+  // order is only treated as paid after reconciliation and stock commit have
+  // advanced it to a fulfillment state.
+  return ['pagada', 'confirmado', 'confirmada', 'en_preparacion', 'preparacion', 'preparación', 'enviado', 'entregado'].includes(status);
 }
 
 function hasMissingColumn(error?: { message?: string } | null) {
   return /column .* does not exist|schema cache|Could not find|PGRST204/i.test(error?.message || '');
+}
+
+function reservationCanBeReacquired(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return message.includes('RESERVATION_NOT_ACTIVE') || message.includes('RESERVATION_MISSING');
+}
+
+function storedOrderItems(order: OrderRow): LineItem[] {
+  if (!Array.isArray(order.items) || order.items.length === 0) throw new Error('ORDER_ITEMS_MISSING_FOR_RESERVATION_RECOVERY');
+  return order.items.map((raw, index) => {
+    const item = raw && typeof raw === 'object' ? raw as Record<string, unknown> : {};
+    const productoId = item.productoId ?? item.product_id ?? item.id;
+    const cantidad = Math.trunc(Number(item.cantidad ?? item.quantity));
+    const precioUnitario = Number(item.precioUnitario ?? item.unitPrice ?? item.price);
+    if (!productoId || !Number.isFinite(cantidad) || cantidad <= 0 || !Number.isFinite(precioUnitario) || precioUnitario <= 0) {
+      throw new Error(`ORDER_ITEM_INVALID_FOR_RESERVATION_RECOVERY:${index}`);
+    }
+    return {
+      productoId: String(productoId),
+      cantidad,
+      precioUnitario,
+      nombre: typeof item.nombre === 'string' ? item.nombre : typeof item.name === 'string' ? item.name : undefined,
+    };
+  });
 }
 
 export async function loadOrderById(orderId: string) {
@@ -69,6 +96,29 @@ function paymentAuditPayload(payment: MercadoPagoPaymentResponse, validation: Re
     payment_review_reason: validation.valid ? null : validation.errors.join(','),
     updated_at: new Date().toISOString(),
   };
+}
+
+async function commitApprovedPaymentStock(orderId: string, existing: OrderRow) {
+  try {
+    const result = await commitOrderReservation(orderId);
+    return { result, reacquired: false };
+  } catch (firstError) {
+    if (!reservationCanBeReacquired(firstError)) throw firstError;
+
+    // A legitimate payment may be approved seconds after the 15-minute stock
+    // reservation expired. Re-acquire the exact persisted order items under the
+    // same PostgreSQL locks, then commit immediately. If stock is no longer
+    // available this throws and the order remains in manual review; we never
+    // oversell or manufacture a new order from the payment event.
+    const items = storedOrderItems(existing);
+    await createOrderWithReservations({
+      id: orderId,
+      total: Number(existing.total || 0),
+      currency: str(existing.currency, 'CLP'),
+    }, items, 5);
+    const result = await commitOrderReservation(orderId);
+    return { result, reacquired: true };
+  }
 }
 
 export async function reconcileMercadoPagoPaymentRecord(payment: MercadoPagoPaymentResponse, expectedOrderId?: string | null, source = 'webhook') {
@@ -171,8 +221,11 @@ export async function reconcileMercadoPagoPaymentRecord(payment: MercadoPagoPaym
   }
 
   let commitResult;
+  let reservationReacquired = false;
   try {
-    commitResult = await commitOrderReservation(orderId);
+    const committed = await commitApprovedPaymentStock(orderId, existing);
+    commitResult = committed.result;
+    reservationReacquired = committed.reacquired;
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'reservation_commit_failed';
     await updateOrder(orderId, {
@@ -204,7 +257,7 @@ export async function reconcileMercadoPagoPaymentRecord(payment: MercadoPagoPaym
     dispatch_code: dispatchCode || null,
   });
 
-  const shouldNotify = !wasAlreadyPaid && !commitResult.duplicate;
+  const shouldNotify = !wasAlreadyPaid && (!commitResult.duplicate || reservationReacquired);
   if (shouldNotify) {
     const paidOrder = { ...existing, id: orderId, status: 'en_preparacion', dispatch_code: dispatchCode, payment_id: String(payment.id), payment_status: payment.status };
     syncOrderToSalesPipelineAsync(paidOrder, {
@@ -224,11 +277,12 @@ export async function reconcileMercadoPagoPaymentRecord(payment: MercadoPagoPaym
     paymentId: String(payment.id),
     paymentStatus: payment.status || 'unknown',
     orderStatus: 'en_preparacion',
-    recovered: false,
+    recovered: reservationReacquired,
     alreadyPaid: wasAlreadyPaid,
     validation,
     stockCommitted: true,
     stockCommitDuplicate: commitResult.duplicate,
+    reservationReacquired,
     reviewRequired: false,
   };
 }

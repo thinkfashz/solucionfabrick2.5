@@ -61,14 +61,14 @@ export function StorefrontHeader({ onSearch }: { onSearch?: () => void }) {
 }
 
 function MenuLink({label,onClick}:{label:string;onClick:()=>void}) { return <button onClick={onClick} className="flex min-h-12 items-center justify-between rounded-xl border border-white/[.07] bg-white/[.025] px-4 text-left text-sm font-black"><span>{label}</span><span className="text-[#F6C64A]">→</span></button>; }
-function DockItem({icon:Icon,label,active,onClick}:{icon:typeof Home;label:string;active?:boolean;onClick:()=>void}) { return <button onClick={onClick} className={`grid min-w-0 flex-1 place-items-center gap-1.5 py-2 text-[10px] font-extrabold transition ${active?'text-[#F6C64A]':'text-white/78'}`}><Icon className="h-[23px] w-[23px]" strokeWidth={active?2.8:2.1}/><span className="truncate">{label}</span></button>; }
+function DockItem({icon:Icon,label,active,onClick}:{icon:typeof Home;label:string;active?:boolean;onClick:()=>void}) { return <button onClick={onClick} className={`relative mx-0.5 flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[1.15rem] px-1 py-2 text-[10px] font-extrabold transition ${active?'bg-[#F6C64A]/[.09] text-[#F6C64A]':'text-white/78 active:bg-white/[.05]'}`}><Icon className="h-[24px] w-[24px]" strokeWidth={active?2.8:2.1}/><span className="truncate">{label}</span>{active?<span className="absolute bottom-1 h-0.5 w-5 rounded-full bg-[#F6C64A]"/>:null}</button>; }
 
 export function StoreBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { totalItems, openCart } = useCartContext();
   const nav = (href:string) => goTo(href, router);
-  return <nav className="fixed inset-x-0 bottom-0 z-[240] mx-auto flex min-h-[76px] items-start border-t border-white/10 bg-[#090D11]/98 px-1 pt-1.5 pb-[max(.35rem,env(safe-area-inset-bottom))] text-white shadow-[0_-16px_48px_rgba(0,0,0,.48)] backdrop-blur-2xl md:hidden" aria-label="Navegación de tienda">
+  return <nav className="fixed inset-x-0 bottom-0 z-[240] mx-auto flex min-h-[84px] items-stretch border-t border-white/10 bg-[#090D11]/98 px-1.5 pt-1.5 pb-[max(.45rem,env(safe-area-inset-bottom))] text-white shadow-[0_-16px_48px_rgba(0,0,0,.48)] backdrop-blur-2xl md:hidden" aria-label="Navegación de tienda">
     <DockItem icon={Home} label="Inicio" active={pathname==='/tienda'} onClick={()=>nav('/tienda')}/>
     <DockItem icon={Grid2X2} label="Categorías" active={pathname.includes('/catalogo')} onClick={()=>nav('/tienda/catalogo')}/>
     <DockItem icon={ShoppingCart} label={totalItems ? `Carrito ${totalItems}` : 'Carrito'} onClick={openCart}/>

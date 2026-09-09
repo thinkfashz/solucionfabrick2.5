@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Navbar from '@/components/Navbar';
+import BudgetDirectWhatsApp from '@/components/presupuesto/BudgetDirectWhatsApp';
 import BudgetPageGuide from '@/components/presupuesto/BudgetPageGuide';
 import ServiceBudgetShopV2 from '@/components/presupuesto/ServiceBudgetShopV2';
 import StoreFooter from '@/components/store/StoreFooter';
@@ -40,6 +41,7 @@ export default async function PresupuestoPage({ searchParams }: PresupuestoPageP
         `}</style>
         <ServiceBudgetShopV2 initialServiceId={initialServiceId} />
       </div>
+      <BudgetDirectWhatsApp />
       <div className="bg-[#08090A]"><StoreFooter /></div>
       <StoreBottomNav />
     </main>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Home } from 'lucide-react';
 import ServicePage, { type ServicePageContent } from '@/components/ServicePage';
+import Metalcon4DLab from '@/components/metalcon/Metalcon4DLab';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ const content: ServicePageContent = {
   ],
   process: [
     { step: 'Medimos', detail: 'Revisamos medidas, fotos o visita para entender el espacio real y detectar puntos críticos.' },
-    { step: 'Ordenamos', detail: 'Separamos estructura, revestimiento, aislación y terminaciones para que el presupuesto sea claro.' },
+    { step: 'Modelamos', detail: 'Configuramos el panel, modulación y perfiles en el visor 360° para explicar la solución antes de ejecutar.' },
     { step: 'Ejecutamos', detail: 'Coordinamos avance, materiales y etapas para mantener control del tiempo y del gasto.' },
   ],
   faqs: [
@@ -38,6 +39,11 @@ const content: ServicePageContent = {
       question: '¿Incluye terminaciones?',
       answer:
         'Puede incluirlas, pero es mejor separarlas por partida: estructura, aislación, revestimiento, pintura e instalaciones. Así decides qué hacer primero.',
+    },
+    {
+      question: '¿El simulador sísmico reemplaza un cálculo estructural?',
+      answer:
+        'No. El laboratorio 4D es una herramienta visual y paramétrica para comprender el comportamiento del panel y comparar escenarios. Un proyecto real requiere revisión en terreno, cálculo y validación profesional según corresponda.',
     },
     {
       question: '¿La calculadora entrega precio final?',
@@ -56,17 +62,22 @@ const content: ServicePageContent = {
 export const metadata: Metadata = {
   title: 'Estructuras Metalcon en Maule | Linares, Longaví, Talca',
   description:
-    'Estructuras Metalcon para ampliaciones, tabiquería y segundos pisos en la Región del Maule. Cálculo referencial por m² y orientación por etapas.',
+    'Estructuras Metalcon para ampliaciones, tabiquería y segundos pisos en la Región del Maule. Modelado 360°, laboratorio 4D y cálculo referencial por m².',
   alternates: { canonical: 'https://www.solucionesfabrick.com/servicios/metalcon' },
-  keywords: ['Metalcon Maule', 'Metalcon Linares', 'Metalcon Longaví', 'Metalcon Talca', 'estructura Metalcon', 'segundo piso Metalcon'],
+  keywords: ['Metalcon Maule', 'Metalcon Linares', 'Metalcon Longaví', 'Metalcon Talca', 'estructura Metalcon', 'segundo piso Metalcon', 'simulador Metalcon 3D'],
   openGraph: {
     title: 'Estructuras Metalcon en el Maule | Soluciones Fabrick',
-    description: 'Orientación por etapas, cálculo por m² y ejecución ordenada para ampliaciones.',
+    description: 'Modelado 360°, orientación por etapas y ejecución ordenada para ampliaciones.',
     url: 'https://www.solucionesfabrick.com/servicios/metalcon',
     type: 'website',
   },
 };
 
 export default function MetalconPage() {
-  return <ServicePage content={content} />;
+  return (
+    <>
+      <ServicePage content={content} />
+      <Metalcon4DLab />
+    </>
+  );
 }

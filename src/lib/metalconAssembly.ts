@@ -139,16 +139,14 @@ export const METALCON_HOUSE_PRESETS: Record<MetalconHousePresetId, MetalconHouse
       wall('F68-I1', 'P-05 · Dormitorio 1 · 3,00 m', { x: 3, z: 0 }, { x: 3, z: 3 }, 'interior', [
         door('F68-I1-D1', 2.0, 0.8, 2.05, 'Puerta dormitorio 1'),
       ], { structural: false, braced: false }),
-      wall('F68-I2', 'P-06 · Base dormitorio 1 · 3,00 m', { x: 3, z: 3 }, { x: 6, z: 3 }, 'interior', [], { structural: true, braced: false }),
-      wall('F68-I3', 'P-07 · Baño · 2,10 m', { x: 3.9, z: 3 }, { x: 6, z: 3 }, 'interior', [], { structural: false, braced: false }),
-      wall('F68-I4', 'P-08 · Lateral baño · 1,60 m', { x: 3.9, z: 3 }, { x: 3.9, z: 4.6 }, 'interior', [
-        door('F68-I4-D1', 0.55, 0.72, 2.05, 'Puerta baño'),
+      wall('F68-I2', 'P-06 · Base dormitorio 1 / baño · 3,00 m', { x: 3, z: 3 }, { x: 6, z: 3 }, 'interior', [], { structural: true, braced: false }),
+      wall('F68-I3', 'P-07 · Lateral baño · 1,60 m', { x: 3.9, z: 3 }, { x: 3.9, z: 4.6 }, 'interior', [
+        door('F68-I3-D1', 0.55, 0.72, 2.05, 'Puerta baño'),
       ], { structural: false, braced: false }),
-      wall('F68-I5', 'P-09 · Base baño · 2,10 m', { x: 3.9, z: 4.6 }, { x: 6, z: 4.6 }, 'interior', [], { structural: false, braced: false }),
-      wall('F68-I6', 'P-10 · Dormitorio 2 · 3,40 m', { x: 3, z: 4.6 }, { x: 3, z: 8 }, 'interior', [
-        door('F68-I6-D1', 0.25, 0.8, 2.05, 'Puerta dormitorio 2'),
+      wall('F68-I4', 'P-08 · Base baño / dormitorio 2 · 3,00 m', { x: 3, z: 4.6 }, { x: 6, z: 4.6 }, 'interior', [], { structural: true, braced: false }),
+      wall('F68-I5', 'P-09 · Dormitorio 2 · 3,40 m', { x: 3, z: 4.6 }, { x: 3, z: 8 }, 'interior', [
+        door('F68-I5-D1', 0.25, 0.8, 2.05, 'Puerta dormitorio 2'),
       ], { structural: false, braced: false }),
-      wall('F68-I7', 'P-11 · Cabezal dormitorio 2 · 3,00 m', { x: 3, z: 4.6 }, { x: 6, z: 4.6 }, 'interior', [], { structural: true, braced: false }),
     ],
   },
   'studio-45x58': {
@@ -184,39 +182,38 @@ export const METALCON_HOUSE_PRESETS: Record<MetalconHousePresetId, MetalconHouse
       wall('S45-I3', 'P-07 · Baño · 1,50 m', { x: 3, z: 2 }, { x: 4.5, z: 2 }, 'interior', [
         door('S45-I3-D1', 0.12, 0.72, 2.05, 'Puerta baño'),
       ], { structural: false, braced: false }),
-      wall('S45-I4', 'P-08 · Hall técnico · 1,00 m', { x: 3, z: 2 }, { x: 3, z: 3 }, 'interior', [], { structural: false, braced: false }),
     ],
   },
 };
 
 export const METALCON_HOUSE_PRESET_ORDER: MetalconHousePresetId[] = ['compact-5x5', 'family-6x8', 'studio-45x58'];
 
-export function wallLengthM(wall: MetalconAssemblyWall) {
-  return Math.hypot(wall.end.x - wall.start.x, wall.end.z - wall.start.z);
+export function wallLengthM(currentWall: MetalconAssemblyWall) {
+  return Math.hypot(currentWall.end.x - currentWall.start.x, currentWall.end.z - currentWall.start.z);
 }
 
-export function wallYawRad(wall: MetalconAssemblyWall) {
-  return -Math.atan2(wall.end.z - wall.start.z, wall.end.x - wall.start.x);
+export function wallYawRad(currentWall: MetalconAssemblyWall) {
+  return -Math.atan2(currentWall.end.z - currentWall.start.z, currentWall.end.x - currentWall.start.x);
 }
 
-export function wallMidpoint(wall: MetalconAssemblyWall) {
+export function wallMidpoint(currentWall: MetalconAssemblyWall) {
   return {
-    x: (wall.start.x + wall.end.x) / 2,
-    z: (wall.start.z + wall.end.z) / 2,
+    x: (currentWall.start.x + currentWall.end.x) / 2,
+    z: (currentWall.start.z + currentWall.end.z) / 2,
   };
 }
 
-export function regularStudOffsets(wall: MetalconAssemblyWall, spacingM: number) {
-  const length = wallLengthM(wall);
+export function regularStudOffsets(currentWall: MetalconAssemblyWall, spacingM: number) {
+  const length = wallLengthM(currentWall);
   const count = Math.max(1, Math.floor(length / spacingM));
   const offsets = Array.from({ length: count + 1 }, (_, index) => Math.min(length, index * spacingM));
   if (Math.abs((offsets[offsets.length - 1] ?? 0) - length) > 0.03) offsets.push(length);
-  return offsets.filter((offset) => !wall.openings.some((opening) => offset > opening.offsetM + 0.025 && offset < opening.offsetM + opening.widthM - 0.025));
+  return offsets.filter((offset) => !currentWall.openings.some((opening) => offset > opening.offsetM + 0.025 && offset < opening.offsetM + opening.widthM - 0.025));
 }
 
-export function clearWallIntervals(wall: MetalconAssemblyWall, excludeDoorsOnly = false) {
-  const length = wallLengthM(wall);
-  const openings = wall.openings
+export function clearWallIntervals(currentWall: MetalconAssemblyWall, excludeDoorsOnly = false) {
+  const length = wallLengthM(currentWall);
+  const openings = currentWall.openings
     .filter((opening) => !excludeDoorsOnly || opening.kind === 'door')
     .map((opening) => ({ start: Math.max(0, opening.offsetM), end: Math.min(length, opening.offsetM + opening.widthM) }))
     .filter((opening) => opening.end > opening.start)

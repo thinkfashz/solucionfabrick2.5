@@ -6,6 +6,19 @@ const REFUNDED = new Set(['reembolsada', 'refunded']);
 const REVIEW = new Set(['payment_review_required', 'revision_pago', 'revisión_pago']);
 export const RESERVATION_TTL_FALLBACK_MS = 15 * 60 * 1000;
 
+function timestamp(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (value instanceof Date) {
+    const parsed = value.getTime();
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }
+  return Number.NaN;
+}
+
 export function deriveCheckoutCustomerState(input: {
   status?: unknown;
   paymentStatus?: unknown;
@@ -26,9 +39,9 @@ export function deriveCheckoutCustomerState(input: {
   const terminal = approved || failed || refunded || reviewRequired;
 
   const now = Number.isFinite(input.now) ? Number(input.now) : Date.now();
-  const createdAtParsed = new Date(String(input.createdAt || now)).getTime();
+  const createdAtParsed = timestamp(input.createdAt);
   const createdAt = Number.isFinite(createdAtParsed) ? createdAtParsed : now;
-  const explicitExpiry = input.reservationExpiresAt ? new Date(String(input.reservationExpiresAt)).getTime() : Number.NaN;
+  const explicitExpiry = timestamp(input.reservationExpiresAt);
   const expiresAt = Number.isFinite(explicitExpiry) ? explicitExpiry : createdAt + RESERVATION_TTL_FALLBACK_MS;
   const stale = !terminal && now > expiresAt;
   const state: CheckoutCustomerState = reviewRequired ? 'review' : approved ? 'approved' : refunded ? 'refunded' : failed ? 'failed' : stale ? 'abandoned' : 'pending';

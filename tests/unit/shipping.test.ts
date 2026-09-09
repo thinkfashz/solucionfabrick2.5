@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_SHIPPING_CONFIG,
   calculateShippingTotal,
   normalizeProductShippingMode,
+  normalizeShippingConfig,
   resolveProductShippingFee,
   type ShippingConfig,
   type ShippingLineInput,
@@ -24,6 +26,27 @@ const line = (overrides: Partial<ShippingLineInput> = {}): ShippingLineInput => 
   cantidad: 1,
   precioUnitario: 20_000,
   ...overrides,
+});
+
+describe('normalizeShippingConfig', () => {
+  it('fusiona configuraciones antiguas parciales con todas las regiones canónicas', () => {
+    const config = normalizeShippingConfig({
+      mode: 'production',
+      rates: [{ region: 'RM', label: 'RM editada', testFee: 1111, productionFee: 2222, eta: '1 día', updatedAt: '2026-09-08', source: 'manual' }],
+    });
+    expect(config.rates).toHaveLength(DEFAULT_SHIPPING_CONFIG.rates.length);
+    expect(config.rates.find((rate) => rate.region === 'RM')).toMatchObject({ productionFee: 2222, source: 'manual' });
+    expect(config.rates.find((rate) => rate.region === 'XV')).toMatchObject({ productionFee: 22990 });
+    expect(config.rates.find((rate) => rate.region === 'XII')).toBeTruthy();
+  });
+
+  it('preserva regiones custom además de la cobertura canónica', () => {
+    const config = normalizeShippingConfig({
+      rates: [{ region: 'CUSTOM', label: 'Zona especial', testFee: 1234, productionFee: 4321, eta: 'coordinar', updatedAt: '2026-09-08', source: 'manual' }],
+    });
+    expect(config.rates).toHaveLength(DEFAULT_SHIPPING_CONFIG.rates.length + 1);
+    expect(config.rates.find((rate) => rate.region === 'CUSTOM')).toMatchObject({ productionFee: 4321 });
+  });
 });
 
 describe('normalizeProductShippingMode', () => {

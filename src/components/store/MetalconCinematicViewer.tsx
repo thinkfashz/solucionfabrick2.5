@@ -1,22 +1,45 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls, Sky, Stars } from '@react-three/drei';
-import { Box, Eye, Layers3, Pause, Play, Rotate3D, Ruler, Sun, Wrench } from 'lucide-react';
+import { Canvas, useThree } from '@react-three/fiber';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import {
+  Box,
+  Eye,
+  Focus,
+  Grid3X3,
+  Layers3,
+  Pause,
+  Play,
+  Rotate3D,
+  Ruler,
+  ScanLine,
+  Sun,
+  Wrench,
+} from 'lucide-react';
 import {
   DataTexture,
-  Group,
   RepeatWrapping,
   RGBAFormat,
   SRGBColorSpace,
   UnsignedByteType,
 } from 'three';
-import type { MetalconInput, MetalconOpening } from '@/lib/metalconCalculator';
+import {
+  METALCON_HOUSE_PRESET_ORDER,
+  METALCON_HOUSE_PRESETS,
+  assemblySummary,
+  type MetalconAssemblyOpening,
+  type MetalconHousePreset,
+  type MetalconHousePresetId,
+} from '@/lib/metalconAssembly';
+import type { MetalconInput } from '@/lib/metalconCalculator';
+import { MetalconAssembly3D, type MetalconAssemblyDisplayMode } from './MetalconAssembly3D';
 
-type View = 'frame' | 'dimensions' | 'osb' | 'reinforcement' | 'profiles';
+type ViewerModelId = 'custom-panel' | MetalconHousePresetId;
+type ViewerView = MetalconAssemblyDisplayMode | 'profiles';
 type Ground = 'hormigon' | 'pasto' | 'tierra' | 'grava';
 type Light = 'dia' | 'atardecer' | 'noche' | 'estudio';
+type CameraPreset = 'perspective' | 'top' | 'front';
 
 const GROUND: Array<[Ground, string]> = [
   ['hormigon', 'Hormigón'],
@@ -33,77 +56,120 @@ const LIGHT: Array<[Light, string]> = [
 ];
 
 export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
-  const [view, setView] = useState<View>('dimensions');
+  const [modelId, setModelId] = useState<ViewerModelId>('family-6x8');
+  const [view, setView] = useState<ViewerView>('dimensions');
   const [ground, setGround] = useState<Ground>('hormigon');
   const [light, setLight] = useState<Light>('dia');
-  const [autoRotate, setAutoRotate] = useState(true);
-  const [explode, setExplode] = useState(false);
+  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('perspective');
+  const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
+  const [isolateSelected, setIsolateSelected] = useState(false);
+  const [autoRotate, setAutoRotate] = useState(false);
   const [timeline, setTimeline] = useState(0);
   const [playing, setPlaying] = useState(false);
+
+  const customPreset = useMemo(() => makeCustomPanelPreset(input), [input]);
+  const activePreset = modelId === 'custom-panel' ? customPreset : METALCON_HOUSE_PRESETS[modelId];
+  const summary = useMemo(() => assemblySummary(activePreset, input.spacingCm), [activePreset, input.spacingCm]);
+  const selectedWall = activePreset.walls.find((wall) => wall.id === selectedWallId) ?? null;
+
+  useEffect(() => {
+    setSelectedWallId(null);
+    setIsolateSelected(false);
+    setTimeline(0);
+    setPlaying(false);
+  }, [modelId]);
 
   useEffect(() => {
     if (!playing) return;
     const timer = window.setInterval(() => {
       setTimeline((value) => {
-        const next = value + 0.018;
+        const next = value + 0.014;
         if (next >= 1) {
           setPlaying(false);
           return 1;
         }
         return next;
       });
-    }, 90);
+    }, 70);
     return () => window.clearInterval(timer);
   }, [playing]);
 
   const playAssembly = () => {
-    setTimeline((value) => (value >= 0.99 ? 0 : value));
+    setTimeline((value) => (value >= 0.995 ? 0 : value));
     setPlaying(true);
     setAutoRotate(false);
+    setCameraPreset('perspective');
   };
 
   return (
     <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#05090c] shadow-2xl">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div>
-          <p className="text-[8px] font-black uppercase tracking-[.2em] text-[#57D4FF]">Cinematic 4D · Three.js · modelo paramétrico</p>
-          <b className="mt-1 block text-xs">Panel Metalcon interactivo · 360° real</b>
+          <p className="text-[8px] font-black uppercase tracking-[.2em] text-[#57D4FF]">Cinematic 4D · Three.js · malla Metalcon completa</p>
+          <b className="mt-1 block text-xs">Paneles, esquinas, dinteles, jambas, antepechos y refuerzo localizado</b>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <button type="button" onClick={() => setExplode((value) => !value)} className={chip(explode)}><Layers3 size={12} />{explode ? 'Unir piezas' : 'Explotar'}</button>
           <button type="button" onClick={() => setAutoRotate((value) => !value)} className={chip(autoRotate)}><Rotate3D size={12} />360°</button>
           <button type="button" onClick={playing ? () => setPlaying(false) : playAssembly} className="inline-flex items-center gap-1.5 rounded-full bg-[#F6C64A] px-3 py-2 text-[8px] font-black uppercase tracking-[.1em] text-black">{playing ? <Pause size={12} /> : <Play size={12} fill="currentColor" />}{playing ? 'Pausar' : '4D montaje'}</button>
         </div>
       </div>
 
-      <div className="relative h-[430px] sm:h-[570px]">
-        <Canvas shadows dpr={[1, 1.75]} camera={{ position: [7.4, 4.2, 7.8], fov: 40 }}>
+      <div className="border-b border-white/10 bg-white/[.018] px-3 py-3">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
+          <ModelButton active={modelId === 'custom-panel'} onClick={() => setModelId('custom-panel')} label="Panel editable" detail={`${input.widthM.toFixed(1)} × ${input.heightM.toFixed(1)} m`} />
+          {METALCON_HOUSE_PRESET_ORDER.map((id) => {
+            const preset = METALCON_HOUSE_PRESETS[id];
+            return <ModelButton key={id} active={modelId === id} onClick={() => setModelId(id)} label={preset.shortLabel} detail={`${preset.walls.length} paneles`} />;
+          })}
+        </div>
+      </div>
+
+      <div className="relative h-[520px] sm:h-[680px]">
+        <Canvas shadows dpr={[1, 1.65]} camera={{ position: [8.2, 6.2, 9.5], fov: 42, near: 0.05, far: 120 }}>
           <Suspense fallback={null}>
             <ViewerEnvironment ground={ground} light={light} />
+            <CameraDirector preset={activePreset} cameraPreset={cameraPreset} />
             {view === 'profiles' ? (
-              <ProfileScene input={input} timeline={timeline} />
+              <ProfileScene input={input} />
             ) : (
-              <PanelScene input={input} view={view} explode={explode} timeline={timeline} />
+              <MetalconAssembly3D
+                preset={activePreset}
+                spacingCm={input.spacingCm}
+                profileDepthMm={input.cDepthMm}
+                displayMode={view}
+                selectedWallId={selectedWallId}
+                onSelectWall={setSelectedWallId}
+                isolateSelected={isolateSelected}
+                assemblyProgress={playing || timeline > 0 ? timeline : null}
+              />
             )}
             <OrbitControls
               makeDefault
-              target={[0, 1.15, 0]}
+              target={[0, 1.05, 0]}
               enableDamping
               dampingFactor={0.08}
-              autoRotate={autoRotate && !playing}
-              autoRotateSpeed={0.75}
-              minDistance={2.6}
-              maxDistance={18}
-              maxPolarAngle={Math.PI * 0.6}
+              autoRotate={autoRotate && !playing && cameraPreset === 'perspective'}
+              autoRotateSpeed={0.55}
+              minDistance={2.2}
+              maxDistance={28}
+              maxPolarAngle={Math.PI * 0.82}
             />
           </Suspense>
         </Canvas>
-        <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/10 bg-black/55 px-3 py-1.5 text-[8px] font-black uppercase tracking-[.14em] text-white/70 backdrop-blur-md">
-          Arrastra para girar · pellizca/rueda para zoom
+
+        <div className="pointer-events-none absolute left-3 top-3 max-w-[72%] rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-[8px] font-black uppercase tracking-[.1em] text-white/75 backdrop-blur-md">
+          {activePreset.label}<span className="mt-1 block normal-case tracking-normal text-white/38">Arrastra para girar · pellizca/rueda para zoom · toca un muro para leerlo</span>
         </div>
+
+        <div className="absolute right-3 top-3 flex flex-col gap-1 rounded-xl border border-white/10 bg-black/55 p-1 backdrop-blur-md">
+          <CameraButton active={cameraPreset === 'perspective'} onClick={() => setCameraPreset('perspective')} icon={<Focus size={12} />} label="3D" />
+          <CameraButton active={cameraPreset === 'top'} onClick={() => setCameraPreset('top')} icon={<Grid3X3 size={12} />} label="Planta" />
+          <CameraButton active={cameraPreset === 'front'} onClick={() => setCameraPreset('front')} icon={<ScanLine size={12} />} label="Frente" />
+        </div>
+
         {playing || timeline > 0 ? (
-          <div className="absolute inset-x-3 bottom-3 rounded-xl border border-white/10 bg-black/70 p-3 backdrop-blur-xl">
-            <div className="mb-2 flex justify-between text-[8px] font-black uppercase tracking-[.12em] text-white/45"><span>Solera</span><span>Montantes</span><span>Vanos</span><span>Arriostre</span><span>Lectura</span></div>
+          <div className="absolute inset-x-3 bottom-3 rounded-xl border border-white/10 bg-black/76 p-3 backdrop-blur-xl">
+            <div className="mb-2 flex justify-between text-[7px] font-black uppercase tracking-[.1em] text-white/45"><span>Soleras</span><span>Montantes</span><span>Vanos</span><span>Travesaños</span><span>Pletinas</span></div>
             <div className="h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full bg-[#57D4FF] transition-[width] duration-100" style={{ width: `${timeline * 100}%` }} /></div>
           </div>
         ) : null}
@@ -112,14 +178,45 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
       <div className="border-t border-white/10 p-3">
         <div className="grid grid-cols-5 gap-1">
           {([
-            ['frame', 'Estructura', <Box key="a" size={12} />],
+            ['mesh', 'Malla', <Box key="a" size={12} />],
             ['dimensions', 'Medidas', <Ruler key="b" size={12} />],
-            ['reinforcement', 'Refuerzos', <Wrench key="c" size={12} />],
-            ['osb', 'OSB', <Layers3 key="d" size={12} />],
+            ['openings', 'Vanos', <Wrench key="c" size={12} />],
+            ['bracing', 'Refuerzo', <Layers3 key="d" size={12} />],
             ['profiles', 'Perfiles', <Eye key="e" size={12} />],
           ] as const).map(([id, label, icon]) => (
             <button key={id} type="button" onClick={() => setView(id)} className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[8px] font-black ${view === id ? 'bg-[#F6C64A] text-black' : 'bg-white/[.04] text-white/50'}`}>{icon}{label}</button>
           ))}
+        </div>
+
+        {view !== 'profiles' ? (
+          <div className="mt-3 rounded-xl border border-white/8 bg-white/[.025] p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-[.14em] text-white/38">Paneles de la malla</p>
+                <p className="mt-1 text-[8px] text-white/28">Cada tramo es independiente; los vanos conservan jambas, dintel y montantes cortos.</p>
+              </div>
+              <button type="button" disabled={!selectedWallId} onClick={() => setIsolateSelected((value) => !value)} className={`rounded-full px-3 py-2 text-[8px] font-black ${selectedWallId ? (isolateSelected ? 'bg-cyan-300 text-black' : 'bg-white/[.07] text-white/65') : 'cursor-not-allowed bg-white/[.03] text-white/20'}`}>{isolateSelected ? 'Ver todos' : 'Aislar'}</button>
+            </div>
+            <div className="mt-2 flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none]">
+              <button type="button" onClick={() => { setSelectedWallId(null); setIsolateSelected(false); }} className={`shrink-0 rounded-full px-2.5 py-1.5 text-[8px] font-black ${!selectedWallId ? 'bg-white text-black' : 'bg-white/[.05] text-white/45'}`}>Todos</button>
+              {activePreset.walls.map((wall) => (
+                <button key={wall.id} type="button" onClick={() => setSelectedWallId(wall.id)} className={`shrink-0 rounded-full px-2.5 py-1.5 text-[8px] font-black ${selectedWallId === wall.id ? 'bg-cyan-300 text-black' : 'bg-white/[.05] text-white/45'}`}>{wall.id}</button>
+              ))}
+            </div>
+            {selectedWall ? (
+              <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+                <div className="rounded-lg bg-black/25 px-3 py-2 text-[8px] leading-4 text-white/48"><b className="text-white/80">{selectedWall.label}</b><br/>{selectedWall.role === 'perimeter' ? 'Perimetral' : 'Interior'} · {selectedWall.structural ? 'marcado estructural' : 'división referencial'} · {selectedWall.openings.length} vano(s)</div>
+                <button type="button" onClick={() => setView('openings')} className="rounded-lg border border-[#F6C64A]/20 px-3 py-2 text-[8px] font-black text-[#F6C64A]">Ver detalle de vano</button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <MiniMetric value={summary.panels} label="paneles/tramos" />
+          <MiniMetric value={`${summary.totalWallM} m`} label="muro modelado" />
+          <MiniMetric value={summary.regularStuds + summary.openingFrames} label="montantes aprox." />
+          <MiniMetric value={`${summary.doors}P · ${summary.windows}V`} label="vanos" />
         </div>
 
         <div className="mt-3 grid gap-2 lg:grid-cols-2">
@@ -132,14 +229,67 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
             <div className="flex flex-wrap gap-1">{LIGHT.map(([id, label]) => <button key={id} type="button" onClick={() => setLight(id)} className={`rounded-full px-2.5 py-1.5 text-[8px] font-black ${light === id ? 'bg-[#57D4FF] text-black' : 'bg-white/[.06] text-white/45'}`}>{label}</button>)}</div>
           </div>
         </div>
-        <p className="mt-2 text-[8px] leading-4 text-white/28">Suelo generado proceduralmente en el navegador: sin descargas externas, CORS ni dependencia de licencias. La geometría del perfil se exagera visualmente para poder leerla en pantalla.</p>
+
+        <div className="mt-3 rounded-xl border border-cyan-300/12 bg-cyan-300/[.035] p-3 text-[8px] leading-4 text-white/40">
+          <b className="text-cyan-100/80">Geometría de referencia.</b> {activePreset.sourceNote} La separación de montantes se toma del selector de 40/60 cm. La malla muestra cómo se organiza el entramado; el dimensionamiento final de perfiles, dinteles, anclajes y arriostramientos depende del cálculo del proyecto.
+        </div>
       </div>
     </div>
   );
 }
 
+function makeCustomPanelPreset(input: MetalconInput): MetalconHousePreset {
+  const openings: MetalconAssemblyOpening[] = [];
+  if (input.door.enabled) openings.push({ id: 'CUSTOM-D1', kind: 'door', offsetM: input.door.xM, widthM: input.door.widthM, heightM: input.door.heightM, sillM: 0, label: 'Puerta editable' });
+  if (input.window.enabled) openings.push({ id: 'CUSTOM-W1', kind: 'window', offsetM: input.window.xM, widthM: input.window.widthM, heightM: input.window.heightM, sillM: input.window.sillM, label: 'Ventana editable' });
+  return {
+    id: 'compact-5x5',
+    label: `Panel editable ${input.widthM.toFixed(2)} × ${input.heightM.toFixed(2)} m`,
+    shortLabel: 'Panel',
+    widthM: input.widthM,
+    depthM: Math.max(1.3, input.cDepthMm / 1000 * 9),
+    heightM: input.heightM,
+    sourceNote: 'Este modo usa exactamente el largo, alto y vanos definidos en el configurador lateral.',
+    walls: [{
+      id: 'P-EDIT',
+      label: `P-EDIT · ${input.widthM.toFixed(2)} m`,
+      start: { x: 0, z: Math.max(1.3, input.cDepthMm / 1000 * 9) / 2 },
+      end: { x: input.widthM, z: Math.max(1.3, input.cDepthMm / 1000 * 9) / 2 },
+      role: 'perimeter',
+      structural: input.preset !== 'partition',
+      braced: input.preset !== 'partition',
+      openings,
+    }],
+  };
+}
+
 function chip(active: boolean) {
   return `inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[8px] font-black uppercase tracking-[.1em] transition ${active ? 'bg-[#57D4FF] text-black' : 'bg-white/[.07] text-white/60'}`;
+}
+
+function ModelButton({ active, onClick, label, detail }: { active: boolean; onClick: () => void; label: string; detail: string }) {
+  return <button type="button" onClick={onClick} className={`min-w-[132px] shrink-0 rounded-xl border px-3 py-2 text-left ${active ? 'border-[#F6C64A]/45 bg-[#F6C64A]/10' : 'border-white/8 bg-white/[.025]'}`}><b className={`block text-[9px] ${active ? 'text-[#F6C64A]' : 'text-white/65'}`}>{label}</b><small className="mt-1 block text-[7px] text-white/30">{detail}</small></button>;
+}
+
+function CameraButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+  return <button type="button" onClick={onClick} className={`flex h-8 min-w-14 items-center justify-center gap-1 rounded-lg px-2 text-[7px] font-black ${active ? 'bg-cyan-300 text-black' : 'bg-white/[.06] text-white/45'}`}>{icon}{label}</button>;
+}
+
+function MiniMetric({ value, label }: { value: string | number; label: string }) {
+  return <div className="rounded-xl bg-white/[.04] p-3"><b className="text-base text-[#F6C64A]">{value}</b><small className="mt-1 block text-[7px] text-white/35">{label}</small></div>;
+}
+
+function CameraDirector({ preset, cameraPreset }: { preset: MetalconHousePreset; cameraPreset: CameraPreset }) {
+  const { camera } = useThree();
+  useEffect(() => {
+    const maxDimension = Math.max(preset.widthM, preset.depthM + (preset.terraceDepthM ?? 0));
+    if (cameraPreset === 'top') camera.position.set(0.01, Math.max(8, maxDimension * 1.55), 0.02);
+    else if (cameraPreset === 'front') camera.position.set(0, Math.max(2.8, preset.heightM * 1.35), Math.max(7, preset.depthM * 1.35));
+    else camera.position.set(Math.max(6.5, preset.widthM * 1.05), Math.max(4.6, preset.heightM * 2.1), Math.max(7.2, preset.depthM * 1.05));
+    camera.lookAt(0, preset.heightM * 0.42, 0);
+    camera.updateProjectionMatrix();
+  }, [camera, cameraPreset, preset]);
+  return null;
 }
 
 function pseudo(index: number, seed: number) {
@@ -158,14 +308,14 @@ function proceduralTexture(kind: Ground) {
   };
   const base = colors[kind];
   const seed = kind === 'hormigon' ? 3 : kind === 'pasto' ? 7 : kind === 'tierra' ? 11 : 15;
-  for (let i = 0; i < size * size; i += 1) {
-    const grain = (pseudo(i, seed) - 0.5) * (kind === 'hormigon' ? 34 : 58);
-    const fleck = pseudo(i + 911, seed) > 0.966 ? 34 : 0;
+  for (let index = 0; index < size * size; index += 1) {
+    const grain = (pseudo(index, seed) - 0.5) * (kind === 'hormigon' ? 34 : 58);
+    const fleck = pseudo(index + 911, seed) > 0.966 ? 34 : 0;
     const offset = grain + fleck;
-    data[i * 4] = Math.max(0, Math.min(255, base[0] + offset));
-    data[i * 4 + 1] = Math.max(0, Math.min(255, base[1] + offset * 0.82));
-    data[i * 4 + 2] = Math.max(0, Math.min(255, base[2] + offset * 0.65));
-    data[i * 4 + 3] = 255;
+    data[index * 4] = Math.max(0, Math.min(255, base[0] + offset));
+    data[index * 4 + 1] = Math.max(0, Math.min(255, base[1] + offset * 0.82));
+    data[index * 4 + 2] = Math.max(0, Math.min(255, base[2] + offset * 0.65));
+    data[index * 4 + 3] = 255;
   }
   const texture = new DataTexture(data, size, size, RGBAFormat, UnsignedByteType);
   texture.needsUpdate = true;
@@ -189,124 +339,34 @@ function ViewerEnvironment({ ground, light }: { ground: Ground; light: Light }) 
     {light === 'noche' ? <Stars radius={70} depth={45} count={800} factor={2.3} saturation={0} fade speed={0.35} /> : <Sky distance={450000} sunPosition={cfg.sun} turbidity={light === 'atardecer' ? 9 : 5} rayleigh={light === 'atardecer' ? 4 : 2} />}
     <ambientLight intensity={cfg.ambient} />
     <hemisphereLight args={[light === 'noche' ? '#536184' : '#c9deed', '#43392f', 0.5]} />
-    <directionalLight position={cfg.sun} intensity={cfg.power} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-9} shadow-camera-right={9} shadow-camera-top={9} shadow-camera-bottom={-9} />
-    <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.04, 0]}><planeGeometry args={[55, 55]} /><meshStandardMaterial map={texture} roughness={ground === 'hormigon' ? 0.82 : 1} /></mesh>
-    <ContactShadows position={[0, 0.015, 0]} opacity={0.38} scale={15} blur={2.5} far={8} />
+    <directionalLight position={cfg.sun} intensity={cfg.power} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-11} shadow-camera-right={11} shadow-camera-top={11} shadow-camera-bottom={-11} />
+    <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.12, 0]}><planeGeometry args={[70, 70]} /><meshStandardMaterial map={texture} roughness={ground === 'hormigon' ? 0.82 : 1} /></mesh>
+    <ContactShadows position={[0, 0.015, 0]} opacity={0.3} scale={20} blur={2.5} far={12} />
   </>;
 }
 
-function PanelScene({ input, view, explode, timeline }: { input: MetalconInput; view: View; explode: boolean; timeline: number }) {
-  const group = useRef<Group>(null);
-  const depth = Math.max(0.07, input.cDepthMm / 1000);
-  const count = Math.max(2, Math.floor(input.widthM * 100 / input.spacingCm) + 1);
-  const spacing = input.widthM / Math.max(1, count - 1);
-  const fit = Math.min(1, 5.5 / input.widthM, 3.1 / input.heightM);
-  const openings: Array<[MetalconOpening, string, string]> = [[input.door, 'PUERTA', '#F6C64A'], [input.window, 'VENTANA', '#57D4FF']];
-  const insideOpening = (xM: number) => openings.some(([opening]) => opening.enabled && xM > opening.xM && xM < opening.xM + opening.widthM);
-  const phase = (start: number, end: number) => Math.max(0, Math.min(1, (timeline - start) / (end - start)));
-  const explodeOffset = explode ? 0.18 : 0;
-
-  useFrame(({ clock }) => {
-    if (!group.current || !explode) return;
-    group.current.position.y = Math.sin(clock.elapsedTime * 1.4) * 0.015;
-  });
-
-  return <group scale={fit} position={[0, 0.05, 0]} ref={group}>
-    <Member position={[0, 0.055, explodeOffset]} size={[input.widthM, 0.055, depth]} color="#edf1f4" opacity={timeline > 0 ? phase(0, 0.16) : 1} />
-    <Member position={[0, input.heightM + 0.055, explodeOffset]} size={[input.widthM, 0.055, depth]} color="#edf1f4" opacity={timeline > 0 ? phase(0, 0.16) : 1} />
-
-    {Array.from({ length: count }, (_, index) => {
-      const x = -input.widthM / 2 + index * spacing;
-      const localX = x + input.widthM / 2;
-      if (insideOpening(localX)) return null;
-      return <Member key={index} position={[x, input.heightM / 2 + 0.055, explode ? ((index % 2 ? 1 : -1) * 0.11) : 0]} size={[0.045, input.heightM, depth]} color="#d5dce2" opacity={timeline > 0 ? phase(0.12, 0.42) : 1} />;
-    })}
-
-    {openings.map(([opening, label, tone], index) => opening.enabled ? <OpeningFrame key={label} opening={opening} input={input} tone={view === 'reinforcement' ? tone : '#cbd2d8'} depth={depth} opacity={timeline > 0 ? phase(0.35, 0.68) : 1} z={explode ? 0.16 + index * 0.06 : 0.01} label={view === 'dimensions' || view === 'reinforcement' ? label : undefined} /> : null)}
-
-    <Brace input={input} direction={1} opacity={timeline > 0 ? phase(0.62, 0.84) : 1} z={explode ? 0.3 : depth / 2 + 0.018} />
-    <Brace input={input} direction={-1} opacity={timeline > 0 ? phase(0.62, 0.84) : 1} z={explode ? 0.34 : depth / 2 + 0.022} />
-
-    {view === 'osb' ? <OsbSheets input={input} opacity={timeline > 0 ? phase(0.78, 1) : 1} z={explode ? 0.55 : depth / 2 + 0.055} /> : null}
-    {view === 'dimensions' ? <Measurements input={input} /> : null}
-    {view === 'reinforcement' ? <ReinforcementNotes input={input} /> : null}
-  </group>;
+function ProfileScene({ input }: { input: MetalconInput }) {
+  const depth = input.cDepthMm / 1000;
+  const web = Math.max(0.18, depth * 2.2);
+  const flange = 0.18;
+  return (
+    <group position={[0, 1.05, 0]}>
+      <group position={[-1.15, 0, 0]} rotation={[0.18, -0.45, 0.05]}>
+        <mesh castShadow><boxGeometry args={[0.08, 2.5, web]} /><meshStandardMaterial color="#d9e0e6" metalness={0.86} roughness={0.25} /></mesh>
+        <mesh position={[flange / 2, 0, web / 2]} castShadow><boxGeometry args={[flange, 2.5, 0.035]} /><meshStandardMaterial color="#d9e0e6" metalness={0.86} roughness={0.25} /></mesh>
+        <mesh position={[flange / 2, 0, -web / 2]} castShadow><boxGeometry args={[flange, 2.5, 0.035]} /><meshStandardMaterial color="#d9e0e6" metalness={0.86} roughness={0.25} /></mesh>
+        <Html center distanceFactor={8} position={[0, 1.55, 0]}><ProfileTag title="Montante C" detail={`alma ${input.cDepthMm} mm · e ${input.thicknessMm.toFixed(2)} mm`} /></Html>
+      </group>
+      <group position={[1.15, -0.65, 0]} rotation={[0, 0.45, Math.PI / 2]}>
+        <mesh castShadow><boxGeometry args={[0.08, 2.5, web * 1.06]} /><meshStandardMaterial color="#bfc8cf" metalness={0.84} roughness={0.28} /></mesh>
+        <mesh position={[flange / 2, 0, web * 0.53]} castShadow><boxGeometry args={[flange, 2.5, 0.035]} /><meshStandardMaterial color="#bfc8cf" metalness={0.84} roughness={0.28} /></mesh>
+        <mesh position={[flange / 2, 0, -web * 0.53]} castShadow><boxGeometry args={[flange, 2.5, 0.035]} /><meshStandardMaterial color="#bfc8cf" metalness={0.84} roughness={0.28} /></mesh>
+        <Html center distanceFactor={8} position={[0, 1.55, 0]}><ProfileTag title="Solera U" detail="base/coronación · recibe montantes" /></Html>
+      </group>
+    </group>
+  );
 }
 
-function Member({ position, size, color, opacity = 1 }: { position: [number, number, number]; size: [number, number, number]; color: string; opacity?: number }) {
-  return <mesh position={position} castShadow visible={opacity > 0.01}><boxGeometry args={size} /><meshStandardMaterial color={color} metalness={0.82} roughness={0.3} transparent opacity={opacity} /></mesh>;
+function ProfileTag({ title, detail }: { title: string; detail: string }) {
+  return <div className="min-w-40 rounded-xl border border-white/10 bg-black/80 px-3 py-2 text-center"><div className="text-[9px] font-black uppercase tracking-[.12em] text-[#57D4FF]">{title}</div><div className="mt-1 text-[8px] font-bold text-white/60">{detail}</div></div>;
 }
-
-function OpeningFrame({ opening, input, tone, depth, opacity, z, label }: { opening: MetalconOpening; input: MetalconInput; tone: string; depth: number; opacity: number; z: number; label?: string }) {
-  const left = -input.widthM / 2 + opening.xM;
-  const right = left + opening.widthM;
-  const bottom = opening.sillM;
-  const top = opening.sillM + opening.heightM;
-  return <group>
-    <Member position={[left - 0.035, input.heightM / 2 + 0.055, z]} size={[0.055, input.heightM, depth]} color={tone} opacity={opacity} />
-    <Member position={[right + 0.035, input.heightM / 2 + 0.055, z]} size={[0.055, input.heightM, depth]} color={tone} opacity={opacity} />
-    <Member position={[(left + right) / 2, top + 0.035, z]} size={[opening.widthM + 0.14, 0.07, depth]} color={tone} opacity={opacity} />
-    {bottom > 0.02 ? <Member position={[(left + right) / 2, bottom - 0.035, z]} size={[opening.widthM + 0.14, 0.07, depth]} color={tone} opacity={opacity} /> : null}
-    {label ? <Html center distanceFactor={8} position={[(left + right) / 2, top + 0.25, z + 0.05]}><span className="whitespace-nowrap rounded-full bg-black/80 px-2 py-1 text-[8px] font-black text-white">{label} {opening.widthM.toFixed(2)} × {opening.heightM.toFixed(2)} m</span></Html> : null}
-  </group>;
-}
-
-function Brace({ input, direction, opacity, z }: { input: MetalconInput; direction: 1 | -1; opacity: number; z: number }) {
-  const width = input.widthM * 0.86;
-  const height = input.heightM * 0.84;
-  const length = Math.sqrt(width * width + height * height);
-  const angle = Math.atan2(width, height) * direction;
-  return <mesh position={[0, input.heightM * 0.5 + 0.08, z]} rotation={[0, 0, angle]} castShadow visible={opacity > 0.01}><boxGeometry args={[0.026, length, 0.014]} /><meshStandardMaterial color="#F6C64A" metalness={0.58} roughness={0.4} transparent opacity={opacity} /></mesh>;
-}
-
-function OsbSheets({ input, opacity, z }: { input: MetalconInput; opacity: number; z: number }) {
-  const sheetWidth = input.osbWidthCm / 100;
-  const count = Math.ceil(input.widthM / sheetWidth);
-  return <group>{Array.from({ length: count }, (_, index) => {
-    const start = index * sheetWidth;
-    const width = Math.min(sheetWidth, input.widthM - start);
-    const x = -input.widthM / 2 + start + width / 2;
-    return <mesh key={index} position={[x, input.heightM / 2 + 0.055, z]} castShadow><boxGeometry args={[Math.max(0.02, width - 0.02), input.heightM * 0.98, 0.035]} /><meshStandardMaterial color="#a66f38" roughness={0.86} transparent opacity={0.72 * opacity} /></mesh>;
-  })}</group>;
-}
-
-function Measurements({ input }: { input: MetalconInput }) {
-  return <>
-    <Html center distanceFactor={8} position={[0, input.heightM + 0.36, 0.08]}><Measure text={`${input.widthM.toFixed(2)} m ancho`} /></Html>
-    <Html center distanceFactor={8} position={[-input.widthM / 2 - 0.38, input.heightM / 2, 0.08]}><Measure text={`${input.heightM.toFixed(2)} m alto`} /></Html>
-    <Html center distanceFactor={8} position={[input.widthM / 2 + 0.38, input.heightM * 0.6, 0.08]}><Measure text={`Montantes @ ${input.spacingCm} cm`} /></Html>
-    <Html center distanceFactor={8} position={[0, -0.18, 0.08]}><Measure text={`C ${input.cDepthMm} · e ${input.thicknessMm.toFixed(2)} mm`} /></Html>
-  </>;
-}
-
-function Measure({ text }: { text: string }) { return <span className="whitespace-nowrap rounded-lg border border-cyan-300/20 bg-black/80 px-2 py-1 text-[8px] font-black tracking-[.08em] text-cyan-100">{text}</span>; }
-
-function ReinforcementNotes({ input }: { input: MetalconInput }) {
-  return <>
-    <Html center distanceFactor={8} position={[0, input.heightM * 0.53, 0.18]}><span className="rounded-full border border-[#F6C64A]/25 bg-black/85 px-2 py-1 text-[8px] font-black text-[#F6C64A]">Arriostramiento X · ejemplo visual</span></Html>
-    <Html center distanceFactor={8} position={[-input.widthM / 2 + 0.1, 0.2, 0.18]}><span className="rounded-full border border-emerald-300/25 bg-black/85 px-2 py-1 text-[8px] font-black text-emerald-300">Zona de anclaje</span></Html>
-  </>;
-}
-
-function ProfileScene({ input, timeline }: { input: MetalconInput; timeline: number }) {
-  const progress = timeline > 0 ? timeline : 1;
-  return <group position={[0, 0.45, 0]} scale={1.25}>
-    <group position={[-1.35, 0.7, 0]} rotation={[0.08, -0.38, 0]}><Channel type="C" progress={progress} /><Html center distanceFactor={8} position={[0, 1.45, 0]}><ProfileTag title={`Montante C ${input.cDepthMm}`} detail={`e ${input.thicknessMm.toFixed(2)} mm · alas/labios visuales`} /></Html></group>
-    <group position={[1.45, 0.7, 0]} rotation={[0.08, 0.38, 0]}><Channel type="U" progress={progress} /><Html center distanceFactor={8} position={[0, 1.45, 0]}><ProfileTag title={`Solera U compatible`} detail={`base y coronación · C ${input.cDepthMm}`} /></Html></group>
-  </group>;
-}
-
-function Channel({ type, progress }: { type: 'C' | 'U'; progress: number }) {
-  const length = 2.4 * Math.max(0.08, progress);
-  const web = 0.2;
-  const flange = type === 'C' ? 0.085 : 0.065;
-  const t = 0.014;
-  return <group rotation={[0, 0, Math.PI / 2]}>
-    <Member position={[0, 0, 0]} size={[t, length, web]} color="#e3e8ed" />
-    <Member position={[flange / 2, 0, web / 2 - t / 2]} size={[flange, length, t]} color="#cfd6dd" />
-    <Member position={[flange / 2, 0, -web / 2 + t / 2]} size={[flange, length, t]} color="#cfd6dd" />
-    {type === 'C' ? <><Member position={[flange - t / 2, 0, web / 2 - 0.027]} size={[t, length, 0.055]} color="#b9c3cb" /><Member position={[flange - t / 2, 0, -web / 2 + 0.027]} size={[t, length, 0.055]} color="#b9c3cb" /></> : null}
-  </group>;
-}
-
-function ProfileTag({ title, detail }: { title: string; detail: string }) { return <div className="min-w-40 rounded-xl border border-white/10 bg-black/80 px-3 py-2 text-center"><div className="text-[9px] font-black uppercase tracking-[.12em] text-[#57D4FF]">{title}</div><div className="mt-1 text-[8px] font-bold text-white/60">{detail}</div></div>; }

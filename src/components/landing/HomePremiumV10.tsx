@@ -16,6 +16,7 @@ import {
   Wind,
 } from 'lucide-react';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
+import { HOME_PREMIUM_VISUALS } from '@/lib/homePremiumVisuals';
 import ConstructionM2Calculator from './ConstructionM2Calculator';
 import MetalconSeismicStory from './MetalconSeismicStory';
 import styles from './HomePremiumV10.module.css';
@@ -27,7 +28,7 @@ const RADIER_VISUAL = `${CLOUD}/c_limit,w_1100/f_auto/q_auto/v1788934479/hormigo
 const CATEGORIES = [
   { key: 'air', eyebrow: 'Climatización', title: 'Aire acondicionado', text: 'Calcula BTU, compara capacidad y encuentra el equipo adecuado para tu espacio.', image: `${ORIGINALS}/aire-acondicionado.png`, href: '/herramientas/aire-acondicionado', cta: 'Calcular BTU', alt: 'Aire acondicionado split blanco' },
   { key: 'radier', eyebrow: 'Obra base', title: 'Radier', text: 'Ingresa medidas, espesor y forma para estimar hormigón, materiales y referencia de costo.', image: RADIER_VISUAL, href: '/herramientas/radier', cta: 'Calcular radier', alt: 'Hormigón para cálculo de radier' },
-  { key: 'metal', eyebrow: 'Estructuras', title: 'Metalcon', text: 'Configura paneles, vanos, perfiles y refuerzos antes de pasar a presupuesto o simulación sísmica.', image: `${ORIGINALS}/perfiles-metalcom.png`, href: '/herramientas/metalcon', cta: 'Abrir configurador', alt: 'Perfiles de acero galvanizado Metalcon' },
+  { key: 'metal', eyebrow: 'Estructuras', title: 'Metalcon', text: 'Configura paneles, vanos, perfiles y refuerzos antes de pasar a presupuesto o simulación sísmica.', image: HOME_PREMIUM_VISUALS.metalcon, href: '/herramientas/metalcon', cta: 'Abrir configurador', alt: 'Estructura Metalcon y Steel Frame de referencia' },
 ] as const;
 
 const TOOLS = [

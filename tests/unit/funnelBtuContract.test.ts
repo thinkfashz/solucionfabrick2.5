@@ -94,7 +94,8 @@ describe('Funnel BTU contract', () => {
     const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
     expect(funnel).toContain('targetCapacityLabel');
     expect(funnel).toContain('displayedProductCapacityLabel');
-    expect(funnel).toContain('capacidad superior compatible');
+    expect(funnel).toContain('catalogUsesSuperiorCapacity');
+    expect(funnel).toContain('primary.capacity > sizing.recommendedCapacity');
   });
 
   it('calcula energía con la capacidad del equipo sugerido cuando existe', () => {

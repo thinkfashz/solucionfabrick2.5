@@ -10,7 +10,7 @@ const ORIGINALS = `${CLOUD}/soluciones-fabrick/diseno-20260908`;
 const CATEGORIES = [
   { key: 'air', eyebrow: 'Climatización', title: 'Aire Acondicionado', text: 'Calcula los BTU de tu espacio y compara equipos compatibles con stock real.', image: `${ORIGINALS}/aire-acondicionado.png`, href: '/herramientas/aire-acondicionado', alt: 'Aire acondicionado split blanco' },
   { key: 'cement', eyebrow: 'Construcción', title: 'Cemento', text: 'Base sólida para grandes ideas.', image: `${ORIGINALS}/cemento.png`, href: '/tienda', alt: 'Saco de cemento de referencia' },
-  { key: 'metal', eyebrow: 'Estructuras', title: 'Metalcom', text: 'Estructuras que dan forma al futuro.', image: `${ORIGINALS}/perfiles-metalcom.png`, href: '/tienda', alt: 'Perfiles de acero galvanizado Metalcom' },
+  { key: 'metal', eyebrow: 'Estructuras', title: 'Metalcon', text: 'Configura perfiles, puertas, ventanas y refuerzos en una vista interactiva.', image: `${ORIGINALS}/perfiles-metalcom.png`, href: '/herramientas/metalcon', alt: 'Perfiles de acero galvanizado Metalcon' },
 ];
 
 export default function HomePremiumV10({ copyrightText, socialLinks }: {
@@ -64,6 +64,10 @@ export default function HomePremiumV10({ copyrightText, socialLinks }: {
           <Image src={item.image} alt={item.alt} width={1536} height={1152} unoptimized />
           <span>{item.title}<ArrowRight size={17} /></span>
         </Link>)}</div>
+      </section>
+      <section className={styles.globalCalculator}>
+        <div><p>Calculadora global</p><h2>Todos los trabajos, productos y rangos en un solo presupuesto.</h2><span>Selecciona el servicio, ingresa medidas, compara complejidad y terminación, agrega productos del catálogo y solicita una cotización real.</span></div>
+        <Link href="/presupuesto" className={styles.primary}>Calcular proyecto completo <ArrowRight size={18}/></Link>
       </section>
       <ConstructionM2Calculator />
       <footer className={styles.footer}>

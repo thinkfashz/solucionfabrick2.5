@@ -231,6 +231,8 @@ export default function CloudinaryProjectsGallery() {
           </div>
         </section>
 
+        <section className="border-b border-white/10 bg-[#080D10] px-4 py-8 text-white sm:px-6 lg:px-8"><div className="mx-auto grid max-w-[1380px] gap-3 md:grid-cols-4"><Journey number="01" title="Elige una idea" text="Guarda una referencia que represente tu espacio."/><Journey number="02" title="Calcula" text="Abre la calculadora global e ingresa tus medidas."/><Journey number="03" title="Compra" text="Añade materiales o equipos disponibles en tienda."/><Journey number="04" title="Cotiza" text="Solicita revisión, alcance y precio definitivo."/></div></section>
+
         <section id="albumes" className="scroll-mt-20 px-3 py-10 sm:px-6 lg:px-8 lg:py-16">
           <div className="mx-auto max-w-[1380px]">
             <div className="flex flex-col gap-4 border-b border-black/10 pb-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#B96F00]">Biblioteca visual</p><h2 className="mt-2 text-4xl font-black leading-[.92] tracking-[-.055em] sm:text-6xl">Encuentra una idea y ábrela.</h2></div><p className="max-w-xl text-sm leading-6 text-black/45">Dos álbumes por fila en móvil y hasta cuatro en escritorio. Cada tarjeta deja ver varias imágenes antes de entrar.</p></div>
@@ -274,3 +276,4 @@ function AlbumCard({ album, assets }: { album: InspirationAlbum; assets: Inspira
 function EmptyState({ title, text }: { title: string; text: string }) {
   return <div className="mt-7 grid min-h-[32vh] place-items-center rounded-2xl bg-white p-8 text-center"><div><Images className="mx-auto h-9 w-9 text-[#F5871F]"/><h2 className="mt-4 text-2xl font-black">{title}</h2><p className="mt-2 text-sm text-black/45">{text}</p></div></div>;
 }
+function Journey({number,title,text}:{number:string;title:string;text:string}){return <article className="rounded-2xl border border-white/10 bg-white/[.035] p-4"><span className="text-[9px] font-black text-[#F6C64A]">{number}</span><h3 className="mt-3 text-sm font-black">{title}</h3><p className="mt-1 text-[10px] leading-4 text-white/42">{text}</p></article>}

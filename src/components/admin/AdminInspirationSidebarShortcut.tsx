@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
-import { Activity, Images, Megaphone, Sparkles } from 'lucide-react';
+import { Activity, Images, Megaphone, MessagesSquare, Sparkles } from 'lucide-react';
 
 export default function AdminInspirationSidebarShortcut() {
   const [target, setTarget] = useState<HTMLElement | null>(null);
@@ -29,6 +29,7 @@ export default function AdminInspirationSidebarShortcut() {
       <p className="mb-2 px-1 text-[8px] font-black uppercase tracking-[.18em] text-white/35">Accesos rápidos</p>
       <div className="grid gap-2">
         <QuickLink href="/admin/proyectos" title="Estudio de Inspiraciones" subtitle="Álbumes · Cloudinary · IA" icon={Images} />
+        <QuickLink href="/admin/comentarios-inspiracion" title="Comentarios de Inspiraciones" subtitle="Moderación · Sugerencias · Respuestas" icon={MessagesSquare} />
         <QuickLink href="/admin/publicidad/creador" title="Creador de Anuncios IA" subtitle="Copy · Preview · Meta Ads" icon={Megaphone} />
         <QuickLink href="/admin/analitica" title="Analítica del sitio" subtitle="Vistas · Origen · Duración" icon={Activity} />
       </div>

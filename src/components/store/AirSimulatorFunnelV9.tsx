@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   BadgeCheck,
@@ -8,15 +9,22 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock3,
+  Droplets,
+  Flame,
   Gauge,
+  Leaf,
   Loader2,
   Minus,
+  MoonStar,
   Plus,
   Power,
   ShieldCheck,
   ShoppingCart,
+  Snowflake,
+  Sparkles,
   ThermometerSnowflake,
   Waves,
+  Wind,
   Zap,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -36,12 +44,23 @@ import {
   type InsulationLevel,
   type SunExposure,
 } from '@/lib/airConditioning';
+import {
+  AIR_FAN_LABELS,
+  AIR_MODE_LABELS,
+  simulateAirOperation,
+  type AirFanSpeed,
+  type AirMode,
+} from '@/lib/airOperation';
+
+const AirThreeScene = dynamic(() => import('./AirThreeScene'), {
+  ssr: false,
+  loading: () => <div className="grid h-[330px] place-items-center rounded-[1.6rem] border border-white/10 bg-[#080c10] sm:h-[390px] lg:h-[420px]"><Loader2 className="h-6 w-6 animate-spin text-cyan-200" /></div>,
+});
 
 const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
-const NUMBER = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 1 });
+const NUMBER = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
 const CLOUD = 'https://res.cloudinary.com/disghf6xc/image/upload';
 const BG = `${CLOUD}/c_fill,g_auto,w_1920,h_1200/e_blur:6/q_auto:good/f_auto/v1788671813/air-bedroom-background.jpg`;
-const FALLBACK_AIR = `${CLOUD}/soluciones-fabrick/diseno-20260908/aire-acondicionado.png`;
 
 const climateLabels: Record<ClimateZone, string> = {
   norte: 'Norte cálido',
@@ -50,11 +69,12 @@ const climateLabels: Record<ClimateZone, string> = {
   sur: 'Sur',
 };
 
-const ROOM_SCENE: Record<AirRoomType, { glow: string; accent: string }> = {
-  dormitorio: { glow: 'rgba(84,153,255,.25)', accent: '#7EDCFF' },
-  living: { glow: 'rgba(100,197,255,.22)', accent: '#78E5FF' },
-  oficina: { glow: 'rgba(84,210,255,.20)', accent: '#63D8FF' },
-  cocina: { glow: 'rgba(255,166,74,.18)', accent: '#8FE8FF' },
+const modeIcons: Record<AirMode, ReactNode> = {
+  auto: <Sparkles size={14} />,
+  cool: <Snowflake size={14} />,
+  dry: <Droplets size={14} />,
+  fan: <Wind size={14} />,
+  heat: <Flame size={14} />,
 };
 
 type TierEntry = {
@@ -77,7 +97,6 @@ function distinctTierEntries(
 ): TierEntry[] {
   const entries: TierEntry[] = [];
   const seen = new Set<string>();
-
   const pickUnused = (preferred?: AirRecommendation, reverse = false) => {
     if (preferred && !seen.has(preferred.product.id)) return preferred;
     const pool = reverse ? [...recommendations].reverse() : recommendations;
@@ -87,21 +106,18 @@ function distinctTierEntries(
   const economy = pickUnused(tiers.economy);
   if (economy) {
     seen.add(economy.product.id);
-    entries.push({ key: 'economy', label: 'Ahorro', note: 'La alternativa compatible de menor precio verificado.', recommendation: economy });
+    entries.push({ key: 'economy', label: 'Ahorro', note: 'La alternativa compatible de menor precio.', recommendation: economy });
   }
-
   const recommended = pickUnused(tiers.recommended);
   if (recommended) {
     seen.add(recommended.product.id);
-    entries.push({ key: 'recommended', label: 'Recomendado', note: 'La mejor alternativa restante por capacidad, stock y atributos.', recommendation: recommended });
+    entries.push({ key: 'recommended', label: 'Recomendado', note: 'El mejor equilibrio entre capacidad, stock y prestaciones.', recommendation: recommended });
   }
-
   const premium = pickUnused(tiers.premium, true);
   if (premium) {
     seen.add(premium.product.id);
-    entries.push({ key: 'premium', label: 'Premium', note: 'Una referencia superior disponible para quien prioriza prestaciones y margen.', recommendation: premium });
+    entries.push({ key: 'premium', label: 'Premium', note: 'Una alternativa superior para quien prioriza prestaciones y margen.', recommendation: premium });
   }
-
   return entries;
 }
 
@@ -122,7 +138,14 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
   const [climateZone, setClimateZone] = useState<ClimateZone>('centro');
   const [targetTempC, setTargetTempC] = useState(23);
   const [hoursPerDay, setHoursPerDay] = useState(8);
+
   const [powerOn, setPowerOn] = useState(true);
+  const [mode, setMode] = useState<AirMode>('auto');
+  const [fanSpeed, setFanSpeed] = useState<AirFanSpeed>('auto');
+  const [eco, setEco] = useState(false);
+  const [sleep, setSleep] = useState(false);
+  const [turbo, setTurbo] = useState(false);
+  const [swing, setSwing] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -138,14 +161,13 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
         setCatalogError('');
       } catch {
         if (!active) return;
-        if (!products.length) setCatalogError('No pudimos cargar equipos disponibles. La calculadora sigue funcionando, pero no mostraremos una compra hasta verificar catálogo y stock.');
+        if (!products.length) setCatalogError('No pudimos cargar equipos disponibles. La calculadora sigue activa, pero la compra se mantiene bloqueada hasta recuperar catálogo y stock.');
       } finally {
         if (active) setCatalogRefreshing(false);
       }
     }
     void refreshCatalog();
     return () => { active = false; };
-    // initialProducts is the stable server preload for this page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -167,20 +189,35 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
   const primary = tiers.recommended || recommendations[0];
   const roomProfile = AIR_ROOM_PROFILES[roomType];
   const ambientTempC = useMemo(() => simulatedAmbient(climateZone, sunExposure, roomType), [climateZone, sunExposure, roomType]);
-  const energy = useMemo(() => estimateAirEnergy({
-    capacityBtu: primary?.capacity || (sizing.requiresMultiUnit ? sizing.perUnitCapacity : sizing.recommendedCapacity),
-    unitCount: sizing.requiresMultiUnit ? sizing.minimumUnits : 1,
+  const unitCount = sizing.requiresMultiUnit ? sizing.minimumUnits : 1;
+  const capacityBtu = primary?.capacity || (sizing.requiresMultiUnit ? sizing.perUnitCapacity : sizing.recommendedCapacity);
+
+  const baseEnergy = useMemo(() => estimateAirEnergy({
+    capacityBtu,
+    unitCount,
     targetTempC,
     ambientTempC,
     hoursPerDay,
     electricityRateClpKwh: DEFAULT_ELECTRICITY_RATE_CLP_KWH,
-  }), [primary, sizing, targetTempC, ambientTempC, hoursPerDay]);
+  }), [capacityBtu, unitCount, targetTempC, ambientTempC, hoursPerDay]);
 
-  const scene = ROOM_SCENE[roomType];
-  const liveKw = powerOn ? energy.electricalKwNow : 0;
-  const liveMonthlyKwh = powerOn ? energy.monthlyKwh : 0;
-  const liveMonthlyCost = powerOn ? energy.monthlyCostClp : 0;
-  const productImage = primary?.product.image_url || FALLBACK_AIR;
+  const operation = useMemo(() => simulateAirOperation({
+    powerOn,
+    mode,
+    fanSpeed,
+    eco,
+    sleep,
+    turbo,
+    swing,
+    baseElectricalKw: baseEnergy.electricalKwNow,
+    baseLoadPercent: baseEnergy.loadPercent,
+    unitCount,
+    ambientTempC,
+    targetTempC,
+    hoursPerDay,
+    electricityRateClpKwh: DEFAULT_ELECTRICITY_RATE_CLP_KWH,
+  }), [powerOn, mode, fanSpeed, eco, sleep, turbo, swing, baseEnergy, unitCount, ambientTempC, targetTempC, hoursPerDay]);
+
   const targetCapacityLabel = sizing.requiresMultiUnit
     ? `${sizing.minimumUnits} × ${Math.round(sizing.perUnitCapacity / 1000)}K`
     : `${Math.round(sizing.recommendedCapacity / 1000)}K`;
@@ -199,35 +236,44 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
     router.push(`/checkout?${params.toString()}`);
   }
 
+  function toggleEco() {
+    setEco((value) => {
+      const next = !value;
+      if (next) setTurbo(false);
+      return next;
+    });
+  }
+
+  function toggleTurbo() {
+    setTurbo((value) => {
+      const next = !value;
+      if (next) {
+        setEco(false);
+        setSleep(false);
+      }
+      return next;
+    });
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#07090b] text-white">
-      <style jsx global>{`
-        @keyframes air-flow {
-          0% { transform: translate3d(-18%,0,0) scaleX(.45); opacity: 0; }
-          28% { opacity: .62; }
-          100% { transform: translate3d(52%,12px,0) scaleX(1.12); opacity: 0; }
-        }
-        .air-flow { animation-name: air-flow; animation-timing-function: linear; animation-iteration-count: infinite; will-change: transform, opacity; }
-        @media (prefers-reduced-motion: reduce) { .air-flow { animation: none !important; opacity: .2 !important; } }
-      `}</style>
-
       <div className="pointer-events-none fixed inset-0">
-        <img src={BG} alt="" className="h-full w-full scale-[1.03] object-cover opacity-45" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,6,7,.9),rgba(6,7,8,.58)_52%,rgba(5,6,7,.9)),linear-gradient(180deg,rgba(5,6,7,.5),rgba(5,6,7,.9))]" />
+        <img src={BG} alt="" className="h-full w-full scale-[1.03] object-cover opacity-42" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,6,7,.92),rgba(6,7,8,.62)_52%,rgba(5,6,7,.92)),linear-gradient(180deg,rgba(5,6,7,.52),rgba(5,6,7,.92))]" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-[1500px] px-4 py-4 sm:px-6 lg:px-8 lg:py-7">
         <header className="flex items-center justify-between gap-4">
           <button type="button" onClick={() => router.push('/')} className="grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-black/45 backdrop-blur-xl" aria-label="Volver al inicio"><ArrowLeft size={18} /></button>
           <img src="/brand/soluciones-fabrick-web.svg" alt="Soluciones Fabrick" className="h-10 w-auto max-w-[210px] object-contain brightness-0 invert sm:h-12" />
-          <span className="rounded-full border border-emerald-300/20 bg-emerald-300/8 px-3 py-2 text-[9px] font-black uppercase tracking-[.12em] text-emerald-200">Cálculo + stock real</span>
+          <span className="rounded-full border border-emerald-300/20 bg-emerald-300/8 px-3 py-2 text-[9px] font-black uppercase tracking-[.12em] text-emerald-200">Cálculo + stock sincronizado</span>
         </header>
 
         <section className="mt-6 grid gap-5 xl:grid-cols-[350px_minmax(0,1fr)]">
           <aside className="rounded-[2rem] border border-white/10 bg-[#0d0f12]/90 p-4 shadow-2xl backdrop-blur-2xl sm:p-5 xl:sticky xl:top-5 xl:self-start">
             <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#F7A347]">Paso 1 · Tu espacio</p>
-            <h1 className="mt-2 text-3xl font-black tracking-[-.04em]">Calcula el equipo que realmente necesita tu ambiente.</h1>
-            <p className="mt-3 text-xs leading-5 text-white/45">No usamos solo m²: incluimos altura, personas, ventanas, uso, sol, aislación y zona climática.</p>
+            <h1 className="mt-2 text-3xl font-black tracking-[-.04em]">Calcula el equipo que necesita tu ambiente.</h1>
+            <p className="mt-3 text-xs leading-5 text-white/45">Incluimos altura, personas, ventanas, uso, sol, aislación y zona climática para ajustar la carga.</p>
 
             <div className="mt-5 grid grid-cols-2 gap-2">
               {(Object.keys(AIR_ROOM_PROFILES) as AirRoomType[]).map((room) => (
@@ -252,53 +298,79 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
           </aside>
 
           <div className="grid gap-5">
-            <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b0e12]/86 shadow-2xl backdrop-blur-2xl">
-              <div className="grid gap-0 lg:grid-cols-[minmax(0,1.3fr)_360px]">
-                <AirVisualizer
-                  productImage={productImage}
-                  productName={primary?.product.name || `Equipo compatible ${displayedProductCapacityLabel}`}
-                  roomType={roomType}
-                  targetCapacityLabel={targetCapacityLabel}
-                  productCapacityLabel={displayedProductCapacityLabel}
-                  targetTempC={targetTempC}
-                  ambientTempC={ambientTempC}
-                  powerOn={powerOn}
-                  loadPercent={powerOn ? energy.loadPercent : 0}
-                  sceneGlow={scene.glow}
-                  sceneAccent={scene.accent}
-                  liveKw={liveKw}
-                  monthlyKwh={liveMonthlyKwh}
-                  monthlyCostClp={liveMonthlyCost}
-                />
+            <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b0e12]/88 shadow-2xl backdrop-blur-2xl">
+              <div className="grid gap-0 lg:grid-cols-[minmax(0,1.35fr)_390px]">
+                <div className="p-4 sm:p-6">
+                  <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                    <div><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#7EDCFF]">Visor climático 3D</p><h2 className="mt-1 text-2xl font-black">{roomProfile.emoji} {roomProfile.label} · objetivo {targetCapacityLabel}</h2><p className="mt-1 max-w-2xl text-[10px] leading-5 text-white/40">Mueve la cámara. El flujo, la compuerta y el gasto cambian con cada ajuste del control.</p></div>
+                    <span className={`rounded-full border px-3 py-1.5 text-[8px] font-black uppercase tracking-[.12em] ${powerOn ? 'border-cyan-300/25 bg-cyan-300/10 text-cyan-200' : 'border-white/10 bg-white/[.04] text-white/35'}`}>{powerOn ? '● Encendido' : '○ Apagado'}</span>
+                  </div>
+
+                  <AirThreeScene
+                    roomType={roomType}
+                    targetTempC={targetTempC}
+                    ambientTempC={ambientTempC}
+                    powerOn={powerOn}
+                    swing={swing}
+                    eco={eco}
+                    sleep={sleep}
+                    turbo={turbo}
+                    capacityLabel={displayedProductCapacityLabel}
+                    operation={operation}
+                  />
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    <LiveStat label="Consumo animado" value={`${NUMBER.format(operation.electricalKwNow)} kW`} pulse={powerOn} />
+                    <LiveStat label="Proyección 30 días" value={`${NUMBER.format(operation.monthlyKwh)} kWh`} />
+                    <LiveStat label="Costo estimado" value={CLP.format(operation.monthlyCostClp)} />
+                  </div>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[.06]"><div className="h-full rounded-full bg-[linear-gradient(90deg,#73E8FF,#FFCB65,#FF8D55)] transition-[width] duration-700" style={{ width: `${operation.loadPercent}%` }} /></div>
+                </div>
 
                 <div className="border-t border-white/10 bg-[#090c10]/95 p-5 lg:border-l lg:border-t-0 sm:p-6">
                   <div className="flex items-center justify-between gap-3">
-                    <div><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#7EDCFF]">Control simulado</p><h2 className="mt-1 text-xl font-black">Temperatura objetivo</h2></div>
+                    <div><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#7EDCFF]">Control simulado</p><h2 className="mt-1 text-xl font-black">Control de clima</h2></div>
                     <button type="button" onClick={() => setPowerOn((value) => !value)} className={`grid h-11 w-11 place-items-center rounded-full border transition ${powerOn ? 'border-cyan-300/35 bg-cyan-300/12 text-cyan-200' : 'border-white/10 bg-white/[.04] text-white/35'}`} aria-label={powerOn ? 'Apagar simulador' : 'Encender simulador'}><Power size={18} /></button>
                   </div>
 
-                  <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/30 p-4">
+                  <div className="mt-4 grid grid-cols-5 gap-1.5">
+                    {(Object.keys(AIR_MODE_LABELS) as AirMode[]).map((item) => <ModeButton key={item} active={mode === item} icon={modeIcons[item]} label={AIR_MODE_LABELS[item]} onClick={() => setMode(item)} />)}
+                  </div>
+
+                  <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-black/30 p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <button type="button" onClick={() => setTargetTempC((value) => Math.max(16, value - 1))} className="grid h-11 w-11 place-items-center rounded-full bg-white/[.07] text-white"><Minus size={17} /></button>
-                      <div className="text-center"><strong className="text-5xl font-black tracking-[-.06em] text-[#8BE8FF]">{targetTempC}°</strong><span className="block text-[8px] font-black uppercase tracking-[.16em] text-white/28">Frío · Auto</span></div>
-                      <button type="button" onClick={() => setTargetTempC((value) => Math.min(28, value + 1))} className="grid h-11 w-11 place-items-center rounded-full bg-white/[.07] text-white"><Plus size={17} /></button>
+                      <button type="button" disabled={mode === 'fan'} onClick={() => setTargetTempC((value) => Math.max(16, value - 1))} className="grid h-11 w-11 place-items-center rounded-full bg-white/[.07] text-white disabled:opacity-25"><Minus size={17} /></button>
+                      <div className="text-center"><strong className="text-5xl font-black tracking-[-.06em] text-[#8BE8FF]">{targetTempC}°</strong><span className="block text-[8px] font-black uppercase tracking-[.16em] text-white/32">Temperatura objetivo</span></div>
+                      <button type="button" disabled={mode === 'fan'} onClick={() => setTargetTempC((value) => Math.min(30, value + 1))} className="grid h-11 w-11 place-items-center rounded-full bg-white/[.07] text-white disabled:opacity-25"><Plus size={17} /></button>
                     </div>
-                    <input aria-label="Temperatura objetivo" type="range" min="16" max="28" step="1" value={targetTempC} onChange={(event) => setTargetTempC(Number(event.target.value))} className="mt-5 h-2 w-full accent-cyan-300" />
+                    <input aria-label="Temperatura objetivo" disabled={mode === 'fan'} type="range" min="16" max="30" step="1" value={targetTempC} onChange={(event) => setTargetTempC(Number(event.target.value))} className="mt-5 h-2 w-full accent-cyan-300 disabled:opacity-25" />
+                  </div>
+
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-[.13em] text-white/34"><span>Ventilador</span><span>{AIR_FAN_LABELS[fanSpeed]}</span></div>
+                    <div className="mt-2 grid grid-cols-4 gap-1.5">{(Object.keys(AIR_FAN_LABELS) as AirFanSpeed[]).map((speed) => <Choice key={speed} active={fanSpeed === speed} onClick={() => setFanSpeed(speed)}>{AIR_FAN_LABELS[speed]}</Choice>)}</div>
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-2">
-                    <EnergyMetric icon={<Zap />} label="Consumo ahora" value={`${NUMBER.format(liveKw)} kWh/h`} />
-                    <EnergyMetric icon={<BatteryCharging />} label="Uso mensual" value={`${NUMBER.format(liveMonthlyKwh)} kWh`} />
-                    <EnergyMetric icon={<Gauge />} label="Esfuerzo" value={powerOn ? energy.loadLabel : 'Apagado'} />
-                    <EnergyMetric icon={<Clock3 />} label="Uso diario" value={`${hoursPerDay} h`} />
+                    <OptionToggle active={eco} icon={<Leaf size={14} />} label="Eco" onClick={toggleEco} />
+                    <OptionToggle active={swing} icon={<Waves size={14} />} label="Swing" onClick={() => setSwing((value) => !value)} />
+                    <OptionToggle active={sleep} icon={<MoonStar size={14} />} label="Sueño" onClick={() => { setSleep((value) => !value); setTurbo(false); }} />
+                    <OptionToggle active={turbo} icon={<Gauge size={14} />} label="Turbo" onClick={toggleTurbo} />
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <EnergyMetric icon={<Zap />} label="Potencia" value={`${NUMBER.format(operation.electricalKwNow)} kW`} />
+                    <EnergyMetric icon={<BatteryCharging />} label="Mes" value={`${NUMBER.format(operation.monthlyKwh)} kWh`} />
+                    <EnergyMetric icon={<Gauge />} label="Carga" value={operation.loadLabel} />
+                    <EnergyMetric icon={<Wind />} label="Flujo" value={`${operation.airflowPercent}%`} />
                   </div>
 
                   <label className="mt-4 block text-[9px] font-bold text-white/45">Horas de uso al día <span className="float-right text-white/70">{hoursPerDay} h</span><input type="range" min="1" max="16" step="1" value={hoursPerDay} onChange={(event) => setHoursPerDay(Number(event.target.value))} className="mt-2 h-2 w-full accent-[#F7A347]" /></label>
 
                   <div className="mt-4 rounded-xl border border-emerald-300/18 bg-emerald-300/[.06] p-4">
                     <p className="text-[8px] font-black uppercase tracking-[.14em] text-emerald-200">Costo eléctrico estimado</p>
-                    <strong className="mt-1 block text-2xl font-black text-emerald-100">{CLP.format(liveMonthlyCost)} / mes</strong>
-                    <p className="mt-1 text-[8px] leading-4 text-white/35">Referencia con {CLP.format(DEFAULT_ELECTRICITY_RATE_CLP_KWH)}/kWh y 30 días. Tu tarifa real puede ser distinta.</p>
+                    <strong className="mt-1 block text-2xl font-black text-emerald-100">{CLP.format(operation.monthlyCostClp)} / mes</strong>
+                    <p className="mt-1 text-[8px] leading-4 text-white/35">Escenario con {CLP.format(DEFAULT_ELECTRICITY_RATE_CLP_KWH)}/kWh, 30 días y los ajustes seleccionados.</p>
                   </div>
                 </div>
               </div>
@@ -309,30 +381,30 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
                 <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#F7A347]">Resultado personalizado</p>
                 <div className="mt-2 flex flex-wrap items-end gap-3"><strong className="text-5xl font-black tracking-[-.06em] text-[#FF9D3D] sm:text-6xl">{targetCapacityLabel}</strong><span className="pb-2 text-xs font-black text-white/50">BTU recomendados</span></div>
                 <h2 className="mt-3 text-2xl font-black tracking-[-.035em]">{roomProfile.label} · {sizing.areaM2.toLocaleString('es-CL')} m² · {sizing.requiredBtu.toLocaleString('es-CL')} BTU/h calculados</h2>
-                <p className="mt-3 text-xs leading-6 text-white/45">{sizing.requiresMultiUnit ? `La carga supera 24.000 BTU. Estimamos al menos ${sizing.minimumUnits} unidades de ${sizing.perUnitCapacity.toLocaleString('es-CL')} BTU y recomendamos validar distribución en terreno.` : `La capacidad comercial inmediatamente superior es ${sizing.recommendedCapacity.toLocaleString('es-CL')} BTU. Si cambias de habitación, oficina, cocina o living, el motor vuelve a calcular la carga y cambia el equipo cuando cruza el siguiente escalón real.`}</p>
-                {catalogUsesSuperiorCapacity ? <div className="mt-3 rounded-xl border border-cyan-300/16 bg-cyan-300/[.06] px-3 py-2.5 text-[10px] leading-5 text-cyan-50/70"><b className="text-cyan-100">Stock real:</b> hoy no hay una referencia de {sizing.recommendedCapacity.toLocaleString('es-CL')} BTU disponible en el catálogo cargado, por eso el visor muestra un equipo real de {primary?.capacity.toLocaleString('es-CL')} BTU como capacidad superior compatible. No cambiamos tu cálculo para forzar una venta.</div> : null}
+                <p className="mt-3 text-xs leading-6 text-white/45">{sizing.requiresMultiUnit ? `La carga supera 24.000 BTU. Estimamos al menos ${sizing.minimumUnits} unidades de ${sizing.perUnitCapacity.toLocaleString('es-CL')} BTU y recomendamos revisar la distribución en terreno.` : `El siguiente escalón de capacidad es ${sizing.recommendedCapacity.toLocaleString('es-CL')} BTU. Cambia el ambiente, el sol, las personas o la aislación y el motor ajusta el resultado al instante.`}</p>
+                {catalogUsesSuperiorCapacity ? <div className="mt-3 rounded-xl border border-cyan-300/16 bg-cyan-300/[.06] px-3 py-2.5 text-[10px] leading-5 text-cyan-50/70"><b className="text-cyan-100">Catálogo:</b> el cálculo sugiere {sizing.recommendedCapacity.toLocaleString('es-CL')} BTU y las opciones disponibles empiezan en {primary?.capacity.toLocaleString('es-CL')} BTU, por eso recomendamos la capacidad superior compatible.</div> : null}
                 <div className="mt-4 flex flex-wrap gap-2">{sizing.reasons.map((reason) => <span key={reason} className="rounded-full border border-white/10 bg-white/[.05] px-3 py-1.5 text-[9px] font-bold text-white/45">{reason}</span>)}</div>
               </div>
 
               <div className="rounded-[1.7rem] border border-amber-300/18 bg-[linear-gradient(145deg,rgba(251,191,36,.1),rgba(8,9,10,.75))] p-5 sm:p-6">
-                <div className="flex gap-3"><span className="text-2xl">⚠️</span><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-amber-200">¿Por qué inverter?</p><h3 className="mt-1 text-lg font-black">Modula el compresor en vez de encender y apagar a máxima potencia.</h3></div></div>
-                <p className="mt-3 text-xs leading-5 text-white/55">En esta simulación, un inverter equivalente usa aprox. <b className="text-white">{energy.estimatedSavingsPercent}% menos energía</b> que un equipo tradicional de la misma capacidad y exigencia. El ahorro estimado sería de <b className="text-emerald-200">{CLP.format(energy.estimatedMonthlySavingsClp)}/mes</b>.</p>
-                <p className="mt-2 text-[8px] leading-4 text-white/28">Es una comparación orientativa basada en eficiencia nominal. El consumo real depende del modelo, clima, aislación, tarifa, instalación y horas de uso.</p>
+                <div className="flex gap-3"><span className="text-2xl">⚡</span><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-amber-200">¿Por qué inverter?</p><h3 className="mt-1 text-lg font-black">Modula el compresor para sostener la temperatura con menos ciclos bruscos.</h3></div></div>
+                <p className="mt-3 text-xs leading-5 text-white/55">En el escenario base, la diferencia estimada frente a un equipo tradicional equivalente es de <b className="text-white">{baseEnergy.estimatedSavingsPercent}%</b>, equivalente a cerca de <b className="text-emerald-200">{CLP.format(baseEnergy.estimatedMonthlySavingsClp)}/mes</b>.</p>
+                <p className="mt-2 text-[8px] leading-4 text-white/30">El resultado cambia con el modelo, clima, aislación, tarifa, instalación, modo seleccionado y horas de uso.</p>
               </div>
             </section>
 
             <section className="rounded-[2rem] border border-white/10 bg-[#0d0f12]/88 p-5 shadow-2xl backdrop-blur-2xl sm:p-7">
-              <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#F7A347]">Referencias reales del catálogo</p><h2 className="mt-1 text-2xl font-black">Ahorro, recomendado y premium según tu cálculo.</h2></div><span className="inline-flex items-center gap-2 text-[9px] font-bold text-white/38">{catalogRefreshing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Actualizando catálogo</> : <><CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />Stock sincronizado</>}</span></div>
+              <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#F7A347]">Opciones del catálogo</p><h2 className="mt-1 text-2xl font-black">Ahorro, recomendado y premium según tu cálculo.</h2></div><span className="inline-flex items-center gap-2 text-[9px] font-bold text-white/38">{catalogRefreshing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Actualizando catálogo</> : <><CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />Stock sincronizado</>}</span></div>
 
               {catalogError ? <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/8 p-3 text-xs text-amber-100">{catalogError}</div> : null}
               {sizing.requiresMultiUnit ? <div className="mt-4 rounded-xl border border-[#F7A347]/25 bg-[#F7A347]/8 p-4 text-xs leading-5 text-white/60">La referencia de productos se mantiene visible, pero bloqueamos compra directa porque el espacio requiere dos o más unidades y debe revisarse la distribución.</div> : null}
 
               {tierEntries.length > 0 ? <div className="mt-5 grid gap-3 md:grid-cols-3">{tierEntries.map(({ key, label, note, recommendation }) => <TierCard key={`${key}-${recommendation.product.id}`} label={label} note={note} recommendation={recommendation} emphasized={key === 'recommended'} disabled={sizing.requiresMultiUnit} onBuy={() => goCheckout(recommendation)} />)}</div> : null}
 
-              {!catalogRefreshing && recommendations.length === 0 ? <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/[.035] p-6 text-center"><ShoppingCart className="mx-auto h-8 w-8 text-white/30" /><h3 className="mt-3 font-black">No hay un equipo compatible con stock verificado.</h3><p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-white/40">No mostraremos una capacidad inferior solo para cerrar la venta. Revisa la tienda o solicita abastecimiento e instalación.</p><button type="button" onClick={() => router.push('/tienda')} className="mt-4 rounded-full border border-white/12 bg-white/[.06] px-5 py-3 text-xs font-black">Ver tienda</button></div> : null}
+              {!catalogRefreshing && recommendations.length === 0 ? <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/[.035] p-6 text-center"><ShoppingCart className="mx-auto h-8 w-8 text-white/30" /><h3 className="mt-3 font-black">No hay un equipo compatible con stock.</h3><p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-white/40">No mostraremos una capacidad inferior solo para cerrar la venta. Revisa la tienda o solicita abastecimiento e instalación.</p><button type="button" onClick={() => router.push('/tienda')} className="mt-4 rounded-full border border-white/12 bg-white/[.06] px-5 py-3 text-xs font-black">Ver tienda</button></div> : null}
 
-              <div className="mt-5 grid gap-2 sm:grid-cols-3"><Trust icon={<ShieldCheck />} title="Precio validado" text="Checkout recalcula desde servidor" /><Trust icon={<BadgeCheck />} title="Stock reservado" text="Reserva atómica antes del pago" /><Trust icon={<Waves />} title="Sin sobreventa" text="No recomendamos capacidad inferior" /></div>
-              {primary ? <p className="mt-4 text-center text-[9px] text-white/28">Equipo activo del visor: {primary.product.name} · {primary.capacity.toLocaleString('es-CL')} BTU. {isInverterProduct(primary.product) ? 'Detectado como inverter en la ficha del catálogo.' : 'La ficha disponible no declara inverter.'} El servidor vuelve a validar precio, stock y despacho antes de abrir Mercado Pago.</p> : null}
+              <div className="mt-5 grid gap-2 sm:grid-cols-3"><Trust icon={<ShieldCheck />} title="Precio actualizado" text="Checkout recalcula desde servidor" /><Trust icon={<BadgeCheck />} title="Stock reservado" text="Reserva atómica antes del pago" /><Trust icon={<Waves />} title="Sin sobreventa" text="No recomendamos capacidad inferior" /></div>
+              {primary ? <p className="mt-4 text-center text-[9px] text-white/28">Equipo sugerido: {primary.product.name} · {primary.capacity.toLocaleString('es-CL')} BTU. {isInverterProduct(primary.product) ? 'La ficha indica tecnología inverter.' : 'La ficha no declara tecnología inverter.'} El servidor vuelve a validar precio, stock y despacho antes de abrir Mercado Pago.</p> : null}
             </section>
           </div>
         </section>
@@ -341,65 +413,12 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
   );
 }
 
-function AirVisualizer({
-  productImage,
-  productName,
-  roomType,
-  targetCapacityLabel,
-  productCapacityLabel,
-  targetTempC,
-  ambientTempC,
-  powerOn,
-  loadPercent,
-  sceneGlow,
-  sceneAccent,
-  liveKw,
-  monthlyKwh,
-  monthlyCostClp,
-}: {
-  productImage: string;
-  productName: string;
-  roomType: AirRoomType;
-  targetCapacityLabel: string;
-  productCapacityLabel: string;
-  targetTempC: number;
-  ambientTempC: number;
-  powerOn: boolean;
-  loadPercent: number;
-  sceneGlow: string;
-  sceneAccent: string;
-  liveKw: number;
-  monthlyKwh: number;
-  monthlyCostClp: number;
-}) {
-  const profile = AIR_ROOM_PROFILES[roomType];
-  const coolHue = Math.max(188, Math.min(214, 188 + (24 - targetTempC) * 2));
-  return (
-    <div className="relative min-h-[460px] overflow-hidden p-5 sm:p-7 lg:min-h-[540px]" style={{ perspective: '1200px', background: `radial-gradient(circle at 72% 30%, ${sceneGlow}, transparent 34%), linear-gradient(145deg, hsl(${coolHue} 38% 12% / .74), #07090c 62%)` }}>
-      <div className="absolute inset-0 opacity-35" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg,rgba(255,255,255,.035) 1px, transparent 1px)', backgroundSize: '38px 38px', maskImage: 'radial-gradient(circle at center, black, transparent 78%)' }} />
-      <div className="relative z-10 flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.18em]" style={{ color: sceneAccent }}>Visor climático 3D</p><h2 className="mt-1 text-2xl font-black">{profile.emoji} {profile.label} · objetivo {targetCapacityLabel}</h2><p className="mt-1 max-w-xl text-[10px] leading-5 text-white/38">Ambiente simulado {ambientTempC}°C → objetivo {targetTempC}°C. El equipo real y el consumo reaccionan al cálculo.</p></div><span className={`rounded-full border px-3 py-1.5 text-[8px] font-black uppercase tracking-[.12em] ${powerOn ? 'border-cyan-300/25 bg-cyan-300/10 text-cyan-200' : 'border-white/10 bg-white/[.04] text-white/35'}`}>{powerOn ? '● Encendido' : '○ Apagado'}</span></div>
-
-      <div className="relative z-10 mt-8 grid min-h-[265px] place-items-center">
-        <div className="absolute left-[8%] top-[12%] h-[72%] w-[84%] rounded-[2.2rem] border border-white/[.055] bg-white/[.018] shadow-[inset_0_0_80px_rgba(255,255,255,.025)]" style={{ transform: 'rotateX(7deg) rotateY(-4deg) translateZ(-35px)' }} />
-        <div className="absolute bottom-2 left-[12%] right-[10%] h-20 rounded-[50%] bg-black/50 blur-2xl" />
-        {powerOn ? <><AirRibbon index={0} loadPercent={loadPercent} /><AirRibbon index={1} loadPercent={loadPercent} /><AirRibbon index={2} loadPercent={loadPercent} /><AirRibbon index={3} loadPercent={loadPercent} /></> : null}
-        <div className="relative w-[min(82%,690px)] rounded-[2rem] border border-white/10 bg-white/[.035] p-5 shadow-[0_34px_95px_rgba(0,0,0,.5)] backdrop-blur-sm" style={{ transform: 'rotateX(-3deg) rotateY(-7deg) translateZ(42px)', transformStyle: 'preserve-3d' }}>
-          <div className="grid min-h-[150px] place-items-center rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(255,255,255,.98),rgba(232,239,243,.93))] p-3 shadow-[0_18px_40px_rgba(0,0,0,.24)]" style={{ transform: 'translateZ(28px)' }}><img src={productImage} alt={productName} className="max-h-[138px] w-full object-contain drop-shadow-[0_18px_25px_rgba(0,0,0,.24)]" /></div>
-          <div className="mt-3 flex items-center justify-between gap-3 text-[9px]"><b className="line-clamp-1 text-white/75">{productName}</b><span className="shrink-0 font-black" style={{ color: sceneAccent }}>{productCapacityLabel} BTU real</span></div>
-        </div>
-        <div className="absolute right-[5%] top-[12%] rounded-[1.4rem] border border-cyan-200/15 bg-[#071015]/75 px-4 py-3 text-right shadow-xl backdrop-blur-xl" style={{ transform: 'translateZ(80px)' }}><span className="text-[8px] font-black uppercase tracking-[.16em] text-cyan-200/55">Temperatura</span><strong className="block text-3xl font-black text-cyan-100">{targetTempC}°C</strong></div>
-      </div>
-
-      <div className="relative z-10 mt-5 grid gap-2 sm:grid-cols-3"><LiveStat label="Consumo animado" value={`${NUMBER.format(liveKw)} kWh/h`} pulse={powerOn} /><LiveStat label="Proyección 30 días" value={`${NUMBER.format(monthlyKwh)} kWh`} /><LiveStat label="Costo estimado" value={CLP.format(monthlyCostClp)} /></div>
-      <div className="relative z-10 mt-3 h-2 overflow-hidden rounded-full bg-white/[.06]"><div className="h-full rounded-full bg-[linear-gradient(90deg,#73E8FF,#FFCB65,#FF8D55)] transition-[width] duration-700" style={{ width: `${Math.max(0, Math.min(100, loadPercent))}%` }} /></div>
-    </div>
-  );
+function ModeButton({ active, icon, label, onClick }: { active: boolean; icon: ReactNode; label: string; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className={`grid min-h-14 place-items-center gap-1 rounded-xl border px-1.5 py-2 text-[8px] font-black transition ${active ? 'border-cyan-300/45 bg-cyan-300/12 text-cyan-100' : 'border-white/10 bg-white/[.035] text-white/42 hover:bg-white/[.07]'}`}><span>{icon}</span><span>{label}</span></button>;
 }
 
-function AirRibbon({ index, loadPercent }: { index: number; loadPercent: number }) {
-  const top = 42 + index * 8;
-  const opacity = .18 + (loadPercent / 100) * .32;
-  return <span className="air-flow absolute left-[38%] h-[3px] w-[48%] rounded-full bg-[linear-gradient(90deg,rgba(111,228,255,.05),rgba(121,232,255,.9),rgba(105,188,255,0))] blur-[1px]" style={{ top: `${top}%`, opacity, animationDelay: `${index * 180}ms`, animationDuration: `${Math.max(.9, 1.8 - loadPercent / 120)}s` }} />;
+function OptionToggle({ active, icon, label, onClick }: { active: boolean; icon: ReactNode; label: string; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-[9px] font-black transition ${active ? 'border-[#F7A347]/45 bg-[#F7A347]/12 text-[#FFC27A]' : 'border-white/10 bg-white/[.035] text-white/42'}`}>{icon}{label}</button>;
 }
 
 function LiveStat({ label, value, pulse = false }: { label: string; value: string; pulse?: boolean }) {
@@ -418,7 +437,7 @@ function TierCard({ label, note, recommendation, emphasized, disabled, onBuy }: 
   </article>;
 }
 
-function Choice({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Choice({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return <button type="button" onClick={onClick} className={`rounded-xl border px-3 py-2.5 text-[10px] font-black transition ${active ? 'border-[#F7A347] bg-[#F7A347] text-[#111214]' : 'border-white/10 bg-white/[.04] text-white/48 hover:bg-white/[.08]'}`}>{children}</button>;
 }
 
@@ -430,10 +449,10 @@ function SelectField({ label, value, options, onChange }: { label: string; value
   return <label className="grid gap-1.5 text-[9px] font-bold text-white/48"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-11 rounded-xl border border-white/10 bg-[#181a1e] px-3 text-xs font-bold text-white outline-none focus:border-[#F7A347]">{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>;
 }
 
-function EnergyMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function EnergyMetric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return <div className="rounded-xl border border-white/8 bg-white/[.035] p-3"><span className="text-[#7FE5FF] [&>svg]:h-4 [&>svg]:w-4">{icon}</span><b className="mt-2 block text-sm">{value}</b><span className="mt-0.5 block text-[8px] uppercase tracking-[.1em] text-white/28">{label}</span></div>;
 }
 
-function Trust({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+function Trust({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
   return <div className="rounded-xl border border-white/8 bg-white/[.03] p-3"><span className="text-[#F7A347] [&>svg]:h-4 [&>svg]:w-4">{icon}</span><b className="mt-2 block text-[10px]">{title}</b><span className="mt-1 block text-[8px] leading-4 text-white/30">{text}</span></div>;
 }

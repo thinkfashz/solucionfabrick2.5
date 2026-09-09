@@ -1,0 +1,372 @@
+.checkoutPremium {
+  --checkout-yellow: #f6c64a;
+  --checkout-yellow-soft: rgba(246, 198, 74, 0.12);
+  --checkout-yellow-border: rgba(246, 198, 74, 0.28);
+  --checkout-cyan: #72d9ff;
+  --checkout-panel: rgba(9, 13, 18, 0.9);
+  --checkout-panel-soft: rgba(255, 255, 255, 0.035);
+  --checkout-line: rgba(255, 255, 255, 0.09);
+  position: relative;
+  isolation: isolate;
+}
+
+.checkoutPremium::before,
+.checkoutPremium::after {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 999px;
+  filter: blur(110px);
+  opacity: 0.5;
+}
+
+.checkoutPremium::before {
+  top: 7rem;
+  right: -10rem;
+  width: 28rem;
+  height: 28rem;
+  background: rgba(246, 198, 74, 0.12);
+}
+
+.checkoutPremium::after {
+  bottom: 4rem;
+  left: -11rem;
+  width: 30rem;
+  height: 30rem;
+  background: rgba(91, 200, 255, 0.08);
+}
+
+.checkoutPremium :global(header) {
+  border-color: rgba(255, 255, 255, 0.07) !important;
+  background: rgba(5, 8, 11, 0.82) !important;
+  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.24);
+}
+
+.checkoutPremium :global(header > div) {
+  max-width: 1240px !important;
+}
+
+.checkoutPremium :global(header img) {
+  filter: drop-shadow(0 8px 22px rgba(0, 0, 0, 0.28));
+}
+
+.checkoutPremium :global(header [class*="border-[#F58B24]"]) {
+  border-color: var(--checkout-yellow) !important;
+}
+
+.checkoutPremium :global(header [class*="bg-[#F58B24]"]) {
+  background: rgba(246, 198, 74, 0.12) !important;
+}
+
+.checkoutPremium :global(header [class*="text-[#FFC27A]"]) {
+  color: var(--checkout-yellow) !important;
+}
+
+.checkoutPremium :global(header + main) {
+  max-width: 1240px !important;
+  gap: 1rem !important;
+  padding-top: 1rem !important;
+  padding-bottom: 2rem !important;
+}
+
+.checkoutPremium :global(header + main > section) {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: linear-gradient(160deg, rgba(14, 18, 23, 0.9), rgba(6, 9, 12, 0.84)) !important;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.34) !important;
+}
+
+.checkoutPremium :global(header + main > section:first-of-type) {
+  min-height: 650px !important;
+  border-radius: 2.1rem !important;
+}
+
+.checkoutPremium :global(header + main > section:first-of-type)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent 35%, rgba(246,198,74,0.025));
+}
+
+.checkoutPremium :global(header + main > section:first-of-type > div:last-child) {
+  border-color: rgba(246, 198, 74, 0.16) !important;
+  background: rgba(7, 10, 14, 0.7) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 50px rgba(0,0,0,0.2);
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2)) {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2.1rem !important;
+  border-color: rgba(246, 198, 74, 0.18) !important;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(246,198,74,0.075), transparent 28%),
+    linear-gradient(180deg, rgba(13, 17, 22, 0.97), rgba(7, 10, 14, 0.96)) !important;
+  box-shadow: 0 32px 100px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2))::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(246,198,74,0.9), rgba(114,217,255,0.45), transparent);
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) > div:first-child) {
+  align-items: center !important;
+  border-bottom-color: rgba(255,255,255,0.075) !important;
+  padding-bottom: 1.1rem !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) > div:first-child p) {
+  color: var(--checkout-yellow) !important;
+  letter-spacing: 0.2em !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) > div:first-child h2) {
+  font-size: clamp(1.3rem, 4vw, 1.75rem) !important;
+  letter-spacing: -0.035em !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) > div:first-child a) {
+  display: inline-flex;
+  min-height: 2.15rem;
+  align-items: center;
+  border: 1px solid rgba(246,198,74,0.18);
+  border-radius: 999px;
+  background: rgba(246,198,74,0.055);
+  padding: 0 0.75rem;
+  color: var(--checkout-yellow) !important;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) > div:first-child a:hover) {
+  transform: translateY(-1px);
+  border-color: rgba(246,198,74,0.4);
+  background: rgba(246,198,74,0.09);
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) > div:nth-child(2)) {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.8rem 0 1rem;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) > div:nth-child(2) > div) {
+  border: 1px solid rgba(255,255,255,0.075) !important;
+  border-radius: 1.25rem;
+  background: linear-gradient(135deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018));
+  padding: 0.75rem !important;
+  transition: border-color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) > div:nth-child(2) > div:hover) {
+  transform: translateY(-1px);
+  border-color: rgba(246,198,74,0.18) !important;
+  background: rgba(255,255,255,0.05);
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) > div:nth-child(2) img) {
+  border-radius: 0.75rem;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) > div:nth-child(2) b:last-child) {
+  color: #fff7dd;
+  font-size: 0.8rem !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) > div:nth-child(3)) {
+  border-top-color: rgba(255,255,255,0.075) !important;
+  gap: 0.85rem !important;
+  padding-top: 1rem !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) input:not([type="range"])),
+.checkoutPremium :global(header + main > section:nth-of-type(2) select),
+.checkoutPremium :global(header + main > section:nth-of-type(2) textarea) {
+  border-color: rgba(255,255,255,0.09) !important;
+  background: rgba(255,255,255,0.045) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) input:not([type="range"]):focus),
+.checkoutPremium :global(header + main > section:nth-of-type(2) select:focus),
+.checkoutPremium :global(header + main > section:nth-of-type(2) textarea:focus) {
+  border-color: rgba(246,198,74,0.64) !important;
+  background: rgba(246,198,74,0.035) !important;
+  box-shadow: 0 0 0 3px rgba(246,198,74,0.08);
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) label > span:first-child) {
+  color: rgba(255,255,255,0.62) !important;
+  letter-spacing: 0.015em;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) button[class*="border-[#F58B24]"]) {
+  border-color: var(--checkout-yellow) !important;
+  background: rgba(246,198,74,0.09) !important;
+  box-shadow: inset 0 0 0 1px rgba(246,198,74,0.06);
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) [class*="text-[#F6A54E]"]),
+.checkoutPremium :global(header + main > section:nth-of-type(2) [class*="text-[#F5A24A]"]),
+.checkoutPremium :global(header + main > section:nth-of-type(2) [class*="text-[#FFC27A]"]) {
+  color: var(--checkout-yellow) !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) button[class*="bg-[#F58B24]"]) {
+  min-height: 3.4rem !important;
+  border: 1px solid rgba(255,255,255,0.34) !important;
+  background: linear-gradient(135deg, #f9d565, #f6c64a 55%, #eab63a) !important;
+  color: #111318 !important;
+  box-shadow: 0 16px 38px rgba(246,198,74,0.2), inset 0 1px 0 rgba(255,255,255,0.48) !important;
+  transition: transform .2s ease, filter .2s ease, box-shadow .2s ease !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) button[class*="bg-[#F58B24]"]:hover) {
+  transform: translateY(-1px);
+  filter: brightness(1.035);
+  box-shadow: 0 20px 46px rgba(246,198,74,0.25), inset 0 1px 0 rgba(255,255,255,0.5) !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) button:disabled) {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.checkoutPremium :global([class*="text-[#F59A3B]"]),
+.checkoutPremium :global([class*="text-[#F7A347]"]),
+.checkoutPremium :global([class*="text-[#FFC27A]"]) {
+  color: var(--checkout-yellow) !important;
+}
+
+.checkoutPremium :global([class*="border-[#F58B24]"]) {
+  border-color: var(--checkout-yellow) !important;
+}
+
+.checkoutPremium :global([class*="bg-[#F58B24]/14"]),
+.checkoutPremium :global([class*="bg-[#F58B24]/12"]) {
+  background-color: rgba(246,198,74,0.11) !important;
+}
+
+.checkoutPremium :global(input[type="range"]) {
+  accent-color: var(--checkout-yellow) !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) [class*="rounded-2xl"]) {
+  border-color: rgba(255,255,255,0.085) !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) [class*="bg-white/[.035]"]) {
+  background-color: rgba(255,255,255,0.03) !important;
+}
+
+.checkoutPremium :global(header + main > section:nth-of-type(2) [class*="bg-white/[.04]"]) {
+  background-color: rgba(255,255,255,0.035) !important;
+}
+
+@media (min-width: 1024px) {
+  .checkoutPremium :global(header + main) {
+    grid-template-columns: minmax(0, 0.96fr) minmax(430px, 1.04fr) !important;
+    align-items: start !important;
+  }
+
+  .checkoutPremium :global(header + main > section:first-of-type) {
+    top: 1rem !important;
+    min-height: 690px !important;
+  }
+
+  .checkoutPremium :global(header + main > section:nth-of-type(2)) {
+    top: 1rem !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .checkoutPremium :global(header + main) {
+    grid-template-columns: 1fr !important;
+    max-width: 760px !important;
+  }
+
+  .checkoutPremium :global(header + main > section:first-of-type) {
+    min-height: 470px !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .checkoutPremium::before,
+  .checkoutPremium::after {
+    filter: blur(85px);
+    opacity: 0.34;
+  }
+
+  .checkoutPremium :global(header) {
+    padding: 0.6rem 0.75rem !important;
+  }
+
+  .checkoutPremium :global(header > div) {
+    gap: 0.65rem !important;
+  }
+
+  .checkoutPremium :global(header img) {
+    height: 2.35rem !important;
+    max-width: 155px !important;
+  }
+
+  .checkoutPremium :global(header + main) {
+    gap: 0.75rem !important;
+    padding: 0.65rem 0.65rem 5rem !important;
+  }
+
+  .checkoutPremium :global(header + main > section) {
+    border-radius: 1.55rem !important;
+  }
+
+  .checkoutPremium :global(header + main > section:first-of-type) {
+    min-height: 405px !important;
+    padding: 0.85rem !important;
+  }
+
+  .checkoutPremium :global(header + main > section:first-of-type > div:nth-of-type(2)) {
+    margin-top: 1.25rem !important;
+  }
+
+  .checkoutPremium :global(header + main > section:first-of-type h1) {
+    font-size: clamp(2rem, 10vw, 2.9rem) !important;
+  }
+
+  .checkoutPremium :global(header + main > section:first-of-type p) {
+    max-width: 34rem;
+  }
+
+  .checkoutPremium :global(header + main > section:nth-of-type(2)) {
+    padding: 1rem !important;
+  }
+
+  .checkoutPremium :global(header + main > section:nth-of-type(2) > div:nth-child(2) > div) {
+    padding: 0.68rem !important;
+  }
+
+  .checkoutPremium :global(header + main > section:nth-of-type(2) input:not([type="range"])),
+  .checkoutPremium :global(header + main > section:nth-of-type(2) select),
+  .checkoutPremium :global(header + main > section:nth-of-type(2) textarea) {
+    min-height: 2.85rem;
+    font-size: 0.76rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkoutPremium :global(*) {
+    scroll-behavior: auto !important;
+  }
+
+  .checkoutPremium :global(header + main > section:nth-of-type(2) > div:nth-child(2) > div),
+  .checkoutPremium :global(button),
+  .checkoutPremium :global(a) {
+    transition: none !important;
+  }
+}

@@ -4,23 +4,46 @@ import { readFileSync } from 'node:fs';
 const home = readFileSync('src/components/store/TiendaClientV2.tsx', 'utf8');
 const catalog = readFileSync('src/app/tienda/catalogo/CatalogoClient.tsx', 'utf8');
 const detail = readFileSync('src/components/store/ProductDetailClientV2.tsx', 'utf8');
+const chrome = readFileSync('src/components/store/StorefrontChrome.tsx', 'utf8');
+const cartDrawer = readFileSync('src/components/store/CartDrawer.tsx', 'utf8');
 const checkout = readFileSync('src/components/checkout/CheckoutAppV2.tsx', 'utf8');
 const checkoutApi = readFileSync('src/app/api/checkout/route.ts', 'utf8');
 
 describe('storefront commerce contract', () => {
-  it('keeps the two calculators as first-class pre-purchase paths', () => {
+  it('keeps the two calculators as first-class pre-purchase paths with explicit media', () => {
     expect(home).toContain('Calcula tu radier ideal');
     expect(home).toContain("/herramientas/radier");
     expect(home).toContain('Calcula tu aire ideal');
     expect(home).toContain("/herramientas/aire-acondicionado");
+    expect(home).toContain('radier-cutaway-v8.png');
+    expect(home).toContain('air-split-premium-v10.png');
+    expect(home).toContain('HOME_PREMIUM_VISUALS.house');
   });
 
-  it('exposes a complete searchable catalog and best-seller section', () => {
+  it('uses one visible top search and keeps catalog filtering connected invisibly', () => {
+    expect(chrome).toContain('¿Qué estás buscando para tu proyecto?');
+    expect(chrome).toContain('syncCatalogSearch');
+    expect(catalog).toContain('id="catalog-search"');
+    expect(catalog).toContain('className="sr-only"');
+    expect(home).toContain('id="catalog-search"');
+    expect(home).not.toContain('store-home-search');
+  });
+
+  it('exposes a horizontal mobile catalog and stable 9K/12K conditioner images', () => {
     expect(catalog).toContain('Todos los productos');
     expect(catalog).toContain('Productos');
     expect(catalog).toContain('más comprados');
-    expect(catalog).toContain('catalog-search');
+    expect(catalog).toContain('snap-x snap-mandatory');
+    expect(catalog).toContain('air-9k-v7.png');
+    expect(catalog).toContain('air-12k-v7.png');
     expect(catalog).toContain('selectedCategory');
+  });
+
+  it('opens the existing cart drawer from the native mobile dock before checkout', () => {
+    expect(chrome).toContain('onClick={openCart}');
+    expect(chrome).not.toContain("nav('/checkout?cart=1')");
+    expect(cartDrawer).toContain('onCheckout');
+    expect(cartDrawer).toContain('Continuar compra');
   });
 
   it('links calculator-adjacent product details back to the correct calculator', () => {

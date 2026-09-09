@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export const metadata: Metadata = {
-  title: 'Calculadora BTU y simulador de aire acondicionado | Soluciones Fabrick',
+  title: { absolute: 'Calculadora BTU y simulador de aire acondicionado | Soluciones Fabrick' },
   description: 'Calcula la capacidad BTU por tipo de ambiente, simula temperatura, consumo y costo eléctrico, y compara equipos reales con stock disponible.',
   alternates: { canonical: 'https://www.solucionesfabrick.com/herramientas/aire-acondicionado' },
   openGraph: {

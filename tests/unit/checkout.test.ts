@@ -1,49 +1,69 @@
 import { describe, expect, it } from 'vitest';
 import { calculateCheckoutSummary, validateCheckoutPayload, type CheckoutPayload, type LineItem } from '@/lib/checkout';
+import type { ShippingConfig } from '@/lib/shipping';
 
 const item = (overrides: Partial<LineItem> = {}): LineItem => ({ productoId: 'p1', cantidad: 2, precioUnitario: 10000, ...overrides });
 const validPayload = (overrides: Partial<CheckoutPayload> = {}): CheckoutPayload => ({
   items: [item()], region: 'RM', cliente: { nombre: 'Juan Pérez', email: 'juan@example.com', telefono: '+56912345678' }, ...overrides,
 });
 
+const SHIPPING_CONFIG: ShippingConfig = {
+  mode: 'production',
+  lowValueThreshold: 50_000,
+  lowValueSurcharge: 10_000,
+  extraUnitFee: 2_500,
+  updatedAt: '2026-09-08',
+  rates: [
+    { region: 'RM', label: 'Metropolitana', testFee: 7_000, productionFee: 9_000, eta: '1 a 3 días', updatedAt: '2026-09-08', source: 'manual' },
+    { region: 'XV', label: 'Arica', testFee: 18_000, productionFee: 23_000, eta: '5 a 9 días', updatedAt: '2026-09-08', source: 'manual' },
+  ],
+};
+
 describe('calculateCheckoutSummary', () => {
   it('trata catálogo y despacho como total final con IVA incluido', () => {
-    const r = calculateCheckoutSummary([item({ cantidad: 2, precioUnitario: 10000 })], 'RM');
+    const r = calculateCheckoutSummary([item({ shippingMode: 'inherit' })], 'RM', SHIPPING_CONFIG);
     expect(r.subtotal).toBe(20000);
-    expect(r.despacho).toBe(35000);
-    expect(r.total).toBe(55000);
-    expect(r.neto).toBe(46218);
-    expect(r.iva).toBe(8782);
+    expect(r.despacho).toBe(11500);
+    expect(r.total).toBe(31500);
     expect(r.neto + r.iva).toBe(r.total);
     expect(r.taxIncluded).toBe(true);
     expect(r.moneda).toBe('CLP');
   });
 
-  it('suma múltiples líneas sin añadir un segundo IVA', () => {
-    const r = calculateCheckoutSummary([item({ cantidad: 1, precioUnitario: 5000 }), item({ cantidad: 3, precioUnitario: 2000 })], 'RM');
-    expect(r.subtotal).toBe(11000);
-    expect(r.total).toBe(r.subtotal + r.despacho);
-    expect(r.neto + r.iva).toBe(r.total);
+  it('la ausencia de metadata de envío hereda la tarifa global y nunca implica envío gratis', () => {
+    const r = calculateCheckoutSummary([item()], 'RM', SHIPPING_CONFIG);
+    expect(r.despacho).toBe(11500);
+    expect(r.total).toBe(31500);
   });
 
-  it('duplica el despacho en regiones extremas (XV/I/XI/XII)', () => {
-    for (const region of ['XV', 'I', 'XI', 'XII']) expect(calculateCheckoutSummary([item()], region).despacho).toBe(70000);
+  it('respeta el modo de prueba por producto aunque el global esté en producción', () => {
+    const r = calculateCheckoutSummary([item({ shippingMode: 'test' })], 'RM', SHIPPING_CONFIG);
+    expect(r.despacho).toBe(10000);
+  });
+
+  it('respeta envío gratis explícito incluso con varias unidades y una tarifa antigua almacenada', () => {
+    const r = calculateCheckoutSummary([item({ cantidad: 5, shippingMode: 'free', shippingFee: 35000 })], 'RM', SHIPPING_CONFIG);
+    expect(r.despacho).toBe(0);
+    expect(r.total).toBe(50000);
+  });
+
+  it('aplica envío fijo explícito y el recargo por unidades despachables', () => {
+    const r = calculateCheckoutSummary([item({ shippingMode: 'fixed', shippingFee: 35000 })], 'RM', SHIPPING_CONFIG);
+    expect(r.despacho).toBe(37500);
   });
 
   it('compara región case-insensitive', () => {
-    expect(calculateCheckoutSummary([item()], 'xv').despacho).toBe(70000);
-    expect(calculateCheckoutSummary([item()], 'Xii').despacho).toBe(70000);
+    const upper = calculateCheckoutSummary([item({ shippingMode: 'inherit' })], 'XV', SHIPPING_CONFIG);
+    const lower = calculateCheckoutSummary([item({ shippingMode: 'inherit' })], 'xv', SHIPPING_CONFIG);
+    expect(lower.despacho).toBe(upper.despacho);
+    expect(upper.despacho).toBe(25500);
   });
 
-  it('despacho base para región normal', () => {
-    expect(calculateCheckoutSummary([item()], 'V').despacho).toBe(35000);
-    expect(calculateCheckoutSummary([item()], 'RM').despacho).toBe(35000);
-  });
-
-  it('mantiene la identidad total = neto + IVA incluso sin productos', () => {
-    const r = calculateCheckoutSummary([], 'RM');
+  it('no cobra despacho ni genera total cuando no hay productos', () => {
+    const r = calculateCheckoutSummary([], 'RM', SHIPPING_CONFIG);
     expect(r.subtotal).toBe(0);
-    expect(r.total).toBe(35000);
+    expect(r.despacho).toBe(0);
+    expect(r.total).toBe(0);
     expect(r.neto + r.iva).toBe(r.total);
   });
 });

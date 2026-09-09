@@ -8,7 +8,7 @@
     "dev": "next dev",
     "test:commerce-p0": "vitest run tests/unit/checkout.test.ts tests/unit/shipping.test.ts tests/unit/checkoutStatus.test.ts tests/unit/mercadopago.test.ts tests/unit/mercadopagoStatus.test.ts tests/unit/paymentValidation.test.ts tests/unit/insforgeFailClosed.test.ts tests/unit/orderTrackingFailClosed.test.ts tests/unit/commerceP0Schema.test.ts",
     "test:funnel-btu": "vitest run tests/unit/airConditioning.test.ts tests/unit/airOperation.test.ts tests/unit/funnelBtuContract.test.ts",
-    "test:radier": "vitest run tests/unit/radierCalculator.test.ts",
+    "test:radier": "vitest run tests/unit/radierCalculator.test.ts tests/unit/radierViewerContract.test.ts",
     "build": "pnpm test:commerce-p0 && pnpm test:funnel-btu && pnpm test:radier && node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build && node scripts/ensure-intelligence-schema.mjs && node scripts/ensure-market-intel-schema.mjs && node scripts/ensure-inventory-schema.mjs && node scripts/ensure-commerce-p0-schema.mjs && node scripts/ensure-ml-schema.mjs && node scripts/ensure-mcp-governance-schema.mjs",
     "start": "next start",
     "lint": "next lint",
@@ -25,7 +25,7 @@
     "admin:set-password": "tsx scripts/set-admin-password.ts",
     "admin:enable-totp": "tsx scripts/enable-admin-totp.ts",
     "admin:disable-totp": "tsx scripts/disable-admin-totp.ts",
-    "admin:generate-backup-codes": "tsx scripts/generate-admin-backup-codes.ts"
+    "admin:generate-backup-codes": "tsx scripts/generate-backup-codes.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["@sentry/cli", "core-js", "esbuild", "sharp", "unrs-resolver"],
@@ -63,7 +63,7 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.38.0",
     "grapesjs": "^0.22.13",
-    "gray-matter": "^4.0.3",
+    "gray-matter": "^4.1.0",
     "gsap": "^3.15.0",
     "html2canvas": "^1.4.1",
     "idb-keyval": "^6.2.2",

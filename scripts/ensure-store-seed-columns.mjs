@@ -7,10 +7,11 @@ DO $$ BEGIN
   IF to_regclass('public.products') IS NOT NULL THEN
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source text;
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source_id text;
+    ALTER TABLE public.products ADD COLUMN IF NOT EXISTS category_name text;
   END IF;
 END $$;
 `;
 const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey }, body: JSON.stringify({ query }), signal: AbortSignal.timeout(45_000) });
 const body = await response.text();
 if (!response.ok) { console.error(`[store-seed-columns] HTTP ${response.status}: ${body.slice(0, 1200)}`); process.exit(1); }
-console.log('[store-seed-columns] provenance columns OK');
+console.log('[store-seed-columns] storefront catalog columns OK');

@@ -8,26 +8,15 @@ import { navigateWithTransition } from '@/lib/routeTransition';
 import { useCatalogProducts, type CatalogProduct } from '@/hooks/useCatalogProducts';
 import { useCartContext } from '@/context/CartContext';
 import { StoreBottomNav, StorefrontHeader } from '@/components/store/StorefrontChrome';
+import { resolveStoreProductImage, storeProductImageFallback } from '@/lib/storeProductVisuals';
 
 const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
-const AIR_9K = 'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_900/f_auto/q_auto/v1788677205/air-9k-v7.png';
-const AIR_12K = 'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_900/f_auto/q_auto/v1788677189/air-12k-v7.png';
-const AIR_GENERIC = 'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_900/f_auto/q_auto/v1788843315/air-split-premium-v10.png';
-const PRODUCT_FALLBACK = 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=1000&auto=format&fit=crop';
-
 function productText(product: CatalogProduct) { return `${product.name} ${product.description || ''} ${product.tagline || ''} ${product.category_name || product.category || ''}`.toLowerCase(); }
 function fallbackImageFor(product: CatalogProduct) {
-  const text = productText(product);
-  if (/9\.?000\s*btu|9k/.test(text)) return AIR_9K;
-  if (/12\.?000\s*btu|12k/.test(text)) return AIR_12K;
-  if (/aire acondicionado|climat|split|btu/.test(text)) return AIR_GENERIC;
-  return PRODUCT_FALLBACK;
+  return storeProductImageFallback(product);
 }
 function imageOf(product: CatalogProduct) {
-  const text = productText(product);
-  if (/9\.?000\s*btu|9k/.test(text)) return AIR_9K;
-  if (/12\.?000\s*btu|12k/.test(text)) return AIR_12K;
-  return product.img || product.image_url || fallbackImageFor(product);
+  return resolveStoreProductImage(product);
 }
 function categoryOf(product: CatalogProduct) { return product.category_name || product.category || product.category_id || 'General'; }
 function discountOf(product: CatalogProduct) { return Math.max(0, Number(product.discountPercentage ?? product.discount_percentage ?? 0)); }

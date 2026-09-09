@@ -8,6 +8,7 @@ const chrome = readFileSync('src/components/store/StorefrontChrome.tsx', 'utf8')
 const cartDrawer = readFileSync('src/components/store/CartDrawer.tsx', 'utf8');
 const checkout = readFileSync('src/components/checkout/CheckoutAppV2.tsx', 'utf8');
 const checkoutApi = readFileSync('src/app/api/checkout/route.ts', 'utf8');
+const visuals = readFileSync('src/lib/storeProductVisuals.ts', 'utf8');
 
 describe('storefront commerce contract', () => {
   it('keeps the two calculators as first-class pre-purchase paths with explicit media', () => {
@@ -16,8 +17,8 @@ describe('storefront commerce contract', () => {
     expect(home).toContain('Calcula tu aire ideal');
     expect(home).toContain("/herramientas/aire-acondicionado");
     expect(home).toContain('radier-cutaway.png');
-    expect(home).toContain('air-split-premium-v10.png');
-    expect(home).toContain('HOME_PREMIUM_VISUALS.house');
+    expect(visuals).toContain('air-split-premium-v10.png');
+    expect(home).toContain('STORE_VISUALS.hero');
   });
 
   it('uses one visible top search and keeps catalog filtering connected invisibly', () => {
@@ -34,8 +35,9 @@ describe('storefront commerce contract', () => {
     expect(catalog).toContain('Productos');
     expect(catalog).toContain('más comprados');
     expect(catalog).toContain('snap-x snap-mandatory');
-    expect(catalog).toContain('air-9k-v7.png');
-    expect(catalog).toContain('air-12k-v7.png');
+    expect(catalog).toContain('resolveStoreProductImage');
+    expect(visuals).toContain('air-9k-v7.png');
+    expect(visuals).toContain('air-12k-v7.png');
     expect(catalog).toContain('selectedCategory');
   });
 
@@ -50,8 +52,9 @@ describe('storefront commerce contract', () => {
 
   it('keeps the home cart image aligned with the product image the user actually saw', () => {
     expect(home).toContain('image_url: productImage(product)');
-    expect(home).toContain('air-9k-v7.png');
-    expect(home).toContain('air-12k-v7.png');
+    expect(home).toContain('resolveStoreProductImage');
+    expect(visuals).toContain('air-9k-v7.png');
+    expect(visuals).toContain('air-12k-v7.png');
   });
 
   it('links calculator-adjacent product details back to the correct calculator', () => {

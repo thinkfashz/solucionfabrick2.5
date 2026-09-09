@@ -9,6 +9,7 @@ const cartDrawer = readFileSync('src/components/store/CartDrawer.tsx', 'utf8');
 const checkout = readFileSync('src/components/checkout/CheckoutAppV2.tsx', 'utf8');
 const checkoutApi = readFileSync('src/app/api/checkout/route.ts', 'utf8');
 const visuals = readFileSync('src/lib/storeProductVisuals.ts', 'utf8');
+const toolCanvas = readFileSync('src/components/store/StoreToolCanvas.tsx', 'utf8');
 
 describe('storefront commerce contract', () => {
   it('keeps the two calculators as first-class pre-purchase paths with explicit media', () => {
@@ -16,7 +17,11 @@ describe('storefront commerce contract', () => {
     expect(home).toContain("/herramientas/radier");
     expect(home).toContain('Calcula tu aire ideal');
     expect(home).toContain("/herramientas/aire-acondicionado");
-    expect(home).toContain('radier-cutaway.png');
+    expect(home).toContain('kind="radier"');
+    expect(home).toContain('kind="air"');
+    expect(toolCanvas).toContain('requestAnimationFrame');
+    expect(toolCanvas).toContain('SISTEMA CONSTRUCTIVO 4D');
+    expect(toolCanvas).toContain('FLUJO 3D · INVERTER');
     expect(visuals).toContain('air-split-premium-v10.png');
     expect(home).toContain('STORE_VISUALS.hero');
   });
@@ -30,11 +35,12 @@ describe('storefront commerce contract', () => {
     expect(home).not.toContain('store-home-search');
   });
 
-  it('exposes a horizontal mobile catalog and stable 9K/12K conditioner images', () => {
+  it('exposes a two-column vertical mobile catalog and stable 9K/12K conditioner images', () => {
     expect(catalog).toContain('Todos los productos');
     expect(catalog).toContain('Productos');
     expect(catalog).toContain('más comprados');
-    expect(catalog).toContain('snap-x snap-mandatory');
+    expect(catalog).toContain('grid grid-cols-2');
+    expect(catalog).toContain('Desliza hacia abajo');
     expect(catalog).toContain('resolveStoreProductImage');
     expect(visuals).toContain('air-9k-v7.png');
     expect(visuals).toContain('air-12k-v7.png');

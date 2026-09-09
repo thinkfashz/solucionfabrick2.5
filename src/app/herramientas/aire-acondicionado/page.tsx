@@ -1,19 +1,23 @@
 import type { Metadata } from 'next';
-import AirCatalogExperienceV7 from '@/components/store/AirCatalogExperienceV7';
+import AirCalculatorFunnelV8 from '@/components/store/AirCalculatorFunnelV8';
+import { preloadAirCatalogProducts } from '@/lib/airCatalogServer';
 
-// V7: visor universal rápido conectado únicamente a productos reales del catálogo.
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export const metadata: Metadata = {
-  title: 'Catálogo 3D de aire acondicionado | Soluciones Fabrick',
-  description: 'Calcula BTU, compara aires acondicionados, cobertura, personas, consumo, ruido y eficiencia en un catálogo 3D visual rápido para móvil y PC.',
+  title: 'Calculadora BTU y aire acondicionado | Soluciones Fabrick',
+  description: 'Calcula la capacidad BTU según medidas, altura, personas, ventanas, exposición solar y aislación, y compara equipos reales con stock disponible.',
   alternates: { canonical: 'https://www.solucionesfabrick.com/herramientas/aire-acondicionado' },
   openGraph: {
-    title: 'Catálogo 3D de aire acondicionado | Soluciones Fabrick',
-    description: 'Compara capacidad, cobertura y gasto energético y compra el equipo disponible desde el checkout seguro de Soluciones Fabrick.',
+    title: 'Calculadora BTU y recomendador de aire acondicionado | Soluciones Fabrick',
+    description: 'Obtén una recomendación personalizada y elige equipos compatibles del catálogo real de Soluciones Fabrick.',
     url: 'https://www.solucionesfabrick.com/herramientas/aire-acondicionado',
-    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Catálogo 3D de aire acondicionado Soluciones Fabrick' }],
+    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Calculadora BTU Soluciones Fabrick' }],
   },
 };
 
-export default function Page() {
-  return <AirCatalogExperienceV7 />;
+export default async function Page() {
+  const initialProducts = await preloadAirCatalogProducts();
+  return <AirCalculatorFunnelV8 initialProducts={initialProducts} />;
 }

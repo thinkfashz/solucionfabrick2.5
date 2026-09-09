@@ -15,7 +15,7 @@ describe('storefront commerce contract', () => {
     expect(home).toContain("/herramientas/radier");
     expect(home).toContain('Calcula tu aire ideal');
     expect(home).toContain("/herramientas/aire-acondicionado");
-    expect(home).toContain('radier-cutaway-v8.png');
+    expect(home).toContain('radier-cutaway.png');
     expect(home).toContain('air-split-premium-v10.png');
     expect(home).toContain('HOME_PREMIUM_VISUALS.house');
   });
@@ -44,6 +44,14 @@ describe('storefront commerce contract', () => {
     expect(chrome).not.toContain("nav('/checkout?cart=1')");
     expect(cartDrawer).toContain('onCheckout');
     expect(cartDrawer).toContain('Continuar compra');
+    expect(cartDrawer).toContain('Total del producto');
+    expect(cartDrawer).toContain('category_name');
+  });
+
+  it('keeps the home cart image aligned with the product image the user actually saw', () => {
+    expect(home).toContain('image_url: productImage(product)');
+    expect(home).toContain('air-9k-v7.png');
+    expect(home).toContain('air-12k-v7.png');
   });
 
   it('links calculator-adjacent product details back to the correct calculator', () => {

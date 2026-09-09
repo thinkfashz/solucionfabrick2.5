@@ -14,7 +14,7 @@ describe('Funnel BTU contract', () => {
     expect(home).toContain('Calcular aire ideal');
   });
 
-  it('la página precarga catálogo real en servidor antes del cliente', () => {
+  it('la página precarga catálogo en servidor antes del cliente', () => {
     const page = source('src/app/herramientas/aire-acondicionado/page.tsx');
     expect(page).toContain('preloadAirCatalogProducts');
     expect(page).toContain('<AirSimulatorFunnelV9 initialProducts={initialProducts} />');
@@ -32,10 +32,31 @@ describe('Funnel BTU contract', () => {
     const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
     expect(funnel).toContain('sizing.requiresMultiUnit');
     expect(funnel).toContain('bloqueamos compra directa');
-    expect(funnel).toContain("disabled={sizing.requiresMultiUnit}");
+    expect(funnel).toContain('disabled={sizing.requiresMultiUnit}');
   });
 
-  it('incluye visor 3D, control térmico y consumo animado', () => {
+  it('usa escena Three.js y no inserta la foto del producto dentro del visor', () => {
+    const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
+    const scene = source('src/components/store/AirThreeScene.tsx');
+    expect(funnel).toContain('AirThreeScene');
+    expect(scene).toContain('Canvas');
+    expect(scene).toContain('cdn.polyhaven.com');
+    expect(scene).toContain('InstancedMesh');
+    expect(funnel).not.toContain('productImage=');
+  });
+
+  it('ofrece modos, ventilador y funciones del control', () => {
+    const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
+    expect(funnel).toContain('AIR_MODE_LABELS');
+    expect(funnel).toContain('AIR_FAN_LABELS');
+    expect(funnel).toContain('Eco');
+    expect(funnel).toContain('Swing');
+    expect(funnel).toContain('Sueño');
+    expect(funnel).toContain('Turbo');
+    expect(funnel).toContain('simulateAirOperation');
+  });
+
+  it('incluye visor 3D, control térmico y gasto dinámico', () => {
     const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
     expect(funnel).toContain('Visor climático 3D');
     expect(funnel).toContain('Control simulado');
@@ -53,7 +74,7 @@ describe('Funnel BTU contract', () => {
     expect(engine).toContain('internalLoadBtu');
   });
 
-  it('conecta referencias reales Ahorro/Recomendado/Premium al catálogo', () => {
+  it('conecta Ahorro/Recomendado/Premium al catálogo', () => {
     const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
     expect(funnel).toContain("label: 'Ahorro'");
     expect(funnel).toContain("label: 'Recomendado'");
@@ -62,24 +83,27 @@ describe('Funnel BTU contract', () => {
     expect(funnel).toContain('distinctTierEntries');
   });
 
-  it('mantiene separado el BTU objetivo de la capacidad real mostrada', () => {
+  it('mantiene separado el BTU objetivo de la capacidad mostrada', () => {
     const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
     expect(funnel).toContain('targetCapacityLabel');
     expect(funnel).toContain('displayedProductCapacityLabel');
-    expect(funnel).toContain('BTU real');
-    expect(funnel).toContain('No cambiamos tu cálculo para forzar una venta');
+    expect(funnel).toContain('capacidad superior compatible');
   });
 
-  it('calcula consumo con la capacidad real del equipo mostrado cuando existe', () => {
+  it('calcula energía con la capacidad del equipo sugerido cuando existe', () => {
     const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
-    expect(funnel).toContain('capacityBtu: primary?.capacity ||');
+    expect(funnel).toContain('primary?.capacity ||');
     expect(funnel).toContain('electricityRateClpKwh: DEFAULT_ELECTRICITY_RATE_CLP_KWH');
+    expect(funnel).toContain('simulateAirOperation');
   });
 
-  it('explica inverter con ahorro estimado y advertencia de variabilidad', () => {
+  it('explica inverter sin copy defensivo', () => {
     const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
     expect(funnel).toContain('¿Por qué inverter?');
     expect(funnel).toContain('estimatedSavingsPercent');
-    expect(funnel).toContain('El consumo real depende del modelo');
+    expect(funnel).toContain('El resultado cambia con el modelo');
+    expect(funnel).not.toContain('BTU real');
+    expect(funnel).not.toContain('Stock real:');
+    expect(funnel).not.toContain('consumo real');
   });
 });

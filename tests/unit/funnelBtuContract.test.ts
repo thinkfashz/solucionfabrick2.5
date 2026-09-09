@@ -35,13 +35,14 @@ describe('Funnel BTU contract', () => {
     expect(funnel).toContain('disabled={sizing.requiresMultiUnit}');
   });
 
-  it('usa escena Three.js y no inserta la foto del producto dentro del visor', () => {
+  it('usa visor 2D ligero sin Three.js ni foto de producto dentro del visor', () => {
     const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
-    const scene = source('src/components/store/AirThreeScene.tsx');
-    expect(funnel).toContain('AirThreeScene');
-    expect(scene).toContain('Canvas');
-    expect(scene).toContain('cdn.polyhaven.com');
-    expect(scene).toContain('InstancedMesh');
+    expect(funnel).toContain('function AirVisual');
+    expect(funnel).toContain('air-particle');
+    expect(funnel).toContain('airflow');
+    expect(funnel).toContain('FABRICK');
+    expect(funnel).not.toContain('AirThreeScene');
+    expect(funnel).not.toContain("dynamic(() => import('./AirThreeScene')");
     expect(funnel).not.toContain('productImage=');
   });
 
@@ -56,22 +57,28 @@ describe('Funnel BTU contract', () => {
     expect(funnel).toContain('simulateAirOperation');
   });
 
-  it('incluye visor 3D, control térmico y gasto dinámico', () => {
+  it('mantiene control térmico y gasto dinámico con el nuevo diseño', () => {
     const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
-    expect(funnel).toContain('Visor climático 3D');
-    expect(funnel).toContain('Control simulado');
-    expect(funnel).toContain('Consumo animado');
-    expect(funnel).toContain('Costo eléctrico estimado');
     expect(funnel).toContain('Temperatura objetivo');
+    expect(funnel).toContain('Consumo energético estimado');
+    expect(funnel).toContain('Costo mensual estimado');
+    expect(funnel).toContain('operation.monthlyKwh');
+    expect(funnel).toContain('operation.monthlyCostClp');
   });
 
   it('muestra habitación, living, oficina y cocina desde perfiles térmicos', () => {
     const engine = source('src/lib/airConditioning.ts');
+    const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
     expect(engine).toContain("label: 'Habitación'");
     expect(engine).toContain("label: 'Living'");
     expect(engine).toContain("label: 'Oficina'");
     expect(engine).toContain("label: 'Cocina'");
     expect(engine).toContain('internalLoadBtu');
+    expect(funnel).toContain('BedDouble');
+    expect(funnel).toContain('Sofa');
+    expect(funnel).toContain('BriefcaseBusiness');
+    expect(funnel).toContain('CookingPot');
+    expect(funnel).not.toContain('roomProfile.emoji');
   });
 
   it('conecta Ahorro/Recomendado/Premium al catálogo', () => {
@@ -105,5 +112,12 @@ describe('Funnel BTU contract', () => {
     expect(funnel).not.toContain('BTU real');
     expect(funnel).not.toContain('Stock real:');
     expect(funnel).not.toContain('consumo real');
+  });
+
+  it('usa acento amarillo y mantiene el visor libre de naranja legado', () => {
+    const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
+    expect(funnel).toContain('#F6C64A');
+    expect(funnel).not.toContain('#F7A347');
+    expect(funnel).not.toContain('#FF9D3D');
   });
 });

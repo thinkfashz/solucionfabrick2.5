@@ -96,7 +96,7 @@
     "@types/node": "^22.19.3",
     "@types/nodemailer": "^8.0.0",
     "@types/react": "^19.0.14",
-    "@types/react-dom": "^19.0.3",
+    "@types/react-dom": "^19.0.0",
     "@types/three": "^0.184.1",
     "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^5.1.2",

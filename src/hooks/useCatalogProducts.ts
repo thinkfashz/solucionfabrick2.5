@@ -42,21 +42,30 @@ export const FALLBACK_CATALOG_PRODUCTS: CatalogProduct[] = [
   { id: 'FBK-06', name: 'Ducha Digital Termostática', price: 245000, category: 'Baños', tagline: 'La temperatura que mereces', description: 'Sistema de ducha con control digital de temperatura y caudal. Pantalla táctil, memorias de usuario y función anti-quemadura integrada.', features: ['Control digital de temperatura', '3 memorias de usuario', 'Función anti-quemadura'], dimensions: '22 x 14 x 6 cm', delivery: 'Envío en 48h', img: 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?q=80&w=800&auto=format&fit=crop', featured: true, rating: 4.8, stock: 6, placement: 'featured', placementOrder: 2 },
 ];
 
+const CONSTRUCTION = 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800&auto=format&fit=crop';
+const LIGHTING = 'https://images.unsplash.com/photo-1565814329452-e1efa11c5e8a?q=80&w=800&auto=format&fit=crop';
 const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
   Seguridad: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800&auto=format&fit=crop',
-  Iluminación: 'https://images.unsplash.com/photo-1565814329452-e1efa11c5e8a?q=80&w=800&auto=format&fit=crop',
+  Iluminación: LIGHTING,
+  Iluminacion: LIGHTING,
+  Electricidad: CONSTRUCTION,
+  Herramientas: CONSTRUCTION,
+  Radier: CONSTRUCTION,
+  Cemento: CONSTRUCTION,
+  Climatización: 'https://res.cloudinary.com/disghf6xc/image/upload/f_png/q_auto:best/v1788676769/air-12k-universal-v8.png',
+  Climatizacion: 'https://res.cloudinary.com/disghf6xc/image/upload/f_png/q_auto:best/v1788676769/air-12k-universal-v8.png',
   Grifería: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop',
   Griferia: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop',
   Revestimiento: 'https://images.unsplash.com/photo-1615873968403-89e068629265?q=80&w=800&auto=format&fit=crop',
-  Construcción: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800&auto=format&fit=crop',
-  Construccion: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800&auto=format&fit=crop',
+  Construcción: CONSTRUCTION,
+  Construccion: CONSTRUCTION,
   Pisos: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?q=80&w=800&auto=format&fit=crop',
   Baños: 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?q=80&w=800&auto=format&fit=crop',
   Banos: 'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?q=80&w=800&auto=format&fit=crop',
   Cocina: 'https://images.unsplash.com/photo-1556909172-8c2f041fca1e?q=80&w=800&auto=format&fit=crop',
 };
 
-const DEFAULT_FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800&auto=format&fit=crop';
+const DEFAULT_FALLBACK_IMAGE = CONSTRUCTION;
 
 function mapRealtimeProductToCatalogProduct(product: RealtimeProduct): CatalogProduct {
   const category = product.category_name || resolveCategoryName(product.category_id, {});

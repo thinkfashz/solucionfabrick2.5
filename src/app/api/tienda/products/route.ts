@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
+import { resolveCatalogCategoryName } from '@/lib/catalogCategory';
 
 // InsForge currently depends on Node's crypto implementation.
 export const runtime = 'nodejs';
 export const revalidate = 60;
 
 const CDN_CACHE = 'public, s-maxage=60, stale-while-revalidate=300';
-const PRODUCT_SELECT = 'id, name, description, price, stock, image_url, featured, activo, tagline, rating, delivery_days, discount_percentage, specifications, category_id, shipping_mode, shipping_fee, shipping_weight_kg, shipping_dimensions, shipping_region_overrides, created_at';
+const PRODUCT_SELECT = 'id, name, description, price, stock, image_url, featured, activo, tagline, rating, delivery_days, discount_percentage, specifications, category_id, category_name, shipping_mode, shipping_fee, shipping_weight_kg, shipping_dimensions, shipping_region_overrides, created_at';
 const CATEGORY_SELECT = 'id, name';
 
 type ProductRow = {
   activo?: boolean | null;
   category_id?: string | null;
+  category_name?: string | null;
   [key: string]: unknown;
 };
 
@@ -62,13 +64,14 @@ export async function GET() {
 
     const products = ((productsResult.data ?? []) as ProductRow[])
       .filter((product) => product.activo !== false)
-      .map((product) => {
-        const categoryId = typeof product.category_id === 'string' ? product.category_id : '';
-        return {
-          ...product,
-          category_name: categoryId ? categoryMap[categoryId] : undefined,
-        };
-      });
+      .map((product) => ({
+        ...product,
+        category_name: resolveCatalogCategoryName(
+          product.category_name,
+          product.category_id,
+          categoryMap,
+        ),
+      }));
 
     return catalogResponse({ products, total: products.length });
   } catch {

@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import CheckoutAppV2 from '@/components/checkout/CheckoutAppV2';
 import CheckoutAirModelSync from '@/components/checkout/CheckoutAirModelSync';
 import styles from './checkout-premium.module.css';
+import referenceStyles from './checkout-reference.module.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,7 @@ export default function CheckoutPage() {
           visibility: hidden;
         }
       `}</style>
-      <div className={`checkout-hydration-boundary ${styles.checkoutPremium}`}>
+      <div className={`checkout-hydration-boundary ${styles.checkoutPremium} ${referenceStyles.checkoutReference}`}>
         <CheckoutAirModelSync />
         <Suspense fallback={null}><CheckoutAppV2 /></Suspense>
       </div>

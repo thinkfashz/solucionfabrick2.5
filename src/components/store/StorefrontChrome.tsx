@@ -2,16 +2,17 @@
 
 import { useState, type ChangeEvent } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Calculator, ClipboardList, Compass, Home, LayoutGrid, Menu, Ruler, Search, ShoppingBag, User, X, type LucideIcon } from 'lucide-react';
+import { Grid2X2, Heart, Home, Menu, Package, Search, ShoppingCart, User, X } from 'lucide-react';
 import { FabrickNavLogo } from '@/components/FabrickBrandIcon';
 import { useCartContext } from '@/context/CartContext';
 import { useTenantBranding, type TenantBranding } from '@/hooks/useTenantBranding';
 import { navigateWithTransition } from '@/lib/routeTransition';
 
+const YELLOW = '#F6C64A';
 function goTo(href: string, router: ReturnType<typeof useRouter>) { navigateWithTransition(href, router); }
 
 export function StoreFabrickLogo({ tone = 'dark', compact = false, branding }: { tone?: 'light' | 'dark'; branding: TenantBranding; compact?: boolean }) {
-  if (branding.logoUrl) return <img src={branding.logoUrl} alt={branding.name} className={`${compact ? 'h-9 max-w-[178px]' : 'h-11 max-w-[220px]'} w-auto object-contain`} />;
+  if (branding.logoUrl) return <img src={branding.logoUrl} alt={branding.name} className={`${compact ? 'h-9 max-w-[190px]' : 'h-11 max-w-[230px]'} w-auto object-contain`} />;
   return <FabrickNavLogo theme={tone === 'dark' ? 'light' : 'dark'} />;
 }
 
@@ -33,50 +34,47 @@ export function StorefrontHeader({ onSearch }: { onSearch?: () => void }) {
   const changeSearch = (event: ChangeEvent<HTMLInputElement>) => { setMobileQuery(event.target.value); syncCatalogSearch(event.target.value); };
 
   return <>
-    <style>{`@media(max-width:767px){label:has(#catalog-search){display:none!important}div:has(>label>#catalog-search){position:relative!important;top:auto!important;margin-top:.5rem!important;padding-top:.25rem!important}}`}</style>
-    <nav className="sticky top-0 z-[180] border-b border-black/10 bg-[#F4EFE6]/98 text-[#111214] shadow-[0_8px_26px_rgba(0,0,0,.06)] backdrop-blur-xl">
-      <div className="mx-auto max-w-[1320px] px-3 pb-3 pt-2 md:flex md:h-[68px] md:items-center md:justify-between md:gap-6 md:px-8 md:py-0">
+    <nav className="sticky top-0 z-[180] border-b border-white/[.08] bg-[#060A0D]/95 text-white shadow-[0_10px_35px_rgba(0,0,0,.34)] backdrop-blur-xl">
+      <div className="mx-auto max-w-[1380px] px-3 py-2.5 md:flex md:h-[78px] md:items-center md:gap-6 md:px-8 md:py-0">
         <div className="flex h-12 items-center justify-between md:h-auto">
-          <button onClick={() => setMenuOpen(true)} className="grid h-10 w-10 place-items-center rounded-full md:hidden" aria-label="Abrir menú"><Menu size={21}/></button>
-          <button onClick={() => goTo('/tienda', router)} className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0" aria-label="Ir a tienda"><StoreFabrickLogo tone="light" branding={branding} compact /></button>
-          <button onClick={openCart} className="relative grid h-10 w-10 place-items-center rounded-xl bg-[#F5871F] md:hidden" aria-label="Carrito"><ShoppingBag size={19}/>{totalItems>0?<span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#111214] px-1 text-[10px] font-black text-white">{totalItems}</span>:null}</button>
+          <button onClick={() => setMenuOpen(true)} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 md:hidden" aria-label="Abrir menú"><Menu size={21}/></button>
+          <button onClick={() => goTo('/tienda', router)} className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0" aria-label="Ir a tienda"><StoreFabrickLogo tone="dark" branding={branding} compact /></button>
+          <button onClick={openCart} className="relative grid h-10 w-10 place-items-center rounded-xl border border-[#F6C64A]/25 bg-[#F6C64A] text-[#080A0D] md:hidden" aria-label="Carrito"><ShoppingCart size={19}/>{totalItems>0?<span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-black text-black">{totalItems}</span>:null}</button>
         </div>
 
-        <label className="flex h-11 items-center gap-3 rounded-[1.25rem] border border-black/8 bg-white px-4 shadow-sm md:hidden">
-          <Search size={18} className="shrink-0 text-[#A86700]"/>
-          <input value={mobileQuery} onChange={changeSearch} onFocus={onSearch} placeholder="Buscar en Soluciones Fabrick" className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-black/38" />
-          {mobileQuery ? <button type="button" onClick={() => { setMobileQuery(''); syncCatalogSearch(''); }} className="grid h-7 w-7 place-items-center rounded-full bg-black/5" aria-label="Limpiar búsqueda"><X size={14}/></button> : null}
+        <label className="mt-2 flex h-11 items-center gap-3 rounded-[1.15rem] border border-white/14 bg-white/[.035] px-4 md:mt-0 md:min-w-0 md:flex-1 md:max-w-[650px]">
+          <Search size={18} className="shrink-0 text-white/55"/>
+          <input value={mobileQuery} onChange={changeSearch} onFocus={onSearch} placeholder="¿Qué estás buscando para tu proyecto?" className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-white outline-none placeholder:text-white/35" />
+          {mobileQuery ? <button type="button" onClick={() => { setMobileQuery(''); syncCatalogSearch(''); }} className="grid h-7 w-7 place-items-center rounded-full bg-white/[.07]" aria-label="Limpiar búsqueda"><X size={14}/></button> : null}
         </label>
 
-        <div className="hidden items-center gap-5 md:flex"><button onClick={() => goTo('/tienda', router)} className="text-sm font-bold">Tienda</button><button onClick={() => goTo('/herramientas/aire-acondicionado', router)} className="text-sm font-bold text-black/55">BTU</button><button onClick={() => goTo('/herramientas/radier', router)} className="text-sm font-bold text-black/55">Radier</button><button onClick={() => goTo('/proyectos', router)} className="text-sm font-bold text-black/55">Inspiraciones</button><button onClick={() => goTo('/presupuesto', router)} className="text-sm font-bold text-black/55">Cotizar</button></div>
-        <div className="hidden items-center gap-1 md:flex"><button onClick={onSearch} className="grid h-10 w-10 place-items-center rounded-full" aria-label="Buscar"><Search size={19}/></button><button onClick={openCart} className="relative grid h-10 w-10 place-items-center rounded-xl bg-[#F5871F]" aria-label="Carrito"><ShoppingBag size={19}/>{totalItems>0?<span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-black px-1 text-[10px] font-black text-white">{totalItems}</span>:null}</button></div>
+        <div className="hidden items-center gap-1 md:ml-auto md:flex">
+          <button onClick={() => goTo('/mi-cuenta', router)} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-white/82" aria-label="Mi cuenta"><User size={19}/></button>
+          <button onClick={openCart} className="relative grid h-10 w-10 place-items-center rounded-xl bg-[#F6C64A] text-[#080A0D]" aria-label="Carrito"><ShoppingCart size={19}/>{totalItems>0?<span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-black text-black">{totalItems}</span>:null}</button>
+        </div>
       </div>
+      <div className="hidden border-t border-white/[.055] md:block"><div className="mx-auto flex max-w-[1380px] items-center gap-6 px-8 py-2.5 text-[11px] font-bold text-white/52"><button onClick={() => goTo('/tienda', router)} className="text-white">Tienda</button><button onClick={() => goTo('/tienda/catalogo', router)}>Todos los productos</button><button onClick={() => goTo('/herramientas/radier', router)}>Calcula tu radier</button><button onClick={() => goTo('/herramientas/aire-acondicionado', router)}>Calcula tu aire</button><button onClick={() => goTo('/presupuesto', router)}>Cotizar proyecto</button></div></div>
     </nav>
 
-    {menuOpen?<div className="fixed inset-0 z-[270] bg-black/50 backdrop-blur-sm md:hidden" onClick={()=>setMenuOpen(false)}><section className="absolute inset-x-3 top-3 max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-[1.8rem] bg-[#FFF9EE] p-4 shadow-2xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between"><StoreFabrickLogo tone="light" branding={branding} compact/><button onClick={()=>setMenuOpen(false)} className="grid h-10 w-10 place-items-center rounded-full bg-black text-white"><X size={18}/></button></div><div className="mt-5 grid grid-cols-2 gap-2"><Quick icon={LayoutGrid} title="Tienda" onClick={()=>{setMenuOpen(false);goTo('/tienda',router)}}/><Quick icon={Calculator} title="Calculadora BTU" onClick={()=>{setMenuOpen(false);goTo('/herramientas/aire-acondicionado',router)}}/><Quick icon={Ruler} title="Calculadora Radier" onClick={()=>{setMenuOpen(false);goTo('/herramientas/radier',router)}}/><Quick icon={Compass} title="Inspiraciones" onClick={()=>{setMenuOpen(false);goTo('/proyectos',router)}}/><Quick icon={ClipboardList} title="Presupuesto" onClick={()=>{setMenuOpen(false);goTo('/presupuesto',router)}}/><Quick icon={ShoppingBag} title={`Carrito · ${totalItems}`} onClick={()=>{setMenuOpen(false);openCart()}}/><Quick icon={User} title="Mis pedidos" onClick={()=>{setMenuOpen(false);goTo('/mi-cuenta',router)}}/></div></section></div>:null}
+    {menuOpen?<div className="fixed inset-0 z-[270] bg-black/70 backdrop-blur-sm md:hidden" onClick={()=>setMenuOpen(false)}><section className="absolute inset-x-3 top-3 rounded-[1.6rem] border border-white/10 bg-[#0A0E12] p-4 text-white shadow-2xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between"><StoreFabrickLogo tone="dark" branding={branding} compact/><button onClick={()=>setMenuOpen(false)} className="grid h-10 w-10 place-items-center rounded-full border border-white/10"><X size={18}/></button></div><div className="mt-5 grid gap-2"><MenuLink label="Tienda" onClick={()=>{setMenuOpen(false);goTo('/tienda',router)}}/><MenuLink label="Todos los productos" onClick={()=>{setMenuOpen(false);goTo('/tienda/catalogo',router)}}/><MenuLink label="Calcula tu radier" onClick={()=>{setMenuOpen(false);goTo('/herramientas/radier',router)}}/><MenuLink label="Calcula tu aire ideal" onClick={()=>{setMenuOpen(false);goTo('/herramientas/aire-acondicionado',router)}}/><MenuLink label={`Carrito · ${totalItems}`} onClick={()=>{setMenuOpen(false);openCart()}}/></div></section></div>:null}
   </>;
 }
 
-function Quick({icon:Icon,title,onClick}:{icon:LucideIcon;title:string;onClick:()=>void}) { return <button onClick={onClick} className="flex min-h-[82px] flex-col justify-between rounded-2xl border border-black/[.055] bg-white p-3 text-left shadow-[0_8px_24px_rgba(35,24,14,.05)] transition active:scale-[.98]"><Icon size={18} className="text-[#B96F00]"/><b className="mt-2 text-sm">{title}</b></button>; }
-function DockItem({icon:Icon,label,active,onClick}:{icon:LucideIcon;label:string;active?:boolean;onClick:()=>void}) { return <button onClick={onClick} className={`grid min-w-0 flex-1 place-items-center gap-1 py-2 text-[10px] font-black transition ${active?'text-[#FFF2D8]':'text-white/82'}`}><Icon className="h-[22px] w-[22px]" strokeWidth={active?2.8:2}/><span className="truncate">{label}</span></button>; }
+function MenuLink({label,onClick}:{label:string;onClick:()=>void}) { return <button onClick={onClick} className="flex min-h-12 items-center justify-between rounded-xl border border-white/[.07] bg-white/[.025] px-4 text-left text-sm font-black"><span>{label}</span><span className="text-[#F6C64A]">→</span></button>; }
+function DockItem({icon:Icon,label,active,onClick}:{icon:typeof Home;label:string;active?:boolean;onClick:()=>void}) { return <button onClick={onClick} className={`grid min-w-0 flex-1 place-items-center gap-1 py-2 text-[10px] font-bold transition ${active?'text-[#F6C64A]':'text-white/68'}`}><Icon className="h-[21px] w-[21px]" strokeWidth={active?2.7:2}/><span className="truncate">{label}</span></button>; }
 
 export function StoreBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { openCart, totalItems } = useCartContext();
-  const [open, setOpen] = useState(false);
-  const nav = (href:string) => { setOpen(false); goTo(href, router); };
-
-  return <>
-    {open?<div className="fixed inset-0 z-[250] bg-black/58 backdrop-blur-sm md:hidden" onClick={()=>setOpen(false)}><section className="absolute inset-x-3 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-[1.8rem] bg-[#FFF9EE] p-4 text-[#111214] shadow-2xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#B96F00]">Centro Fabrick</p><h2 className="mt-1 text-xl font-black">Herramientas y accesos rápidos</h2></div><button onClick={()=>setOpen(false)} className="grid h-9 w-9 place-items-center rounded-full bg-black text-white"><X size={17}/></button></div><p className="mt-2 max-w-sm text-[11px] leading-5 text-black/48">Calcula, compara o entra directamente a la parte del sitio que necesitas.</p><div className="mt-4 grid grid-cols-2 gap-2"><Quick icon={Calculator} title="Calcular BTU" onClick={()=>nav('/herramientas/aire-acondicionado')}/><Quick icon={Ruler} title="Calcular Radier" onClick={()=>nav('/herramientas/radier')}/><Quick icon={LayoutGrid} title="Explorar tienda" onClick={()=>nav('/tienda')}/><Quick icon={Compass} title="Inspiraciones" onClick={()=>nav('/proyectos')}/><Quick icon={ClipboardList} title="Cotizar obra" onClick={()=>nav('/presupuesto')}/><Quick icon={ShoppingBag} title={`Ver carrito · ${totalItems}`} onClick={()=>{setOpen(false);openCart()}}/><Quick icon={User} title="Mi cuenta" onClick={()=>nav('/mi-cuenta')}/></div></section></div>:null}
-
-    <nav className="fixed inset-x-3 bottom-[calc(.55rem+env(safe-area-inset-bottom))] z-[240] mx-auto flex h-[76px] max-w-[520px] items-center rounded-[2rem] border border-[#D8A66B]/40 bg-[linear-gradient(105deg,rgba(74,51,36,.96),rgba(130,91,57,.94),rgba(77,54,39,.96))] px-2 text-white shadow-[0_18px_52px_rgba(37,23,13,.34)] backdrop-blur-2xl md:hidden" aria-label="Navegación principal">
-      <DockItem icon={Home} label="Inicio" active={pathname==='/' } onClick={()=>nav('/')}/>
-      <DockItem icon={ClipboardList} label="Presupuesto" active={pathname.startsWith('/presupuesto')} onClick={()=>nav('/presupuesto')}/>
-      <button onClick={()=>setOpen(v=>!v)} className="relative -mt-7 grid h-16 w-16 shrink-0 place-items-center rounded-full bg-[#F5871F] text-[#111214] shadow-[0_12px_30px_rgba(245,135,31,.38)] ring-[5px] ring-[#4D3627]" aria-label="Abrir centro Fabrick">{open?<X size={24}/>:<Menu size={27}/>}<span className="absolute -bottom-[18px] rounded-full bg-[#4D3627] px-2 py-0.5 text-[9px] font-black uppercase tracking-[.12em] text-[#FFF0D6]">Centro</span></button>
-      <DockItem icon={LayoutGrid} label="Tienda" active={pathname.startsWith('/tienda')} onClick={()=>nav('/tienda')}/>
-      <DockItem icon={User} label="Perfil" active={pathname.startsWith('/mi-cuenta')} onClick={()=>nav('/mi-cuenta')}/>
-      {totalItems>0?<button onClick={openCart} aria-label="Abrir carrito" className="absolute -right-1 -top-3 grid h-9 min-w-9 place-items-center rounded-full bg-[#111214] px-2 text-xs font-black text-[#FFB000] shadow-lg ring-2 ring-[#F4EFE6]"><ShoppingBag size={15}/><span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-emerald-400 px-1 text-[9px] text-black">{totalItems}</span></button>:null}
-    </nav>
-  </>;
+  const { totalItems } = useCartContext();
+  const nav = (href:string) => goTo(href, router);
+  return <nav className="fixed inset-x-2 bottom-[calc(.45rem+env(safe-area-inset-bottom))] z-[240] mx-auto flex h-[72px] max-w-[560px] items-center rounded-[1.7rem] border border-white/10 bg-[#080C10]/96 px-1 text-white shadow-[0_18px_55px_rgba(0,0,0,.48)] backdrop-blur-2xl md:hidden" aria-label="Navegación de tienda">
+    <DockItem icon={Home} label="Inicio" active={pathname==='/tienda'} onClick={()=>nav('/tienda')}/>
+    <DockItem icon={Grid2X2} label="Categorías" active={pathname.includes('/catalogo')} onClick={()=>nav('/tienda/catalogo')}/>
+    <DockItem icon={ShoppingCart} label={totalItems ? `Carrito ${totalItems}` : 'Carrito'} onClick={()=>nav('/checkout?cart=1')}/>
+    <DockItem icon={Heart} label="Favoritos" active={false} onClick={()=>nav('/mi-cuenta')}/>
+    <DockItem icon={Package} label="Pedidos" active={pathname.startsWith('/mi-cuenta')} onClick={()=>nav('/mi-cuenta')}/>
+  </nav>;
 }
+
+export const STOREFRONT_YELLOW = YELLOW;

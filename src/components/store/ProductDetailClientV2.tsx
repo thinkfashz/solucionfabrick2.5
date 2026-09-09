@@ -1,241 +1,62 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import {
-  ArrowLeft,
-  BadgeCheck,
-  Check,
-  ChevronRight,
-  CreditCard,
-  Minus,
-  PackageCheck,
-  Plus,
-  Ruler,
-  ShieldCheck,
-  ShoppingCart,
-  Star,
-  Truck,
-} from 'lucide-react';
+import { ArrowLeft, BadgeCheck, Calculator, Check, ChevronRight, CreditCard, Minus, PackageCheck, Plus, ShieldCheck, ShoppingCart, Star, Truck } from 'lucide-react';
 import { CART_SESSION_KEY, useCartContext } from '@/context/CartContext';
 import { useCatalogProducts, type CatalogProduct } from '@/hooks/useCatalogProducts';
 import { StoreBottomNav, StorefrontHeader } from '@/components/store/StorefrontChrome';
-import StoreFooter from '@/components/store/StoreFooter';
 import { displayProductName, finalProductPrice, toCartProduct } from '@/components/store/featuredProducts';
+import { navigateWithTransition } from '@/lib/routeTransition';
 
 const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
-const FALLBACK = '/images/landing/fabrick-home-showcase.webp';
-
+const FALLBACK = 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=1000&auto=format&fit=crop';
 function img(product: CatalogProduct) { return product.img || product.image_url || FALLBACK; }
 function discount(product: CatalogProduct) { return Math.max(0, Number(product.discountPercentage ?? product.discount_percentage ?? 0)); }
-function isPrimitive(value: unknown): value is string | number | boolean { return ['string', 'number', 'boolean'].includes(typeof value); }
-function humanizeKey(key: string) { return key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()); }
+function categoryOf(product: CatalogProduct) { return product.category_name || product.category || product.category_id || 'Producto'; }
+function isPrimitive(value: unknown): value is string | number | boolean { return ['string','number','boolean'].includes(typeof value); }
+function humanizeKey(key:string){return key.replace(/[_-]+/g,' ').replace(/\b\w/g,l=>l.toUpperCase());}
+function projectText(product:CatalogProduct){return `${product.name} ${product.description||''} ${product.tagline||''} ${categoryOf(product)}`.toLowerCase();}
+function isRadierRelated(product:CatalogProduct){return /cement|radier|hormig|malla acma|gravilla|moldaje|barrera de humedad/.test(projectText(product));}
+function isAirRelated(product:CatalogProduct){return /climat|aire acondicionado|btu|split/.test(projectText(product));}
+function galleryFor(product:CatalogProduct){const candidates=[img(product)];const specs=product.specifications??{};for(const key of ['gallery','images','imagenes','imágenes']){const value=specs[key];if(Array.isArray(value)) value.forEach(v=>{if(typeof v==='string'&&v.trim())candidates.push(v.trim());});}return Array.from(new Set(candidates)).slice(0,6);}
+function specificationRows(product:CatalogProduct){const ignored=new Set(['merchandising','gallery','images','imagenes','imágenes','seed']);const rows=Object.entries(product.specifications??{}).flatMap(([key,value])=>{if(ignored.has(key))return [];if(isPrimitive(value))return [[humanizeKey(key),String(value)] as [string,string]];if(Array.isArray(value)&&value.every(isPrimitive))return [[humanizeKey(key),value.map(String).join(' · ')] as [string,string]];return [];});if(product.dimensions&&product.dimensions!=='Especificación en ficha técnica'&&!rows.some(([k])=>k.toLowerCase().includes('medid')))rows.unshift(['Medidas',product.dimensions]);rows.push(['Categoría',categoryOf(product)]);return rows.slice(0,10);}
+function isReferenceSeed(product:CatalogProduct){const seed=product.specifications?.seed;return Boolean(seed&&typeof seed==='object'&&!Array.isArray(seed)&&(seed as Record<string,unknown>).initialPriceOnly===true);}
 
-function galleryFor(product: CatalogProduct) {
-  const candidates: string[] = [img(product)];
-  const specs = product.specifications ?? {};
-  for (const key of ['gallery', 'images', 'imagenes', 'imágenes']) {
-    const value = specs[key];
-    if (Array.isArray(value)) {
-      value.forEach((entry) => { if (typeof entry === 'string' && entry.trim()) candidates.push(entry.trim()); });
-    }
-  }
-  return Array.from(new Set(candidates)).slice(0, 6);
-}
+export default function ProductDetailClientV2(){
+  const params=useParams<{id:string}>();const router=useRouter();const {products,loading}=useCatalogProducts();const {items,addToCart,closeCart}=useCartContext();const [qty,setQty]=useState(1);const [added,setAdded]=useState(false);const [selectedImage,setSelectedImage]=useState('');
+  const product=useMemo(()=>products.find(item=>String(item.id)===String(params?.id)),[products,params?.id]);
+  useEffect(()=>{setQty(1);setSelectedImage('');},[params?.id]);
+  const related=useMemo(()=>{if(!product)return [];const same=products.filter(item=>item.id!==product.id&&categoryOf(item)===categoryOf(product));const others=products.filter(item=>item.id!==product.id&&categoryOf(item)!==categoryOf(product));return [...same,...others].slice(0,4);},[product,products]);
+  const nav=(href:string)=>navigateWithTransition(href,router);
+  if(!product)return <div className="min-h-screen bg-[#05090C] text-white"><StorefrontHeader/><main className="grid min-h-[70vh] place-items-center px-5 text-center"><div><p className="text-sm text-white/45">{loading?'Cargando producto…':'Este producto ya no está disponible.'}</p><button onClick={()=>nav('/tienda')} className="mt-5 rounded-full bg-[#F6C64A] px-6 py-3 text-xs font-black text-black">Volver a la tienda</button></div></main><StoreBottomNav/></div>;
 
-function specificationRows(product: CatalogProduct) {
-  const ignored = new Set(['merchandising', 'gallery', 'images', 'imagenes', 'imágenes']);
-  const rows = Object.entries(product.specifications ?? {}).flatMap(([key, value]) => {
-    if (ignored.has(key)) return [];
-    if (isPrimitive(value)) return [[humanizeKey(key), String(value)] as [string, string]];
-    if (Array.isArray(value) && value.length && value.every(isPrimitive)) return [[humanizeKey(key), value.map(String).join(' · ')] as [string, string]];
-    return [];
-  });
-  if (product.dimensions && product.dimensions !== 'Especificación en ficha técnica' && !rows.some(([key]) => key.toLowerCase().includes('medid'))) rows.unshift(['Medidas', product.dimensions]);
-  if (!rows.some(([key]) => key.toLowerCase().includes('categor'))) rows.push(['Categoría', product.category]);
-  return rows.slice(0, 10);
-}
+  const gross=finalProductPrice(product);const net=Math.round(gross/1.19);const iva=gross-net;const d=discount(product);const stock=Number.isFinite(Number(product.stock))?Number(product.stock):null;const rating=Math.max(0,Math.min(5,Number(product.rating||4.8)));const gallery=galleryFor(product);const visibleImage=selectedImage||gallery[0];const specs=specificationRows(product);const productName=displayProductName(product.name);const cartProduct=toCartProduct(product);const reference=isReferenceSeed(product);
+  function add(openCheckout=false){if(stock===0)return;addToCart(cartProduct,qty);setAdded(true);window.setTimeout(()=>setAdded(false),1200);if(!openCheckout)return;const index=items.findIndex(item=>item.product.id===cartProduct.id);const next=index===-1?[...items,{product:cartProduct,quantity:qty}]:items.map((item,i)=>i===index?{...item,product:cartProduct,quantity:item.quantity+qty}:item);try{sessionStorage.setItem(CART_SESSION_KEY,JSON.stringify(next));}catch{}closeCart();router.push('/checkout?cart=1');}
 
-function RelatedCard({ product, onOpen }: { product: CatalogProduct; onOpen: () => void }) {
-  const price = finalProductPrice(product);
-  const d = discount(product);
-  return <article className="min-w-0 bg-white">
-    <button type="button" onClick={onOpen} className="relative block aspect-square w-full overflow-hidden bg-[#F7F4EE] p-3 text-left">
-      <img src={img(product)} alt={displayProductName(product.name)} loading="lazy" decoding="async" className="h-full w-full object-contain transition duration-500 hover:scale-[1.035]" />
-      {d > 0 ? <span className="absolute left-2 top-2 rounded-full bg-[#F5871F] px-2 py-1 text-[9px] font-black">-{d}%</span> : null}
-    </button>
-    <div className="p-3">
-      <p className="text-[8px] font-black uppercase tracking-[.12em] text-[#B96F00]">{product.category}</p>
-      <button type="button" onClick={onOpen} className="mt-1 line-clamp-2 min-h-[2.3rem] text-left text-xs font-black leading-[1.15] sm:text-sm">{displayProductName(product.name)}</button>
-      <b className="mt-3 block text-lg tracking-[-.03em]">{CLP.format(price)}</b>
-      <span className="mt-1 block text-[8px] font-black uppercase tracking-[.1em] text-emerald-700">IVA incluido</span>
-    </div>
-  </article>;
-}
-
-export default function ProductDetailClientV2() {
-  const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const { products, loading } = useCatalogProducts();
-  const { items, addToCart, closeCart } = useCartContext();
-  const [qty, setQty] = useState(1);
-  const [added, setAdded] = useState(false);
-  const [selectedImage, setSelectedImage] = useState('');
-  const product = useMemo(() => products.find((item) => String(item.id) === String(params?.id)), [products, params?.id]);
-
-  useEffect(() => {
-    setQty(1);
-    setSelectedImage('');
-  }, [params?.id]);
-
-  const related = useMemo(() => {
-    if (!product) return [];
-    const sameCategory = products.filter((item) => item.id !== product.id && item.category === product.category);
-    const others = products.filter((item) => item.id !== product.id && item.category !== product.category);
-    return [...sameCategory, ...others].slice(0, 4);
-  }, [product, products]);
-
-  if (!product) return <main className="min-h-screen bg-[#F4EFE6] px-5 py-20 text-center text-[#111214]"><p className="text-sm font-bold text-black/40">{loading ? 'Cargando producto…' : 'Este producto ya no está disponible.'}</p><button type="button" onClick={() => router.push('/tienda')} className="mt-4 rounded-full bg-[#111214] px-5 py-3 text-xs font-black text-white">Volver a la tienda</button></main>;
-
-  const gross = finalProductPrice(product);
-  const net = Math.round(gross / 1.19);
-  const iva = gross - net;
-  const d = discount(product);
-  const stock = Number.isFinite(Number(product.stock)) ? Number(product.stock) : null;
-  const rating = Math.max(0, Math.min(5, Number(product.rating || 0)));
-  const gallery = galleryFor(product);
-  const specs = specificationRows(product);
-  const visibleImage = selectedImage || gallery[0];
-  const productName = displayProductName(product.name);
-  const shippingText = product.shipping_fee === 0 ? 'Despacho configurado sin costo' : product.shipping_fee != null ? `Despacho configurado desde ${CLP.format(product.shipping_fee)}` : 'El costo final de despacho se calcula según la configuración del producto y la región.';
-  const cartProductValue = toCartProduct(product);
-
-  function add(openCheckout = false) {
-    if (stock === 0) return;
-    const nextProduct = cartProductValue;
-    addToCart(nextProduct, qty);
-    setAdded(true);
-    window.setTimeout(() => setAdded(false), 1400);
-    if (!openCheckout) return;
-
-    const index = items.findIndex((item) => item.product.id === nextProduct.id);
-    const nextItems = index === -1
-      ? [...items, { product: nextProduct, quantity: qty }]
-      : items.map((item, itemIndex) => itemIndex === index ? { ...item, product: nextProduct, quantity: item.quantity + qty } : item);
-    try { sessionStorage.setItem(CART_SESSION_KEY, JSON.stringify(nextItems)); } catch {}
-    closeCart();
-    router.push('/checkout?cart=1');
-  }
-
-  return <div className="min-h-screen bg-[#F4EFE6] text-[#111214]">
-    <StorefrontHeader onSearch={() => router.push('/tienda#catalogo')} />
-
-    <main className="mx-auto max-w-[1260px] px-3 pb-32 pt-4 sm:px-6 lg:px-8">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <button type="button" onClick={() => router.back()} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-black/8 bg-white px-4 text-xs font-black text-black/55"><ArrowLeft className="h-4 w-4"/> Volver</button>
-        <span className="text-[9px] font-black uppercase tracking-[.14em] text-black/35">Código · {product.id}</span>
-      </div>
-
-      <section className="overflow-hidden bg-white shadow-[0_28px_90px_rgba(30,24,16,.09)] lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(390px,.95fr)]">
-        <div className="border-b border-black/8 bg-[#F7F4EE] lg:border-b-0 lg:border-r">
-          <div className="grid gap-3 p-3 sm:grid-cols-[76px_1fr] sm:p-5">
-            {gallery.length > 1 ? <div className="order-2 flex gap-2 overflow-x-auto sm:order-1 sm:flex-col">
-              {gallery.map((src) => <button key={src} type="button" onClick={() => setSelectedImage(src)} className={`h-16 w-16 shrink-0 overflow-hidden border bg-white p-1 ${visibleImage === src ? 'border-[#F5871F]' : 'border-black/8'}`}><img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain"/></button>)}
-            </div> : null}
-            <div className={`${gallery.length > 1 ? 'order-1 sm:order-2' : ''} relative grid min-h-[340px] place-items-center overflow-hidden bg-white p-4 sm:min-h-[520px]`}>
-              <img src={visibleImage} alt={productName} decoding="async" className="max-h-[520px] w-full object-contain" />
-              {d > 0 ? <span className="absolute left-4 top-4 rounded-full bg-[#F5871F] px-3 py-1.5 text-[10px] font-black">-{d}%</span> : null}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5 sm:p-8 lg:p-9">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-[.18em] text-[#B96F00]">{product.category_name || product.category || 'Producto'}</span>
-            {product.featured ? <span className="rounded-full bg-[#FFF0D5] px-2.5 py-1 text-[9px] font-black text-[#8A5100]">Destacado</span> : null}
-          </div>
-          <h1 className="mt-3 text-[clamp(2rem,6vw,3.6rem)] font-black leading-[.94] tracking-[-.055em]">{productName}</h1>
-          {product.tagline ? <p className="mt-3 text-sm font-semibold text-black/48">{product.tagline}</p> : null}
-
-          <div className="mt-5 flex flex-wrap items-center gap-3 border-y border-black/8 py-3">
-            <div className="flex gap-0.5" aria-label={`Valoración ${rating} de 5`}>{Array.from({ length: 5 }, (_, index) => <Star key={index} className={`h-4 w-4 ${index < Math.round(rating) ? 'fill-[#F5871F] text-[#F5871F]' : 'text-black/10'}`} />)}</div>
-            <span className="text-xs font-black">{rating > 0 ? rating.toFixed(1) : 'Sin valoración'}</span>
-            <span className="h-3 w-px bg-black/10" />
-            <span className={`text-xs font-black ${stock === 0 ? 'text-red-700' : 'text-emerald-700'}`}>{stock === 0 ? 'Sin stock' : stock == null ? 'Stock por confirmar' : `${stock} disponibles`}</span>
-          </div>
-
-          <p className="mt-5 text-sm leading-7 text-black/55">{product.description || 'Producto seleccionado para completar tu proyecto.'}</p>
-
-          <div className="mt-6 border-y border-black/10 py-5">
-            <p className="text-[9px] font-black uppercase tracking-[.16em] text-[#B96F00]">Precio final · IVA incluido</p>
-            <div className="mt-1 flex flex-wrap items-end gap-x-3 gap-y-1"><b className="text-4xl tracking-[-.055em] sm:text-5xl">{CLP.format(gross)}</b>{d > 0 ? <span className="pb-1 text-sm text-black/28 line-through">{CLP.format(product.price)}</span> : null}</div>
-            <div className="mt-4 grid grid-cols-2 gap-px bg-black/8 text-xs"><div className="bg-[#F7F4EE] p-3"><span className="text-black/38">Neto contenido</span><b className="mt-1 block">{CLP.format(net)}</b></div><div className="bg-[#F7F4EE] p-3"><span className="text-black/38">IVA 19% contenido</span><b className="mt-1 block">{CLP.format(iva)}</b></div></div>
-          </div>
-
-          <div className="mt-5 grid gap-2.5">
-            <TrustLine icon={<BadgeCheck />} title="Venta gestionada por Soluciones Fabrick" detail="Pedido, pago y seguimiento dentro del mismo sistema." />
-            <TrustLine icon={<Truck />} title={product.delivery || 'Entrega a coordinar'} detail={shippingText} />
-            <TrustLine icon={<ShieldCheck />} title="Compra protegida" detail="Pago procesado mediante el flujo seguro de Mercado Pago." />
-          </div>
-
-          <div className="mt-6 flex items-center justify-between gap-4 border-t border-black/10 pt-5">
-            <div><p className="text-[9px] font-black uppercase tracking-[.12em] text-black/38">Cantidad</p><div className="mt-2 flex items-center rounded-full border border-black/10 bg-[#F7F4EE] p-1"><button type="button" onClick={() => setQty((current) => Math.max(1, current - 1))} className="grid h-9 w-9 place-items-center"><Minus className="h-4 w-4" /></button><b className="w-9 text-center">{qty}</b><button type="button" onClick={() => setQty((current) => stock == null ? current + 1 : Math.min(stock, current + 1))} className="grid h-9 w-9 place-items-center"><Plus className="h-4 w-4" /></button></div></div>
-            <div className="text-right"><p className="text-[9px] font-black uppercase tracking-[.12em] text-black/38">Subtotal</p><b className="mt-1 block text-xl">{CLP.format(gross * qty)}</b></div>
-          </div>
-
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            <button type="button" onClick={() => add(false)} disabled={stock === 0} className={`inline-flex min-h-14 items-center justify-center gap-2 rounded-full px-5 text-sm font-black transition ${added ? 'bg-emerald-200' : 'border border-black/12 bg-white hover:border-[#F5871F]' } disabled:opacity-35`}>{added ? <Check className="h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}{added ? 'Añadido' : 'Agregar al carrito'}</button>
-            <button type="button" onClick={() => add(true)} disabled={stock === 0} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[#F5871F] px-5 text-sm font-black transition hover:bg-[#111214] hover:text-white disabled:opacity-35"><CreditCard className="h-5 w-5" /> Comprar ahora <ChevronRight className="h-4 w-4" /></button>
-          </div>
+  return <div className="min-h-screen bg-[#05090C] text-white">
+    <StorefrontHeader onSearch={()=>nav('/tienda/catalogo')}/>
+    <main className="mx-auto max-w-[1380px] px-4 pb-28 pt-5 sm:px-6 lg:px-8">
+      <div className="mb-4 flex items-center justify-between"><button onClick={()=>router.back()} className="inline-flex items-center gap-2 text-[10px] font-black text-white/50"><ArrowLeft size={14}/> Volver</button><span className="text-[9px] uppercase tracking-[.14em] text-white/28">Código · {String(product.id).slice(-10)}</span></div>
+      <section className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0A0F13] shadow-[0_32px_100px_rgba(0,0,0,.34)] lg:grid lg:grid-cols-[1.05fr_.95fr]">
+        <div className="border-b border-white/[.07] bg-[#0D1418] p-3 lg:border-b-0 lg:border-r"><div className="grid gap-3 sm:grid-cols-[72px_1fr]">{gallery.length>1?<div className="order-2 flex gap-2 overflow-x-auto sm:order-1 sm:flex-col">{gallery.map(src=><button key={src} onClick={()=>setSelectedImage(src)} className={`h-16 w-16 shrink-0 rounded-xl border bg-white p-1 ${visibleImage===src?'border-[#F6C64A]':'border-white/10'}`}><img src={src} alt="" className="h-full w-full object-contain"/></button>)}</div>:null}<div className={`${gallery.length>1?'order-1 sm:order-2':''} relative grid min-h-[350px] place-items-center overflow-hidden rounded-[1.25rem] bg-[radial-gradient(circle_at_50%_35%,rgba(246,198,74,.07),transparent_45%)] p-5 sm:min-h-[540px]`}><img src={visibleImage} alt={productName} className="max-h-[520px] w-full object-contain drop-shadow-[0_35px_45px_rgba(0,0,0,.45)]"/>{d>0?<span className="absolute left-4 top-4 rounded-full bg-[#57D4FF] px-3 py-1.5 text-[9px] font-black text-black">-{Math.round(d)}%</span>:product.placement==='best_seller'?<span className="absolute left-4 top-4 rounded-full bg-[#F6C64A] px-3 py-1.5 text-[9px] font-black text-black">Más vendido</span>:null}</div></div></div>
+        <div className="p-5 sm:p-8 lg:p-9"><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#F6C64A]">{categoryOf(product)}</p><h1 className="mt-3 text-[clamp(2.2rem,6vw,4rem)] font-black leading-[.92] tracking-[-.06em]">{productName}</h1>{product.tagline?<p className="mt-3 text-sm text-white/48">{product.tagline}</p>:null}<div className="mt-4 flex flex-wrap items-center gap-3"><div className="flex">{Array.from({length:5},(_,i)=><Star key={i} className={`h-4 w-4 ${i<Math.round(rating)?'fill-[#F6C64A] text-[#F6C64A]':'text-white/12'}`}/>)}</div><span className="text-xs font-bold text-white/50">{rating.toFixed(1)}</span><span className={`rounded-full border px-3 py-1 text-[9px] font-black ${stock===0?'border-red-400/30 bg-red-400/10 text-red-300':'border-emerald-400/25 bg-emerald-400/10 text-emerald-300'}`}>{stock===0?'Sin stock':stock==null?'Stock por confirmar':'En stock'}</span></div>
+          <div className="mt-6 rounded-[1.2rem] border border-white/10 bg-white/[.025] p-4"><p className="text-[9px] font-black uppercase tracking-[.16em] text-white/38">{reference?'Precio referencial':'Precio publicado · IVA incluido'}</p><b className="mt-1 block text-4xl tracking-[-.055em] sm:text-5xl">{CLP.format(gross)}</b>{reference?<p className="mt-2 text-[10px] leading-4 text-white/38">Valor inicial del catálogo. Puedes modificar precio, descripción e imágenes desde administración.</p>:null}<div className="mt-3 grid grid-cols-2 gap-2 text-[10px]"><div className="rounded-xl bg-black/22 p-3"><span className="text-white/35">Neto contenido</span><b className="mt-1 block">{CLP.format(net)}</b></div><div className="rounded-xl bg-black/22 p-3"><span className="text-white/35">IVA 19%</span><b className="mt-1 block">{CLP.format(iva)}</b></div></div></div>
+          <p className="mt-5 text-sm leading-6 text-white/48">{product.description||'Producto seleccionado para completar tu proyecto.'}</p>
+          <div className="mt-5 grid gap-2"><Trust icon={<Truck/>} title="Despacho por región" text="El checkout calcula la tarifa configurada antes de abrir el pago."/><Trust icon={<ShieldCheck/>} title="Compra protegida" text="Stock reservado y pago conciliado antes de confirmar el pedido."/><Trust icon={<BadgeCheck/>} title="Catálogo administrable" text="Stock, imagen, descripción y precio se gestionan desde el panel."/></div>
+          <div className="mt-5 flex items-end justify-between gap-4 border-t border-white/10 pt-5"><div><p className="text-[9px] uppercase tracking-[.12em] text-white/35">Cantidad</p><div className="mt-2 flex items-center rounded-xl border border-white/10 bg-white/[.035] p-1"><button onClick={()=>setQty(q=>Math.max(1,q-1))} className="grid h-9 w-9 place-items-center"><Minus size={15}/></button><b className="w-10 text-center">{qty}</b><button onClick={()=>setQty(q=>stock==null?q+1:Math.min(stock,q+1))} className="grid h-9 w-9 place-items-center"><Plus size={15}/></button></div></div><div className="text-right"><p className="text-[9px] uppercase tracking-[.12em] text-white/35">Subtotal</p><b className="mt-1 block text-xl">{CLP.format(gross*qty)}</b></div></div>
+          <div className="mt-5 grid gap-2 sm:grid-cols-2"><button onClick={()=>add(false)} disabled={stock===0} className={`flex min-h-14 items-center justify-center gap-2 rounded-full border px-5 text-sm font-black ${added?'border-emerald-400 bg-emerald-400 text-black':'border-[#F6C64A] bg-[#F6C64A] text-black'} disabled:opacity-35`}>{added?<Check size={18}/>:<ShoppingCart size={18}/>} {added?'Añadido':'Agregar al carrito'}</button><button onClick={()=>add(true)} disabled={stock===0} className="flex min-h-14 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[.035] px-5 text-sm font-black disabled:opacity-35"><CreditCard size={18}/> Comprar ahora <ChevronRight size={15}/></button></div>
+          {isRadierRelated(product)?<button onClick={()=>nav('/herramientas/radier')} className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-[#F6C64A]/35 bg-[#F6C64A]/[.06] text-xs font-black text-[#F6C64A]"><Calculator size={16}/> Calcular mi radier <ChevronRight size={15}/></button>:null}{isAirRelated(product)?<button onClick={()=>nav('/herramientas/aire-acondicionado')} className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-[#57D4FF]/35 bg-[#57D4FF]/[.06] text-xs font-black text-[#57D4FF]"><Calculator size={16}/> Calcular mi aire ideal <ChevronRight size={15}/></button>:null}
         </div>
       </section>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_.85fr]">
-        <article className="bg-white p-5 sm:p-7">
-          <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#B96F00]">Características</p>
-          <h2 className="mt-2 text-2xl font-black tracking-[-.04em]">Lo importante antes de comprar</h2>
-          <div className="mt-5 grid gap-px bg-black/8 sm:grid-cols-2">
-            {product.features.map((feature) => <div key={feature} className="flex min-h-14 items-start gap-3 bg-[#FAF8F3] p-4 text-sm font-semibold leading-5"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />{feature}</div>)}
-            {product.dimensions && product.dimensions !== 'Especificación en ficha técnica' ? <div className="flex min-h-14 items-start gap-3 bg-[#FAF8F3] p-4 text-sm font-semibold leading-5"><Ruler className="mt-0.5 h-4 w-4 shrink-0 text-[#B96F00]" />{product.dimensions}</div> : null}
-          </div>
-        </article>
+      <section className="mt-5 grid gap-3 lg:grid-cols-[1.1fr_.9fr]"><article className="rounded-[1.5rem] border border-white/10 bg-[#0A0F13] p-5 sm:p-6"><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#F6C64A]">Características principales</p><div className="mt-4 divide-y divide-white/[.07]">{specs.map(([label,value])=><div key={`${label}-${value}`} className="grid grid-cols-[.8fr_1.2fr] gap-3 py-3 text-xs"><span className="text-white/38">{label}</span><b>{value}</b></div>)}</div></article><article className="rounded-[1.5rem] border border-white/10 bg-[#0A0F13] p-5 sm:p-6"><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#F6C64A]">Antes de comprar</p><h2 className="mt-2 text-xl font-black">Revisa tu proyecto primero.</h2><p className="mt-3 text-xs leading-5 text-white/42">Si este producto depende de medidas, usa la calculadora correspondiente. Así reduces compras de capacidad o cantidades equivocadas.</p><div className="mt-4 grid gap-2"><div className="flex items-center gap-3 rounded-xl border border-white/[.07] bg-black/20 p-3"><PackageCheck className="h-5 w-5 text-[#F6C64A]"/><span className="text-[10px]">Stock confirmado nuevamente en checkout</span></div><div className="flex items-center gap-3 rounded-xl border border-white/[.07] bg-black/20 p-3"><ShieldCheck className="h-5 w-5 text-[#F6C64A]"/><span className="text-[10px]">El servidor valida precio y disponibilidad</span></div></div></article></section>
 
-        <article className="bg-[#111214] p-5 text-white sm:p-7">
-          <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#FFB000]">Compra segura</p>
-          <h2 className="mt-2 text-2xl font-black tracking-[-.04em]">Qué ocurre después de pagar</h2>
-          <div className="mt-5 divide-y divide-white/10"><DarkStep n="01" icon={<PackageCheck />} title="Orden registrada" text="Tu pedido queda asociado al comprobante de pago."/><DarkStep n="02" icon={<Truck />} title="Entrega coordinada" text="Se valida despacho, dirección y disponibilidad real."/><DarkStep n="03" icon={<ShieldCheck />} title="Seguimiento" text="Puedes revisar el estado desde tu cuenta."/></div>
-        </article>
-      </section>
-
-      {specs.length ? <section className="mt-4 bg-white p-5 sm:p-7">
-        <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#B96F00]">Ficha técnica</p>
-        <h2 className="mt-2 text-2xl font-black tracking-[-.04em]">Especificaciones del producto</h2>
-        <div className="mt-5 divide-y divide-black/8 border-y border-black/8">{specs.map(([key, value]) => <div key={key} className="grid grid-cols-[.8fr_1.2fr] gap-4 py-3 text-xs sm:text-sm"><span className="font-bold text-black/42">{key}</span><span className="font-semibold">{value}</span></div>)}</div>
-      </section> : null}
-
-      <section className="mt-4 bg-white p-5 sm:p-7">
-        <div className="grid gap-5 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
-          <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#B96F00]">Opiniones</p><h2 className="mt-2 text-2xl font-black tracking-[-.04em]">Reseñas sin inventar confianza.</h2></div>
-          <p className="text-sm leading-6 text-black/48">Esta ficha no publica comentarios anónimos o simulados. Cuando exista una reseña vinculada a una compra confirmada, aparecerá aquí como opinión verificada.</p>
-        </div>
-        <div className="mt-5 flex flex-col gap-4 border-t border-black/10 pt-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex gap-0.5">{Array.from({ length: 5 }, (_, index) => <Star key={index} className={`h-4 w-4 ${index < Math.round(rating) ? 'fill-[#F5871F] text-[#F5871F]' : 'text-black/10'}`} />)}</div><b>{rating > 0 ? `${rating.toFixed(1)} / 5` : 'Sin reseñas verificadas'}</b></div><button type="button" onClick={() => router.push('/mi-cuenta')} className="rounded-full border border-black/12 px-4 py-2.5 text-xs font-black">Revisar mis compras</button></div>
-      </section>
-
-      {related.length ? <section className="mt-8">
-        <div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#B96F00]">También puede servirte</p><h2 className="mt-1 text-2xl font-black tracking-[-.04em]">Productos relacionados</h2></div><button type="button" onClick={() => router.push('/tienda#catalogo')} className="hidden text-xs font-black text-[#B96F00] sm:block">Ver catálogo →</button></div>
-        <div className="grid grid-cols-2 gap-px overflow-hidden bg-black/8 lg:grid-cols-4">{related.map((item) => <RelatedCard key={item.id} product={item} onOpen={() => router.push(`/tienda/${item.id}`)} />)}</div>
-      </section> : null}
-    </main>
-
-    <StoreFooter />
-    <StoreBottomNav />
+      {related.length?<section className="mt-7"><div className="flex items-center justify-between"><h2 className="text-xl font-black">También te puede servir</h2><button onClick={()=>nav('/tienda/catalogo')} className="text-[10px] font-black text-[#F6C64A]">Ver todos →</button></div><div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">{related.map(item=><Related key={item.id} product={item} onOpen={()=>nav(`/tienda/${item.id}`)}/>)}</div></section>:null}
+    </main><StoreBottomNav/>
   </div>;
 }
 
-function TrustLine({ icon, title, detail }: { icon: React.ReactNode; title: string; detail: string }) {
-  return <div className="flex items-start gap-3 bg-[#F7F4EE] p-3.5"><span className="mt-0.5 text-[#B96F00] [&>svg]:h-4 [&>svg]:w-4">{icon}</span><div><b className="block text-xs">{title}</b><p className="mt-1 text-[10px] leading-4 text-black/42">{detail}</p></div></div>;
-}
-
-function DarkStep({ n, icon, title, text }: { n: string; icon: React.ReactNode; title: string; text: string }) {
-  return <div className="grid grid-cols-[32px_1fr] gap-3 py-4"><div className="text-[#FFB000] [&>svg]:h-5 [&>svg]:w-5">{icon}</div><div><span className="text-[9px] font-black text-white/25">{n}</span><b className="ml-2 text-sm">{title}</b><p className="mt-1 text-xs leading-5 text-white/42">{text}</p></div></div>;
-}
+function Trust({icon,title,text}:{icon:React.ReactNode;title:string;text:string}){return <div className="flex gap-3 rounded-xl border border-white/[.07] bg-white/[.025] p-3"><span className="text-[#F6C64A] [&>svg]:h-5 [&>svg]:w-5">{icon}</span><div><b className="block text-[10px]">{title}</b><small className="mt-1 block text-[9px] leading-4 text-white/35">{text}</small></div></div>;}
+function Related({product,onOpen}:{product:CatalogProduct;onOpen:()=>void}){return <article className="overflow-hidden rounded-[1.15rem] border border-white/10 bg-[#0A0F13]"><button onClick={onOpen} className="aspect-[1.1/1] w-full bg-[#0E1418] p-3"><img src={img(product)} alt={product.name} loading="lazy" className="h-full w-full object-contain"/></button><div className="p-3"><p className="text-[8px] uppercase text-[#57D4FF]">{categoryOf(product)}</p><button onClick={onOpen} className="mt-1 line-clamp-2 min-h-[2.3rem] text-left text-xs font-black">{product.name}</button><b className="mt-3 block text-base">{CLP.format(finalProductPrice(product))}</b></div></article>;}

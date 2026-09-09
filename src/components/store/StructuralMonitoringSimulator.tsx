@@ -12,7 +12,6 @@ import {
   Info,
   Pause,
   Play,
-  Radio,
   RotateCcw,
   ShieldCheck,
   Waves,
@@ -24,6 +23,7 @@ import { StoreBottomNav, StorefrontHeader } from './StorefrontChrome';
 type Soil = 'rock' | 'firm' | 'soft';
 type SeismicConfig = {
   magnitude: number;
+  intensityMmi: number;
   depthKm: number;
   duration: number;
   soil: Soil;
@@ -46,15 +46,18 @@ const SOIL: Record<Soil, { label: string; factor: number; text: string }> = {
   soft: { label: 'Suelo blando', factor: 1.28, text: 'Mayor amplificación visual' },
 };
 
+const MMI_ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 const clp = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 
 function clamp(value: number, min = 0, max = 1) { return Math.min(max, Math.max(min, value)); }
+function mmiLabel(value: number) { return MMI_ROMAN[Math.max(1, Math.min(12, Math.round(value))) - 1]; }
 
 function analyze(config: SeismicConfig): Analysis {
   const magnitude = clamp((config.magnitude - 4) / 5.5);
+  const intensity = clamp((config.intensityMmi - 1) / 11);
   const shallow = clamp(1 - config.depthKm / 160);
   const duration = clamp((config.duration - 5) / 35);
-  const hazard = clamp((magnitude * 0.64 + shallow * 0.22 + duration * 0.1 + 0.04) * SOIL[config.soil].factor);
+  const hazard = clamp((magnitude * 0.45 + intensity * 0.32 + shallow * 0.13 + duration * 0.06 + 0.04) * SOIL[config.soil].factor);
   const damage = Math.round(clamp(Math.pow(hazard, 1.62) * 0.84) * 100);
   const support = Math.round(clamp(1 - hazard * 0.68 + 0.08) * 100);
   const critical = damage < 18 ? 0 : Math.max(1, Math.round((damage / 100) * 7));
@@ -67,7 +70,7 @@ function analyze(config: SeismicConfig): Analysis {
 }
 
 export function StructuralMonitoringSimulator() {
-  const [config, setConfig] = useState<SeismicConfig>({ magnitude: 7.2, depthKm: 28, duration: 18, soil: 'firm' });
+  const [config, setConfig] = useState<SeismicConfig>({ magnitude: 7.2, intensityMmi: 8, depthKm: 28, duration: 18, soil: 'firm' });
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showDamage, setShowDamage] = useState(true);
@@ -104,7 +107,7 @@ export function StructuralMonitoringSimulator() {
           <div>
             <p className="text-[9px] font-black uppercase tracking-[.24em] text-cyan-300">Digital twin · Three.js · secuencia 4D educativa</p>
             <h1 className="mt-3 max-w-5xl text-[clamp(2.8rem,7vw,6.6rem)] font-black leading-[.88] tracking-[-.065em]">Del hipocentro al panel.</h1>
-            <p className="mt-5 max-w-3xl text-sm leading-6 text-white/50 sm:text-base">Configura magnitud, profundidad, duración y suelo. Reproduce la propagación bajo tierra, el cambio de cámara hacia la estructura y una lectura visual de zonas exigidas, soportes y reparación referencial.</p>
+            <p className="mt-5 max-w-3xl text-sm leading-6 text-white/50 sm:text-base">Configura magnitud, intensidad superficial visual, profundidad, duración y suelo. Reproduce la propagación bajo tierra, el cambio de cámara hacia la estructura y una lectura visual de zonas exigidas, soportes y reparación referencial.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/herramientas/metalcon" className="rounded-full border border-white/15 px-5 py-3 text-xs font-black text-white/70">← Configurar panel</Link>
@@ -147,10 +150,12 @@ export function StructuralMonitoringSimulator() {
           <div className="rounded-[1.6rem] border border-white/10 bg-[#0A1115] p-5">
             <div className="flex items-center justify-between"><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/40">Parámetros del evento</p><Waves size={18} className="text-cyan-300" /></div>
             <Range label="Magnitud del escenario" value={`Mw ${config.magnitude.toFixed(1)}`} min={4} max={9.5} step={0.1} number={config.magnitude} onChange={magnitude => setConfig(v => ({ ...v, magnitude }))} />
+            <Range label="Intensidad superficial visual (MMI)" value={`MMI ${mmiLabel(config.intensityMmi)} · ${config.intensityMmi}/12`} min={1} max={12} step={1} number={config.intensityMmi} onChange={intensityMmi => setConfig(v => ({ ...v, intensityMmi }))} />
+            <p className="mt-1 text-[8px] leading-4 text-white/30">MMI se usa aquí como control visual independiente para comparar escenarios; no se calcula para una ubicación real.</p>
             <Range label="Profundidad del hipocentro" value={`${config.depthKm} km`} min={5} max={120} step={1} number={config.depthKm} onChange={depthKm => setConfig(v => ({ ...v, depthKm }))} />
             <Range label="Duración visual" value={`${config.duration} s`} min={5} max={40} step={1} number={config.duration} onChange={duration => setConfig(v => ({ ...v, duration }))} />
             <label className="mt-4 block"><span className="mb-2 block text-[9px] font-black uppercase tracking-[.14em] text-white/40">Suelo</span><select value={config.soil} onChange={e => setConfig(v => ({ ...v, soil: e.target.value as Soil }))} className="h-12 w-full rounded-xl border border-white/10 bg-[#11181d] px-3 text-xs font-black text-white outline-none">{Object.entries(SOIL).map(([id, soil]) => <option key={id} value={id}>{soil.label} · {soil.text}</option>)}</select></label>
-            <div className="mt-4 grid grid-cols-3 gap-1.5"><Preset label="M6,0" onClick={() => setConfig({ magnitude: 6, depthKm: 45, duration: 10, soil: 'firm' })} /><Preset label="M7,2" onClick={() => setConfig({ magnitude: 7.2, depthKm: 28, duration: 18, soil: 'firm' })} /><Preset label="M8,5" onClick={() => setConfig({ magnitude: 8.5, depthKm: 18, duration: 28, soil: 'soft' })} /></div>
+            <div className="mt-4 grid grid-cols-3 gap-1.5"><Preset label="M6 · MMI VI" onClick={() => setConfig({ magnitude: 6, intensityMmi: 6, depthKm: 45, duration: 10, soil: 'firm' })} /><Preset label="M7,2 · MMI VIII" onClick={() => setConfig({ magnitude: 7.2, intensityMmi: 8, depthKm: 28, duration: 18, soil: 'firm' })} /><Preset label="M8,5 · MMI X" onClick={() => setConfig({ magnitude: 8.5, intensityMmi: 10, depthKm: 18, duration: 28, soil: 'soft' })} /></div>
           </div>
 
           <div className="rounded-[1.6rem] border border-white/10 bg-[#0A1115] p-5">
@@ -171,10 +176,10 @@ export function StructuralMonitoringSimulator() {
         <div className="grid gap-3 md:grid-cols-4">
           <Process number="01" title="Nucleación" text={`El foco se representa a ${config.depthKm} km y se normaliza en escala para poder verlo dentro de la escena.`} />
           <Process number="02" title="Propagación" text="Ondas concéntricas muestran de forma visual la transferencia de energía hacia capas superiores." />
-          <Process number="03" title="Respuesta" text="La cámara sube al panel y el entramado oscila según un índice paramétrico, no un análisis dinámico real." />
+          <Process number="03" title="Respuesta" text={`La cámara sube al panel y el entramado oscila con Mw ${config.magnitude.toFixed(1)}, MMI visual ${mmiLabel(config.intensityMmi)} y el índice paramétrico resultante.`} />
           <Process number="04" title="Diagnóstico" text="Hotspots resaltan puntos exigidos y soportes para explicar dónde convendría inspeccionar después de un evento." />
         </div>
-        <div className="mt-5 flex gap-3 rounded-[1.4rem] border border-amber-300/20 bg-amber-300/[.05] p-4 text-[10px] leading-5 text-amber-50/60"><Info size={17} className="mt-0.5 shrink-0 text-amber-300" /><p><b className="text-amber-100">Herramienta educativa/comercial.</b> La animación, daño, soporte y costo son aproximaciones paramétricas. No predicen el comportamiento de una vivienda real y no sustituyen análisis estructural, estudio de suelo, normativa aplicable, inspección post-sismo ni evaluación de un profesional competente. Si existe daño real, no uses este resultado para decidir habitabilidad.</p></div>
+        <div className="mt-5 flex gap-3 rounded-[1.4rem] border border-amber-300/20 bg-amber-300/[.05] p-4 text-[10px] leading-5 text-amber-50/60"><Info size={17} className="mt-0.5 shrink-0 text-amber-300" /><p><b className="text-amber-100">Herramienta educativa/comercial.</b> La magnitud, la MMI ajustable, la animación, el daño, el soporte y el costo son aproximaciones paramétricas. No predicen el comportamiento de una vivienda real y no sustituyen análisis estructural, estudio de suelo, normativa aplicable, inspección post-sismo ni evaluación de un profesional competente. Si existe daño real, no uses este resultado para decidir habitabilidad.</p></div>
       </section>
     </main>
     <StoreBottomNav />
@@ -205,7 +210,7 @@ function SeismicWorld({ config, result, playing, progress, showDamage, showSuppo
     if (!frame.current) return;
     const active = playing && progress > 0.34 && progress < 0.88;
     const amplitude = active ? result.hazard * 0.14 : 0;
-    const frequency = 7.5 + config.magnitude * 0.95;
+    const frequency = 7.5 + config.magnitude * 0.95 + config.intensityMmi * 0.08;
     const targetX = Math.sin(clock.elapsedTime * frequency) * amplitude;
     const targetZ = Math.sin(clock.elapsedTime * frequency * 0.69 + 1.2) * amplitude * 0.5;
     const targetR = Math.sin(clock.elapsedTime * frequency * 0.81) * amplitude * 0.1;
@@ -257,7 +262,7 @@ function Subsurface({ config, result, playing, progress }: { config: SeismicConf
     <group position={[0, hypocenterY, 0]}>
       <mesh><sphereGeometry args={[0.13 + result.hazard * 0.13, 24, 24]} /><meshStandardMaterial color="#ff3b23" emissive="#ff2100" emissiveIntensity={5} /></mesh>
       {[pulseA, pulseB, pulseC].map((ref, i) => <mesh ref={ref} key={i}><sphereGeometry args={[0.48, 28, 18]} /><meshBasicMaterial color={i === 1 ? '#ffb04a' : '#ff5a35'} wireframe transparent opacity={0} /></mesh>)}
-      <Html center distanceFactor={8} position={[0, -0.34, 0]}><span className="whitespace-nowrap rounded-lg bg-black/85 px-2 py-1 text-[7px] font-black uppercase text-[#ff9a70]">Hipocentro visual · {config.depthKm} km</span></Html>
+      <Html center distanceFactor={8} position={[0, -0.34, 0]}><span className="whitespace-nowrap rounded-lg bg-black/85 px-2 py-1 text-[7px] font-black uppercase text-[#ff9a70]">Hipocentro visual · {config.depthKm} km · MMI {mmiLabel(config.intensityMmi)}</span></Html>
     </group>
     {progress > 0.18 && result.hazard > 0.42 ? <group position={[0, -0.02, 0]}><Crack x={-1.1} z={0.25} rot={0.55} /><Crack x={0.2} z={-0.5} rot={-0.35} /><Crack x={1.3} z={0.55} rot={0.85} /></group> : null}
   </group>;

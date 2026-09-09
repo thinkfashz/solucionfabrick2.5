@@ -24,29 +24,17 @@ type SubmitPayload = {
   website?: unknown;
 };
 
-type PatchPayload = {
-  id?: unknown;
-  status?: unknown;
-  adminReply?: unknown;
-};
+type PatchPayload = { id?: unknown; status?: unknown; adminReply?: unknown };
 
 function cleanText(value: unknown, max: number) {
   return String(value ?? '').trim().replace(/[<>]/g, '').slice(0, max);
 }
 
 function cleanSlug(value: unknown) {
-  return cleanText(value, 100)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 80);
+  return cleanText(value, 100).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
 }
 
-function validEmail(value: string) {
-  return !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
+function validEmail(value: string) { return !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value); }
 
 function clientHash(request: NextRequest) {
   const raw = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
@@ -61,8 +49,9 @@ async function adminSession(request: NextRequest) {
 }
 
 function dbFailure(error: unknown, fallback: string) {
-  const message = typeof error === 'object' && error && 'message' in error ? String((error as { message?: unknown }).message || '') : '';
-  return NextResponse.json({ error: message || fallback }, { status: 503 });
+  const message = typeof error === 'object' && error && 'message' in error ? String((error as { message?: unknown }).message || '') : String(error || '');
+  console.error('[inspiration-comments] database operation failed:', message.slice(0, 1200));
+  return NextResponse.json({ error: fallback, code: 'COMMENTS_STORAGE_UNAVAILABLE' }, { status: 503 });
 }
 
 export async function GET(request: NextRequest) {
@@ -70,25 +59,17 @@ export async function GET(request: NextRequest) {
   const scope = url.searchParams.get('scope');
   const album = cleanSlug(url.searchParams.get('album'));
   const session = scope === 'admin' ? await adminSession(request) : null;
-
   if (scope === 'admin' && !session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   try {
-    let query = insforgeAdmin.database
-      .from('inspiration_comments')
-      .select(scope === 'admin' ? ADMIN_FIELDS : PUBLIC_FIELDS)
-      .eq('tenant_id', DEFAULT_TENANT)
-      .order('created_at', { ascending: false })
-      .limit(scope === 'admin' ? 250 : MAX_PUBLIC_COMMENTS);
-
+    let query = insforgeAdmin.database.from('inspiration_comments').select(scope === 'admin' ? ADMIN_FIELDS : PUBLIC_FIELDS).eq('tenant_id', DEFAULT_TENANT).order('created_at', { ascending: false }).limit(scope === 'admin' ? 250 : MAX_PUBLIC_COMMENTS);
     if (album) query = query.eq('album_slug', album);
     if (scope !== 'admin') query = query.eq('status', 'published');
-
     const { data, error } = await query;
-    if (error) return dbFailure(error, 'No se pudieron cargar los comentarios.');
+    if (error) return dbFailure(error, 'Los comentarios se están sincronizando. Intenta nuevamente en unos segundos.');
     return NextResponse.json({ comments: Array.isArray(data) ? data : [] }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    return dbFailure(error, 'No se pudieron cargar los comentarios.');
+    return dbFailure(error, 'Los comentarios se están sincronizando. Intenta nuevamente en unos segundos.');
   }
 }
 
@@ -112,17 +93,9 @@ export async function POST(request: NextRequest) {
 
     const ipHash = clientHash(request);
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { data: recent, error: recentError } = await insforgeAdmin.database
-      .from('inspiration_comments')
-      .select('id')
-      .eq('tenant_id', DEFAULT_TENANT)
-      .eq('ip_hash', ipHash)
-      .gte('created_at', oneHourAgo)
-      .limit(6);
-    if (recentError) return dbFailure(recentError, 'No se pudo validar el envío.');
-    if (Array.isArray(recent) && recent.length >= 5) {
-      return NextResponse.json({ error: 'Has enviado varios aportes recientemente. Intenta nuevamente más tarde.' }, { status: 429 });
-    }
+    const { data: recent, error: recentError } = await insforgeAdmin.database.from('inspiration_comments').select('id').eq('tenant_id', DEFAULT_TENANT).eq('ip_hash', ipHash).gte('created_at', oneHourAgo).limit(6);
+    if (recentError) return dbFailure(recentError, 'No se pudo validar el envío. Intenta nuevamente en unos segundos.');
+    if (Array.isArray(recent) && recent.length >= 5) return NextResponse.json({ error: 'Has enviado varios aportes recientemente. Intenta nuevamente más tarde.' }, { status: 429 });
 
     const { data, error } = await insforgeAdmin.database.from('inspiration_comments').insert([{
       tenant_id: DEFAULT_TENANT,
@@ -137,18 +110,17 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     }]).select('id,status').limit(1);
 
-    if (error) return dbFailure(error, 'No se pudo guardar el comentario.');
+    if (error) return dbFailure(error, 'No se pudo guardar el comentario. Intenta nuevamente en unos segundos.');
     const row = Array.isArray(data) ? data[0] : null;
     return NextResponse.json({ ok: true, id: row?.id || null, status: row?.status || 'pending' }, { status: 201 });
   } catch (error) {
-    return dbFailure(error, 'No se pudo guardar el comentario.');
+    return dbFailure(error, 'No se pudo guardar el comentario. Intenta nuevamente en unos segundos.');
   }
 }
 
 export async function PATCH(request: NextRequest) {
   const session = await adminSession(request);
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-
   try {
     const payload = await request.json() as PatchPayload;
     const id = cleanText(payload.id, 80);
@@ -158,21 +130,11 @@ export async function PATCH(request: NextRequest) {
     if (!['pending', 'published', 'archived'].includes(status)) return NextResponse.json({ error: 'Estado inválido.' }, { status: 400 });
 
     const now = new Date().toISOString();
-    const update: Record<string, string | null> = {
-      status,
-      admin_reply: adminReply || null,
-      updated_at: now,
-    };
+    const update: Record<string, string | null> = { status, admin_reply: adminReply || null, updated_at: now };
     if (status === 'published') update.published_at = now;
     if (status !== 'published') update.published_at = null;
 
-    const { data, error } = await insforgeAdmin.database
-      .from('inspiration_comments')
-      .update(update)
-      .eq('tenant_id', DEFAULT_TENANT)
-      .eq('id', id)
-      .select(ADMIN_FIELDS)
-      .limit(1);
+    const { data, error } = await insforgeAdmin.database.from('inspiration_comments').update(update).eq('tenant_id', DEFAULT_TENANT).eq('id', id).select(ADMIN_FIELDS).limit(1);
     if (error) return dbFailure(error, 'No se pudo actualizar el comentario.');
     const row = Array.isArray(data) ? data[0] : null;
     if (!row) return NextResponse.json({ error: 'Comentario no encontrado.' }, { status: 404 });

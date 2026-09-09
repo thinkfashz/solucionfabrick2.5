@@ -17,20 +17,54 @@ describe('Funnel BTU contract', () => {
   it('la página precarga catálogo real en servidor antes del cliente', () => {
     const page = source('src/app/herramientas/aire-acondicionado/page.tsx');
     expect(page).toContain('preloadAirCatalogProducts');
-    expect(page).toContain('<AirCalculatorFunnelV8 initialProducts={initialProducts} />');
+    expect(page).toContain('<AirSimulatorFunnelV9 initialProducts={initialProducts} />');
     expect(page).toContain("export const runtime = 'nodejs'");
   });
 
   it('la compra final sigue entrando por el checkout seguro existente', () => {
-    const funnel = source('src/components/store/AirCalculatorFunnelV8.tsx');
+    const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
     expect(funnel).toContain("router.push(`/checkout?");
     expect(funnel).toContain('Checkout recalcula desde servidor');
     expect(funnel).toContain('Stock reservado');
   });
 
-  it('el recomendador no habilita compra directa cuando el cálculo requiere múltiples unidades', () => {
-    const funnel = source('src/components/store/AirCalculatorFunnelV8.tsx');
+  it('el recomendador bloquea compra directa cuando el cálculo requiere múltiples unidades', () => {
+    const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
     expect(funnel).toContain('sizing.requiresMultiUnit');
-    expect(funnel).toContain('no habilitamos compra directa');
+    expect(funnel).toContain('bloqueamos compra directa');
+    expect(funnel).toContain("disabled={sizing.requiresMultiUnit}");
+  });
+
+  it('incluye visor 3D, control térmico y consumo animado', () => {
+    const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
+    expect(funnel).toContain('Visor climático 3D');
+    expect(funnel).toContain('Control simulado');
+    expect(funnel).toContain('Consumo animado');
+    expect(funnel).toContain('Costo eléctrico estimado');
+    expect(funnel).toContain('Temperatura objetivo');
+  });
+
+  it('muestra habitación, living, oficina y cocina desde perfiles térmicos', () => {
+    const engine = source('src/lib/airConditioning.ts');
+    expect(engine).toContain("label: 'Habitación'");
+    expect(engine).toContain("label: 'Living'");
+    expect(engine).toContain("label: 'Oficina'");
+    expect(engine).toContain("label: 'Cocina'");
+    expect(engine).toContain('internalLoadBtu');
+  });
+
+  it('conecta referencias reales Ahorro/Recomendado/Premium al catálogo', () => {
+    const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
+    expect(funnel).toContain("'Ahorro'");
+    expect(funnel).toContain("'Recomendado'");
+    expect(funnel).toContain("'Premium'");
+    expect(funnel).toContain('recommendAirProductTiers');
+  });
+
+  it('explica inverter con ahorro estimado y advertencia de variabilidad', () => {
+    const funnel = source('src/components/store/AirSimulatorFunnelV9.tsx');
+    expect(funnel).toContain('¿Por qué inverter?');
+    expect(funnel).toContain('estimatedSavingsPercent');
+    expect(funnel).toContain('El consumo real depende del modelo');
   });
 });

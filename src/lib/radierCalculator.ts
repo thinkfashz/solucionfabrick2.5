@@ -7,9 +7,12 @@ export type RadierPlan = {
   label: string;
   description: string;
   includes: string[];
+  excludes: string[];
   materialsM2: number;
   laborM2: number;
   extrasM2: number;
+  extrasLabel: string;
+  transportIncluded: boolean;
 };
 
 export type RadierInput = {
@@ -24,33 +27,77 @@ export type RadierInput = {
 export const RADIER_PLANS: RadierPlan[] = [
   {
     id: 'materiales',
-    name: 'Kit de materiales',
-    label: 'Solo suministro',
-    description: 'Para ejecutar con mano de obra propia y mantener una base de compra clara.',
-    includes: ['Materiales calculados', 'Malla y capas de base', 'Moldaje de referencia', 'Transporte referencial'],
-    materialsM2: 29000,
-    laborM2: 0,
-    extrasM2: 10000,
+    name: 'Solo mano de obra',
+    label: 'Tú aportas los materiales',
+    description: 'Referencia para ejecutar el radier cuando ya tienes o comprarás por tu cuenta los materiales principales.',
+    includes: [
+      'Trazado y nivelación del área de trabajo',
+      'Armado e instalación del moldaje y estacas',
+      'Compactación e instalación de las capas aportadas',
+      'Instalación de malla y barrera de humedad',
+      'Hormigonado y terminación superficial seleccionada',
+    ],
+    excludes: [
+      'Hormigón, cemento y áridos',
+      'Malla ACMA y barrera de humedad',
+      'Madera, estacas y otros materiales',
+      'Despacho o transporte de materiales',
+    ],
+    materialsM2: 0,
+    laborM2: 27000,
+    extrasM2: 6000,
+    extrasLabel: 'Preparación / herramientas',
+    transportIncluded: false,
   },
   {
     id: 'estandar',
-    name: 'Radier estándar',
-    label: 'Recomendado',
-    description: 'Preparación, hormigón, refuerzo y terminación para uso residencial habitual.',
-    includes: ['Preparación de base', 'Materiales', 'Mano de obra', 'Malla de refuerzo', 'Terminación estándar', 'Transporte referencial'],
+    name: 'Mano de obra + materiales',
+    label: 'Servicio completo',
+    description: 'Referencia de ejecución estándar con materiales principales, preparación y mano de obra incluidos.',
+    includes: [
+      'Base compactada y gravilla calculadas',
+      'Barrera de humedad',
+      'Malla ACMA de refuerzo',
+      'Hormigón y materiales principales',
+      'Moldaje y estacas de 43 cm',
+      'Mano de obra y terminación estándar',
+      'Transporte referencial',
+    ],
+    excludes: [
+      'Movimiento de tierra extraordinario',
+      'Retiro masivo de escombros',
+      'Bombeo, grúa o acceso especial no previsto',
+      'Ingeniería estructural cuando corresponda',
+    ],
     materialsM2: 35000,
     laborM2: 27000,
     extrasM2: 10000,
+    extrasLabel: 'Preparación / extras',
+    transportIncluded: true,
   },
   {
     id: 'reforzado',
-    name: 'Radier reforzado',
+    name: 'Completo reforzado',
     label: 'Mayor exigencia',
-    description: 'Más provisión y trabajo para cargas, tránsito o condiciones que requieren revisión adicional.',
-    includes: ['Preparación reforzada', 'Materiales', 'Mano de obra', 'Refuerzo adicional', 'Terminación', 'Transporte referencial'],
+    description: 'Referencia para una ejecución con mayor provisión, preparación y refuerzo cuando el uso exige más revisión.',
+    includes: [
+      'Preparación reforzada de la base',
+      'Materiales principales',
+      'Mano de obra completa',
+      'Refuerzo adicional',
+      'Moldaje, estacas y terminación',
+      'Transporte referencial',
+    ],
+    excludes: [
+      'Fundaciones especiales o sobreexcavaciones',
+      'Estudio de suelo o cálculo estructural',
+      'Bombeo, maquinaria o accesos especiales no previstos',
+    ],
     materialsM2: 43000,
     laborM2: 33000,
     extrasM2: 20000,
+    extrasLabel: 'Preparación reforzada',
+    transportIncluded: true,
   },
 ];
 
@@ -92,7 +139,7 @@ export function calculateRadier(input: RadierInput) {
     const materials = Math.round(area * plan.materialsM2);
     const labor = Math.round(area * plan.laborM2);
     const extras = Math.round(area * plan.extrasM2);
-    const transport = Math.max(45000, Math.round(area * 1500));
+    const transport = plan.transportIncluded ? Math.max(45000, Math.round(area * 1500)) : 0;
     const subtotal = materials + labor + extras + transport;
     const tax = Math.round(subtotal * .19);
     const total = subtotal + tax;

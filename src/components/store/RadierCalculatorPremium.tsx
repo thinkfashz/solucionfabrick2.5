@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -8,7 +9,6 @@ import {
   Calculator,
   Check,
   ChevronRight,
-  CircleDollarSign,
   Grid3X3,
   Headphones,
   Home,
@@ -25,11 +25,15 @@ import { StoreBottomNav, StorefrontHeader } from '@/components/store/StorefrontC
 import { navigateWithTransition } from '@/lib/routeTransition';
 import {
   calculateRadier,
-  RADIER_PLANS,
   RADIER_SHAPES,
   type RadierPlanId,
   type RadierShape,
 } from '@/lib/radierCalculator';
+
+const RadierCinematicViewer = dynamic(() => import('@/components/store/RadierCinematicViewer'), {
+  ssr: false,
+  loading: () => <div className="grid h-[390px] place-items-center rounded-[1.55rem] border border-white/10 bg-[#05090c] text-[10px] font-black uppercase tracking-[.16em] text-white/38 sm:h-[500px]">Iniciando visor 4D…</div>,
+});
 
 const money = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const num = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
@@ -37,14 +41,12 @@ const integer = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 });
 
 const CLOUD = 'https://res.cloudinary.com/disghf6xc/image/upload';
 const ASSETS = {
-  hero: `${CLOUD}/c_limit,w_1100/f_auto/q_auto/v1788934789/radier-cutaway.png`,
   concrete: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934479/hormigon-radier.png`,
   mesh: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934498/malla-acma.png`,
   barrier: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934517/barrera-humedad.png`,
   gravel: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934539/gravilla.png`,
   base: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934560/base-compactada.png`,
   soil: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934579/suelo-natural.png`,
-  stake: `${CLOUD}/c_limit,w_180/f_auto/q_auto/v1788934382/estaca-43cm.png`,
   formwork: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934828/moldaje-madera.png`,
 };
 
@@ -132,30 +134,32 @@ export default function RadierCalculatorPremium() {
       <main className="overflow-hidden pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-16">
         <section className="relative isolate border-b border-white/[.06] bg-[#050A0E]">
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_18%,rgba(246,198,74,.10),transparent_30%),radial-gradient(circle_at_20%_48%,rgba(87,212,255,.07),transparent_26%),linear-gradient(180deg,#060B0F_0%,#020507_100%)]" />
-          <div className="mx-auto max-w-[1280px] px-4 pb-10 pt-7 sm:px-6 lg:px-8 lg:pb-16">
+          <div className="mx-auto max-w-[1320px] px-4 pb-10 pt-7 sm:px-6 lg:px-8 lg:pb-16">
             <button type="button" onClick={() => nav('/tienda')} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-[9px] font-black uppercase tracking-[.14em] text-white/62 transition hover:border-[#F6C64A]/45 hover:text-[#F6C64A]">← Volver</button>
 
-            <div className="mt-7 grid gap-8 lg:grid-cols-[.9fr_1.1fr] lg:items-start">
-              <div className="lg:pt-3">
+            <div className="mt-7 grid gap-8 xl:grid-cols-[.72fr_1.28fr] xl:items-center">
+              <div className="xl:py-8">
                 <p className="text-[10px] font-black uppercase tracking-[.3em] text-[#F6C64A]">Bases sólidas para grandes planes</p>
-                <h1 className="mt-3 max-w-[10ch] text-[clamp(3rem,8vw,6.6rem)] font-black leading-[.86] tracking-[-.07em]">Calcula tu <span className="text-[#F6C64A]">radier ideal</span></h1>
-                <p className="mt-5 max-w-xl text-sm leading-7 text-white/58 sm:text-base">Ingresa las medidas de tu proyecto y revisa capas, cubicación y referencias de costo antes de cotizar.</p>
+                <h1 className="mt-3 max-w-[10ch] text-[clamp(3rem,8vw,6.3rem)] font-black leading-[.86] tracking-[-.07em]">Calcula tu <span className="text-[#F6C64A]">radier ideal</span></h1>
+                <p className="mt-5 max-w-xl text-sm leading-7 text-white/58 sm:text-base">El modelo cambia en tiempo real con largo, ancho, espesor y forma. Gíralo, abre las capas y reproduce la secuencia constructiva 4D antes de cotizar.</p>
                 <div className="mt-6 grid grid-cols-3 gap-2 text-center">
-                  {[['Cálculo preciso', 'Medidas claras'], ['Ahorra tiempo', 'Materiales'], ['Construye', 'Con confianza']].map(([title, text]) => <div key={title} className="rounded-xl border border-white/[.07] bg-white/[.025] px-2 py-3"><b className="block text-[10px] text-white/88">{title}</b><span className="mt-1 block text-[8px] uppercase tracking-[.1em] text-white/35">{text}</span></div>)}
+                  {[['Escala dinámica', 'Medidas reales'], ['Visor 4D', 'Secuencia de capas'], ['Render PBR', 'Luz y materiales']].map(([title, text]) => <div key={title} className="rounded-xl border border-white/[.07] bg-white/[.025] px-2 py-3"><b className="block text-[10px] text-white/88">{title}</b><span className="mt-1 block text-[8px] uppercase tracking-[.1em] text-white/35">{text}</span></div>)}
                 </div>
               </div>
 
-              <div className="relative min-h-[360px] sm:min-h-[470px]">
-                <div className="absolute inset-x-0 top-0 h-full rounded-[2rem] bg-[radial-gradient(circle_at_center,rgba(87,212,255,.08),transparent_55%)]" />
-                <img src={ASSETS.hero} alt="Radier por capas con hormigón, malla, barrera, gravilla, base, suelo y moldaje" width={1100} height={642} decoding="async" fetchPriority="high" className="relative z-10 h-auto w-full object-contain drop-shadow-[0_28px_50px_rgba(0,0,0,.5)]" />
-                <div className="absolute left-[15%] top-[12%] z-20 text-[#57D4FF]"><b className="text-lg sm:text-2xl">{num.format(width)} m</b><span className="ml-2 text-[9px] font-black uppercase tracking-[.12em]">Ancho</span></div>
-                <div className="absolute right-[15%] top-[11%] z-20 text-right text-[#57D4FF]"><b className="text-lg sm:text-2xl">{num.format(length)} m</b><span className="ml-2 text-[9px] font-black uppercase tracking-[.12em]">Largo</span></div>
-                <div className="absolute right-[1%] top-[42%] z-20 rounded-lg bg-[#041017]/80 px-2.5 py-1.5 text-[#57D4FF] ring-1 ring-[#57D4FF]/30"><b>{integer.format(thickness)} cm</b><span className="ml-1 text-[8px] uppercase">Espesor</span></div>
-                <div className="absolute bottom-[5%] right-[8%] z-20 flex items-center gap-2 rounded-full border border-white/10 bg-black/55 px-3 py-2 text-[9px] font-black text-white/82 backdrop-blur"><img src={ASSETS.stake} alt="" width={26} height={26} className="h-7 w-7 object-contain" /> Estacas 43 cm · {result.stakes43cm} un.</div>
-              </div>
+              <RadierCinematicViewer
+                length={length}
+                width={width}
+                thickness={thickness}
+                baseDepth={baseDepth}
+                gravelDepth={gravelDepth}
+                shape={shape}
+                activeLayer={activeLayer}
+                stakes={result.stakes43cm}
+              />
             </div>
 
-            <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="mt-5 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
               {LAYERS.map((item) => {
                 const selected = item.id === activeLayer;
                 return <button key={item.id} type="button" onClick={() => setActiveLayer(item.id)} className={`group flex min-h-[104px] items-center gap-3 rounded-[1.1rem] border p-3 text-left transition sm:block sm:text-center ${selected ? 'border-[#F6C64A] bg-[#F6C64A]/[.08] shadow-[0_0_28px_rgba(246,198,74,.12)]' : 'border-white/[.08] bg-[#081016]/80 hover:border-white/20'}`}><img src={item.asset} alt="" loading="lazy" width={82} height={82} className="h-16 w-16 shrink-0 object-contain sm:mx-auto" /><span><b className={`block text-[11px] ${selected ? 'text-[#F6C64A]' : 'text-white/82'}`}>{item.name}</b><small className="mt-1 block text-[9px] text-white/34">{item.short}</small></span></button>;
@@ -167,7 +171,7 @@ export default function RadierCalculatorPremium() {
 
         <section className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
           <div className="rounded-[1.6rem] border border-white/[.08] bg-[#071017] p-4 shadow-[0_24px_80px_rgba(0,0,0,.3)] sm:p-6">
-            <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F6C64A] text-black"><Calculator className="h-5 w-5" /></span><div><h2 className="text-xl font-black tracking-[-.03em]">1. Ingresa las características de tu proyecto</h2><p className="mt-1 text-[11px] text-white/40">Calcula al instante las cantidades base que necesitas.</p></div></div>
+            <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F6C64A] text-black"><Calculator className="h-5 w-5" /></span><div><h2 className="text-xl font-black tracking-[-.03em]">1. Ingresa las características de tu proyecto</h2><p className="mt-1 text-[11px] text-white/40">Cada cambio actualiza la geometría 3D y el cálculo de materiales en la misma fuente de datos.</p></div></div>
 
             <div className="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
               {RADIER_SHAPES.map((item) => <button key={item.id} type="button" onClick={() => setShape(item.id)} className={`shrink-0 rounded-xl border px-4 py-3 text-[10px] font-black transition ${shape === item.id ? 'border-[#F6C64A] bg-[#F6C64A]/10 text-[#F6C64A]' : 'border-white/10 bg-white/[.025] text-white/45 hover:border-white/20'}`}>{item.label}</button>)}

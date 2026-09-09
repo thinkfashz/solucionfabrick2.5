@@ -6,7 +6,9 @@ const visual = readFileSync('src/app/checkout/checkout-reference.module.css', 'u
 const checkout = readFileSync('src/components/checkout/CheckoutAppV2.tsx', 'utf8');
 const checkoutApi = readFileSync('src/app/api/checkout/route.ts', 'utf8');
 const metalconViewer = readFileSync('src/components/store/MetalconCinematicViewer.tsx', 'utf8');
+const metalconAssembly = readFileSync('src/components/store/MetalconAssembly3D.tsx', 'utf8');
 const metalconMonitoring = readFileSync('src/components/store/StructuralMonitoringSimulator.tsx', 'utf8');
+const metalconPlans = readFileSync('src/lib/metalconAssembly.ts', 'utf8');
 
 describe('shopping visual flow contract', () => {
   it('keeps the shopping redesign isolated to the checkout presentation layer', () => {
@@ -42,22 +44,40 @@ describe('shopping visual flow contract', () => {
     expect(visual).toContain('@media (prefers-reduced-motion: reduce)');
   });
 
-  it('keeps Metalcon on a real Three.js 360 viewer with configurable scene layers', () => {
+  it('keeps Metalcon on a real Three.js 360 viewer with complete plan presets', () => {
     expect(metalconViewer).toContain("from '@react-three/fiber'");
     expect(metalconViewer).toContain('OrbitControls');
     expect(metalconViewer).toContain('Cinematic 4D');
     expect(metalconViewer).toContain('Biblioteca procedural de suelo');
     expect(metalconViewer).toContain("['profiles', 'Perfiles'");
     expect(metalconViewer).toContain('4D montaje');
+    expect(metalconViewer).toContain('family-6x8');
+    expect(metalconPlans).toContain("'compact-5x5'");
+    expect(metalconPlans).toContain("'family-6x8'");
+    expect(metalconPlans).toContain("'studio-45x58'");
   });
 
-  it('keeps the seismic simulator separate, parameterized and explicitly non-certified', () => {
-    expect(metalconMonitoring).toContain('Profundidad del hipocentro');
+  it('frames openings with localized members instead of a single full-wall X', () => {
+    expect(metalconAssembly).toContain('OpeningFrame');
+    expect(metalconAssembly).toContain('doble jamba');
+    expect(metalconAssembly).toContain('dintel compuesto');
+    expect(metalconAssembly).toContain('montantes cortos');
+    expect(metalconAssembly).toContain('clearWallIntervals');
+    expect(metalconAssembly).toContain('DiagonalMember');
+    expect(metalconAssembly).not.toContain('Brace direction={-1}');
+  });
+
+  it('keeps the seismic simulator separate, full-mesh and explicitly non-certified', () => {
+    expect(metalconMonitoring).toContain('Profundidad hipocentral');
+    expect(metalconMonitoring).toContain('Distancia epicentral');
     expect(metalconMonitoring).toContain('Magnitud del escenario');
-    expect(metalconMonitoring).toContain('Propagación de ondas');
-    expect(metalconMonitoring).toContain('Puntos críticos');
+    expect(metalconMonitoring).toContain('Intensidad MMI');
+    expect(metalconMonitoring).toContain('PGA proxy');
+    expect(metalconMonitoring).toContain('Deriva proxy');
+    expect(metalconMonitoring).toContain('Propagación de onda P');
+    expect(metalconMonitoring).toContain('Ranking de paneles');
     expect(metalconMonitoring).toContain('Reparación referencial');
-    expect(metalconMonitoring).toContain('no sustituyen análisis estructural');
-    expect(metalconMonitoring).toContain('no uses este resultado para decidir habitabilidad');
+    expect(metalconMonitoring).toContain('no un modelo de ingeniería sísmica');
+    expect(metalconMonitoring).toContain('No uses este resultado para decidir habitabilidad');
   });
 });

@@ -33,6 +33,7 @@ export interface ShippingLineInput {
 }
 
 const NOW_REFERENCE = '2026-06-16';
+const PRODUCT_SHIPPING_MODES = new Set<ProductShippingMode>(['inherit', 'test', 'production', 'fixed', 'free']);
 
 export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
   mode: 'test',
@@ -84,21 +85,38 @@ export function getRegionRate(region: string, config: ShippingConfig = DEFAULT_S
   return config.rates.find((rate) => rate.region.toUpperCase() === normalized) ?? config.rates[0] ?? DEFAULT_SHIPPING_CONFIG.rates[0];
 }
 
-function hasManualShippingFee(item: ShippingLineInput) {
+function hasManualShippingFee(item: Pick<ShippingLineInput, 'shippingFee'>) {
   return item.shippingFee !== null && item.shippingFee !== undefined && Number.isFinite(Number(item.shippingFee));
 }
 
+/**
+ * Product shipping semantics are explicit and stable:
+ * - an explicit mode always wins (including `free` and `inherit`);
+ * - only legacy rows with no mode can infer `fixed` from an existing fee;
+ * - a product without shipping metadata inherits the global region config.
+ *
+ * This avoids two dangerous historical behaviours: treating missing metadata as
+ * free shipping and converting an explicitly free product to fixed merely
+ * because an old fee value was still stored in the row.
+ */
+export function normalizeProductShippingMode(mode: unknown, shippingFee?: unknown): ProductShippingMode {
+  const normalized = typeof mode === 'string' ? mode.trim().toLowerCase() as ProductShippingMode : null;
+  if (normalized && PRODUCT_SHIPPING_MODES.has(normalized)) return normalized;
+  if (shippingFee !== null && shippingFee !== undefined && Number.isFinite(Number(shippingFee))) return 'fixed';
+  return 'inherit';
+}
+
 function usesGlobalShippingRate(item: ShippingLineInput) {
-  const mode = item.shippingMode ?? (hasManualShippingFee(item) ? 'fixed' : 'free');
+  const mode = normalizeProductShippingMode(item.shippingMode, item.shippingFee);
   return mode === 'inherit' || mode === 'test' || mode === 'production';
 }
 
 export function resolveProductShippingFee(item: ShippingLineInput, region: string, config: ShippingConfig = DEFAULT_SHIPPING_CONFIG) {
-  const mode = item.shippingMode ?? (hasManualShippingFee(item) ? 'fixed' : 'free');
+  const mode = normalizeProductShippingMode(item.shippingMode, item.shippingFee);
 
   if (mode === 'free') return 0;
-  if (mode === 'fixed' || (mode === 'inherit' && hasManualShippingFee(item))) {
-    return Math.max(0, Math.round(Number(item.shippingFee || 0)));
+  if (mode === 'fixed') {
+    return hasManualShippingFee(item) ? Math.max(0, Math.round(Number(item.shippingFee))) : 0;
   }
 
   const regionKey = String(region || 'VII').trim().toUpperCase();
@@ -112,12 +130,20 @@ export function resolveProductShippingFee(item: ShippingLineInput, region: strin
 
 export function calculateShippingTotal(items: ShippingLineInput[], region: string, subtotal: number, config: ShippingConfig = DEFAULT_SHIPPING_CONFIG) {
   if (!items.length) return 0;
-  const itemFees = items.map((item) => resolveProductShippingFee(item, region, config));
-  const base = Math.max(0, ...itemFees);
-  const totalUnits = items.reduce((acc, item) => acc + Math.max(1, Number(item.cantidad || 1)), 0);
-  const extraUnits = Math.max(0, totalUnits - 1) * config.extraUnitFee;
-  const shouldUseLowValueSurcharge = items.some(usesGlobalShippingRate);
+
+  const resolved = items.map((item) => ({
+    item,
+    mode: normalizeProductShippingMode(item.shippingMode, item.shippingFee),
+    fee: resolveProductShippingFee(item, region, config),
+  }));
+
+  const chargeable = resolved.filter(({ mode, fee }) => mode !== 'free' && fee > 0);
+  const base = chargeable.length ? Math.max(...chargeable.map(({ fee }) => fee)) : 0;
+  const totalChargeableUnits = chargeable.reduce((acc, { item }) => acc + Math.max(1, Math.floor(Number(item.cantidad || 1))), 0);
+  const extraUnits = base > 0 ? Math.max(0, totalChargeableUnits - 1) * config.extraUnitFee : 0;
+  const shouldUseLowValueSurcharge = resolved.some(({ item }) => usesGlobalShippingRate(item));
   const lowValue = shouldUseLowValueSurcharge && subtotal > 0 && subtotal < config.lowValueThreshold ? config.lowValueSurcharge : 0;
+
   return Math.max(base + extraUnits, lowValue);
 }
 

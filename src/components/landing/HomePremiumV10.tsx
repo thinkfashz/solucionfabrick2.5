@@ -31,12 +31,12 @@ const CATEGORIES = [
 ] as const;
 
 const TOOLS = [
-  { title: 'Inspiraciones', text: 'Explora cocinas, viviendas, muebles y soluciones reales antes de decidir.', href: '/proyectos', cta: 'Explorar ideas', Icon: Images },
-  { title: 'Calculadora de aire', text: 'BTU, consumo estimado, equipo sugerido y acceso a compra o instalación.', href: '/herramientas/aire-acondicionado', cta: 'Calcular aire ideal', Icon: Wind },
-  { title: 'Calculadora de radier', text: 'Superficie, espesor, volumen y materiales con lectura clara del proyecto.', href: '/herramientas/radier', cta: 'Calcular radier', Icon: Layers3 },
-  { title: 'Paneles Metalcon', text: 'Arma el panel, revisa perfiles y entiende la lógica de la estructura.', href: '/herramientas/metalcon', cta: 'Diseñar estructura', Icon: PanelsTopLeft },
+  { title: 'Inspiraciones', text: 'Explora cocinas, viviendas, muebles y soluciones reales antes de decidir.', href: '/proyectos', cta: 'Explorar ideas', Icon: Images, featured: false },
+  { title: 'Calculadora de aire', text: 'BTU, consumo estimado, equipo sugerido y acceso a compra o instalación.', href: '/herramientas/aire-acondicionado', cta: 'Calcular aire ideal', Icon: Wind, featured: false },
+  { title: 'Calculadora de radier', text: 'Superficie, espesor, volumen y materiales con lectura clara del proyecto.', href: '/herramientas/radier', cta: 'Calcular radier', Icon: Layers3, featured: false },
+  { title: 'Paneles Metalcon', text: 'Arma el panel, revisa perfiles y entiende la lógica de la estructura.', href: '/herramientas/metalcon', cta: 'Diseñar estructura', Icon: PanelsTopLeft, featured: false },
   { title: 'Simulador sísmico 4D', text: 'Prueba intensidad, profundidad, respuesta estructural, daño estimado y reparación referencial.', href: '/herramientas/metalcon/monitoreo', cta: 'Simular terremoto', Icon: Activity, featured: true },
-  { title: 'Presupuesto guiado', text: 'Selecciona servicios, ingresa medidas, compara rangos y envía el detalle por correo o WhatsApp.', href: '/presupuesto', cta: 'Armar presupuesto', Icon: ReceiptText },
+  { title: 'Presupuesto guiado', text: 'Selecciona servicios, ingresa medidas, compara rangos y envía el detalle por correo o WhatsApp.', href: '/presupuesto', cta: 'Armar presupuesto', Icon: ReceiptText, featured: false },
 ] as const;
 
 export default function HomePremiumV10({ copyrightText, socialLinks }: {

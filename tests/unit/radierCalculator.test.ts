@@ -30,6 +30,23 @@ describe('calculateRadier', () => {
     expect(plans[1].total).toBeLessThan(plans[2].total);
   });
 
+  it('treats the first commercial level as labor-only with customer-supplied materials', () => {
+    const plan = calculateRadier(base).plans[0];
+    expect(plan.name).toBe('Solo mano de obra');
+    expect(plan.materials).toBe(0);
+    expect(plan.labor).toBeGreaterThan(0);
+    expect(plan.transport).toBe(0);
+    expect(plan.excludes.some((item) => item.includes('Hormigón'))).toBe(true);
+  });
+
+  it('includes materials and transport in the complete service reference', () => {
+    const plan = calculateRadier(base).plans[1];
+    expect(plan.name).toBe('Mano de obra + materiales');
+    expect(plan.materials).toBeGreaterThan(0);
+    expect(plan.labor).toBeGreaterThan(0);
+    expect(plan.transport).toBeGreaterThan(0);
+  });
+
   it('applies the existing shape factors for non-rectangular layouts', () => {
     const rectangular = calculateRadier(base);
     const lShape = calculateRadier({ ...base, shape: 'l' });

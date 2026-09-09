@@ -168,13 +168,13 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
   const roomProfile = AIR_ROOM_PROFILES[roomType];
   const ambientTempC = useMemo(() => simulatedAmbient(climateZone, sunExposure, roomType), [climateZone, sunExposure, roomType]);
   const energy = useMemo(() => estimateAirEnergy({
-    capacityBtu: sizing.requiresMultiUnit ? sizing.perUnitCapacity : sizing.recommendedCapacity,
+    capacityBtu: primary?.capacity || (sizing.requiresMultiUnit ? sizing.perUnitCapacity : sizing.recommendedCapacity),
     unitCount: sizing.requiresMultiUnit ? sizing.minimumUnits : 1,
     targetTempC,
     ambientTempC,
     hoursPerDay,
     electricityRateClpKwh: DEFAULT_ELECTRICITY_RATE_CLP_KWH,
-  }), [sizing, targetTempC, ambientTempC, hoursPerDay]);
+  }), [primary, sizing, targetTempC, ambientTempC, hoursPerDay]);
 
   const scene = ROOM_SCENE[roomType];
   const liveKw = powerOn ? energy.electricalKwNow : 0;

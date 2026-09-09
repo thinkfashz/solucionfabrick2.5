@@ -12,6 +12,8 @@ on:
       - 'src/lib/insforge.ts'
       - 'src/lib/mercadoPagoCredentials.ts'
       - 'src/lib/orderTracking.ts'
+      - 'src/lib/shipping.ts'
+      - 'src/lib/checkoutServer.ts'
       - 'src/lib/billing/**'
       - 'scripts/ensure-commerce-p0-schema.mjs'
       - 'tests/unit/**'
@@ -38,4 +40,4 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - name: Revenue P0 regression tests
-        run: pnpm vitest run tests/unit/checkout.test.ts tests/unit/commerce.test.ts tests/unit/mercadopago.test.ts tests/unit/mercadopagoStatus.test.ts tests/unit/paymentValidation.test.ts tests/unit/insforgeFailClosed.test.ts tests/unit/orderTrackingFailClosed.test.ts tests/unit/commerceP0Schema.test.ts
+        run: pnpm vitest run tests/unit/checkout.test.ts tests/unit/shipping.test.ts tests/unit/commerce.test.ts tests/unit/mercadopago.test.ts tests/unit/mercadopagoStatus.test.ts tests/unit/paymentValidation.test.ts tests/unit/insforgeFailClosed.test.ts tests/unit/orderTrackingFailClosed.test.ts tests/unit/commerceP0Schema.test.ts

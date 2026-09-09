@@ -8,7 +8,7 @@ import styles from './HomePremiumV10.module.css';
 const CLOUD = 'https://res.cloudinary.com/disghf6xc/image/upload';
 const ORIGINALS = `${CLOUD}/soluciones-fabrick/diseno-20260908`;
 const CATEGORIES = [
-  { key: 'air', eyebrow: 'Climatización', title: 'Aire Acondicionado', text: 'Confort todo el año en tu hogar y proyectos.', image: `${ORIGINALS}/aire-acondicionado.png`, href: '/tienda', alt: 'Aire acondicionado split blanco' },
+  { key: 'air', eyebrow: 'Climatización', title: 'Aire Acondicionado', text: 'Calcula los BTU de tu espacio y compara equipos compatibles con stock real.', image: `${ORIGINALS}/aire-acondicionado.png`, href: '/herramientas/aire-acondicionado', alt: 'Aire acondicionado split blanco' },
   { key: 'cement', eyebrow: 'Construcción', title: 'Cemento', text: 'Base sólida para grandes ideas.', image: `${ORIGINALS}/cemento.png`, href: '/tienda', alt: 'Saco de cemento de referencia' },
   { key: 'metal', eyebrow: 'Estructuras', title: 'Metalcom', text: 'Estructuras que dan forma al futuro.', image: `${ORIGINALS}/perfiles-metalcom.png`, href: '/tienda', alt: 'Perfiles de acero galvanizado Metalcom' },
 ];
@@ -28,7 +28,7 @@ export default function HomePremiumV10({ copyrightText, socialLinks }: {
         <p className={styles.intro}>Materiales de calidad, tecnología y confort para construir espacios más fuertes, modernos y sostenibles.</p>
         <div className={styles.actions}>
           <Link href="/tienda" className={styles.primary}>Ver nuestros productos <ArrowRight size={18} /></Link>
-          <Link href="#cotizador" className={styles.secondary}>Solicitar cotización</Link>
+          <Link href="/herramientas/aire-acondicionado" className={styles.secondary}>Calcular aire ideal</Link>
         </div>
       </div>
       <div className={styles.trust}>
@@ -46,7 +46,7 @@ export default function HomePremiumV10({ copyrightText, socialLinks }: {
           {item.key === 'air' && <div className={styles.coolAir} />}
           <div className={styles.categoryText}>
             <p>{item.eyebrow}</p><h2>{item.title}</h2><div>{item.text}</div>
-            <Link href={item.href} className={styles.primary}>Ver productos <ArrowRight size={17} /></Link>
+            <Link href={item.href} className={styles.primary}>{item.key === 'air' ? 'Calcular BTU' : 'Ver productos'} <ArrowRight size={17} /></Link>
           </div>
         </article>)}
       </section>

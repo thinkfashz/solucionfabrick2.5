@@ -35,6 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/presupuesto`, lastModified: now, changeFrequency: 'weekly', priority: 0.85 },
     { url: `${BASE_URL}/herramientas/radier`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
     { url: `${BASE_URL}/herramientas/aire-acondicionado`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
+    { url: `${BASE_URL}/herramientas/metalcon`, lastModified: now, changeFrequency: 'monthly', priority: 0.82 },
     { url: `${BASE_URL}/evolucion`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE_URL}/contacto`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/garantias`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },

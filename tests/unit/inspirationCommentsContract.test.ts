@@ -17,6 +17,7 @@ const home = readFileSync('src/components/landing/HomePremiumV10.tsx', 'utf8');
 const seismicStory = readFileSync('src/components/landing/MetalconSeismicStory.tsx', 'utf8');
 const budgetPage = readFileSync('src/app/presupuesto/page.tsx', 'utf8');
 const budgetGuide = readFileSync('src/components/presupuesto/BudgetPageGuide.tsx', 'utf8');
+const directWhatsApp = readFileSync('src/components/presupuesto/BudgetDirectWhatsApp.tsx', 'utf8');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> };
 
 describe('inspiration visual and comments contract', () => {
@@ -79,6 +80,7 @@ describe('inspiration visual and comments contract', () => {
     expect(home).toContain("href: '/herramientas/radier'");
     expect(home).toContain("href: '/herramientas/metalcon'");
     expect(home).toContain("href: '/herramientas/metalcon/monitoreo'");
+    expect(home).toContain('HOME_PREMIUM_VISUALS.metalcon');
     expect(home).toContain('Simulador sísmico 4D');
     expect(home).toContain('Simular sismo');
     expect(seismicStory).toContain("'/herramientas/metalcon/monitoreo'");
@@ -87,6 +89,7 @@ describe('inspiration visual and comments contract', () => {
 
   it('turns the budget page into a guided service-to-email-or-whatsapp journey', () => {
     expect(budgetPage).toContain('BudgetPageGuide');
+    expect(budgetPage).toContain('BudgetDirectWhatsApp');
     expect(budgetPage).toContain('id="budget-core"');
     expect(budgetGuide).toContain('Elige el trabajo. Mide. Compara. Decide.');
     expect(budgetGuide).toContain('Ejecución desde');
@@ -96,6 +99,10 @@ describe('inspiration visual and comments contract', () => {
     expect(budgetGuide).toContain("'metalcon'");
     expect(budgetGuide).toContain("'radier'");
     expect(budgetGuide).toContain("'aire'");
+    expect(directWhatsApp).toContain('¿Prefieres WhatsApp sin completar el correo?');
+    expect(directWhatsApp).toContain('buildWhatsAppLink');
+    expect(directWhatsApp).toContain('TOTAL REFERENCIAL');
+    expect(directWhatsApp).toContain('Cotizar directo por WhatsApp');
   });
 
   it('stores public contributions as pending and exposes only published comments publicly', () => {

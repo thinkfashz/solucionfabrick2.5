@@ -47,8 +47,10 @@ type DocumentType = 'boleta' | 'factura';
 type StatusPayload = { state: 'approved' | 'failed' | 'refunded' | 'abandoned' | 'pending' | 'review'; status: string; paymentStatus: string; total: number; iva: number; despacho: number; reviewRequired?: boolean };
 type CheckoutResponse = { data?: { id?: string }; payment?: { checkoutUrl?: string | null }; error?: string; validationErrors?: Array<{ message?: string }> };
 type Capacity = 9000 | 12000 | 18000 | 24000;
+type CheckoutAttempt = { signature: string; orderKey: string };
 
 const PENDING_KEY = 'sf-pending-payment-order';
+const ATTEMPT_KEY = 'sf-checkout-attempt-v2';
 const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const discounted = (item: Item) => Math.round(item.product.price * (1 - Number(item.product.discount_percentage || 0) / 100));
 const CLOUD = 'https://res.cloudinary.com/disghf6xc/image/upload';
@@ -61,7 +63,7 @@ const AIR_VISUALS: Record<Capacity, string> = {
 };
 const STATE_ASSETS = {
   processing: `${CLOUD}/f_auto/q_auto:good/v1788676838/payment-processing-v8.png`,
-  approved: `${CLOUD}/f_auto/q_auto:good/v1788676801/payment-approved-v8.png`,
+  approved: `${CLOUD}/f_auto/q_auto:best/v1788676801/payment-approved-v8.png`,
   rejected: `${CLOUD}/f_auto/q_auto:good/v1788676857/payment-rejected-v8.png`,
   abandoned: `${CLOUD}/f_auto/q_auto:good/v1788676877/payment-abandoned-v8.png`,
   secure: `${CLOUD}/f_auto/q_auto:good/v1788676897/payment-secure-v8.png`,
@@ -97,6 +99,29 @@ function parseEnergy(product?: AirProduct) {
   const direct = String(product?.energy_efficiency || '').trim();
   if (direct) return direct;
   return airText(product).match(/\bA\+{0,3}\b/i)?.[0]?.toUpperCase() || '—';
+}
+function checkoutAttemptSignature(lines: LineItem[], region: string, email: string, shippingAddress: string, documentType: DocumentType) {
+  return JSON.stringify({
+    items: lines.map((item) => [String(item.productoId), Math.trunc(Number(item.cantidad)), Math.round(Number(item.precioUnitario))]),
+    region: region.trim().toUpperCase(),
+    email: email.trim().toLowerCase(),
+    shippingAddress: shippingAddress.trim().toLowerCase(),
+    documentType,
+  });
+}
+function stableCheckoutOrderKey(signature: string) {
+  try {
+    const raw = sessionStorage.getItem(ATTEMPT_KEY);
+    const existing = raw ? JSON.parse(raw) as Partial<CheckoutAttempt> : null;
+    if (existing?.signature === signature && typeof existing.orderKey === 'string' && /^FBK-[A-Za-z0-9._@-]+$/.test(existing.orderKey)) {
+      return existing.orderKey;
+    }
+    const orderKey = `FBK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    sessionStorage.setItem(ATTEMPT_KEY, JSON.stringify({ signature, orderKey } satisfies CheckoutAttempt));
+    return orderKey;
+  } catch {
+    return `FBK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  }
 }
 
 export default function CheckoutAppV2() {
@@ -222,6 +247,7 @@ export default function CheckoutAppV2() {
         if (data.state === 'approved') {
           setState('approved');
           sessionStorage.removeItem(PENDING_KEY);
+          sessionStorage.removeItem(ATTEMPT_KEY);
           sessionStorage.removeItem(CART_SESSION_KEY);
         } else if (data.state === 'review') {
           setState('review');
@@ -251,6 +277,8 @@ export default function CheckoutAppV2() {
     setError('');
     setState('creating');
     try {
+      const attemptSignature = checkoutAttemptSignature(lines, region, email, shippingAddress, documentType);
+      const clientOrderKey = stableCheckoutOrderKey(attemptSignature);
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -263,7 +291,7 @@ export default function CheckoutAppV2() {
             ? { documentType, rut: taxRut, razonSocial: taxBusinessName, giro: taxGiro, direccion: taxAddress, comuna: taxCommune }
             : { documentType: 'boleta' },
           paymentMethod: 'mercadopago',
-          clientOrderKey: `FBK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+          clientOrderKey,
         }),
       });
       const payload = await response.json() as CheckoutResponse;

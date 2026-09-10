@@ -6,7 +6,7 @@
   </defs>
   <g filter="url(#s)" stroke-linejoin="miter">
     <path d="M14 180 160 39 214 91 214 55 246 55 246 122 307 180 286 181 235 135 235 72 224 72 224 113 160 60 35 181Z" fill="url(#steel)" stroke="#e7e8ea" stroke-width="4"/>
-    <path d="M27 176 160 55 218 108 218 119 160 72 42 181Z" fill="url(#gold)"/>
+    <path d="M27 176 160 55 218 108 218 119 160 72 42 181Z" fill="#F6C64A"/>
     <path d="M39 181 160 76 216 122 216 135 160 91 55 183Z" fill="#15171b"/>
   </g>
 </svg>

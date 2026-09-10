@@ -24,7 +24,7 @@ import styles from './HomePremiumV10.module.css';
 const CLOUD = 'https://res.cloudinary.com/disghf6xc/image/upload';
 const ORIGINALS = `${CLOUD}/soluciones-fabrick/diseno-20260908`;
 const RADIER_VISUAL = `${CLOUD}/c_limit,w_1100/f_auto/q_auto/v1788934479/hormigon-radier.png`;
-const INSPIRATION_COVER = `${CLOUD}/c_fill,g_auto,h_900,w_1200/f_auto,q_auto/v1788576758/fabrick/inspiraciones/soluciones-constructivas-fabrick/lipcqzj8cduni5qq4p4z.png`;
+const INSPIRATION_COVER = HOME_PREMIUM_VISUALS.kitchen;
 
 const CATEGORIES = [
   { key: 'air', eyebrow: 'Climatización', title: 'Aire acondicionado', text: 'Calcula BTU, compara capacidad y encuentra el equipo adecuado para tu espacio.', image: `${ORIGINALS}/aire-acondicionado.png`, href: '/herramientas/aire-acondicionado', cta: 'Calcular BTU', alt: 'Aire acondicionado split blanco' },
@@ -87,7 +87,7 @@ export default function HomePremiumV10({ copyrightText, socialLinks }: {
         <div className={styles.toolGrid}>
           {TOOLS.map(({ title, text, href, cta, Icon, featured, image }) => <Link key={title} href={href} className={`${styles.toolCard} ${featured ? styles.toolFeatured : ''} ${image ? 'relative isolate overflow-hidden' : ''}`}>
             {image ? <>
-              <Image src={image} alt="Proyecto de inspiración Soluciones Fabrick" fill unoptimized sizes="(max-width: 767px) 100vw, 33vw" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-55" />
+              <Image src={image} alt="Inspiración de cocina remodelada Soluciones Fabrick" fill unoptimized sizes="(max-width: 767px) 100vw, 33vw" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-55" />
               <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(115deg,rgba(5,10,13,.96)_4%,rgba(5,10,13,.76)_54%,rgba(5,10,13,.34))]" />
             </> : null}
             <span className={`${styles.toolIcon} relative z-10`}><Icon aria-hidden /></span>

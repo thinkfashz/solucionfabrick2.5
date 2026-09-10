@@ -34,6 +34,14 @@ export const STORE_VISUALS = {
   construction: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=1000&auto=format&fit=crop',
 } as const;
 
+const TCL_REAL_PRODUCT_VISUALS: Array<[RegExp, string]> = [
+  [/TCL\s+BreezeIN\s+18000\s+BTU/i, `${CLOUD}/c_limit,w_1000/f_auto/q_auto:best/v1789069389/soluciones-fabrick/productos/aire-tcl/tcl-breezein-18000-btu-wifi.jpg`],
+  [/TCL\s+FreshIN\s+3(?:\.0)?\s+12000\s+BTU/i, `${CLOUD}/c_limit,w_1000/f_auto/q_auto:best/v1789069401/soluciones-fabrick/productos/aire-tcl/tcl-freshin-3-12000-btu-wifi.jpg`],
+  [/TCL\s+BreezeIN\s+24000\s+BTU/i, `${CLOUD}/c_limit,w_1000/f_auto/q_auto:best/v1789069413/soluciones-fabrick/productos/aire-tcl/tcl-breezein-24000-btu-wifi.jpg`],
+  [/TCL\s+SaveIN\s+12000\s+BTU/i, `${CLOUD}/c_limit,w_1000/f_auto/q_auto:best/v1789069424/soluciones-fabrick/productos/aire-tcl/tcl-savein-12000-btu-wifi.jpg`],
+  [/TCL\s+SaveIN\s+18000\s+BTU/i, `${CLOUD}/c_limit,w_1000/f_auto/q_auto:best/v1789069435/soluciones-fabrick/productos/aire-tcl/tcl-savein-18000-btu-wifi.jpg`],
+];
+
 const NAME_VISUALS: Array<[RegExp, string]> = [
   [/cemento especial/i, STORE_VISUALS.cement],
   [/malla acma/i, STORE_VISUALS.mesh],
@@ -56,6 +64,34 @@ const NAME_VISUALS: Array<[RegExp, string]> = [
   [/plaf[oó]n led/i, STORE_VISUALS.ceilingLight],
 ];
 
+function cleanUrl(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function galleryImage(specifications: unknown) {
+  if (!specifications || typeof specifications !== 'object' || Array.isArray(specifications)) return null;
+  const specs = specifications as Record<string, unknown>;
+  for (const key of ['gallery_assets', 'gallery_images', 'gallery', 'images', 'imagenes', 'imágenes']) {
+    const value = specs[key];
+    if (!Array.isArray(value)) continue;
+    for (const entry of value) {
+      const direct = cleanUrl(entry);
+      if (direct) return direct;
+      if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+        const record = entry as Record<string, unknown>;
+        const nested = cleanUrl(record.secure_url) || cleanUrl(record.url);
+        if (nested) return nested;
+      }
+    }
+  }
+  return null;
+}
+
+function mirroredTclImage(name: string, storedImage: string) {
+  if (!/tclstore\.cl/i.test(storedImage)) return null;
+  return TCL_REAL_PRODUCT_VISUALS.find(([pattern]) => pattern.test(name))?.[1] ?? null;
+}
+
 export function isAirProduct(product?: VisualProduct | null) {
   if (!product) return false;
   return /climat|aire acondicionado|btu|split/i.test(`${product.name || ''} ${product.category_name || product.category || ''}`);
@@ -63,11 +99,22 @@ export function isAirProduct(product?: VisualProduct | null) {
 
 export function resolveStoreProductImage(product?: VisualProduct | null) {
   if (!product) return STORE_VISUALS.construction;
+
   const name = product.name || '';
+  const storedImage = cleanUrl(product.image_url) || cleanUrl(product.img) || galleryImage(product.specifications);
+
+  // The catalog/database image is the source of truth. This prevents capacity-based
+  // reference artwork (Samsung/Midea/etc.) from replacing the real product photo.
+  if (storedImage) {
+    if (/res\.cloudinary\.com/i.test(storedImage)) return storedImage;
+    return mirroredTclImage(name, storedImage) || storedImage;
+  }
+
+  // Curated assets are fallbacks only for legacy/reference products with no media.
   const curated = NAME_VISUALS.find(([pattern]) => pattern.test(name));
   if (curated) return curated[1];
   if (isAirProduct(product)) return STORE_VISUALS.airCalculatorPng;
-  return product.img || product.image_url || STORE_VISUALS.construction;
+  return STORE_VISUALS.construction;
 }
 
 export function storeProductImageFallback(product?: VisualProduct | null) {

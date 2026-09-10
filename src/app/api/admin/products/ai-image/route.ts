@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
-import { getAdminInsforge } from '@/lib/adminApi';
+import { getAdminInsforge, getAdminTenantId } from '@/lib/adminApi';
 import { requireAdminPermission } from '@/lib/adminPermissions';
 import { decryptCredentials } from '@/lib/integrationsCrypto';
 import { getOpenRouterCredentials } from '@/lib/openrouter';
@@ -129,14 +129,14 @@ function buildPrompt(product: ProductRow, mode: Mode, instructions: string) {
   return `${task}\n\n${identity}${instructions ? `\n\nIndicaciones adicionales del administrador: ${instructions}` : ''}\n\nDestino: catálogo de construcción y hogar de Soluciones Fabrick en Chile. La imagen debe funcionar como portada de producto y mantener apariencia profesional, natural y creíble.`;
 }
 
-async function loadProduct(id: string): Promise<ProductRow | null> {
+async function loadProduct(id: string, tenantId: string): Promise<ProductRow | null> {
   const client = getAdminInsforge();
-  const { data, error } = await client.database.from('products').select('id,name,description,image_url,category_id,sku,specifications').eq('id', id).limit(1);
+  const { data, error } = await client.database.from('products').select('id,name,description,image_url,category_id,sku,specifications').eq('tenant_id', tenantId).eq('id', id).limit(1);
   if (error) throw new Error(error.message || 'No se pudo cargar el producto.');
   return Array.isArray(data) && data[0] ? data[0] as ProductRow : null;
 }
 
-async function persistProductImage(product: ProductRow, asset: { url: string; publicId: string }, metadata: Record<string, unknown>) {
+async function persistProductImage(product: ProductRow, tenantId: string, asset: { url: string; publicId: string }, metadata: Record<string, unknown>) {
   const specs = asRecord(product.specifications);
   const priorAssets = Array.isArray(specs.gallery_assets) ? specs.gallery_assets.filter((item) => item && typeof item === 'object') as Array<Record<string, unknown>> : [];
   const priorUrls = Array.isArray(specs.gallery_images) ? specs.gallery_images.map(String).filter(Boolean) : [];
@@ -145,7 +145,7 @@ async function persistProductImage(product: ProductRow, asset: { url: string; pu
   const galleryImages = Array.from(new Set([asset.url, product.image_url || '', ...priorUrls])).filter(Boolean).slice(0, 20);
   const nextSpecs = { ...specs, gallery_assets: galleryAssets, gallery_images: galleryImages, ai_image: metadata };
   const client = getAdminInsforge();
-  const { error } = await client.database.from('products').update({ image_url: asset.url, specifications: nextSpecs }).eq('id', product.id);
+  const { error } = await client.database.from('products').update({ image_url: asset.url, specifications: nextSpecs }).eq('tenant_id', tenantId).eq('id', product.id);
   if (error) throw new Error(error.message || 'La imagen se generó pero no se pudo asociar al producto.');
 }
 
@@ -160,8 +160,9 @@ export async function POST(request: NextRequest) {
   if (!productId) return NextResponse.json({ error: 'Selecciona un producto guardado.' }, { status: 400 });
 
   try {
-    const product = await loadProduct(productId);
-    if (!product) return NextResponse.json({ error: 'Producto no encontrado.' }, { status: 404 });
+    const tenantId = await getAdminTenantId(request);
+    const product = await loadProduct(productId, tenantId);
+    if (!product) return NextResponse.json({ error: 'Producto no encontrado en este espacio de trabajo.' }, { status: 404 });
     if (mode === 'improve' && (!product.image_url || !/^https:\/\//i.test(product.image_url))) {
       return NextResponse.json({ error: 'Este producto todavía no tiene una imagen pública que pueda usarse como referencia.' }, { status: 422 });
     }
@@ -206,7 +207,7 @@ export async function POST(request: NextRequest) {
       cost_usd: typeof json.usage?.cost === 'number' ? json.usage.cost : null,
       public_id: asset.publicId,
     };
-    await persistProductImage(product, asset, metadata);
+    await persistProductImage(product, tenantId, asset, metadata);
 
     return NextResponse.json({ ok: true, url: asset.url, asset: { public_id: asset.publicId, width: asset.width, height: asset.height, bytes: asset.bytes }, model: model.id, mode, cost_usd: metadata.cost_usd });
   } catch (error) {

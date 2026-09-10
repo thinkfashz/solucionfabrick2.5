@@ -4,6 +4,7 @@ import AdminColombiaGradientBackground from '@/components/admin/visual/AdminColo
 import AdminRouteStyler from '@/components/admin/AdminRouteStyler';
 import AdminEntrySplash from '@/components/admin/AdminEntrySplash';
 import AdminLiveSaleNotifier from '@/components/admin/AdminLiveSaleNotifier';
+import ProductAiImageDock from '@/components/admin/products/ProductAiImageDock';
 import './fabrick-admin-theme.css';
 import './admin-professional-stage2.css';
 import './admin-professional-stage3.css';
@@ -13,6 +14,7 @@ import './admin-professional-stage6.css';
 import './admin-professional-stage7.css';
 import './admin-professional-stage8.css';
 import './admin-sidebar-v2.css';
+import './admin-product-actions.css';
 
 export const metadata: Metadata = {
   title: 'Admin | Fabrick',
@@ -34,6 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <AdminEntrySplash />
       <AdminRouteStyler />
       <AdminLiveSaleNotifier />
+      <ProductAiImageDock />
       <AdminShellSwitcher>{children}</AdminShellSwitcher>
     </AdminColombiaGradientBackground>
   );

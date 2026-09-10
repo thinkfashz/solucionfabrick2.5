@@ -21,7 +21,7 @@
 
   <g filter="url(#soft)">
     <path d="M63 118 238 30l104 53v-27h24v39l78 40h-36L238 48 92 122Z" fill="none" stroke="url(#steel)" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M64 124 238 41l104 53" fill="none" stroke="url(#gold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M64 124 238 41l104 53" fill="none" stroke="#F6C64A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M342 83V56h24v39" fill="none" stroke="url(#steel)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 

@@ -1,11 +1,4 @@
-import FabrickLoadingScreen from '@/components/FabrickLoadingScreen';
-
+// Sin splash global: la navegación muestra el contenido en cuanto Next.js lo tiene disponible.
 export default function GlobalLoading() {
-  return (
-    <FabrickLoadingScreen
-      eyebrow="Calcula · Compara · Construye"
-      title="Soluciones Fabrick"
-      description="Cargando calculadoras, simuladores, tienda y servicios para tu proyecto."
-    />
-  );
+  return null;
 }

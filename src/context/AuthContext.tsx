@@ -8,6 +8,7 @@ export interface AuthUser {
   id: string;
   email?: string;
   name?: string;
+  avatarUrl?: string;
 }
 
 interface AuthCtxValue {
@@ -25,10 +26,12 @@ const AuthCtx = createContext<AuthCtxValue>({
 });
 
 function extractUser(raw: UserSchema): AuthUser {
+  const profile = (raw.profile || {}) as { name?: string; avatar_url?: string; avatarUrl?: string };
   return {
     id: raw.id,
     email: raw.email,
-    name: raw.profile?.name ?? undefined,
+    name: profile.name ?? undefined,
+    avatarUrl: profile.avatar_url ?? profile.avatarUrl ?? undefined,
   };
 }
 
@@ -39,11 +42,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadUser = useCallback(async () => {
     try {
       const { data, error } = await insforge.auth.getCurrentUser();
-      if (!error && data?.user) {
-        setUser(extractUser(data.user));
-      } else {
-        setUser(null);
-      }
+      if (!error && data?.user) setUser(extractUser(data.user));
+      else setUser(null);
     } catch {
       setUser(null);
     } finally {
@@ -51,24 +51,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    void loadUser();
-  }, [loadUser]);
+  useEffect(() => { void loadUser(); }, [loadUser]);
 
   const signOut = useCallback(async () => {
-    try {
-      await insforge.auth.signOut();
-    } catch {
-      // ignore
-    }
+    try { await insforge.auth.signOut(); } catch {}
     setUser(null);
   }, []);
 
-  return (
-    <AuthCtx.Provider value={{ user, loading, signOut, refresh: loadUser }}>
-      {children}
-    </AuthCtx.Provider>
-  );
+  return <AuthCtx.Provider value={{ user, loading, signOut, refresh: loadUser }}>{children}</AuthCtx.Provider>;
 }
 
 export const useAuth = () => useContext(AuthCtx);

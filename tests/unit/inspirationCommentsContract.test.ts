@@ -124,7 +124,7 @@ describe('inspiration visual and comments contract', () => {
     expect(admin).toContain('Respuesta de Soluciones Fabrick');
   });
 
-  it('creates, repairs and verifies the comments table on every deployment', () => {
+  it('keeps the comments schema repairable but outside the Vercel build', () => {
     expect(schema).toContain('CREATE TABLE IF NOT EXISTS public.inspiration_comments');
     expect(schema).toContain("CHECK (status IN ('pending','published','archived'))");
     expect(schema).toContain('inspiration_comments_album_status_idx');
@@ -133,6 +133,7 @@ describe('inspiration visual and comments contract', () => {
     expect(schema).toContain('schema v2 verified');
     expect(schema).not.toContain('DROP TABLE');
     expect(schema).not.toContain('DELETE FROM');
-    expect((pkg.scripts.build.match(/schema:inspirations/g) || []).length).toBe(2);
+    expect(pkg.scripts['schema:inspirations']).toContain('ensure-inspiration-comments-schema.mjs');
+    expect(pkg.scripts.build).not.toContain('schema:inspirations');
   });
 });

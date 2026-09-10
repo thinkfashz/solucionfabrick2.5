@@ -30,10 +30,18 @@ requireText('src/app/herramientas/radier/page.tsx', 'TechnicalAuthoritySection',
 requireText('src/app/herramientas/metalcon/page.tsx', 'TechnicalAuthoritySection', 'StructuredData');
 requireText('src/app/herramientas/metalcon/monitoreo/page.tsx', 'TechnicalAuthoritySection', 'StructuredData');
 requireText('infra/cloudflare/pay-per-crawl-worker.js', 'cf-pay-per-crawl', 'crawler-price');
+requireText('vercel.json', '"buildCommand": "pnpm build"');
+requireText('tests/unit/deploymentBoundaryContract.test.ts', 'keeps Vercel build free of database DDL and seed side effects');
 
 forbidText('src/app/loading.tsx', 'Preparando Soluciones Fabrick');
 forbidText('src/components/SplashScreen.tsx', 'Preparando Soluciones Fabrick');
 forbidText('src/middleware.ts', 'crawler-price', 'cf-pay-per-crawl');
+
+const pkg = JSON.parse(read('package.json'));
+const build = String(pkg?.scripts?.build || '');
+for (const forbidden of ['ensure-store-seed-columns', 'ensure-store-seed-products', 'schema:inspirations', 'ensure-intelligence-schema', 'ensure-market-intel-schema', 'ensure-inventory-schema', 'ensure-commerce-p0-schema', 'ensure-ml-schema', 'ensure-mcp-governance-schema']) {
+  if (build.includes(forbidden)) failures.push(`package.json build: no debe mutar DB con ${forbidden}`);
+}
 
 if (failures.length) {
   console.error('\nPR pre-close gate FAILED:\n');
@@ -48,5 +56,7 @@ console.log('  pnpm test:commerce-p0');
 console.log('  pnpm test:funnel-btu');
 console.log('  pnpm test:radier');
 console.log('  pnpm test:storefront');
+console.log('  pnpm test:seo-authority');
+console.log('  pnpm test:deployment-boundary');
 console.log('  pnpm typecheck');
-console.log('Y cuando Vercel libere el build-rate-limit: preview READY + smoke manual del head exacto.');
+console.log('Y exige preview Vercel READY + smoke manual del head exacto.');

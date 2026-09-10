@@ -1,0 +1,17 @@
+/* Product Studio: keep save actions readable even when legacy admin theme overrides button colors. */
+body[data-admin-path='/admin/productos'] form button[type='submit'] {
+  background: #F6C64A !important;
+  border-color: #F6C64A !important;
+  color: #111214 !important;
+  -webkit-text-fill-color: #111214 !important;
+  box-shadow: 0 10px 28px rgba(246, 198, 74, 0.2);
+}
+
+body[data-admin-path='/admin/productos'] form button[type='submit'] svg {
+  color: #111214 !important;
+  stroke: currentColor !important;
+}
+
+body[data-admin-path='/admin/productos'] form button[type='submit']:disabled {
+  opacity: 0.5 !important;
+}

@@ -1,0 +1,63 @@
+.homeScope,.airScope,.radierScope,.metalconScope{min-width:0}
+
+/* Home: conserva los tres accesos principales y elimina repeticiones posteriores. */
+.homeScope :global(section[aria-labelledby="featured-title"]){display:none!important}
+.homeScope :global(section[aria-labelledby="tools-title"] a[href="/herramientas/aire-acondicionado"]),
+.homeScope :global(section[aria-labelledby="tools-title"] a[href="/herramientas/radier"]),
+.homeScope :global(section[aria-labelledby="tools-title"] a[href="/herramientas/metalcon"]),
+.homeScope :global(section[aria-labelledby="tools-title"] a[href="/presupuesto"]){display:none!important}
+.homeScope :global(section[aria-labelledby="tools-title"]>div:last-child){grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.homeScope :global(section[aria-labelledby="tools-title"]>div:last-child>a){grid-column:auto!important;min-height:150px}
+
+/* En los visores, el gesto vertical pertenece a la página; el horizontal sigue disponible para interacción. */
+.airScope :global(canvas),.radierScope :global(canvas),.metalconScope :global(canvas){touch-action:pan-y pinch-zoom!important}
+
+@media (max-width:767px){
+  /* Home: escala de lectura pensada también para usuarios mayores. */
+  .homeScope :global(section[aria-labelledby="home-title"] h1+p){font-size:13px!important;line-height:1.55!important;color:#d4d9db!important}
+  .homeScope :global(section[aria-labelledby="home-title"] a){min-height:42px!important;padding:10px 14px!important;font-size:11px!important;line-height:1.2!important}
+  .homeScope :global(section[aria-label="Herramientas principales"] article){min-height:158px!important}
+  .homeScope :global(section[aria-label="Herramientas principales"] article>div:last-child){width:64%!important;padding:15px!important}
+  .homeScope :global(section[aria-label="Herramientas principales"] article>div:last-child>p){font-size:8.5px!important;line-height:1.3!important}
+  .homeScope :global(section[aria-label="Herramientas principales"] article>div:last-child>h2){font-size:22px!important;line-height:1.03!important}
+  .homeScope :global(section[aria-label="Herramientas principales"] article>div:last-child>div){max-width:190px!important;font-size:12px!important;line-height:1.45!important;color:#d0d7da!important}
+  .homeScope :global(section[aria-label="Herramientas principales"] article>div:last-child>a){min-height:40px!important;padding:9px 13px!important;font-size:10.5px!important;line-height:1.15!important}
+  .homeScope :global(section[aria-labelledby="tools-title"]){padding:16px!important}
+  .homeScope :global(section[aria-labelledby="tools-title"]>div:first-child>span){font-size:11px!important;line-height:1.55!important;color:#b9c2c6!important}
+  .homeScope :global(section[aria-labelledby="tools-title"]>div:last-child){grid-template-columns:1fr!important;gap:10px!important}
+  .homeScope :global(section[aria-labelledby="tools-title"]>div:last-child>a){min-height:136px!important;padding:15px!important}
+  .homeScope :global(section[aria-labelledby="tools-title"] h3){font-size:17px!important;line-height:1.15!important}
+  .homeScope :global(section[aria-labelledby="tools-title"] a p){font-size:11.5px!important;line-height:1.5!important;color:#c3cbd0!important}
+  .homeScope :global(section[aria-labelledby="tools-title"] a>span:last-child){font-size:10.5px!important;line-height:1.2!important;color:#fff!important}
+  .homeScope :global(a[href="/presupuesto"].primary){font-size:11px!important}
+
+  /* Aire: visor más bajo, descripción recomendada visible y microcopy legible. */
+  .airScope :global([class~="min-h-[300px]"]){min-height:245px!important;max-height:42svh!important;border-radius:1.5rem!important}
+  .airScope :global(p[class~="text-[9px]"][class~="text-white/28"]){max-width:720px!important;margin-left:auto!important;margin-right:auto!important;padding:12px 14px!important;border:1px solid rgba(255,255,255,.1)!important;border-radius:14px!important;background:rgba(0,0,0,.24)!important;font-size:12.5px!important;line-height:1.55!important;color:rgba(255,255,255,.72)!important}
+  .airScope :global([class~="text-[8px]"]){font-size:10px!important}
+  .airScope :global([class~="text-[9px]"]){font-size:11px!important}
+  .airScope :global([class~="text-[10px]"]){font-size:11.5px!important}
+  .airScope :global([class~="text-white/28"]),.airScope :global([class~="text-white/30"]),.airScope :global([class~="text-white/34"]){color:rgba(255,255,255,.62)!important}
+  .airScope :global(button[class*="text-[8px]"]),.airScope :global(button[class*="text-[9px]"]){font-size:10.5px!important;line-height:1.2!important}
+
+  /* Radier: reduce solo la caja visual, no la escena ni la cámara. */
+  .radierScope :global([class~="h-[390px]"]){height:290px!important}
+  .radierScope :global([class~="text-[8px]"]){font-size:10px!important}
+  .radierScope :global([class~="text-[9px]"]){font-size:11px!important}
+  .radierScope :global([class~="text-[10px]"]){font-size:11.5px!important}
+  .radierScope :global([class~="text-white/30"]),.radierScope :global([class~="text-white/34"]){color:rgba(255,255,255,.6)!important}
+  .radierScope :global(button[class*="text-[8px]"]),.radierScope :global(button[class*="text-[9px]"]){font-size:10.5px!important;line-height:1.2!important}
+
+  /* Metalcon: 520px era demasiado alto en móvil; se conserva el Canvas y todos sus controles. */
+  .metalconScope :global([class~="h-[520px]"]){height:315px!important}
+  .metalconScope :global([class~="text-[8px]"]){font-size:10px!important}
+  .metalconScope :global([class~="text-[9px]"]){font-size:11px!important}
+  .metalconScope :global([class~="text-[10px]"]){font-size:11.5px!important}
+  .metalconScope :global([class~="text-white/28"]),.metalconScope :global([class~="text-white/30"]),.metalconScope :global([class~="text-white/38"]){color:rgba(255,255,255,.62)!important}
+  .metalconScope :global(button[class*="text-[8px]"]),.metalconScope :global(button[class*="text-[9px]"]){font-size:10px!important;line-height:1.2!important}
+}
+
+@media (min-width:768px) and (max-width:1023px){
+  .radierScope :global([class~="sm:h-[500px]"]){height:420px!important}
+  .metalconScope :global([class~="sm:h-[680px]"]){height:460px!important}
+}

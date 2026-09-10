@@ -3,6 +3,7 @@ import { MetalconCalculator } from '@/components/store/MetalconCalculator';
 import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
 import { buildTechnicalToolJsonLd, SITE_URL } from '@/lib/seo';
+import a11y from '../../mobile-accessibility.module.css';
 
 const CANONICAL = `${SITE_URL}/herramientas/metalcon`;
 
@@ -30,7 +31,9 @@ export default function MetalconPage() {
   return (
     <>
       <StructuredData data={jsonLd} />
-      <MetalconCalculator />
+      <div className={a11y.metalconScope}>
+        <MetalconCalculator />
+      </div>
       <TechnicalAuthoritySection
         eyebrow="Configuración Metalcon · explicación visible"
         title="Qué calcula el panel y cuándo deja de ser una simple cubicación"

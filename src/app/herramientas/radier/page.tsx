@@ -3,6 +3,7 @@ import RadierCalculatorPremium from '@/components/store/RadierCalculatorPremium'
 import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
 import { buildTechnicalToolJsonLd, SITE_URL } from '@/lib/seo';
+import a11y from '../../mobile-accessibility.module.css';
 
 const CANONICAL = `${SITE_URL}/herramientas/radier`;
 
@@ -30,7 +31,9 @@ export default function Page() {
   return (
     <>
       <StructuredData data={jsonLd} />
-      <RadierCalculatorPremium />
+      <div className={a11y.radierScope}>
+        <RadierCalculatorPremium />
+      </div>
       <TechnicalAuthoritySection
         eyebrow="Metodología de cubicación · explicación visible"
         title="Cómo se calculan el hormigón, las capas y los materiales"

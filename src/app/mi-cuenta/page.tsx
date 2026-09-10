@@ -1,172 +1,66 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+/* eslint-disable @next/next/no-img-element */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  BadgeCheck,
-  CheckCircle,
-  Clock,
-  Edit3,
-  Facebook,
-  Instagram,
-  LogOut,
-  MapPin,
-  MessageCircle,
-  Package,
-  RotateCcw,
-  ShieldCheck,
-  ShoppingBag,
-  Truck,
-  User,
-  XCircle,
-} from 'lucide-react';
+import { BadgeCheck, Camera, CheckCircle2, ChevronDown, Edit3, Heart, LogOut, MapPin, Package, Phone, Save, ShieldCheck, ShoppingBag, Truck, User, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import PushOptIn from '@/components/PushOptIn';
 import { StoreBottomNav } from '@/components/store/StorefrontChrome';
 import { useAuth } from '@/context/AuthContext';
 import { insforge } from '@/lib/insforge';
-import { formatCLP, normalizeOrderRecord, orderStatusColor, orderStatusLabel, shortRecordId } from '@/lib/commerce';
-import { getStoredProfile, type UserProfile } from '@/components/UserProfileModal';
+import { formatCLP, normalizeOrderRecord, orderStatusColor, orderStatusLabel, shortRecordId, type NormalizedOrderRecord } from '@/lib/commerce';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useRealtimeProducts, type Product } from '@/hooks/useRealtimeProducts';
 import { getInitials } from '@/lib/initials';
+import { PENDING_CUSTOMER_CONSENT_KEY, type PendingCustomerConsent } from '@/lib/customerConsent';
 
-function StatusIcon({ status }: { status: string }) {
-  if (status === 'entregado') return <CheckCircle className="h-4 w-4" style={{ color: orderStatusColor(status) }} />;
-  if (status === 'cancelado') return <XCircle className="h-4 w-4" style={{ color: orderStatusColor(status) }} />;
-  if (status === 'enviado') return <Truck className="h-4 w-4" style={{ color: orderStatusColor(status) }} />;
-  return <Clock className="h-4 w-4" style={{ color: orderStatusColor(status) }} />;
-}
+type CustomerProfile = { firstName:string; lastName:string; phone:string; address:string; commune:string; region:string; postalCode:string; deliveryNotes:string; avatarUrl:string };
+const EMPTY_PROFILE:CustomerProfile={firstName:'',lastName:'',phone:'',address:'',commune:'',region:'',postalCode:'',deliveryNotes:'',avatarUrl:''};
+function finalPrice(product:Product){const discount=Math.max(0,Math.min(100,Number(product.discount_percentage||0)));return Math.round(product.price*(1-discount/100));}
+function splitName(name?:string){const parts=(name||'').trim().split(/\s+/).filter(Boolean);return{firstName:parts[0]||'',lastName:parts.slice(1).join(' ')}};
+function imageToDataUrl(file:File){return new Promise<string>((resolve,reject)=>{const image=new Image();const objectUrl=URL.createObjectURL(file);image.onload=()=>{try{const max=720;const scale=Math.min(1,max/Math.max(image.width,image.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d')?.drawImage(image,0,0,canvas.width,canvas.height);URL.revokeObjectURL(objectUrl);resolve(canvas.toDataURL('image/webp',.84));}catch(e){URL.revokeObjectURL(objectUrl);reject(e);}};image.onerror=()=>{URL.revokeObjectURL(objectUrl);reject(new Error('No se pudo leer la imagen.'));};image.src=objectUrl;});}
+function Avatar({profile,fallback}:{profile:CustomerProfile;fallback:string}){return <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-[1.65rem] border border-white/10 bg-[#11191D] text-2xl font-black text-[#F6C64A]">{profile.avatarUrl?<img src={profile.avatarUrl} alt="Foto de perfil" className="h-full w-full object-cover"/>:getInitials(`${profile.firstName} ${profile.lastName}`.trim()||fallback)||<User className="h-8 w-8"/>}</div>}
+function Stat({icon:Icon,label,value}:{icon:typeof ShoppingBag;label:string;value:number}){return <article className="rounded-[1.35rem] border border-white/[.08] bg-[#11191D] p-4"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#F6C64A]/10 text-[#F6C64A]"><Icon className="h-4 w-4"/></span><div><b className="block text-xl text-white">{value}</b><span className="text-[10px] font-black uppercase tracking-[.14em] text-[#8E9BA1]">{label}</span></div></div></article>}
+function ProfileField({label,value,onChange,type='text',placeholder}:{label:string;value:string;onChange:(v:string)=>void;type?:string;placeholder?:string}){return <label className="grid gap-2"><span className="text-[10px] font-black uppercase tracking-[.14em] text-[#9AA6AB]">{label}</span><input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} className="min-h-12 rounded-xl border border-white/10 bg-[#0B1114] px-4 text-[15px] text-white outline-none placeholder:text-[#56646A] focus:border-[#F6C64A]/55"/></label>}
+function Info({icon:Icon,label,value}:{icon:typeof MapPin;label:string;value:string}){return <div className="flex gap-3 rounded-xl border border-white/[.06] bg-[#0B1114] p-3"><Icon className="mt-0.5 h-4 w-4 shrink-0 text-[#F6C64A]"/><div><span className="block text-[9px] font-black uppercase tracking-[.12em] text-[#738087]">{label}</span><b className="mt-1 block text-[11px] leading-5 text-[#CDD5D8]">{value}</b></div></div>}
 
-function BigAvatar({ name, email }: { name?: string; email?: string }) {
-  const initials = getInitials(name || email);
-  return (
-    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.7rem] bg-[#F5871F] text-2xl font-black text-[#08090A] shadow-[0_18px_48px_rgba(0,0,0,.24)] ring-4 ring-[#FFF9EE]/10">
-      {initials || <User className="h-9 w-9" />}
-    </div>
-  );
-}
+async function sessionToken(){const {data,error}=await insforge.auth.refreshSession();if(error||!data?.accessToken)throw new Error('Tu sesión expiró. Vuelve a iniciar sesión.');return data.accessToken;}
+async function putProfile(token:string,profile:CustomerProfile,options:{acceptTerms:boolean;marketingEmail:boolean;marketingWhatsapp:boolean;source:string}){const response=await fetch('/api/account/profile',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({profile:{firstName:profile.firstName,lastName:profile.lastName,phone:profile.phone,avatarUrl:profile.avatarUrl},address:{address:profile.address,commune:profile.commune,region:profile.region,postalCode:profile.postalCode,deliveryNotes:profile.deliveryNotes},consent:options})});const json=await response.json().catch(()=>null) as any;if(!response.ok)throw new Error(json?.error||'No se pudo guardar el perfil.');return json;}
 
-function StatCard({ icon: Icon, label, value, accent = '#F5871F' }: { icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; label: string; value: string | number; accent?: string }) {
-  return (
-    <div className="rounded-[1.5rem] bg-[#FFF9EE] p-4 shadow-[0_16px_48px_rgba(23,24,32,.07)] ring-1 ring-[#08090A]/10">
-      <div className="flex items-center gap-3">
-        <span className="grid h-11 w-11 place-items-center rounded-2xl" style={{ background: `${accent}24`, color: accent }}><Icon className="h-5 w-5" /></span>
-        <div><p className="text-2xl font-black text-[#08090A]">{value}</p><p className="text-[9px] font-black uppercase tracking-[.17em] text-[#80746c]">{label}</p></div>
-      </div>
-    </div>
-  );
-}
+export default function MiCuentaPage(){
+  const router=useRouter();const fileRef=useRef<HTMLInputElement|null>(null);const {user,loading,signOut,refresh}=useAuth();const {favorites,loading:favoritesLoading}=useFavorites();const {products,loading:productsLoading}=useRealtimeProducts();
+  const [orders,setOrders]=useState<NormalizedOrderRecord[]>([]);const [ordersLoading,setOrdersLoading]=useState(true);const [profile,setProfile]=useState<CustomerProfile>(EMPTY_PROFILE);const [editing,setEditing]=useState(false);const [saving,setSaving]=useState(false);const [avatarUploading,setAvatarUploading]=useState(false);const [notice,setNotice]=useState('');
+  const [consentRequired,setConsentRequired]=useState(false);const [acceptTerms,setAcceptTerms]=useState(false);const [marketingEmail,setMarketingEmail]=useState(false);const [marketingWhatsapp,setMarketingWhatsapp]=useState(false);const [acceptedAt,setAcceptedAt]=useState('');
+  useEffect(()=>{if(!loading&&!user)router.replace('/auth');},[user,loading,router]);
 
-function IconTikTok({ className }: { className?: string }) {
-  return <svg viewBox="0 0 24 24" className={className} fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.19 8.19 0 004.79 1.52V6.78a4.85 4.85 0 01-1.02-.09z" /></svg>;
-}
+  const applyBundle=useCallback((json:any)=>{const authNames=splitName(user?.name);setProfile({firstName:json?.profile?.firstName||authNames.firstName,lastName:json?.profile?.lastName||authNames.lastName,phone:json?.profile?.phone||'',avatarUrl:json?.profile?.avatarUrl||user?.avatarUrl||'',address:json?.address?.address||'',commune:json?.address?.commune||'',region:json?.address?.region||'',postalCode:json?.address?.postalCode||'',deliveryNotes:json?.address?.deliveryNotes||''});setConsentRequired(Boolean(json?.consent?.required));setMarketingEmail(Boolean(json?.consent?.marketingEmail));setMarketingWhatsapp(Boolean(json?.consent?.marketingWhatsapp));setAcceptedAt(String(json?.consent?.acceptedAt||''));},[user?.name,user?.avatarUrl]);
 
-type NormOrder = ReturnType<typeof normalizeOrderRecord>;
+  const loadAccount=useCallback(async()=>{if(!user)return;setOrdersLoading(true);try{const token=await sessionToken();let pending:PendingCustomerConsent|null=null;try{const raw=sessionStorage.getItem(PENDING_CUSTOMER_CONSENT_KEY);pending=raw?JSON.parse(raw) as PendingCustomerConsent:null;}catch{}
+    if(pending?.acceptedTerms){const names=splitName(pending.name);const provisional:CustomerProfile={...EMPTY_PROFILE,...names,phone:pending.phone||'',avatarUrl:user.avatarUrl||''};try{await putProfile(token,provisional,{acceptTerms:true,marketingEmail:pending.marketingEmail,marketingWhatsapp:pending.marketingWhatsapp,source:'oauth-registration'});sessionStorage.removeItem(PENDING_CUSTOMER_CONSENT_KEY);}catch{}}
+    const [profileResponse,ordersResponse]=await Promise.all([fetch('/api/account/profile',{headers:{Authorization:`Bearer ${token}`},cache:'no-store'}),fetch('/api/account/orders',{headers:{Authorization:`Bearer ${token}`},cache:'no-store'})]);
+    const profileJson=await profileResponse.json().catch(()=>null) as any;if(profileResponse.ok)applyBundle(profileJson);else setNotice(profileJson?.error||'No se pudo cargar el perfil privado.');
+    const ordersJson=await ordersResponse.json().catch(()=>null) as any;setOrders(ordersResponse.ok&&Array.isArray(ordersJson?.orders)?ordersJson.orders.map((row:Record<string,unknown>)=>normalizeOrderRecord(row)):[]);
+  }catch(e){setNotice(e instanceof Error?e.message:'No se pudo cargar tu cuenta.');setOrders([]);}finally{setOrdersLoading(false);}},[user,applyBundle]);
+  useEffect(()=>{if(user)void loadAccount();},[user,loadAccount]);
 
-export default function MiCuentaPage() {
-  const router = useRouter();
-  const { user, loading, signOut } = useAuth();
-  const [orders, setOrders] = useState<NormOrder[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const favoriteProducts=useMemo(()=>products.filter(p=>favorites.has(p.id)).slice(0,4),[products,favorites]);const completed=orders.filter(o=>o.status==='entregado').length;const pendingOrders=orders.filter(o=>!['entregado','cancelado'].includes(o.status)).length;const displayName=`${profile.firstName} ${profile.lastName}`.trim()||user?.name||user?.email||'Cliente';
 
-  useEffect(() => {
-    if (!loading && !user) router.replace('/auth');
-  }, [user, loading, router]);
+  async function saveCurrent(accept:boolean,source:string){if(!user)return;setSaving(true);setNotice('');try{const token=await sessionToken();const json=await putProfile(token,profile,{acceptTerms:accept,marketingEmail,marketingWhatsapp,source});applyBundle(json);const auth=insforge.auth as unknown as{setProfile:(value:Record<string,string>)=>Promise<{error?:{message?:string}|null}>};const publicPayload:Record<string,string>={name:`${profile.firstName} ${profile.lastName}`.trim()};if(profile.avatarUrl)publicPayload.avatar_url=profile.avatarUrl;await auth.setProfile(publicPayload);await refresh();setEditing(false);setAcceptTerms(false);setNotice('Tus datos se guardaron de forma privada y el CRM quedó actualizado.');}catch(e){setNotice(e instanceof Error?e.message:'No se pudo guardar.');}finally{setSaving(false);}}
+  async function handleSave(){if(!profile.firstName.trim()){setNotice('Ingresa al menos tu nombre.');return;}if(consentRequired&&!acceptTerms){setNotice('Debes aceptar los Términos y la Política de Privacidad para guardar tus datos.');return;}await saveCurrent(consentRequired,'account-profile');}
+  async function handleAccept(){if(!acceptTerms){setNotice('Marca la casilla de aceptación para continuar.');return;}await saveCurrent(true,'account-consent');}
+  async function handleAvatar(file?:File){if(!file||!user)return;if(consentRequired){setNotice('Acepta primero los Términos y la Política de Privacidad.');return;}setAvatarUploading(true);setNotice('');try{const dataUrl=await imageToDataUrl(file);const token=await sessionToken();const response=await fetch('/api/account/avatar',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({dataUrl})});const json=await response.json().catch(()=>null) as {url?:string;error?:string}|null;if(!response.ok||!json?.url)throw new Error(json?.error||'No se pudo subir la foto.');setProfile(p=>({...p,avatarUrl:json.url!}));const auth=insforge.auth as unknown as{setProfile:(v:Record<string,string>)=>Promise<unknown>};await auth.setProfile({avatar_url:json.url,name:displayName});await refresh();setNotice('Foto actualizada en Cloudinary y asociada a tu perfil privado.');}catch(e){setNotice(e instanceof Error?e.message:'No se pudo actualizar la foto.');}finally{setAvatarUploading(false);if(fileRef.current)fileRef.current.value='';}}
+  async function handleSignOut(){await signOut();router.replace('/');}
+  if(loading||!user)return <div className="min-h-screen bg-[#080B0D]"/>;
 
-  useEffect(() => {
-    if (user?.id) setProfile(getStoredProfile(user.id));
-  }, [user]);
-
-  const loadOrders = useCallback(async () => {
-    if (!user?.email) { setOrdersLoading(false); return; }
-    setOrdersLoading(true);
-    try {
-      const { data } = await insforge.database
-        .from('orders')
-        .select('id, customer_name, customer_email, items, subtotal, total, currency, status, created_at, updated_at, payment_id, payment_status, shipping_address, region, customer_phone, tax, shipping_fee')
-        .eq('customer_email', user.email)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (Array.isArray(data)) setOrders((data as Record<string, unknown>[]).map(normalizeOrderRecord));
-    } catch {
-      setOrders([]);
-    }
-    setOrdersLoading(false);
-  }, [user?.email]);
-
-  useEffect(() => { if (user) void loadOrders(); }, [user, loadOrders]);
-
-  async function handleSignOut() {
-    await signOut();
-    router.replace('/');
-  }
-
-  if (loading) {
-    return <div className="grid min-h-screen place-items-center bg-[#FFF9EE]"><span className="h-9 w-9 animate-spin rounded-full border-2 border-[#F5871F]/30 border-t-[#08090A]" /></div>;
-  }
-  if (!user) return null;
-
-  const displayName = profile ? `${profile.nombre} ${profile.apellido}`.trim() : (user.name || user.email || 'Usuario');
-  const completed = orders.filter((order) => order.status === 'entregado').length;
-  const pending = orders.filter((order) => order.status !== 'entregado' && order.status !== 'cancelado').length;
-  const totalSpent = orders.filter((order) => order.status !== 'cancelado').reduce((sum, order) => sum + order.total, 0);
-
-  return (
-    <div className="min-h-screen overflow-x-hidden bg-[#FFF9EE] pb-[calc(7.5rem+env(safe-area-inset-bottom))] text-[#08090A] md:pb-20">
-      <Navbar />
-      <main className="mx-auto max-w-6xl px-4 pb-8 pt-28 sm:px-6">
-        <section className="relative overflow-hidden rounded-[2.25rem] bg-[#08090A] p-6 text-[#FFF9EE] shadow-[0_30px_90px_rgba(23,24,32,.22)] sm:p-8">
-          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(204,177,150,.24),transparent_25rem),linear-gradient(145deg,transparent,rgba(182,144,108,.08))]" />
-          <div className="relative flex flex-col gap-6 md:flex-row md:items-center">
-            <BigAvatar name={profile?.nombre || user.name} email={user.email} />
-            <div className="min-w-0 flex-1">
-              <p className="text-[9px] font-black uppercase tracking-[.25em] text-[#FFB000]">Panel del cliente</p>
-              <h1 className="mt-2 text-3xl font-black tracking-[-.045em] sm:text-4xl">Hola, {profile?.nombre || user.name || 'cliente'}.</h1>
-              <p className="mt-2 truncate text-sm text-[#BFB8AC]">{user.email}</p>
-              {profile ? <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-[#a99d94]">{profile.whatsapp ? <span className="inline-flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-[#FFB000]" />{profile.whatsapp}</span> : null}{profile.direccion ? <span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-[#FFB000]" />{profile.direccion}</span> : null}</div> : null}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link href="/ajustes" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#FFF9EE] px-4 text-[10px] font-black uppercase tracking-[.14em] text-[#08090A] transition hover:bg-[#FFB000]"><Edit3 className="h-3.5 w-3.5" /> Editar perfil</Link>
-              <button type="button" onClick={() => void handleSignOut()} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/5 px-4 text-[10px] font-black uppercase tracking-[.14em] text-[#d8cbc1] ring-1 ring-white/10 transition hover:bg-red-400/10 hover:text-red-200"><LogOut className="h-3.5 w-3.5" /> Salir</button>
-            </div>
-          </div>
-          {profile && (profile.instagram || profile.tiktok || profile.facebook) ? <div className="relative mt-6 flex flex-wrap gap-2 border-t border-white/8 pt-5">{profile.instagram ? <a href={`https://instagram.com/${profile.instagram.replace('@', '')}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-2 text-[10px] text-[#BFB8AC] ring-1 ring-white/8"><Instagram className="h-3.5 w-3.5" />{profile.instagram}</a> : null}{profile.tiktok ? <a href={`https://tiktok.com/${profile.tiktok.replace('@', '')}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-2 text-[10px] text-[#BFB8AC] ring-1 ring-white/8"><IconTikTok className="h-3.5 w-3.5" />{profile.tiktok}</a> : null}{profile.facebook ? <a href={`https://facebook.com/${profile.facebook.replace('@', '')}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-2 text-[10px] text-[#BFB8AC] ring-1 ring-white/8"><Facebook className="h-3.5 w-3.5" />{profile.facebook}</a> : null}</div> : null}
-        </section>
-
-        <section className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatCard icon={ShoppingBag} label="Pedidos" value={orders.length} />
-          <StatCard icon={CheckCircle} label="Entregados" value={completed} accent="#4f8a68" />
-          <StatCard icon={Package} label="En proceso" value={pending} accent="#F5871F" />
-        </section>
-
-        {totalSpent > 0 ? <section className="mt-5 flex flex-col gap-2 rounded-[1.6rem] bg-[#FFB000]/45 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#C97700]">Inversión registrada</p><p className="mt-1 text-xs text-[#BFB8AC]">Suma de pedidos no cancelados.</p></div><p className="text-2xl font-black">{formatCLP(totalSpent)}</p></section> : null}
-
-        <div className="mt-5"><PushOptIn /></div>
-
-        <section className="mt-8">
-          <div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-[9px] font-black uppercase tracking-[.23em] text-[#F5871F]">Historial</p><h2 className="mt-1 text-2xl font-black tracking-[-.035em]">Mis pedidos</h2></div><Link href="/tienda" className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[.14em] text-[#C97700]">Ver tienda <ShoppingBag className="h-3.5 w-3.5" /></Link></div>
-
-          {ordersLoading ? (
-            <div className="grid gap-3">{[1, 2, 3].map((item) => <div key={item} className="h-24 animate-pulse rounded-[1.5rem] bg-[#FFF9EE] ring-1 ring-[#08090A]/8" />)}</div>
-          ) : orders.length === 0 ? (
-            <div className="rounded-[2rem] bg-[#FFF9EE] p-9 text-center shadow-[0_18px_60px_rgba(23,24,32,.07)] ring-1 ring-[#08090A]/10"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#08090A] text-[#FFB000]"><ShoppingBag className="h-6 w-6" /></span><h3 className="mt-4 text-xl font-black">Aún no tienes pedidos</h3><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#BFB8AC]">Cuando compres un producto, podrás revisar aquí su estado y la información asociada.</p><Link href="/tienda" className="mt-5 inline-flex min-h-12 items-center justify-center rounded-full bg-[#F5871F] px-6 text-xs font-black uppercase tracking-[.14em] text-[#08090A] transition hover:bg-[#FFB000]">Explorar tienda</Link></div>
-          ) : (
-            <div className="grid gap-3">
-              {orders.map((order) => (
-                <article key={order.id} className="rounded-[1.6rem] bg-[#FFF9EE] p-5 shadow-[0_16px_50px_rgba(23,24,32,.06)] ring-1 ring-[#08090A]/10">
-                  <div className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[.15em] text-[#F5871F]">Pedido #{shortRecordId(order.id)}</p><p className="mt-2 font-black">{displayName}</p>{order.items.length ? <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#716861]">{order.items.map((item) => `${item.name} ×${item.quantity}`).join(' · ')}</p> : null}</div><div className="shrink-0 text-right"><p className="text-lg font-black">{formatCLP(order.total)}</p><div className="mt-1 flex items-center justify-end gap-1.5"><StatusIcon status={order.status} /><span className="text-xs font-bold" style={{ color: orderStatusColor(order.status) }}>{orderStatusLabel(order.status)}</span></div><p className="mt-1 text-[10px] text-[#958980]">{new Date(order.created_at).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}</p></div></div>
-                  <div className="mt-4 grid gap-2 border-t border-[#08090A]/8 pt-4 sm:grid-cols-2"><div className="rounded-xl bg-[#f4ebe3] p-3 text-xs leading-5 text-[#625a54]"><RotateCcw className="mb-2 h-4 w-4 text-[#F5871F]" /><b className="text-[#08090A]">Reembolso estimado</b><br />Monto pagado menos despacho usado y costos no recuperables informados.</div><div className="rounded-xl bg-[#edf4ee] p-3 text-xs leading-5 text-[#625a54]"><ShieldCheck className="mb-2 h-4 w-4 text-emerald-700" /><b className="text-[#08090A]">Garantía</b><br />Cobertura de fabricante y fallas de origen según condiciones del producto.</div></div>
-                  <div className="mt-3 flex flex-wrap gap-4 text-[10px] font-black uppercase tracking-[.11em]"><Link href="/legal/cambios-y-devoluciones" className="text-[#C97700]">Reembolsos →</Link><Link href="/legal/terminos-y-condiciones" className="text-[#BFB8AC]">Garantía y condiciones →</Link></div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="mt-8 flex items-center gap-3 rounded-[1.5rem] bg-[#08090A] p-4 text-[#FFF9EE]"><BadgeCheck className="h-5 w-5 text-[#FFB000]" /><div><p className="text-xs font-black">Cuenta protegida</p><p className="mt-1 text-[10px] text-[#a99d94]">Tus datos se utilizan para pedidos, seguimiento y soporte.</p></div></section>
-      </main>
-      <StoreBottomNav />
-    </div>
-  );
+  return <div className="min-h-screen overflow-x-hidden bg-[#080B0D] pb-[calc(7rem+env(safe-area-inset-bottom))] text-[#F7F4ED] md:pb-16"><Navbar/><main className="mx-auto max-w-6xl px-4 pb-10 pt-24 sm:px-6 sm:pt-28">
+    <section className="relative overflow-hidden rounded-[2rem] border border-white/[.08] bg-[#0D1418] p-5 sm:p-7"><div className="relative flex flex-col gap-5 md:flex-row md:items-center"><div className="relative w-fit"><Avatar profile={profile} fallback={user.email||''}/><button type="button" onClick={()=>fileRef.current?.click()} disabled={avatarUploading||consentRequired} className="absolute -bottom-2 -right-2 grid h-10 w-10 place-items-center rounded-full border-2 border-[#0D1418] bg-[#F6C64A] text-[#080B0D] disabled:opacity-40"><Camera className="h-4 w-4"/></button><input ref={fileRef} hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>void handleAvatar(e.target.files?.[0])}/></div><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[.22em] text-[#F6C64A]">Mi cuenta Fabrick</p><h1 className="mt-2 text-3xl font-black sm:text-4xl">{displayName}</h1><p className="mt-2 truncate text-[13px] text-[#AEB8BC]">{user.email}</p><div className="mt-3 flex flex-wrap gap-3 text-[12px] text-[#C5CDD1]">{profile.phone?<span className="inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-[#F6C64A]"/>{profile.phone}</span>:null}{profile.address?<span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-[#F6C64A]"/>{profile.address}</span>:null}</div></div><div className="flex flex-wrap gap-2"><button type="button" onClick={()=>setEditing(v=>!v)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#F6C64A] px-4 text-[11px] font-black text-[#080B0D]"><Edit3 className="h-4 w-4"/> Editar perfil</button><button type="button" onClick={()=>void handleSignOut()} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/12 px-4 text-[11px] font-black"><LogOut className="h-4 w-4"/> Salir</button></div></div></section>
+    {notice?<div className="mt-3 rounded-[1.1rem] border border-[#F6C64A]/20 bg-[#F6C64A]/[.06] px-4 py-3 text-[12px] leading-5 text-[#E9DDAE]">{notice}</div>:null}
+    {consentRequired?<section className="mt-4 rounded-[1.6rem] border border-[#F6C64A]/25 bg-[#11191D] p-5"><div className="flex gap-3"><ShieldCheck className="mt-0.5 h-6 w-6 shrink-0 text-[#F6C64A]"/><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#F6C64A]">Protección de datos</p><h2 className="mt-1 text-xl font-black">Activa tu perfil privado</h2><p className="mt-2 text-[12px] leading-5 text-[#9EAAAF]">Para guardar teléfono, dirección, foto y preferencias en la base resguardada necesitamos tu aceptación expresa. Marketing sigue siendo opcional.</p></div></div><div className="mt-4 grid gap-3 rounded-xl border border-white/[.07] bg-[#0B1114] p-4"><label className="flex items-start gap-3 text-[12px] leading-5"><input type="checkbox" checked={acceptTerms} onChange={e=>setAcceptTerms(e.target.checked)} className="mt-1 h-5 w-5 accent-[#F6C64A]"/><span>Acepto los <Link href="/legal/terminos-y-condiciones" target="_blank" className="font-black text-[#F6C64A] underline">Términos</Link> y la <Link href="/legal/privacidad" target="_blank" className="font-black text-[#F6C64A] underline">Política de Privacidad</Link>, incluyendo el almacenamiento necesario para mi cuenta, compras, entregas, soporte y CRM interno.</span></label><label className="flex items-start gap-3 text-[12px] leading-5 text-[#9EAAAF]"><input type="checkbox" checked={marketingEmail&&marketingWhatsapp} onChange={e=>{setMarketingEmail(e.target.checked);setMarketingWhatsapp(e.target.checked);}} className="mt-1 h-5 w-5 accent-[#F6C64A]"/><span>Opcional: recibir novedades y promociones por correo o WhatsApp.</span></label></div><button type="button" onClick={()=>void handleAccept()} disabled={saving} className="mt-4 min-h-12 rounded-full bg-[#F6C64A] px-6 text-[11px] font-black text-[#080B0D] disabled:opacity-50">{saving?'Guardando…':'Aceptar y activar mi perfil'}</button></section>:null}
+    {editing?<section className="mt-4 rounded-[1.7rem] border border-white/[.08] bg-[#11191D] p-5 sm:p-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#F6C64A]">Datos privados del cliente</p><h2 className="mt-1 text-xl font-black">Perfil y dirección de entrega</h2></div><button onClick={()=>setEditing(false)} className="grid h-10 w-10 place-items-center rounded-full border border-white/10"><X className="h-4 w-4"/></button></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><ProfileField label="Nombre" value={profile.firstName} onChange={v=>setProfile({...profile,firstName:v})}/><ProfileField label="Apellido" value={profile.lastName} onChange={v=>setProfile({...profile,lastName:v})}/><ProfileField label="Teléfono / WhatsApp" type="tel" value={profile.phone} onChange={v=>setProfile({...profile,phone:v})}/><ProfileField label="Región" value={profile.region} onChange={v=>setProfile({...profile,region:v})}/><div className="sm:col-span-2"><ProfileField label="Dirección" value={profile.address} onChange={v=>setProfile({...profile,address:v})} placeholder="Calle, número, parcela o referencia"/></div><ProfileField label="Comuna" value={profile.commune} onChange={v=>setProfile({...profile,commune:v})}/><ProfileField label="Código postal (opcional)" value={profile.postalCode} onChange={v=>setProfile({...profile,postalCode:v})}/><div className="sm:col-span-2"><ProfileField label="Referencia de entrega (opcional)" value={profile.deliveryNotes} onChange={v=>setProfile({...profile,deliveryNotes:v})}/></div></div><div className="mt-5 grid gap-3 rounded-xl border border-white/[.07] bg-[#0B1114] p-4"><p className="text-[10px] font-black uppercase tracking-[.14em] text-[#F6C64A]">Preferencias de comunicaciones</p><label className="flex items-center gap-3 text-[12px]"><input type="checkbox" checked={marketingEmail} onChange={e=>setMarketingEmail(e.target.checked)} className="h-5 w-5 accent-[#F6C64A]"/> Promociones por correo (opcional)</label><label className="flex items-center gap-3 text-[12px]"><input type="checkbox" checked={marketingWhatsapp} onChange={e=>setMarketingWhatsapp(e.target.checked)} className="h-5 w-5 accent-[#F6C64A]"/> Promociones por WhatsApp (opcional)</label></div><div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="max-w-xl text-[11px] leading-5 text-[#829096]">Teléfono y dirección se guardan en tablas privadas asociadas a tu usuario. {acceptedAt?`Consentimiento registrado: ${new Date(acceptedAt).toLocaleDateString('es-CL')}.`:''}</p><button onClick={()=>void handleSave()} disabled={saving} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#F6C64A] px-6 text-[11px] font-black text-[#080B0D] disabled:opacity-50"><Save className="h-4 w-4"/>{saving?'Guardando…':'Guardar cambios'}</button></div></section>:null}
+    <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4"><Stat icon={ShoppingBag} label="Pedidos" value={orders.length}/><Stat icon={CheckCircle2} label="Entregados" value={completed}/><Stat icon={Package} label="En proceso" value={pendingOrders}/><Stat icon={Heart} label="Guardados" value={favorites.size}/></section>
+    <section className="mt-7"><div className="mb-4 flex items-end justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#F6C64A]">Guardados</p><h2 className="mt-1 text-2xl font-black">Productos que te gustan</h2></div><Link href="/favoritos" className="text-[11px] font-black text-[#F6C64A]">Ver todos →</Link></div>{favoritesLoading||productsLoading?<div className="rounded-[1.4rem] bg-[#11191D] p-5 text-[12px] text-[#8E9BA1]">Actualizando productos guardados…</div>:favoriteProducts.length?<div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{favoriteProducts.map(product=><Link key={product.id} href={`/producto/${encodeURIComponent(product.id)}`} className="overflow-hidden rounded-[1.4rem] border border-white/[.08] bg-[#11191D]"><div className="aspect-square bg-[#0B1114] p-3">{product.image_url?<img src={product.image_url} alt={product.name} className="h-full w-full object-contain"/>:<div className="grid h-full place-items-center"><Package className="h-8 w-8"/></div>}</div><div className="p-3"><h3 className="line-clamp-2 min-h-10 text-[13px] font-black">{product.name}</h3><b className="mt-2 block text-[15px] text-[#F6C64A]">{formatCLP(finalPrice(product))}</b><span className="mt-1 block text-[9px] font-black uppercase text-[#7F8C92]">IVA incluido</span><span className="mt-3 block text-[10px] font-black">Ver producto →</span></div></Link>)}</div>:<div className="rounded-[1.4rem] bg-[#11191D] p-6"><Heart className="h-6 w-6 text-[#F6C64A]"/><h3 className="mt-3 font-black">Todavía no guardaste productos</h3></div>}</section>
+    <section className="mt-8"><div className="mb-4 flex items-end justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#F6C64A]">Historial de compras</p><h2 className="mt-1 text-2xl font-black">Pedidos y detalles</h2></div><Link href="/tienda" className="text-[11px] font-black text-[#F6C64A]">Ir a tienda →</Link></div>{ordersLoading?<div className="rounded-[1.4rem] bg-[#11191D] p-5 text-[12px] text-[#8E9BA1]">Actualizando historial…</div>:orders.length===0?<div className="rounded-[1.6rem] bg-[#11191D] p-7 text-center"><ShoppingBag className="mx-auto h-7 w-7 text-[#F6C64A]"/><h3 className="mt-3 text-lg font-black">Aún no tienes pedidos</h3></div>:<div className="grid gap-3">{orders.map(order=><details key={order.id} className="group rounded-[1.45rem] border border-white/[.08] bg-[#11191D] open:border-[#F6C64A]/25"><summary className="flex cursor-pointer list-none items-center gap-4 p-4 sm:p-5"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[#F6C64A]/10 text-[#F6C64A]"><Package className="h-5 w-5"/></span><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase text-[#F6C64A]">Pedido #{shortRecordId(order.id)}</p><p className="mt-1 line-clamp-1 text-[12px] text-[#AEB8BC]">{order.items.map(item=>`${item.name} ×${item.quantity}`).join(' · ')||'Detalle del pedido'}</p></div><div className="text-right"><b className="block">{formatCLP(order.total)}</b><span className="text-[10px] font-black" style={{color:orderStatusColor(order.status)}}>{orderStatusLabel(order.status)}</span></div><ChevronDown className="h-4 w-4 transition group-open:rotate-180"/></summary><div className="border-t border-white/[.07] p-4 sm:p-5"><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{order.items.map((item,index)=><Link key={`${item.productId}-${index}`} href={item.productId&&item.productId!=='sin-id'?`/producto/${encodeURIComponent(item.productId)}`:'/tienda'} className="rounded-xl border border-white/[.07] bg-[#0B1114] p-3"><b className="line-clamp-2 text-[12px]">{item.name}</b><div className="mt-2 flex justify-between text-[11px] text-[#8E9BA1]"><span>{item.quantity} × {formatCLP(item.unitPrice)}</span><strong>{formatCLP(item.subtotal)}</strong></div><span className="mt-2 block text-[9px] font-black text-[#F6C64A]">Ver producto →</span></Link>)}</div><div className="mt-4 grid gap-2 sm:grid-cols-2"><Info icon={MapPin} label="Entrega" value={order.shipping_address||'Dirección no registrada'}/><Info icon={Phone} label="Contacto" value={order.customer_phone||user.email||'—'}/><Info icon={Truck} label="Despacho" value={order.shipping_fee>0?formatCLP(order.shipping_fee):'Sin costo / incluido'}/><Info icon={ShieldCheck} label="Pago" value={order.payment_status||'En seguimiento'}/></div><div className="mt-4 rounded-xl bg-[#0B1114] p-4"><div className="flex justify-between text-[12px]"><span>Total pagado · IVA incluido</span><b className="text-lg text-[#F6C64A]">{formatCLP(order.total)}</b></div></div></div></details>)}</div>}</section>
+    <section className="mt-7 flex items-start gap-3 rounded-[1.35rem] border border-white/[.08] bg-[#11191D] p-4"><BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#F6C64A]"/><div><p className="text-[12px] font-black">Cuenta protegida</p><p className="mt-1 text-[11px] leading-5 text-[#829096]">Tu perfil, dirección y consentimientos se consultan mediante tu sesión. El CRM interno recibe solo los datos necesarios para seguimiento comercial y soporte.</p></div></section>
+  </main><StoreBottomNav/></div>;
 }

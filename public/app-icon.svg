@@ -7,7 +7,7 @@
   <rect width="512" height="512" rx="118" fill="#050607"/>
   <g filter="url(#s)" stroke-linejoin="miter">
     <path d="M56 336 256 134 332 204 332 151 380 151 380 249 457 336 426 338 362 275 362 177 346 177 346 238 256 165 87 339Z" fill="url(#steel)" stroke="#e9eaec" stroke-width="7"/>
-    <path d="M73 329 256 156 338 232 338 249 256 183 99 341Z" fill="url(#gold)"/>
+    <path d="M73 329 256 156 338 232 338 249 256 183 99 341Z" fill="#F6C64A"/>
     <path d="M91 342 256 188 333 252 333 270 256 210 117 349Z" fill="#15171b"/>
   </g>
 </svg>

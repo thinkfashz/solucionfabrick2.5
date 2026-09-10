@@ -1,71 +1,69 @@
 # Términos y condiciones
 
-Última actualización: 1 de julio de 2026.
+Última actualización: 10 de septiembre de 2026.
 
-## Primero: generalidades
+## Generalidades
 
-Este sitio pertenece a Soluciones Fabrick y permite revisar servicios, productos, calculadoras referenciales, formularios de contacto, cotizaciones y medios de comunicación comercial.
+Este sitio pertenece a Soluciones Fabrick y permite revisar servicios, productos, calculadoras referenciales, formularios, cotizaciones, compras y una cuenta de cliente.
 
-Al navegar, solicitar información, enviar un formulario, comprar o pedir una cotización, el usuario declara haber leído estas condiciones y entiende que los valores mostrados pueden ser referenciales hasta la confirmación final.
+Los valores mostrados por calculadoras pueden ser referenciales hasta la confirmación final. Los precios publicados de productos se presentan como precio final con IVA incluido cuando corresponda.
 
-## Segundo: comunicaciones
+## Cuenta de cliente
 
-Podemos comunicarnos por correo electrónico, WhatsApp, teléfono u otros canales entregados por el usuario para responder solicitudes, coordinar visitas, enviar cotizaciones, confirmar pedidos o entregar seguimiento.
+El usuario puede crear una cuenta para guardar datos de perfil y entrega, consultar pedidos, productos guardados y recibir soporte. Debe entregar información correcta y mantenerla actualizada. Las credenciales de acceso son personales y el usuario debe protegerlas.
 
-El usuario debe entregar datos correctos y mantenerlos actualizados para evitar errores de contacto, entrega o coordinación.
+La creación de cuenta mediante formulario exige una aceptación expresa de estos Términos y de la Política de Privacidad. Esa aceptación habilita el almacenamiento y tratamiento de los datos necesarios para administrar la cuenta y prestar los servicios solicitados.
 
-## Tercero: cotizaciones y precios referenciales
+## Privacidad y almacenamiento de datos
 
-Las calculadoras del sitio entregan valores aproximados para orientar una decisión inicial. No constituyen precio final, presupuesto cerrado ni aceptación automática del trabajo.
+Nombre, correo, teléfono, dirección, comuna, región, fotografía, historial de compras y otras preferencias necesarias pueden almacenarse de forma asociada a la cuenta según lo explicado en la Política de Privacidad.
+
+El sistema puede registrar la versión y fecha de aceptación de los documentos legales. Los datos privados de entrega no deben exponerse mediante perfiles públicos y el acceso a ellos debe depender de una sesión autenticada o de funciones administrativas autorizadas.
+
+## CRM y atención al cliente
+
+La información de una cuenta puede reflejarse en el CRM interno de Soluciones Fabrick para seguimiento de solicitudes, compras, entregas, garantías y soporte. El CRM no convierte automáticamente al usuario en suscriptor de publicidad.
+
+## Comunicaciones comerciales opcionales
+
+Las promociones por correo o WhatsApp se aceptan mediante una opción separada. El usuario puede crear una cuenta y comprar sin aceptar promociones, y puede modificar su preferencia posteriormente.
+
+Soluciones Fabrick sí puede utilizar los datos de contacto necesarios para confirmar pedidos, coordinar entregas, seguridad, garantía o soporte relacionado con una operación solicitada por el propio usuario.
+
+## Cotizaciones y precios referenciales
+
+Las calculadoras del sitio entregan valores aproximados para orientar una decisión inicial. No constituyen precio final, presupuesto cerrado ni aceptación automática de un trabajo.
 
 El precio definitivo puede cambiar según medidas reales, acceso, ubicación, materiales, urgencia, complejidad, stock, transporte, condiciones del terreno, terminaciones o cambios solicitados por el cliente.
 
-## Cuarto: productos, servicios y disponibilidad
+## Productos, servicios y disponibilidad
 
-Los productos, servicios, imágenes, precios y descripciones pueden actualizarse sin aviso previo. Si un producto no está disponible, se podrá ofrecer una alternativa, esperar reposición o devolver el pago si ya fue realizado.
+Los productos, servicios, imágenes, precios y descripciones pueden actualizarse. Si un producto no está disponible, se podrá ofrecer una alternativa, esperar reposición o devolver el pago cuando corresponda.
 
-En servicios de construcción, remodelación o instalación, la aceptación final depende de la revisión del caso, disponibilidad del equipo y alcance real solicitado.
+## Pagos
 
-## Quinto: cómo comprar o solicitar
+Los pagos pueden realizarse mediante los medios habilitados. El pedido, reserva o inicio de trabajo puede quedar sujeto a confirmación del pago, validación de datos y disponibilidad. El servidor puede volver a validar precio y stock antes de confirmar una operación.
 
-El usuario puede comprar productos disponibles o solicitar una cotización mediante formulario, WhatsApp o los canales habilitados en el sitio.
+## Entregas
 
-Una solicitud enviada no obliga a Soluciones Fabrick a aceptar el trabajo hasta que exista confirmación expresa, presupuesto aprobado y, cuando corresponda, pago inicial o acuerdo escrito.
+Las entregas de productos y visitas técnicas se coordinan según comuna, disponibilidad, stock, volumen, horarios y accesibilidad. Los plazos informados pueden variar por clima, fuerza mayor, retrasos logísticos, cambios del cliente o circunstancias no visibles al cotizar.
 
-## Sexto: pagos
+## Garantías y revisión
 
-Los pagos pueden realizarse por los medios informados en el sitio o por canales acordados directamente con Soluciones Fabrick.
+En productos aplican las garantías legales y condiciones del fabricante cuando correspondan. En servicios, las observaciones deben comunicarse oportunamente para revisar el alcance y proponer la solución aplicable.
 
-El pedido, reserva o inicio de trabajo podrá quedar sujeto a confirmación del pago, validación de datos y disponibilidad.
+## Responsabilidad
 
-## Séptimo: entregas y coordinación
+Soluciones Fabrick no será responsable por errores derivados de datos incorrectos entregados por el usuario, modificaciones de terceros, mal uso de productos, condiciones ocultas no informadas o instrucciones contrarias a la recomendación entregada, sin perjuicio de los derechos que la legislación aplicable reconozca al consumidor.
 
-Las entregas de productos y visitas técnicas se coordinan según comuna, disponibilidad, stock, volumen, horarios y accesibilidad del lugar.
+## Propiedad intelectual
 
-Los plazos informados son estimados. Pueden variar por clima, fuerza mayor, retrasos logísticos, cambios del cliente, falta de acceso o condiciones no visibles al momento de cotizar.
+El contenido, diseños, textos, fotografías, estructura visual, calculadoras y marca pertenecen a Soluciones Fabrick o a sus respectivos titulares. No se permite reutilizarlos fuera de los usos autorizados por la ley o por su titular.
 
-## Octavo: garantías y revisión
+## Cambios
 
-En productos, aplican las garantías legales y las condiciones del fabricante cuando correspondan.
-
-En servicios, cualquier observación debe informarse oportunamente para revisar el caso y proponer una solución razonable según el alcance contratado.
-
-## Noveno: responsabilidad
-
-Soluciones Fabrick no será responsable por errores causados por datos incompletos del usuario, modificaciones realizadas por terceros, mal uso de productos, condiciones ocultas no informadas, cambios posteriores o instrucciones contrarias a la recomendación entregada.
-
-## Décimo: datos personales
-
-El uso de datos personales se regula en la Política de Privacidad. El usuario puede aceptar o rechazar cookies no esenciales y puede solicitar información sobre sus datos a través de los canales de contacto.
-
-## Décimo primero: propiedad intelectual
-
-El contenido del sitio, diseños, textos, fotografías, estructura visual, calculadoras y marca pertenecen a Soluciones Fabrick o a sus respectivos titulares. No se permite copiar, reutilizar o publicar este contenido sin autorización.
-
-## Décimo segundo: cambios en estas condiciones
-
-Soluciones Fabrick puede actualizar estos términos para mejorar claridad, cumplir obligaciones legales o adaptar sus procesos comerciales.
+Soluciones Fabrick puede actualizar estas condiciones para mejorar claridad, seguridad, cumplimiento o procesos comerciales. Cuando un cambio sea relevante para el tratamiento de datos de una cuenta, el sistema puede solicitar una nueva aceptación.
 
 ## Nota importante
 
-Este documento es una base informativa y comercial. Para operaciones de alto valor, contratos complejos o cumplimiento legal específico, se recomienda revisión profesional antes de publicar una versión definitiva.
+Este documento es una base informativa y comercial. Para contratos complejos, operaciones de alto valor o cumplimiento legal específico, se recomienda revisión profesional periódica.

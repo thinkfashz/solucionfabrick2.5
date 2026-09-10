@@ -1,11 +1,4 @@
-import FabrickLoadingScreen from '@/components/FabrickLoadingScreen';
-
+// La tienda evita una pantalla de carga de página completa.
 export default function TiendaLoading() {
-  return (
-    <FabrickLoadingScreen
-      eyebrow="Tienda Fabrick"
-      title="Preparando catálogo"
-      description="Cargando productos, stock y precios de forma segura."
-    />
-  );
+  return null;
 }

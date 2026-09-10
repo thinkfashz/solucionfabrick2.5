@@ -24,12 +24,12 @@ export default function OpenGraphImage() {
       >
         <div style={{ backgroundColor: '#121417', bottom: -170, height: 480, opacity: 0.9, position: 'absolute', right: -150, transform: 'rotate(-25deg)', width: 720 }} />
         <div style={{ backgroundColor: '#FFB000', bottom: 74, height: 3, opacity: 0.65, position: 'absolute', right: -80, transform: 'rotate(-25deg)', width: 700 }} />
-        <div style={{ backgroundColor: '#F5871F', bottom: 118, height: 2, opacity: 0.55, position: 'absolute', right: -120, transform: 'rotate(-25deg)', width: 730 }} />
+        <div style={{ backgroundColor: '#F6C64A', bottom: 118, height: 2, opacity: 0.55, position: 'absolute', right: -120, transform: 'rotate(-25deg)', width: 730 }} />
 
         <div style={{ alignItems: 'center', display: 'flex', gap: 19, position: 'relative' }}>
           <div style={{ display: 'flex', height: 104, position: 'relative', width: 100 }}>
             <div style={{ backgroundColor: '#FFB000', borderRadius: 8, height: 9, left: 4, position: 'absolute', top: 83, transform: 'rotate(-61deg)', transformOrigin: 'left center', width: 100 }} />
-            <div style={{ backgroundColor: '#F5871F', borderRadius: 8, height: 9, left: 48, position: 'absolute', top: 0, transform: 'rotate(61deg)', transformOrigin: 'left center', width: 100 }} />
+            <div style={{ backgroundColor: '#F6C64A', borderRadius: 8, height: 9, left: 48, position: 'absolute', top: 0, transform: 'rotate(61deg)', transformOrigin: 'left center', width: 100 }} />
             <div style={{ backgroundColor: '#FFF9EE', borderRadius: 8, height: 4, left: 18, position: 'absolute', top: 79, transform: 'rotate(-61deg)', transformOrigin: 'left center', width: 81 }} />
             <div style={{ backgroundColor: '#FFF9EE', borderRadius: 8, height: 4, left: 51, position: 'absolute', top: 17, transform: 'rotate(61deg)', transformOrigin: 'left center', width: 81 }} />
             <div style={{ backgroundColor: '#FFB000', borderRadius: 5, height: 36, left: 46, position: 'absolute', top: 56, width: 9 }} />

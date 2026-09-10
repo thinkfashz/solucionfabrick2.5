@@ -3,21 +3,43 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const root = process.cwd();
-const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { scripts?: Record<string, string> };
-const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8')) as { buildCommand?: string };
+const read = (file: string) => fs.readFileSync(path.join(root, file), 'utf8');
+const pkg = JSON.parse(read('package.json')) as { scripts?: Record<string, string> };
+const vercel = JSON.parse(read('vercel.json')) as { buildCommand?: string };
 
 describe('deployment/database boundary', () => {
-  it('keeps Vercel build free of database DDL and seed side effects', () => {
+  it('keeps pnpm build free of DDL while deployment applies one controlled migration', () => {
     const build = pkg.scripts?.build || '';
     const vercelBuild = vercel.buildCommand || '';
-
-    expect(vercelBuild).toBe('pnpm build');
     expect(build).toContain('next build');
     expect(build).not.toMatch(/ensure-[a-z0-9-]+schema/i);
     expect(build).not.toContain('ensure-store-seed-columns');
     expect(build).not.toContain('ensure-store-seed-products');
-    expect(build).not.toContain('schema:inspirations');
-    expect(vercelBuild).not.toMatch(/ensure-|schema:/i);
+    expect(vercelBuild).toBe('node scripts/apply-customer-data-migration.mjs && pnpm build');
+    const runner = read('scripts/apply-customer-data-migration.mjs');
+    expect(runner).toContain('/api/database/advance/rawsql');
+    expect(runner).not.toContain('/unrestricted');
+  });
+
+  it('keeps private customer schema versioned, additive and protected by RLS', () => {
+    const migration = read('migrations/20260910_customer_data_crm.sql');
+    for (const table of ['customer_profiles', 'customer_addresses', 'user_consents', 'crm_customers']) expect(migration).toContain(table);
+    expect(migration).toContain('ENABLE ROW LEVEL SECURITY');
+    expect(migration).toContain('fabrick_schema_migrations');
+    expect(migration).not.toMatch(/DROP TABLE|TRUNCATE/i);
+  });
+
+  it('requires explicit terms consent and keeps marketing optional', () => {
+    const auth = read('src/app/auth/page.tsx');
+    const profileApi = read('src/app/api/account/profile/route.ts');
+    const crm = read('src/app/api/admin/crm/route.ts');
+    expect(auth).toContain('acceptTerms');
+    expect(auth).toContain('marketingOptIn');
+    expect(auth).toContain('/legal/terminos-y-condiciones');
+    expect(auth).toContain('/legal/privacidad');
+    expect(profileApi).toContain('CONSENT_REQUIRED');
+    expect(crm).toContain('isAdminSession');
+    expect(crm).not.toContain('rawsql/unrestricted');
   });
 
   it('keeps financial regression gates in the build', () => {

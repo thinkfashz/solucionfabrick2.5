@@ -4,6 +4,7 @@ import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
 import { preloadAirCatalogProducts } from '@/lib/airCatalogServer';
 import { buildTechnicalToolJsonLd, SITE_URL } from '@/lib/seo';
+import a11y from '../../mobile-accessibility.module.css';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -35,7 +36,9 @@ export default async function Page() {
   return (
     <>
       <StructuredData data={jsonLd} />
-      <AirSimulatorFunnelV9 initialProducts={initialProducts} />
+      <div className={a11y.airScope}>
+        <AirSimulatorFunnelV9 initialProducts={initialProducts} />
+      </div>
       <TechnicalAuthoritySection
         eyebrow="Metodología BTU · explicación visible"
         title="Cómo calcula Fabrick la capacidad de aire acondicionado"

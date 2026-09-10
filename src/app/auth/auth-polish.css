@@ -1,0 +1,15 @@
+/* Fabrick dark/gold auth skin. Logic stays in page.tsx; this layer is visual only. */
+main[style*="--auth-accent"]{background:#080b0d!important;color:#f7f4ed!important;color-scheme:dark}
+main[style*="--auth-accent"]>div[aria-hidden]{opacity:1!important}
+main[style*="--auth-accent"]>div[aria-hidden]:first-child{background:radial-gradient(circle at 10% 0%,rgba(246,198,74,.13),transparent 30rem),radial-gradient(circle at 92% 88%,rgba(245,135,31,.13),transparent 28rem)!important}
+main[style*="--auth-accent"]>div.relative>aside{background:linear-gradient(155deg,#11191d,#080b0d)!important;border:1px solid rgba(255,255,255,.08);box-shadow:0 30px 90px rgba(0,0,0,.3)}
+main[style*="--auth-accent"]>div.relative>section>div{background:rgba(15,22,26,.96)!important;border-color:rgba(255,255,255,.1)!important;box-shadow:0 28px 90px rgba(0,0,0,.34)!important;color:#fff!important}
+main[style*="--auth-accent"] [class*="text-[#11100e]"]{color:#fff!important}
+main[style*="--auth-accent"] [class*="text-[#665d55]"],main[style*="--auth-accent"] [class*="text-[#8e857d]"],main[style*="--auth-accent"] [class*="text-[#948a80]"],main[style*="--auth-accent"] [class*="text-[#9a9189]"],main[style*="--auth-accent"] [class*="text-[#a0978e]"],main[style*="--auth-accent"] [class*="text-[#625b54]"],main[style*="--auth-accent"] [class*="text-[#4e4842]"]{color:#aeb8bc!important}
+main[style*="--auth-accent"] label>span:nth-child(2){background:#151e22!important;border-color:rgba(255,255,255,.1)!important;box-shadow:none!important}
+main[style*="--auth-accent"] input{color:#f8fafb!important}
+main[style*="--auth-accent"] input::placeholder{color:#68767d!important}
+main[style*="--auth-accent"] button[class*="bg-white"]{background:#f7f2e8!important;color:#101416!important;border-color:rgba(246,198,74,.18)!important}
+main[style*="--auth-accent"] [class*="bg-[color-mix"]{color:#ffe18a!important;border:1px solid rgba(246,198,74,.16);background:rgba(246,198,74,.08)!important}
+main[style*="--auth-accent"] [class*="bg-black/"]{border-color:rgba(255,255,255,.1)}
+@media(max-width:767px){main[style*="--auth-accent"]>div.relative>section{padding:16px!important;align-items:flex-start!important;padding-top:22px!important}main[style*="--auth-accent"]>div.relative>section>div{border-radius:1.55rem!important;padding:20px!important}main[style*="--auth-accent"] h2{font-size:clamp(2rem,10vw,2.65rem)!important}main[style*="--auth-accent"] label>span:first-child{font-size:11px!important}main[style*="--auth-accent"] input{font-size:16px!important}main[style*="--auth-accent"] button{min-height:46px}}

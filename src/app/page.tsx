@@ -6,6 +6,7 @@ import HomePremiumV10 from '@/components/landing/HomePremiumV10';
 import { StoreBottomNav } from '@/components/store/StorefrontChrome';
 import { getCmsSettings, renderCopyright } from '@/lib/cms';
 import { buildFabrickHomeJsonLd } from '@/lib/seo';
+import a11y from './mobile-accessibility.module.css';
 
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;
@@ -23,7 +24,9 @@ export default async function Home() {
       <script type="application/ld+json" nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="min-h-screen overflow-x-hidden bg-[#08090A] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-[#FFE600] selection:text-[#08090A] md:pb-0">
         <Navbar reference />
-        <HomePremiumV10 copyrightText={copyrightText} socialLinks={socialLinks} />
+        <div className={a11y.homeScope}>
+          <HomePremiumV10 copyrightText={copyrightText} socialLinks={socialLinks} />
+        </div>
         <StoreBottomNav />
       </div>
     </>

@@ -1,0 +1,41 @@
+# Soluciones Fabrick
+
+> Plataforma chilena de construcción, remodelación y comercio técnico. Combina contenido explicativo, calculadoras, simuladores visuales, catálogo y presupuesto. El contenido técnico es educativo/comercial y distingue explícitamente entre estimaciones y cálculo profesional.
+
+Canonical site: https://www.solucionesfabrick.com
+Language: es-CL
+Market: Chile
+
+## Technical authority hub
+- https://www.solucionesfabrick.com/centro-tecnico
+  Metodología visible, fuentes, límites y enlaces a las herramientas principales.
+
+## Primary tools
+- https://www.solucionesfabrick.com/herramientas/aire-acondicionado
+  Calculadora BTU, simulación de consumo y recomendación de equipos.
+- https://www.solucionesfabrick.com/herramientas/radier
+  Cubicación de radier, capas, materiales y referencias de costo.
+- https://www.solucionesfabrick.com/herramientas/metalcon
+  Configurador de paneles, vanos, perfiles y placas.
+- https://www.solucionesfabrick.com/herramientas/metalcon/monitoreo
+  Simulación sísmica 4D educativa con demanda relativa por panel.
+
+## Commerce and decision paths
+- https://www.solucionesfabrick.com/tienda
+- https://www.solucionesfabrick.com/tienda/catalogo
+- https://www.solucionesfabrick.com/presupuesto
+
+## Editorial and evidence
+- https://www.solucionesfabrick.com/blog
+- https://www.solucionesfabrick.com/casos
+- https://www.solucionesfabrick.com/proyectos
+
+## Discovery
+- https://www.solucionesfabrick.com/sitemap.xml
+- https://www.solucionesfabrick.com/robots.txt
+
+## Important interpretation rules
+- BTU results are commercial sizing estimates, not HVAC engineering.
+- Radier quantities and prices are referential until site conditions and scope are confirmed.
+- Metalcon structural presets require professional design where indicated.
+- Seismic outputs are educational proxies and must not be used to decide structural safety or post-earthquake habitability.

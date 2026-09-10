@@ -41,6 +41,10 @@ export const FABRICK_KEYWORD_CLUSTERS = {
     'instalación aire acondicionado Maule',
     'techumbre y canaletas Talca',
     'revestimiento y aislación térmica',
+    'calculadora BTU Chile',
+    'calculadora radier Chile',
+    'calculadora Metalcon',
+    'simulador sísmico Metalcon',
   ],
   local: [
     'construcción Región del Maule',
@@ -59,6 +63,14 @@ type SocialLinks = {
   facebook?: string | null;
   instagram?: string | null;
   tiktok?: string | null;
+};
+
+type TechnicalToolJsonLdInput = {
+  path: string;
+  name: string;
+  description: string;
+  category: string;
+  keywords: string[];
 };
 
 function validExternalUrl(value?: string | null) {
@@ -81,10 +93,28 @@ export function buildFabrickHomeJsonLd({ socialLinks = {} }: { socialLinks?: Soc
 
   const organizationId = `${SITE_URL}/#organization`;
   const businessId = `${SITE_URL}/#local-business`;
+  const websiteId = `${SITE_URL}/#website`;
+
+  const toolLinks = [
+    ['/herramientas/aire-acondicionado', 'Calculadora BTU y simulador de aire acondicionado'],
+    ['/herramientas/radier', 'Calculadora de radier'],
+    ['/herramientas/metalcon', 'Calculadora y configurador Metalcon'],
+    ['/herramientas/metalcon/monitoreo', 'Simulador sísmico 4D educativo'],
+    ['/centro-tecnico', 'Centro técnico Fabrick'],
+  ];
 
   return {
     '@context': 'https://schema.org',
     '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': websiteId,
+        name: 'Soluciones Fabrick',
+        url: SITE_URL,
+        inLanguage: 'es-CL',
+        publisher: { '@id': organizationId },
+        description: 'Construcción, calculadoras técnicas, simuladores, tienda y presupuesto para proyectos en Chile.',
+      },
       {
         '@type': 'Organization',
         '@id': organizationId,
@@ -135,6 +165,111 @@ export function buildFabrickHomeJsonLd({ socialLinks = {} }: { socialLinks?: Soc
             'Reparaciones, revestimientos y terminaciones',
           ].map((name) => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name } })),
         },
+      },
+      {
+        '@type': 'ItemList',
+        '@id': `${SITE_URL}/#technical-tools`,
+        name: 'Herramientas técnicas Fabrick',
+        itemListElement: toolLinks.map(([path, name], index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name,
+          url: `${SITE_URL}${path}`,
+        })),
+      },
+    ],
+  };
+}
+
+export function buildTechnicalToolJsonLd({
+  path,
+  name,
+  description,
+  category,
+  keywords,
+}: TechnicalToolJsonLdInput) {
+  const url = `${SITE_URL}${path}`;
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        '@id': `${url}#webpage`,
+        url,
+        name,
+        description,
+        inLanguage: 'es-CL',
+        isPartOf: { '@id': `${SITE_URL}/#website` },
+        about: keywords,
+        mainEntity: { '@id': `${url}#tool` },
+      },
+      {
+        '@type': 'WebApplication',
+        '@id': `${url}#tool`,
+        name,
+        url,
+        description,
+        applicationCategory: category,
+        operatingSystem: 'Web',
+        browserRequirements: 'Navegador moderno con JavaScript; WebGL es opcional cuando existe fallback visual.',
+        isAccessibleForFree: true,
+        inLanguage: 'es-CL',
+        provider: { '@id': `${SITE_URL}/#organization` },
+        keywords,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${url}#breadcrumbs`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Inicio', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Centro técnico', item: `${SITE_URL}/centro-tecnico` },
+          { '@type': 'ListItem', position: 3, name, item: url },
+        ],
+      },
+    ],
+  };
+}
+
+export function buildAuthorityHubJsonLd() {
+  const url = `${SITE_URL}/centro-tecnico`;
+  const items = [
+    ['/herramientas/aire-acondicionado', 'Calculadora BTU'],
+    ['/herramientas/radier', 'Calculadora de radier'],
+    ['/herramientas/metalcon', 'Configurador Metalcon'],
+    ['/herramientas/metalcon/monitoreo', 'Simulador sísmico 4D'],
+  ];
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': `${url}#webpage`,
+        url,
+        name: 'Centro técnico Fabrick',
+        description: 'Metodología, fuentes, límites y herramientas de cálculo y simulación de Soluciones Fabrick.',
+        inLanguage: 'es-CL',
+        isPartOf: { '@id': `${SITE_URL}/#website` },
+        mainEntity: { '@id': `${url}#tools` },
+      },
+      {
+        '@type': 'ItemList',
+        '@id': `${url}#tools`,
+        name: 'Herramientas técnicas explicadas',
+        itemListElement: items.map(([path, name], index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name,
+          url: `${SITE_URL}${path}`,
+        })),
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${url}#breadcrumbs`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Inicio', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Centro técnico', item: url },
+        ],
       },
     ],
   };

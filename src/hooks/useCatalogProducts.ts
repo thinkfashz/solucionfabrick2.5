@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { buildProductTagline, resolveCategoryName } from '@/lib/commerce';
 import { Product as RealtimeProduct, useRealtimeProducts } from '@/hooks/useRealtimeProducts';
+import { resolveStoreProductImage } from '@/lib/storeProductVisuals';
 
 export interface CatalogProduct {
   id: string;
@@ -70,7 +71,7 @@ const DEFAULT_FALLBACK_IMAGE = CONSTRUCTION;
 function mapRealtimeProductToCatalogProduct(product: RealtimeProduct): CatalogProduct {
   const category = product.category_name || resolveCategoryName(product.category_id, {});
   const fallbackImage = CATEGORY_FALLBACK_IMAGES[category] ?? DEFAULT_FALLBACK_IMAGE;
-  const image = product.image_url || fallbackImage;
+  const image = resolveStoreProductImage({ ...product, category, image_url: product.image_url || fallbackImage });
   const merchandising = product.specifications?.merchandising && typeof product.specifications.merchandising === 'object' && !Array.isArray(product.specifications.merchandising) ? product.specifications.merchandising as Record<string, unknown> : {};
   const placementRaw = String(merchandising.placement || (product.featured ? 'featured' : 'catalog'));
   const placement = ['best_seller', 'featured', 'promotion', 'catalog'].includes(placementRaw) ? placementRaw as CatalogProduct['placement'] : 'catalog';

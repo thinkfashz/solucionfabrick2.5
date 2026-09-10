@@ -50,6 +50,8 @@ const number = (value: number) => NUMBER.format(value || 0);
 
 type EntryMode = 'dimensions' | 'direct';
 type SubmitChannel = 'email' | 'whatsapp';
+type Complexity = 'simple' | 'standard' | 'complex';
+type Finish = 'basic' | 'standard' | 'premium';
 type FieldConfig = { key: keyof MeasurementValues; label: string; hint: string; step: number; max: number };
 type Submission = { quoteId: string; customerNotified: boolean; adminNotified: boolean };
 
@@ -172,6 +174,8 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
   const [category, setCategory] = useState<ServiceCategory | 'Todas'>(initialService.category);
   const [values, setValues] = useState<MeasurementValues>(initialService.defaultValues);
   const [priceMode, setPriceMode] = useState<PriceMode>('labor');
+  const [complexity, setComplexity] = useState<Complexity>('standard');
+  const [finish, setFinish] = useState<Finish>('standard');
   const [entryMode, setEntryMode] = useState<EntryMode>('dimensions');
   const [directQuantity, setDirectQuantity] = useState(0);
   const [productQuery, setProductQuery] = useState('');
@@ -213,8 +217,9 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
   const laborHigh = measurement.quantity * laborUnit.max * measurement.priceFactor;
   const completeLow = measurement.quantity * completeUnit.min * measurement.priceFactor;
   const completeHigh = measurement.quantity * completeUnit.max * measurement.priceFactor;
-  const selectedLow = priceMode === 'labor' ? laborLow : completeLow;
-  const selectedHigh = priceMode === 'labor' ? laborHigh : completeHigh;
+  const adjustmentFactor = ({ simple: .9, standard: 1, complex: 1.3 }[complexity]) * ({ basic: .9, standard: 1, premium: 1.35 }[finish]);
+  const selectedLow = (priceMode === 'labor' ? laborLow : completeLow) * adjustmentFactor;
+  const selectedHigh = (priceMode === 'labor' ? laborHigh : completeHigh) * adjustmentFactor;
 
   const serviceTotals = useMemo(() => serviceItems.reduce((result, item) => {
     const range = lineRange(item);
@@ -298,6 +303,9 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
         category: service.category,
         measurement: service.measurement,
         priceMode,
+        complexity,
+        finish,
+        adjustmentFactor,
         entryMode,
         directQuantity,
         marketMinUnit: adjustedMin,
@@ -478,7 +486,7 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
                 <Calculator className="h-3.5 w-3.5 text-[#DDA447]" /> Cotizador de obra y servicios
               </div>
               <h1 className="mt-5 max-w-[17ch] text-[clamp(2.45rem,6vw,5.1rem)] font-semibold leading-[.98] tracking-[-.055em]">Parte por lo que necesitas. Nosotros ordenamos el cálculo.</h1>
-              <p className="mt-5 max-w-2xl text-sm leading-7 text-white/52 sm:text-[15px]">Selecciona una partida, mide el trabajo y compara dos formas de contratarlo. Al final tendrás una referencia clara con servicios, productos y total estimado.</p>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-white/52 sm:text-[15px]">Selecciona una partida, mide el trabajo y compara modalidad, complejidad y nivel de terminación. También puedes agregar productos y pedir una cotización real.</p>
             </div>
 
             <div className="rounded-[22px] border border-white/10 bg-white/[.04] p-5 lg:p-6">
@@ -589,6 +597,8 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
                   <p className="text-[10px] font-semibold text-[#666C63]">2. Forma de contratar</p>
                   <div className="mt-4 grid grid-cols-2 gap-2"><PriceModeButton active={priceMode === 'labor'} title="Solo ejecución" text="Mano de obra" onClick={() => setPriceMode('labor')} /><PriceModeButton active={priceMode === 'complete'} title="Trabajo vendido" text="Ejecución + base" onClick={() => setPriceMode('complete')} /></div>
                   <p className="mt-3 flex gap-2 text-[10px] leading-5 text-[#777C73]"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A87B32]" />{priceModeDescription(priceMode)}</p>
+                  <div className="mt-5 grid gap-4 rounded-[16px] bg-[#F4F1EA] p-4 sm:grid-cols-2"><OptionGroup label="Complejidad" value={complexity} options={[['simple','Simple'],['standard','Estándar'],['complex','Compleja']]} onChange={value=>setComplexity(value as Complexity)}/><OptionGroup label="Terminación" value={finish} options={[['basic','Básica'],['standard','Estándar'],['premium','Premium']]} onChange={value=>setFinish(value as Finish)}/></div>
+                  <p className="mt-2 text-[9px] leading-4 text-[#8A8F86]">El rango se ajusta por acceso, geometría, preparación, detalle y material elegido. Todos los precios son referenciales y deben confirmarse mediante visita y alcance definitivo.</p>
                   <div className="mt-5 grid gap-2"><RangeCard label="Solo ejecución" low={laborLow} high={laborHigh} active={priceMode === 'labor'} /><RangeCard label="Trabajo vendido" low={completeLow} high={completeHigh} active={priceMode === 'complete'} /></div>
                 </div>
               </div>
@@ -706,6 +716,9 @@ function ModeButton({ active, icon: Icon, label, onClick }: { active: boolean; i
 }
 function PriceModeButton({ active, title, text, onClick }: { active: boolean; title: string; text: string; onClick: () => void }) {
   return <button type="button" onClick={onClick} className={`rounded-[14px] border p-3 text-left transition ${active ? 'border-[#DDA447]/45 bg-[#FFF9EE]' : 'border-[#151714]/[.07] bg-[#F7F6F2] text-[#6F756C]'}`}><div className="flex items-center justify-between gap-2"><b className="text-[10px] font-semibold">{title}</b>{active ? <BadgeCheck className="h-3.5 w-3.5 text-[#9A6B25]"/> : null}</div><span className="mt-1 block text-[9px] opacity-60">{text}</span></button>;
+}
+function OptionGroup({label,value,options,onChange}:{label:string;value:string;options:Array<[string,string]>;onChange:(value:string)=>void}){
+  return <div><p className="text-[9px] font-semibold text-[#777C73]">{label}</p><div className="mt-2 flex gap-1">{options.map(([id,text])=><button key={id} type="button" onClick={()=>onChange(id)} className={`min-h-9 flex-1 rounded-[10px] px-1 text-[8px] font-semibold ${value===id?'bg-[#171916] text-white':'border border-[#151714]/[.08] bg-white text-[#777C73]'}`}>{text}</button>)}</div></div>;
 }
 function RangeCard({ label, low, high, active }: { label: string; low: number; high: number; active: boolean }) {
   return <div className={`rounded-[14px] border p-4 ${active ? 'border-[#DDA447]/38 bg-[#FFF9EE]' : 'border-[#151714]/[.07] bg-[#F8F7F4]'}`}><div className="flex items-center justify-between gap-3"><span className="text-[9px] font-medium text-[#777C73]">{label}</span>{active ? <Check className="h-3.5 w-3.5 text-[#9A6B25]"/> : null}</div><b className="mt-2 block text-base font-semibold tracking-[-.025em]">{rangeText(low, high)}</b></div>;

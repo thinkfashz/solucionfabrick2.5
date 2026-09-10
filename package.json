@@ -9,8 +9,11 @@
     "test:commerce-p0": "vitest run tests/unit/checkout.test.ts tests/unit/shipping.test.ts tests/unit/checkoutStatus.test.ts tests/unit/mercadopago.test.ts tests/unit/mercadopagoStatus.test.ts tests/unit/paymentValidation.test.ts tests/unit/insforgeFailClosed.test.ts tests/unit/orderTrackingFailClosed.test.ts tests/unit/commerceP0Schema.test.ts",
     "test:funnel-btu": "vitest run tests/unit/airConditioning.test.ts tests/unit/airOperation.test.ts tests/unit/funnelBtuContract.test.ts",
     "test:radier": "vitest run tests/unit/radierCalculator.test.ts tests/unit/radierViewerContract.test.ts",
-    "test:storefront": "vitest run tests/unit/storeSeedProducts.test.ts tests/unit/storefrontContract.test.ts tests/unit/catalogCategory.test.ts",
-    "build": "pnpm test:commerce-p0 && pnpm test:funnel-btu && pnpm test:radier && pnpm test:storefront && node scripts/ensure-store-seed-columns.mjs && node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build && node scripts/ensure-intelligence-schema.mjs && node scripts/ensure-market-intel-schema.mjs && node scripts/ensure-inventory-schema.mjs && node scripts/ensure-store-seed-products.mjs && node scripts/ensure-commerce-p0-schema.mjs && node scripts/ensure-ml-schema.mjs && node scripts/ensure-mcp-governance-schema.mjs",
+    "test:storefront": "vitest run tests/unit/storeSeedProducts.test.ts tests/unit/storefrontContract.test.ts tests/unit/catalogCategory.test.ts tests/unit/shoppingVisualContract.test.ts tests/unit/storeProductVisuals.test.ts tests/unit/metalconCalculator.test.ts tests/unit/inspirationCommentsContract.test.ts",
+    "test:seo-authority": "vitest run tests/unit/seoAuthorityContract.test.ts",
+    "test:deployment-boundary": "vitest run tests/unit/deploymentBoundaryContract.test.ts",
+    "schema:inspirations": "node scripts/ensure-inspiration-comments-schema.mjs",
+    "build": "pnpm test:commerce-p0 && pnpm test:funnel-btu && pnpm test:radier && pnpm test:storefront && pnpm test:seo-authority && pnpm test:deployment-boundary && node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
@@ -21,18 +24,17 @@
     "typecheck": "tsc --noEmit",
     "deploy:preflight": "node scripts/deploy-preflight.mjs",
     "deploy:verify": "pnpm typecheck && pnpm deploy:preflight && pnpm build",
+    "pr:preclose": "node scripts/pr-preclose-check.mjs && pnpm test:commerce-p0 && pnpm test:funnel-btu && pnpm test:radier && pnpm test:storefront && pnpm test:seo-authority && pnpm test:deployment-boundary && pnpm typecheck",
     "load:smoke": "node scripts/smoke-load.mjs",
     "audit:tenant": "node scripts/audit-multitenancy.mjs",
     "admin:set-password": "tsx scripts/set-admin-password.ts",
     "admin:enable-totp": "tsx scripts/enable-admin-totp.ts",
     "admin:disable-totp": "tsx scripts/disable-admin-totp.ts",
-    "admin:generate-backup-codes": "tsx scripts/generate-admin-backup-codes.ts"
+    "admin:generate-backup-codes": "tsx scripts/generate-backup-codes.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["@sentry/cli", "core-js", "esbuild", "sharp", "unrs-resolver"],
-    "overrides": {
-      "jsdom": "25.0.1"
-    }
+    "overrides": { "jsdom": "25.0.1" }
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

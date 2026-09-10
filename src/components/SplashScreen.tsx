@@ -40,9 +40,9 @@ export default function SplashScreen() {
   return (
     <div className={`sf-splash-shell fixed inset-0 z-[10000] ${closing ? 'is-closing' : ''}`}>
       <FabrickLoadingScreen
-        eyebrow="Construcción · Remodelación · Hogar"
-        title="Preparando Soluciones Fabrick"
-        description="Cargando una experiencia rápida, segura y lista para tu proyecto."
+        eyebrow="Calcula · Compara · Construye"
+        title="Soluciones Fabrick"
+        description="Entrando a tus herramientas, simuladores y soluciones para construir mejor."
       />
       <style jsx>{`
         .sf-splash-shell {

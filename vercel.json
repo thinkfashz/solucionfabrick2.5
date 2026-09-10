@@ -5,7 +5,7 @@
     "deploymentEnabled": true
   },
   "installCommand": "pnpm install --no-frozen-lockfile",
-  "buildCommand": "pnpm build",
+  "buildCommand": "node scripts/apply-customer-data-migration.mjs && pnpm build",
   "crons": [
     { "path": "/api/cron/fabrick-daily", "schedule": "15 12 * * *" },
     { "path": "/api/cron/newsletter", "schedule": "0 13 * * *" }

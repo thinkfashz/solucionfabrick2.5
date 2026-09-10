@@ -9,9 +9,23 @@ type Role = 'user' | 'assistant';
 interface Msg { id: string; role: Role; content: string }
 interface AIAgentChatProps { hideOn?: string[] }
 interface AgentOpenDetail { prompt?: string; autoSend?: boolean }
+interface LauncherPosition { x: number; y: number }
+interface DragState {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+  moved: boolean;
+}
 
 const STORAGE_HISTORY = 'fabrick.agent.history.v2';
+const STORAGE_LAUNCHER_HIDDEN = 'fabrick.agent.launcher.hidden.v1';
+const STORAGE_LAUNCHER_POSITION = 'fabrick.agent.launcher.position.v1';
 const MAX_HISTORY = 24;
+const LAUNCHER_SIZE = 62;
+const LAUNCHER_MARGIN = 10;
+const DRAG_THRESHOLD = 7;
 const AI_ORB_URL = 'https://res.cloudinary.com/disghf6xc/image/upload/v1789074208/fabrick-ai-orb-v1.webp';
 const SUGGESTIONS = [
   { label: 'No sé por dónde empezar', prompt: 'Quiero hacer un proyecto de construcción o remodelación, pero no sé qué información necesito reunir antes de cotizar. Hazme las preguntas mínimas para ordenar la idea.' },
@@ -32,19 +46,48 @@ function loadHistory(): Msg[] {
 }
 function saveHistory(messages: Msg[]) { try { window.localStorage.setItem(STORAGE_HISTORY, JSON.stringify(messages.slice(-MAX_HISTORY))); } catch {} }
 
+function clampLauncherPosition(position: LauncherPosition): LauncherPosition {
+  if (typeof window === 'undefined') return position;
+  return {
+    x: Math.min(Math.max(position.x, LAUNCHER_MARGIN), Math.max(LAUNCHER_MARGIN, window.innerWidth - LAUNCHER_SIZE - LAUNCHER_MARGIN)),
+    y: Math.min(Math.max(position.y, 74), Math.max(74, window.innerHeight - LAUNCHER_SIZE - LAUNCHER_MARGIN)),
+  };
+}
+
+function loadLauncherPosition(): LauncherPosition | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_LAUNCHER_POSITION);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LauncherPosition>;
+    if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number') return null;
+    return clampLauncherPosition({ x: parsed.x, y: parsed.y });
+  } catch { return null; }
+}
+
+function saveLauncherPosition(position: LauncherPosition) {
+  try { window.localStorage.setItem(STORAGE_LAUNCHER_POSITION, JSON.stringify(position)); } catch {}
+}
+
 function FabrickOrb({ size = 'md' }: { size?: 'sm' | 'md' }) {
-  const dimensions = size === 'sm' ? 'h-10 w-10' : 'h-[52px] w-[52px]';
+  const dimensions = size === 'sm' ? 'h-10 w-10' : 'h-[54px] w-[54px]';
   return (
     <span className={`relative block shrink-0 ${dimensions}`} aria-hidden="true">
-      <span className="absolute -inset-1 rounded-full bg-[#F6C64A]/30 blur-md motion-safe:animate-pulse" />
-      <span className="absolute -inset-0.5 rounded-full border border-[#F6C64A]/45" />
-      <img
-        src={AI_ORB_URL}
-        alt=""
-        width={size === 'sm' ? 40 : 52}
-        height={size === 'sm' ? 40 : 52}
-        className="relative h-full w-full rounded-full object-cover shadow-[0_0_22px_rgba(246,198,74,.35)]"
-      />
+      <span className="absolute -inset-2 rounded-full bg-[#F6C64A]/25 blur-xl motion-safe:animate-pulse" />
+      <span className="absolute -inset-1 rounded-full border border-[#F6C64A]/35 opacity-80 motion-safe:animate-[spin_9s_linear_infinite]" />
+      <span className="absolute -right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#FFE98A] shadow-[0_0_8px_#F6C64A] motion-safe:animate-ping" />
+      <span className="absolute -left-0.5 bottom-1 h-1 w-1 rounded-full bg-[#FFF4B8] shadow-[0_0_7px_#F6C64A] motion-safe:animate-ping [animation-delay:700ms]" />
+      <span className="absolute left-1/2 -top-1 h-1 w-1 -translate-x-1/2 rounded-full bg-white shadow-[0_0_7px_#F6C64A] motion-safe:animate-ping [animation-delay:1400ms]" />
+      <span className="absolute inset-[2px] overflow-hidden rounded-full bg-[#050607] ring-1 ring-[#F6C64A]/45 shadow-[0_0_24px_rgba(246,198,74,.38)] motion-safe:animate-pulse">
+        <img
+          src={AI_ORB_URL}
+          alt=""
+          width={size === 'sm' ? 40 : 54}
+          height={size === 'sm' ? 40 : 54}
+          draggable={false}
+          className="h-full w-full scale-[1.34] select-none object-cover object-[50%_32%]"
+        />
+      </span>
     </span>
   );
 }
@@ -53,6 +96,10 @@ export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] 
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
+  const [launcherHidden, setLauncherHidden] = useState(false);
+  const [launcherPosition, setLauncherPosition] = useState<LauncherPosition | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [overDelete, setOverDelete] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -60,8 +107,16 @@ export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const launcherRef = useRef<HTMLButtonElement | null>(null);
+  const deleteZoneRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<DragState | null>(null);
 
-  useEffect(() => { setMounted(true); setMessages(loadHistory()); }, []);
+  useEffect(() => {
+    setMounted(true);
+    setMessages(loadHistory());
+    try { setLauncherHidden(window.localStorage.getItem(STORAGE_LAUNCHER_HIDDEN) === '1'); } catch {}
+    setLauncherPosition(loadLauncherPosition());
+  }, []);
   useEffect(() => { if (mounted) saveHistory(messages); }, [messages, mounted]);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages, loading, open]);
   useEffect(() => {
@@ -70,6 +125,18 @@ export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] 
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = previous; };
   }, [open]);
+  useEffect(() => {
+    const keepLauncherInsideViewport = () => {
+      setLauncherPosition((current) => {
+        if (!current) return current;
+        const next = clampLauncherPosition(current);
+        saveLauncherPosition(next);
+        return next;
+      });
+    };
+    window.addEventListener('resize', keepLauncherInsideViewport);
+    return () => window.removeEventListener('resize', keepLauncherInsideViewport);
+  }, []);
 
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -103,9 +170,89 @@ export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] 
       if (detail.autoSend) window.setTimeout(() => void send(prompt), 60);
       else { setInput(prompt); window.setTimeout(() => inputRef.current?.focus(), 80); }
     };
+    const showLauncher = () => {
+      setLauncherHidden(false);
+      try { window.localStorage.removeItem(STORAGE_LAUNCHER_HIDDEN); } catch {}
+    };
     window.addEventListener('fabrick:agent-open', openFromCalculator as EventListener);
-    return () => window.removeEventListener('fabrick:agent-open', openFromCalculator as EventListener);
+    window.addEventListener('fabrick:agent-show', showLauncher);
+    return () => {
+      window.removeEventListener('fabrick:agent-open', openFromCalculator as EventListener);
+      window.removeEventListener('fabrick:agent-show', showLauncher);
+    };
   }, [send]);
+
+  const isPointerOverDeleteZone = (clientX: number, clientY: number) => {
+    const zone = deleteZoneRef.current?.getBoundingClientRect();
+    if (!zone) return false;
+    const padding = 24;
+    return clientX >= zone.left - padding && clientX <= zone.right + padding && clientY >= zone.top - padding && clientY <= zone.bottom + padding;
+  };
+
+  const beginLauncherPointer = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    const rect = launcherRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: rect.left,
+      originY: rect.top,
+      moved: false,
+    };
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch {}
+  };
+
+  const moveLauncherPointer = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - drag.startX;
+    const deltaY = event.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      setDragging(true);
+    }
+    event.preventDefault();
+    const next = clampLauncherPosition({ x: drag.originX + deltaX, y: drag.originY + deltaY });
+    setLauncherPosition(next);
+    setOverDelete(isPointerOverDeleteZone(event.clientX, event.clientY));
+  };
+
+  const finishLauncherPointer = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const wasDragged = drag.moved;
+    const shouldHide = wasDragged && isPointerOverDeleteZone(event.clientX, event.clientY);
+    try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
+    dragRef.current = null;
+    setDragging(false);
+    setOverDelete(false);
+
+    if (shouldHide) {
+      setLauncherHidden(true);
+      try { window.localStorage.setItem(STORAGE_LAUNCHER_HIDDEN, '1'); } catch {}
+      return;
+    }
+
+    if (wasDragged) {
+      setLauncherPosition((current) => {
+        if (current) saveLauncherPosition(current);
+        return current;
+      });
+      return;
+    }
+
+    setOpen(true);
+  };
+
+  const cancelLauncherPointer = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (dragRef.current?.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    setDragging(false);
+    setOverDelete(false);
+  };
 
   const advisorSummary = useMemo(() => {
     const recent = messages.slice(-12);
@@ -127,22 +274,37 @@ export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] 
   if (!mounted) return null;
   if (pathname && (pathname.startsWith('/fundador') || hideOn.some((path) => pathname.startsWith(path)))) return null;
 
+  const launcherStyle = launcherPosition
+    ? { left: launcherPosition.x, top: launcherPosition.y, right: 'auto', bottom: 'auto', touchAction: 'none' as const }
+    : { touchAction: 'none' as const };
+
   return (
     <>
-      {!open ? (
+      {!open && !launcherHidden ? (
         <button
+          ref={launcherRef}
           type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Abrir asistente Fabrick IA"
-          className="group fixed bottom-[calc(7.15rem+env(safe-area-inset-bottom))] right-3 z-[9500] flex min-h-[64px] items-center gap-2 rounded-full border border-[#F6C64A]/40 bg-[#08090A]/95 p-1.5 pr-4 text-[#FFF9EE] shadow-[0_14px_42px_rgba(0,0,0,.42),0_0_26px_rgba(246,198,74,.12)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-[#F6C64A]/65 sm:bottom-6 sm:right-6"
+          onPointerDown={beginLauncherPointer}
+          onPointerMove={moveLauncherPointer}
+          onPointerUp={finishLauncherPointer}
+          onPointerCancel={cancelLauncherPointer}
+          aria-label={dragging ? 'Mover asistente Fabrick IA' : 'Abrir asistente Fabrick IA'}
+          title="Fabrick IA"
+          className={`group fixed bottom-[calc(7.15rem+env(safe-area-inset-bottom))] right-3 z-[9500] grid h-[62px] w-[62px] select-none place-items-center rounded-full border bg-[#08090A]/94 p-1 shadow-[0_12px_34px_rgba(0,0,0,.44),0_0_30px_rgba(246,198,74,.18)] backdrop-blur-xl transition-[transform,border-color,box-shadow] duration-200 sm:bottom-6 sm:right-6 ${dragging ? 'cursor-grabbing scale-105 border-[#F6C64A]/80 shadow-[0_16px_42px_rgba(0,0,0,.5),0_0_36px_rgba(246,198,74,.34)]' : 'cursor-grab border-[#F6C64A]/42 hover:-translate-y-0.5 hover:border-[#F6C64A]/70'}`}
+          style={launcherStyle}
         >
           <FabrickOrb />
-          <span className="flex flex-col items-start leading-none">
-            <span className="text-[8px] font-bold uppercase tracking-[.16em] text-white/52">Preguntar a</span>
-            <span className="mt-1.5 text-sm font-black tracking-[-.02em] text-[#F6C64A]">Fabrick IA</span>
-          </span>
-          <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full border-2 border-[#08090A] bg-emerald-400" />
         </button>
+      ) : null}
+
+      {dragging && !open && !launcherHidden ? (
+        <div
+          ref={deleteZoneRef}
+          className={`pointer-events-none fixed bottom-[calc(7.15rem+env(safe-area-inset-bottom))] left-1/2 z-[9502] grid h-[68px] w-[68px] -translate-x-1/2 place-items-center rounded-full border backdrop-blur-xl transition-all duration-150 sm:bottom-6 ${overDelete ? 'scale-110 border-red-400/80 bg-red-500/22 text-red-100 shadow-[0_0_34px_rgba(248,113,113,.34)]' : 'border-white/16 bg-[#08090A]/88 text-white/65 shadow-[0_12px_32px_rgba(0,0,0,.34)]'}`}
+          aria-hidden="true"
+        >
+          <X className={`h-7 w-7 transition-transform ${overDelete ? 'scale-110' : ''}`} strokeWidth={2.2} />
+        </div>
       ) : null}
 
       {open ? (

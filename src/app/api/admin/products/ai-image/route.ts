@@ -150,7 +150,7 @@ async function persistProductImage(product: ProductRow, asset: { url: string; pu
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminPermission(request, { resource: 'content', action: 'create' });
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'update' });
   if (!auth.ok) return auth.response;
 
   const body = await request.json().catch(() => ({})) as { productId?: unknown; mode?: unknown; instructions?: unknown };

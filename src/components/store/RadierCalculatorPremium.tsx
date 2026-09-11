@@ -1,306 +1,77 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  ArrowRight,
-  Box,
-  Calculator,
-  Check,
-  ChevronRight,
-  Grid3X3,
-  Headphones,
-  Home,
-  Info,
-  Layers3,
-  Minus,
-  PackageCheck,
-  Plus,
-  Ruler,
-  ShieldCheck,
-  ShoppingCart,
-  Truck,
-} from 'lucide-react';
+import { Box, Calculator, Check, ChevronDown, Grid3X3, Home, Info, Layers3, Minus, PackageCheck, Plus, Ruler, ShieldCheck } from 'lucide-react';
 import { StoreBottomNav, StorefrontHeader } from '@/components/store/StorefrontChrome';
 import { navigateWithTransition } from '@/lib/routeTransition';
-import {
-  calculateRadier,
-  RADIER_SHAPES,
-  type RadierPlanId,
-  type RadierShape,
-} from '@/lib/radierCalculator';
+import { calculateRadier, RADIER_SHAPES, type RadierPlanId, type RadierShape } from '@/lib/radierCalculator';
 
 const RadierCinematicViewer = dynamic(() => import('@/components/store/RadierCinematicViewer'), {
   ssr: false,
-  loading: () => <div className="grid h-[390px] place-items-center rounded-[1.55rem] border border-white/10 bg-[#05090c] text-[10px] font-black uppercase tracking-[.16em] text-white/38 sm:h-[500px]">Iniciando visor 4D…</div>,
+  loading: () => <div className="grid h-[300px] place-items-center rounded-[1.4rem] border border-white/10 bg-[#05090c] text-[10px] font-black uppercase tracking-[.14em] text-white/38 sm:h-[430px]">Iniciando visor 4D…</div>,
 });
 
 const money = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const num = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
 const integer = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 });
+const MINVU_REFERENCE = 'https://www.bcn.cl/leychile/navegar?idNorma=1095820';
 
-const CLOUD = 'https://res.cloudinary.com/disghf6xc/image/upload';
-const ASSETS = {
-  concrete: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934479/hormigon-radier.png`,
-  mesh: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934498/malla-acma.png`,
-  barrier: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934517/barrera-humedad.png`,
-  gravel: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934539/gravilla.png`,
-  base: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934560/base-compactada.png`,
-  soil: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934579/suelo-natural.png`,
-  formwork: `${CLOUD}/c_limit,w_220/f_auto/q_auto/v1788934828/moldaje-madera.png`,
-};
+type Usage = 'Vivienda' | 'Terraza / patio' | 'Bodega / taller';
 
-type LayerId = 'concrete' | 'mesh' | 'barrier' | 'gravel' | 'base' | 'soil';
-
-const LAYERS: Array<{ id: LayerId; name: string; short: string; asset: string; detail: string }> = [
-  { id: 'concrete', name: 'Hormigón radier', short: 'Losa de hormigón', asset: ASSETS.concrete, detail: 'Forma la superficie resistente y distribuye las cargas sobre la base preparada.' },
-  { id: 'mesh', name: 'Malla ACMA', short: 'Refuerzo', asset: ASSETS.mesh, detail: 'Ayuda a controlar fisuración y entrega refuerzo dentro de la losa según la solución definida.' },
-  { id: 'barrier', name: 'Barrera de humedad', short: 'Membrana', asset: ASSETS.barrier, detail: 'Separa la losa de la humedad proveniente desde las capas inferiores.' },
-  { id: 'gravel', name: 'Gravilla', short: 'Drenaje y nivelación', asset: ASSETS.gravel, detail: 'Aporta drenaje, regularidad y una transición estable entre la losa y la base.' },
-  { id: 'base', name: 'Base compactada', short: 'Soporte firme', asset: ASSETS.base, detail: 'Entrega soporte uniforme. Su compactación es clave para reducir asentamientos y desniveles.' },
-  { id: 'soil', name: 'Suelo natural', short: 'Terreno existente', asset: ASSETS.soil, detail: 'Es el terreno de apoyo. Su condición debe revisarse en obra antes de cerrar una cotización.' },
-];
-
-function Stepper({ label, value, unit, hint, step = 1, min = 0.1, onChange }: { label: string; value: number; unit?: string; hint?: string; step?: number; min?: number; onChange: (value: number) => void }) {
-  const update = (next: number) => onChange(Math.max(min, Number(next.toFixed(2))));
-  return (
-    <label className="group block rounded-[1.1rem] border border-white/10 bg-[#071017]/80 p-3.5 transition focus-within:border-[#57D4FF]/45">
-      <span className="block text-[9px] font-black uppercase tracking-[.13em] text-white/54">{label}{unit ? ` (${unit})` : ''}</span>
-      {hint ? <span className="mt-1 block min-h-8 text-[9px] leading-4 text-white/30">{hint}</span> : null}
-      <span className="mt-2 flex items-center gap-2 rounded-xl border border-white/[.07] bg-black/20 p-1.5">
-        <input aria-label={label} type="number" min={min} step={step} value={value} onChange={(event) => update(Number(event.target.value) || min)} className="min-w-0 flex-1 bg-transparent px-2 text-xl font-black text-white outline-none" />
-        <button aria-label={`Disminuir ${label}`} type="button" onClick={() => update(value - step)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[.04] text-white/70 transition hover:border-[#F6C64A]/40 hover:text-[#F6C64A]"><Minus className="h-4 w-4" /></button>
-        <button aria-label={`Aumentar ${label}`} type="button" onClick={() => update(value + step)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[.04] text-white/70 transition hover:border-[#F6C64A]/40 hover:text-[#F6C64A]"><Plus className="h-4 w-4" /></button>
-      </span>
-    </label>
-  );
+function Stepper({ label, value, unit, step = 1, min = .1, onChange }: { label: string; value: number; unit: string; step?: number; min?: number; onChange: (value: number) => void }) {
+  const set = (next: number) => onChange(Math.max(min, Number(next.toFixed(2))));
+  return <label className="rounded-xl border border-white/10 bg-white/[.025] p-3"><span className="block text-[8px] font-black uppercase tracking-[.1em] text-white/42">{label} · {unit}</span><span className="mt-2 flex items-center gap-1"><button type="button" onClick={() => set(value-step)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10"><Minus size={14}/></button><input aria-label={label} type="number" value={value} min={min} step={step} onChange={e=>set(Number(e.target.value)||min)} className="min-w-0 flex-1 bg-transparent text-center text-lg font-black outline-none"/><button type="button" onClick={() => set(value+step)} className="grid h-9 w-9 place-items-center rounded-full bg-[#F6C64A] text-black"><Plus size={14}/></button></span></label>;
 }
 
-function Metric({ icon, label, value, yellow = false }: { icon: ReactNode; label: string; value: string; yellow?: boolean }) {
-  return (
-    <div className={`rounded-[1.05rem] border p-3.5 ${yellow ? 'border-[#F6C64A]/35 bg-[#F6C64A]/[.08]' : 'border-white/10 bg-white/[.025]'}`}>
-      <div className={`mb-2 ${yellow ? 'text-[#F6C64A]' : 'text-[#57D4FF]'}`}>{icon}</div>
-      <span className="block text-[9px] font-bold uppercase tracking-[.12em] text-white/42">{label}</span>
-      <strong className="mt-1 block text-lg font-black tracking-[-.03em] text-white">{value}</strong>
-    </div>
-  );
-}
-
-function PriceLine({ label, value, muted = false }: { label: string; value: number | string; muted?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-4 text-[11px] text-white/48">
-      <span>{label}</span>
-      <b className={muted ? 'text-white/38' : 'text-white/76'}>{typeof value === 'number' ? money.format(value) : value}</b>
-    </div>
-  );
+function Metric({ icon, label, value, accent = false }: { icon: ReactNode; label: string; value: string; accent?: boolean }) {
+  return <div className={`rounded-xl border p-3 ${accent ? 'border-[#F6C64A]/30 bg-[#F6C64A]/[.065]' : 'border-white/[.08] bg-[#091117]'}`}><span className={accent ? 'text-[#F6C64A]' : 'text-[#57D4FF]'}>{icon}</span><b className="mt-2 block text-sm font-black">{value}</b><small className="text-[8px] uppercase tracking-[.1em] text-white/35">{label}</small></div>;
 }
 
 export default function RadierCalculatorPremium() {
   const router = useRouter();
-  const resultsRef = useRef<HTMLDivElement>(null);
   const nav = (href: string) => navigateWithTransition(href, router);
-
   const [length, setLength] = useState(6);
   const [width, setWidth] = useState(4);
   const [thickness, setThickness] = useState(10);
   const [baseDepth, setBaseDepth] = useState(10);
-  const [gravelDepth, setGravelDepth] = useState(5);
+  const [gravelDepth, setGravelDepth] = useState(8);
   const [shape, setShape] = useState<RadierShape>('rectangular');
+  const [usage, setUsage] = useState<Usage>('Vivienda');
   const [planId, setPlanId] = useState<RadierPlanId>('estandar');
-  const [activeLayer, setActiveLayer] = useState<LayerId>('concrete');
-  const [usage, setUsage] = useState('Vivienda');
-  const [finish, setFinish] = useState('Estándar (fratasado)');
 
-  const result = useMemo(() => calculateRadier({ length, width, thickness, baseDepth, gravelDepth, shape }), [baseDepth, gravelDepth, length, shape, thickness, width]);
-  const selectedPlan = result.plans.find((plan) => plan.id === planId) || result.plans[1];
-  const laborOnlyPlan = result.plans[0];
-  const layer = LAYERS.find((item) => item.id === activeLayer) || LAYERS[0];
+  const result = useMemo(() => calculateRadier({ length, width, thickness, baseDepth, gravelDepth, shape }), [length, width, thickness, baseDepth, gravelDepth, shape]);
+  const selectedPlan = result.plans.find(plan => plan.id === planId) || result.plans[1];
+  const minReference = 7;
+  const thicknessState = thickness < minReference ? 'Bajo referencia MINVU' : thickness === minReference ? 'En referencia mínima' : 'Sobre referencia mínima';
 
-  const calculate = () => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const quote = () => {
-    if (typeof window !== 'undefined') {
-      window.sessionStorage.setItem('sf-radier-quote-v1', JSON.stringify({
-        kind: 'radier',
-        dimensions: { length, width, thickness, baseDepth, gravelDepth, shape },
-        usage,
-        finish,
-        planId,
-        scope: selectedPlan.name,
-        area: result.area,
-        perimeter: result.perimeter,
-        concrete: result.concrete,
-        stakes43cm: result.stakes43cm,
-        referenceM2: selectedPlan.referenceM2,
-        totalReference: selectedPlan.total,
-        breakdown: {
-          materials: selectedPlan.materials,
-          labor: selectedPlan.labor,
-          extras: selectedPlan.extras,
-          transport: selectedPlan.transport,
-          tax: selectedPlan.tax,
-        },
-      }));
-    }
+    if (typeof window !== 'undefined') window.sessionStorage.setItem('sf-radier-quote-v1', JSON.stringify({ kind:'radier', dimensions:{length,width,thickness,baseDepth,gravelDepth,shape}, usage, planId, scope:selectedPlan.name, area:result.area, perimeter:result.perimeter, concrete:result.concrete, stakes43cm:result.stakes43cm, referenceM2:selectedPlan.referenceM2, totalReference:selectedPlan.total }));
     nav(`/presupuesto?origen=radier&plan=${planId}`);
   };
 
-  return (
-    <div className="min-h-screen bg-[#03070A] text-white">
-      <StorefrontHeader />
-      <main className="overflow-hidden pb-[calc(8rem+env(safe-area-inset-bottom))] md:pb-16">
-        <section className="relative isolate border-b border-white/[.06] bg-[#050A0E]">
-          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_18%,rgba(246,198,74,.10),transparent_30%),radial-gradient(circle_at_20%_48%,rgba(87,212,255,.07),transparent_26%),linear-gradient(180deg,#060B0F_0%,#020507_100%)]" />
-          <div className="mx-auto max-w-[1320px] px-4 pb-10 pt-7 sm:px-6 lg:px-8 lg:pb-16">
-            <button type="button" onClick={() => nav('/tienda')} className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-[9px] font-black uppercase tracking-[.14em] text-white/62 transition hover:border-[#F6C64A]/45 hover:text-[#F6C64A]">← Volver</button>
+  return <div className="min-h-screen bg-[#03070A] text-white"><StorefrontHeader/><main className="pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-12">
+    <section className="border-b border-white/[.07] bg-[#050A0E] px-3 py-5 sm:px-6"><div className="mx-auto max-w-[1250px]"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.22em] text-[#F6C64A]">Cubicador de radier · Chile</p><h1 className="mt-2 text-3xl font-black tracking-[-.055em] sm:text-5xl">Mide, calcula y decide.</h1><p className="mt-2 max-w-2xl text-xs leading-5 text-white/45">Cada cambio actualiza superficie, hormigón, capas, refuerzo y referencia de costo sin obligarte a recorrer una página larga.</p></div><a href={MINVU_REFERENCE} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-[#F6C64A]/30 bg-[#F6C64A]/[.06] px-3 py-2 text-[9px] font-black text-[#F6C64A]"><ShieldCheck size={14}/> Referencia MINVU</a></div></div></section>
 
-            <div className="mt-7 grid gap-8 xl:grid-cols-[.72fr_1.28fr] xl:items-center">
-              <div className="xl:py-8">
-                <p className="text-[10px] font-black uppercase tracking-[.3em] text-[#F6C64A]">Bases sólidas para grandes planes</p>
-                <h1 className="mt-3 max-w-[10ch] text-[clamp(3rem,8vw,6.3rem)] font-black leading-[.86] tracking-[-.07em]">Calcula tu <span className="text-[#F6C64A]">radier ideal</span></h1>
-                <p className="mt-5 max-w-xl text-sm leading-7 text-white/58 sm:text-base">Ingresa las medidas, revisa materiales y compara cuánto cambia el valor entre contratar solo la mano de obra o un servicio con materiales antes de pedir una cotización.</p>
-                <div className="mt-4 flex items-start gap-2 rounded-xl border border-[#F6C64A]/20 bg-[#F6C64A]/[.055] p-3 text-[10px] leading-5 text-white/48"><Info className="mt-0.5 h-4 w-4 shrink-0 text-[#F6C64A]" /><span><b className="text-white/78">Precios referenciales:</b> sirven para orientarte antes de cotizar o construir. El valor final depende de terreno, comuna, accesos, despacho, especificación y revisión en obra.</span></div>
-                <div className="mt-6 grid grid-cols-3 gap-2 text-center">
-                  {[['Escala dinámica', 'Tus medidas'], ['Visor 4D', 'Capas y proceso'], ['Costo estimado', 'Antes de cotizar']].map(([title, text]) => <div key={title} className="rounded-xl border border-white/[.07] bg-white/[.025] px-2 py-3"><b className="block text-[10px] text-white/88">{title}</b><span className="mt-1 block text-[8px] uppercase tracking-[.1em] text-white/35">{text}</span></div>)}
-                </div>
-              </div>
+    <section className="mx-auto grid max-w-[1250px] gap-4 px-3 py-4 sm:px-6 lg:grid-cols-[1.12fr_.88fr] lg:items-start">
+      <div><RadierCinematicViewer length={length} width={width} thickness={thickness} baseDepth={baseDepth} gravelDepth={gravelDepth} shape={shape} activeLayer="concrete" stakes={result.stakes43cm}/><div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6"><Metric icon={<Ruler size={16}/>} label="superficie" value={`${num.format(result.area)} m²`} accent/><Metric icon={<Box size={16}/>} label="hormigón + 8%" value={`${num.format(result.concrete)} m³`}/><Metric icon={<Layers3 size={16}/>} label="base" value={`${num.format(result.stabilized)} m³`}/><Metric icon={<Layers3 size={16}/>} label="gravilla" value={`${num.format(result.gravel)} m³`}/><Metric icon={<Grid3X3 size={16}/>} label="malla aprox." value={`${integer.format(result.meshSheets)} pl.`}/><Metric icon={<Ruler size={16}/>} label="moldaje" value={`${num.format(result.formworkMeters)} m`}/></div></div>
 
-              <RadierCinematicViewer
-                length={length}
-                width={width}
-                thickness={thickness}
-                baseDepth={baseDepth}
-                gravelDepth={gravelDepth}
-                shape={shape}
-                activeLayer={activeLayer}
-                stakes={result.stakes43cm}
-              />
-            </div>
+      <div className="space-y-3">
+        <details className="group rounded-[1.4rem] border border-white/10 bg-[#071017] p-4" open><summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden"><div><p className="text-[9px] font-black uppercase tracking-[.15em] text-[#57D4FF]">Medidas del radier</p><b className="text-sm">{num.format(length)} × {num.format(width)} m · e {num.format(thickness)} cm</b></div><ChevronDown className="h-5 w-5 text-white/40 transition group-open:rotate-180"/></summary><div className="mt-4"><div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">{RADIER_SHAPES.map(item=><button key={item.id} type="button" onClick={()=>setShape(item.id)} className={`shrink-0 rounded-full border px-3 py-2 text-[9px] font-black ${shape===item.id?'border-[#F6C64A] bg-[#F6C64A]/10 text-[#F6C64A]':'border-white/10 text-white/45'}`}>{item.label}</button>)}</div><div className="mt-3 grid grid-cols-2 gap-2"><Stepper label="Largo" value={length} unit="m" step={.5} onChange={setLength}/><Stepper label="Ancho" value={width} unit="m" step={.5} onChange={setWidth}/><Stepper label="Espesor" value={thickness} unit="cm" step={1} onChange={setThickness}/><Stepper label="Base compactada" value={baseDepth} unit="cm" step={1} onChange={setBaseDepth}/><Stepper label="Gravilla" value={gravelDepth} unit="cm" step={1} onChange={setGravelDepth}/><label className="rounded-xl border border-white/10 bg-white/[.025] p-3 text-[8px] font-black uppercase tracking-[.1em] text-white/42">Uso<select value={usage} onChange={e=>setUsage(e.target.value as Usage)} className="mt-3 h-10 w-full rounded-lg bg-[#111A20] px-2 text-xs font-black normal-case text-white"><option>Vivienda</option><option>Terraza / patio</option><option>Bodega / taller</option></select></label></div></div></details>
 
-            <div className="mt-5 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {LAYERS.map((item) => {
-                const selected = item.id === activeLayer;
-                return <button key={item.id} type="button" onClick={() => setActiveLayer(item.id)} className={`group flex min-h-[104px] items-center gap-3 rounded-[1.1rem] border p-3 text-left transition sm:block sm:text-center ${selected ? 'border-[#F6C64A] bg-[#F6C64A]/[.08] shadow-[0_0_28px_rgba(246,198,74,.12)]' : 'border-white/[.08] bg-[#081016]/80 hover:border-white/20'}`}><img src={item.asset} alt="" loading="lazy" width={82} height={82} className="h-16 w-16 shrink-0 object-contain sm:mx-auto" /><span><b className={`block text-[11px] ${selected ? 'text-[#F6C64A]' : 'text-white/82'}`}>{item.name}</b><small className="mt-1 block text-[9px] text-white/34">{item.short}</small></span></button>;
-              })}
-            </div>
-            <div className="mt-3 flex items-start gap-3 rounded-[1.2rem] border border-[#F6C64A]/20 bg-[#F6C64A]/[.055] p-4"><Layers3 className="mt-0.5 h-5 w-5 shrink-0 text-[#F6C64A]" /><div><b className="text-sm">{layer.name}: cada capa cumple una función</b><p className="mt-1 text-[11px] leading-5 text-white/48">{layer.detail}</p></div></div>
-          </div>
-        </section>
+        <div className={`rounded-[1.35rem] border p-4 ${thickness < minReference ? 'border-amber-300/30 bg-amber-300/[.06]' : 'border-[#F6C64A]/25 bg-[#F6C64A]/[.05]'}`}><div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F6C64A] text-black"><ShieldCheck size={20}/></span><div><p className="text-[8px] font-black uppercase tracking-[.14em] text-[#F6C64A]">Chequeo de referencia</p><b className="mt-1 block text-sm">Espesor {num.format(thickness)} cm · {thicknessState}</b><p className="mt-1 text-[10px] leading-5 text-white/45">La referencia MINVU citada contempla radieres desde 7 cm dentro de su ámbito. El espesor definitivo depende de cargas, terreno, fundaciones y proyecto.</p></div></div></div>
 
-        <section className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 lg:px-8">
-          <div className="rounded-[1.6rem] border border-white/[.08] bg-[#071017] p-4 shadow-[0_24px_80px_rgba(0,0,0,.3)] sm:p-6">
-            <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F6C64A] text-black"><Calculator className="h-5 w-5" /></span><div><h2 className="text-xl font-black tracking-[-.03em]">1. Pon las medidas de tu radier</h2><p className="mt-1 max-w-2xl text-[11px] leading-5 text-white/42">Mide el largo y ancho exterior del área. Luego indica el espesor de la losa y de las capas que quieres calcular. Puedes escribir el número o usar + / −.</p></div></div>
+        <div className="rounded-[1.35rem] border border-white/10 bg-[#071017] p-4"><p className="text-[9px] font-black uppercase tracking-[.14em] text-[#F6C64A]">Resumen calculado</p><div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[10px]"><span className="text-white/40">Hormigón</span><b className="text-right">{num.format(result.concrete)} m³</b><span className="text-white/40">Barrera humedad</span><b className="text-right">{num.format(result.moistureBarrierM2)} m²</b><span className="text-white/40">Malla ACMA</span><b className="text-right">{integer.format(result.meshSheets)} planchas aprox.</b><span className="text-white/40">Estacas 43 cm</span><b className="text-right">{integer.format(result.stakes43cm)} un.</b><span className="text-white/40">Perímetro/moldaje</span><b className="text-right">{num.format(result.perimeter)} m</b></div></div>
+      </div>
+    </section>
 
-            <div className="mt-4 grid gap-2 md:grid-cols-3">
-              <div className="rounded-xl border border-[#57D4FF]/15 bg-[#57D4FF]/[.045] p-3"><span className="text-[9px] font-black uppercase tracking-[.13em] text-[#57D4FF]">Largo × ancho</span><p className="mt-1 text-[10px] leading-4 text-white/43">Mide de borde exterior a borde exterior, en metros.</p></div>
-              <div className="rounded-xl border border-white/[.07] bg-white/[.02] p-3"><span className="text-[9px] font-black uppercase tracking-[.13em] text-white/58">Espesor</span><p className="mt-1 text-[10px] leading-4 text-white/38">Ingresa en centímetros el espesor de hormigón que deseas evaluar.</p></div>
-              <div className="rounded-xl border border-white/[.07] bg-white/[.02] p-3"><span className="text-[9px] font-black uppercase tracking-[.13em] text-white/58">Formas irregulares</span><p className="mt-1 text-[10px] leading-4 text-white/38">Selecciona L, U, T, H o I. La herramienta aplica una aproximación por forma usando las medidas generales.</p></div>
-            </div>
+    <section className="mx-auto max-w-[1250px] px-3 pb-4 sm:px-6"><details className="group rounded-[1.4rem] border border-white/10 bg-[#071017] p-4"><summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden"><div><p className="text-[9px] font-black uppercase tracking-[.15em] text-[#57D4FF]">Materiales y criterio</p><b className="text-sm">Qué significa cada cantidad</b></div><ChevronDown className="h-5 w-5 text-white/40 transition group-open:rotate-180"/></summary><div className="mt-4 grid gap-2 sm:grid-cols-3"><InfoCard icon={<Box/>} title="Hormigón" text={`Volumen geométrico + 8% de margen operativo: ${num.format(result.concrete)} m³. Para compra final manda la especificación del hormigón y el proyecto.`}/><InfoCard icon={<Grid3X3/>} title="Malla electrosoldada" text={`${integer.format(result.meshSheets)} planchas según la cobertura usada por el calculador. Tipo y traslapos deben confirmarse por especificación.`}/><InfoCard icon={<Layers3/>} title="Base y gravilla" text={`${num.format(result.stabilized)} m³ de base + ${num.format(result.gravel)} m³ de gravilla según espesores ingresados y superficie calculada.`}/></div></details></section>
 
-            <div className="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-              {RADIER_SHAPES.map((item) => <button key={item.id} type="button" onClick={() => setShape(item.id)} className={`shrink-0 rounded-xl border px-4 py-3 text-[10px] font-black transition ${shape === item.id ? 'border-[#F6C64A] bg-[#F6C64A]/10 text-[#F6C64A]' : 'border-white/10 bg-white/[.025] text-white/45 hover:border-white/20'}`}>{item.label}</button>)}
-            </div>
+    <section className="mx-auto max-w-[1250px] px-3 pb-8 sm:px-6"><details className="group rounded-[1.4rem] border border-white/10 bg-[#071017] p-4"><summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden"><div><p className="text-[9px] font-black uppercase tracking-[.15em] text-[#F6C64A]">Costo referencial</p><b className="text-sm">Desde {money.format(result.plans[0].total)} · comparar alcances</b></div><ChevronDown className="h-5 w-5 text-white/40 transition group-open:rotate-180"/></summary><div className="mt-4 grid gap-2 md:grid-cols-3">{result.plans.map(plan=><button key={plan.id} type="button" onClick={()=>setPlanId(plan.id)} className={`rounded-xl border p-4 text-left ${planId===plan.id?'border-[#F6C64A] bg-[#F6C64A]/[.07]':'border-white/[.08] bg-white/[.02]'}`}><div className="flex items-center justify-between"><small className="text-[8px] font-black uppercase text-[#F6C64A]">{plan.label}</small>{planId===plan.id?<Check size={16} className="text-[#F6C64A]"/>:null}</div><b className="mt-2 block text-sm">{plan.name}</b><strong className="mt-2 block text-xl">{money.format(plan.total)}</strong><span className="text-[9px] text-white/35">≈ {money.format(plan.referenceM2)} / m² · IVA incluido</span></button>)}</div><button type="button" onClick={quote} className="mt-4 min-h-12 w-full rounded-full bg-[#F6C64A] px-5 text-xs font-black text-black">Llevar esta configuración a presupuesto</button></details></section>
+  </main><StoreBottomNav/></div>;
+}
 
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-              <Stepper label="Largo" value={length} unit="m" hint="Distancia exterior de un extremo al otro." step={.5} onChange={setLength} />
-              <Stepper label="Ancho" value={width} unit="m" hint="Medida perpendicular al largo." step={.5} onChange={setWidth} />
-              <Stepper label="Espesor" value={thickness} unit="cm" hint="Espesor de la losa de hormigón." step={1} onChange={setThickness} />
-              <Stepper label="Base compactada" value={baseDepth} unit="cm" hint="Profundidad compactada que deseas considerar." step={1} onChange={setBaseDepth} />
-              <Stepper label="Gravilla" value={gravelDepth} unit="cm" hint="Espesor de la capa de gravilla." step={1} onChange={setGravelDepth} />
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[.07] bg-black/20 px-4 py-3">
-              <div><span className="block text-[9px] uppercase tracking-[.12em] text-white/32">Resumen de tus medidas</span><b className="mt-1 block text-sm">{num.format(length)} m × {num.format(width)} m · {num.format(result.area)} m² calculados</b></div>
-              <span className="rounded-full border border-[#57D4FF]/20 bg-[#57D4FF]/[.05] px-3 py-2 text-[10px] font-bold text-[#57D4FF]">{num.format(result.perimeter)} m de perímetro</span>
-            </div>
-
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <label className="rounded-[1.05rem] border border-white/10 bg-[#071017] p-3"><span className="mb-2 block text-[9px] font-bold uppercase tracking-[.13em] text-white/50">Tipo de uso</span><span className="flex items-center gap-2"><Home className="h-4 w-4 text-[#57D4FF]" /><select value={usage} onChange={(event) => setUsage(event.target.value)} className="w-full bg-transparent text-sm font-bold text-white outline-none"><option className="bg-[#071017]">Vivienda</option><option className="bg-[#071017]">Terraza / patio</option><option className="bg-[#071017]">Bodega / taller</option></select></span></label>
-              <label className="rounded-[1.05rem] border border-white/10 bg-[#071017] p-3"><span className="mb-2 block text-[9px] font-bold uppercase tracking-[.13em] text-white/50">Terminación superficial</span><span className="flex items-center gap-2"><Layers3 className="h-4 w-4 text-[#57D4FF]" /><select value={finish} onChange={(event) => setFinish(event.target.value)} className="w-full bg-transparent text-sm font-bold text-white outline-none"><option className="bg-[#071017]">Estándar (fratasado)</option><option className="bg-[#071017]">Afinado</option><option className="bg-[#071017]">Preparado para revestir</option></select></span></label>
-            </div>
-
-            <button type="button" onClick={calculate} className="mt-5 flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-[#F6C64A] px-6 text-sm font-black tracking-[.02em] text-[#080A0C] shadow-[0_16px_38px_rgba(246,198,74,.18)] transition hover:-translate-y-0.5 hover:bg-[#FFD95F]"><Calculator className="h-5 w-5" /> CALCULAR MATERIALES Y VALOR <ChevronRight className="h-5 w-5" /></button>
-            <p className="mt-2 text-center text-[9px] leading-4 text-white/30">El resultado es una referencia para comparar alternativas antes de solicitar una cotización formal.</p>
-          </div>
-        </section>
-
-        <section ref={resultsRef} className="scroll-mt-24 mx-auto max-w-[1280px] px-4 pb-8 sm:px-6 lg:px-8">
-          <div className="rounded-[1.6rem] border border-white/[.08] bg-[#061018] p-4 sm:p-6">
-            <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#F6C64A]">Resultado del cálculo</p><h2 className="mt-1 text-2xl font-black tracking-[-.04em]">2. Cantidades estimadas para tu proyecto</h2><p className="mt-2 max-w-2xl text-[10px] leading-5 text-white/38">Estas cantidades alimentan las referencias de precio de abajo. Antes de construir se deben validar terreno, niveles, acceso y especificación final.</p></div><span className="rounded-full border border-[#57D4FF]/25 bg-[#57D4FF]/[.06] px-3 py-2 text-[10px] font-bold text-[#57D4FF]">{num.format(result.area)} m² · {num.format(result.perimeter)} ml</span></div>
-
-            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              <Metric label="Hormigón" value={`${num.format(result.concrete)} m³`} icon={<Box className="h-5 w-5" />} />
-              <Metric label="Sacos cemento 25 kg" value={`${integer.format(result.cementBags25)} sacos`} icon={<PackageCheck className="h-5 w-5" />} />
-              <Metric label="Gravilla" value={`${num.format(result.gravel)} m³`} icon={<Layers3 className="h-5 w-5" />} />
-              <Metric label="Malla ACMA" value={`${integer.format(result.meshSheets)} plancha${result.meshSheets === 1 ? '' : 's'}`} icon={<Grid3X3 className="h-5 w-5" />} />
-              <Metric label="Estacas 43 cm" value={`${integer.format(result.stakes43cm)} un.`} icon={<Ruler className="h-5 w-5" />} yellow />
-              <Metric label="Moldaje" value={`${num.format(result.formworkMeters)} m`} icon={<Layers3 className="h-5 w-5" />} />
-            </div>
-
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              <div className="flex items-center gap-3 rounded-xl border border-white/[.07] bg-white/[.02] p-3"><img src={ASSETS.barrier} alt="" width={50} height={50} className="h-12 w-12 object-contain" /><div><span className="block text-[9px] uppercase text-white/35">Barrera humedad</span><b className="text-sm">{num.format(result.moistureBarrierM2)} m² aprox.</b></div></div>
-              <div className="flex items-center gap-3 rounded-xl border border-white/[.07] bg-white/[.02] p-3"><img src={ASSETS.base} alt="" width={50} height={50} className="h-12 w-12 object-contain" /><div><span className="block text-[9px] uppercase text-white/35">Base compactada</span><b className="text-sm">{num.format(result.stabilized)} m³</b></div></div>
-              <div className="flex items-center gap-3 rounded-xl border border-white/[.07] bg-white/[.02] p-3"><img src={ASSETS.formwork} alt="" width={50} height={50} className="h-12 w-12 object-contain" /><div><span className="block text-[9px] uppercase text-white/35">Tablas + estacas</span><b className="text-sm">{num.format(result.perimeter)} m · {result.stakes43cm} estacas</b></div></div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-[1280px] px-4 pb-10 sm:px-6 lg:px-8">
-          <div className="mb-4 rounded-[1.4rem] border border-white/[.08] bg-[#071017] p-4 sm:p-5">
-            <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#F6C64A]/25 bg-[#F6C64A]/[.08] text-[#F6C64A]"><ShoppingCart className="h-5 w-5" /></span><div><p className="text-[9px] font-black uppercase tracking-[.22em] text-[#F6C64A]">Precios referenciales · Chile</p><h2 className="mt-1 text-2xl font-black tracking-[-.04em] sm:text-3xl">Compara solo mano de obra o servicio con materiales</h2><p className="mt-2 max-w-3xl text-[11px] leading-5 text-white/43">La diferencia principal es quién compra y asume los materiales. En <b className="text-white/72">Solo mano de obra</b> tú los aportas. En <b className="text-white/72">Mano de obra + materiales</b> la referencia incluye provisión principal, ejecución y transporte referencial. El reforzado suma preparación y refuerzo adicional.</p></div></div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              <div className="rounded-xl border border-white/[.07] bg-black/20 p-3"><span className="text-[9px] uppercase tracking-[.12em] text-white/32">Cómo se obtiene</span><b className="mt-1 block text-[11px]">m² calculados × alcance + extras + transporte + IVA</b></div>
-              <div className="rounded-xl border border-white/[.07] bg-black/20 p-3"><span className="text-[9px] uppercase tracking-[.12em] text-white/32">Para qué sirve</span><b className="mt-1 block text-[11px]">Tener una referencia antes de cotizar o iniciar la obra</b></div>
-              <div className="rounded-xl border border-[#F6C64A]/18 bg-[#F6C64A]/[.04] p-3"><span className="text-[9px] uppercase tracking-[.12em] text-[#F6C64A]">Importante</span><b className="mt-1 block text-[11px]">No reemplaza una visita ni una cotización final</b></div>
-            </div>
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-3">
-            {result.plans.map((plan, index) => {
-              const selected = plan.id === planId;
-              const difference = plan.total - laborOnlyPlan.total;
-              return <button key={plan.id} type="button" onClick={() => setPlanId(plan.id)} className={`relative overflow-hidden rounded-[1.45rem] border p-5 text-left transition ${selected ? 'border-[#F6C64A] bg-[#F6C64A]/[.075] shadow-[0_0_36px_rgba(246,198,74,.09)]' : 'border-white/[.08] bg-[#071017] hover:border-white/20'}`}>
-                <div className="flex items-start justify-between gap-3"><div><span className={`text-[9px] font-black uppercase tracking-[.18em] ${selected ? 'text-[#F6C64A]' : 'text-[#57D4FF]'}`}>{plan.label}</span><h3 className="mt-2 text-xl font-black tracking-[-.03em]">{plan.name}</h3></div>{selected ? <span className="grid h-8 w-8 place-items-center rounded-full bg-[#F6C64A] text-black"><Check className="h-4 w-4" /></span> : null}</div>
-                <p className="mt-3 min-h-12 text-[11px] leading-5 text-white/45">{plan.description}</p>
-
-                <div className="mt-4 rounded-xl border border-white/[.07] bg-black/20 p-3">
-                  <span className="text-[9px] uppercase tracking-[.12em] text-white/35">Valor referencial para {num.format(result.area)} m²</span>
-                  <strong className="mt-1 block text-3xl font-black tracking-[-.05em] text-white">{money.format(plan.total)}</strong>
-                  <div className="mt-1 flex flex-wrap items-center gap-2"><span className="text-[10px] text-[#57D4FF]">≈ {money.format(plan.referenceM2)} / m²</span><span className="text-[9px] text-white/25">IVA incluido en la referencia</span></div>
-                </div>
-
-                <div className="mt-3 rounded-xl border border-white/[.06] bg-white/[.018] p-3">
-                  <span className="text-[9px] font-black uppercase tracking-[.12em] text-white/38">Detalle del precio</span>
-                  <div className="mt-3 space-y-2">
-                    <PriceLine label="Materiales" value={plan.materials === 0 ? 'Los aporta el cliente' : plan.materials} muted={plan.materials === 0} />
-                    <PriceLine label="Mano de obra" value={plan.labor} />
-                    <PriceLine label={plan.extrasLabel} value={plan.extras} />
-                    <PriceLine label="Transporte ref." value={plan.transport === 0 ? 'No incluido' : plan.transport} muted={plan.transport === 0} />
-                    <div className="my-2 h-px bg-white/[.06]" />
-                    <PriceLine label="Subtotal" value={plan.subtotal} />
-                    <PriceLine label="IVA ref." value={plan.tax} />
-                  </div>
-                </div>
-
-                <div className={`mt-3 rounded-xl border p-3 ${index === 0 ? 'border-white/[.07] bg-white/[.02]' : 'border-[#57D4FF]/15 bg-[#57D4FF]/[.04]'}`}>
-                  <span className="text-[9px] uppercase tracking-[.12em] text-white/34">Diferencia de alcance</span>
-                  {index === 0 ? <b className="mt-1 block text-[11px] text-white/72">Es la base de comparación: tú compras y coordinas los materiales.</b> : <><b className="mt-1 block text-sm text-[#57D4FF]">+ {money.format(difference)} vs solo mano de obra</b><span className="mt-1 block text-[9px] leading-4 text-white/34">La diferencia corresponde al mayor alcance de materiales, preparación y servicios incluidos.</span></>}
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                  <div><span className="text-[9px] font-black uppercase tracking-[.12em] text-[#F6C64A]">Incluye</span><ul className="mt-2 space-y-2">{plan.includes.slice(0, 5).map((item) => <li key={item} className="flex items-start gap-2 text-[10px] leading-4 text-white/48"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#F6C64A]" />{item}</li>)}</ul></div>
-                  <div><span className="text-[9px] font-black uppercase tracking-[.12em] text-white/34">No considera</span><ul className="mt-2 space-y-2">{plan.excludes.slice(0, 4).map((item) => <li key={item} className="flex items-start gap-2 text-[10px] leading-4 text-white/34"><span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-white/30" />{item}</li>)}</ul></div>
-                </div>
-              </button>;
-            })}
-          </div>
-
-          <div className="mt-4 flex flex-col gap-3 rounded-[1.45rem] border border-[#F6C64A]/30 bg-[linear-gradient(90deg,rgba(246,198,74,.10),rgba(246,198,74,.025))] p-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><ShoppingCart className="h-7 w-7 text-[#F6C64A]" /><div><h3 className="font-black">Cotiza el alcance seleccionado</h3><p className="mt-1 text-[11px] text-white/42">{selectedPlan.name} · referencia {money.format(selectedPlan.total)} · {money.format(selectedPlan.referenceM2)}/m²</p><p className="mt-1 max-w-xl text-[9px] leading-4 text-white/28">La cotización final confirma terreno, comuna, accesos, despacho, disponibilidad y especificación técnica.</p></div></div><button type="button" onClick={quote} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#F6C64A] px-7 text-xs font-black text-black transition hover:bg-[#FFD95F]">COTIZAR AHORA <ArrowRight className="h-4 w-4" /></button></div>
-        </section>
-
-        <section className="border-t border-white/[.06] bg-[#04080B] px-4 py-6 sm:px-6"><div className="mx-auto grid max-w-[900px] grid-cols-3 gap-3 text-center"><div><ShieldCheck className="mx-auto h-5 w-5 text-[#F6C64A]" /><b className="mt-2 block text-[10px]">Compra segura</b></div><div><Headphones className="mx-auto h-5 w-5 text-[#F6C64A]" /><b className="mt-2 block text-[10px]">Asesoría experta</b></div><div><Truck className="mx-auto h-5 w-5 text-[#F6C64A]" /><b className="mt-2 block text-[10px]">Despacho coordinado</b></div></div></section>
-      </main>
-      <StoreBottomNav />
-    </div>
-  );
+function InfoCard({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
+  return <article className="rounded-xl border border-white/[.07] bg-black/20 p-3"><span className="text-[#57D4FF] [&>svg]:h-4 [&>svg]:w-4">{icon}</span><b className="mt-2 block text-xs">{title}</b><p className="mt-1 text-[10px] leading-5 text-white/40">{text}</p></article>;
 }

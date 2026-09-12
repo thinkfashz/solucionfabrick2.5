@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import AirSimulatorFunnelV9 from '@/components/store/AirSimulatorFunnelV9';
 import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
-import CollapsibleMeasureControls from '@/components/tools/CollapsibleMeasureControls';
 import { preloadAirCatalogProducts } from '@/lib/airCatalogServer';
 import { buildTechnicalToolJsonLd, SITE_URL } from '@/lib/seo';
 import a11y from '../../mobile-accessibility.module.css';
@@ -39,12 +38,6 @@ export default async function Page() {
       <StructuredData data={jsonLd} />
       <div className={a11y.airScope}>
         <AirSimulatorFunnelV9 initialProducts={initialProducts} />
-        <CollapsibleMeasureControls
-          targetText="Ingresa las dimensiones de tu espacio"
-          ancestorDepth={3}
-          label="Medidas y condiciones"
-          summary="Largo, ancho, alto, personas, ventanas, exposición, aislación y zona climática"
-        />
       </div>
       <TechnicalAuthoritySection
         compact

@@ -56,7 +56,7 @@ export default function MetalconPage() {
         limits={[
           'Mover un elemento en el visor no convierte la configuración en diseño estructural. Los montantes deben respetar modulación, cargas, revestimientos y detalles del proyecto.',
           'No dimensiona capacidad resistente, conexiones, anclajes, diafragmas ni fundaciones; segundo piso y estructuras mayores requieren ingeniería.',
-          'No existe un número único de años aplicable a todas las casas. En madera, INN regula durabilidad mediante NCh789/1:2023 y cálculo mediante NCh1198:2024; USDA señala que una estructura de madera bien protegida de la humedad puede alcanzar o superar 100 años. Para ladrillo cocido existen referencias internacionales de más de 100 años, pero eso no sustituye diseño sísmico chileno, morteros, refuerzos ni mantención.',
+          'No existe un número único de años aplicable a todas las casas. En madera, INN regula durabilidad mediante NCh789/1:2023 y cálculo mediante NCh1198:2024; USDA señala que una estructura de madera bien protegida de la humedad puede alcanzar o superar 100 años. Para ladrillo cocido, documentación técnica internacional de mampostería usa referencias superiores a 100 años, pero eso no sustituye diseño sísmico chileno, morteros, refuerzos ni mantención.',
         ]}
         sources={[
           {
@@ -83,6 +83,11 @@ export default function MetalconPage() {
             label: 'USDA Forest Products Laboratory · durabilidad de la madera',
             href: 'https://research.fs.usda.gov/treesearch/41469',
             note: 'La humedad y el detalle constructivo gobiernan la durabilidad; construcciones de madera bien protegidas pueden durar más de un siglo.',
+          },
+          {
+            label: 'Referencia internacional · durabilidad de ladrillo cocido',
+            href: 'https://brick.com/wp-content/uploads/2025/01/technical_service_digest-216_0.pdf',
+            note: 'Referencia técnica internacional que sitúa la reparación del ladrillo cocido de fachada más allá de 100 años cuando está correctamente diseñado, detallado y construido.',
           },
         ]}
         related={[

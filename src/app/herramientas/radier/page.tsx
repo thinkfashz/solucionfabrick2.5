@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import RadierCalculatorPremium from '@/components/store/RadierCalculatorPremium';
 import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
+import CollapsibleMeasureControls from '@/components/tools/CollapsibleMeasureControls';
 import { buildTechnicalToolJsonLd, SITE_URL } from '@/lib/seo';
 import a11y from '../../mobile-accessibility.module.css';
 
@@ -33,6 +34,12 @@ export default function Page() {
       <StructuredData data={jsonLd} />
       <div className={a11y.radierScope}>
         <RadierCalculatorPremium />
+        <CollapsibleMeasureControls
+          targetText="Pon las medidas de tu radier"
+          ancestorDepth={3}
+          label="Medidas del radier"
+          summary="Forma, largo, ancho, espesor, base compactada, gravilla, uso y terminación"
+        />
       </div>
       <TechnicalAuthoritySection
         compact

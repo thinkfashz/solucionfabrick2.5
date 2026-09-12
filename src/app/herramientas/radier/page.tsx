@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import RadierCalculatorPremium from '@/components/store/RadierCalculatorPremium';
 import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
+import CollapsibleMeasureControls from '@/components/tools/CollapsibleMeasureControls';
 import { buildTechnicalToolJsonLd, SITE_URL } from '@/lib/seo';
 import a11y from '../../mobile-accessibility.module.css';
 
@@ -33,8 +34,15 @@ export default function Page() {
       <StructuredData data={jsonLd} />
       <div className={a11y.radierScope}>
         <RadierCalculatorPremium />
+        <CollapsibleMeasureControls
+          targetText="Pon las medidas de tu radier"
+          ancestorDepth={3}
+          label="Medidas del radier"
+          summary="Forma, largo, ancho, espesor, base compactada, gravilla, uso y terminación"
+        />
       </div>
       <TechnicalAuthoritySection
+        compact
         eyebrow="Metodología de cubicación · explicación visible"
         title="Cómo se calculan el hormigón, las capas y los materiales"
         answer="La herramienta transforma las medidas del proyecto en una cubicación reproducible: primero estima área y perímetro, luego convierte cada espesor a volumen y finalmente aplica márgenes de trabajo y unidades comerciales para entregar materiales y rangos de costo."
@@ -42,11 +50,11 @@ export default function Page() {
           'Área = largo × ancho × factor de forma. Las formas L, U, T, H e I usan factores de aproximación para una estimación rápida; una geometría irregular real debe medirse por paños.',
           'Hormigón = área × espesor en metros × 1,08. El 8% adicional funciona como margen operativo de la herramienta, no como exigencia normativa universal.',
           'Base estabilizada y gravilla se calculan como área × profundidad. La barrera de humedad incorpora 10% de traslape y las estacas se estiman desde el perímetro.',
-          'Los planes comerciales separan materiales, mano de obra, preparación/extras, transporte e IVA para que el usuario vea qué parte del precio corresponde a cada alcance.',
+          'Los planes comerciales separan materiales, mano de obra, preparación/extras, transporte e IVA para comparar alcances antes de cotizar.',
         ]}
         limits={[
           'No reemplaza estudio de suelo, proyecto de fundaciones, cálculo estructural ni especificaciones particulares de una obra.',
-          'Los factores de formas irregulares son aproximaciones: para compra final conviene medir cada paño y descontar/añadir geometrías reales.',
+          'Los factores de formas irregulares son aproximaciones: para compra final conviene medir cada paño y descontar o añadir geometrías reales.',
           'Las exigencias MINVU citadas sirven como referencia técnica para ciertos programas habitacionales y no deben interpretarse como una receta única para todo radier.',
         ]}
         sources={[

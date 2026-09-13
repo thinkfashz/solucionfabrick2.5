@@ -1,73 +1,12 @@
 import type { Metadata } from 'next';
 import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
-import StructuralMonitoringGameShell from '@/components/store/StructuralMonitoringGameShell';
+import StructuralMonitoringComparisonShell from '@/components/store/StructuralMonitoringComparisonShell';
 import { buildTechnicalToolJsonLd, SITE_URL } from '@/lib/seo';
 
-const CANONICAL = `${SITE_URL}/herramientas/metalcon/monitoreo`;
-
-export const metadata: Metadata = {
-  title: 'Simulador sísmico 4D Metalcon | Soluciones Fabrick',
-  description: 'Explora una estructura Metalcon en un visor sísmico 4D inmersivo, ajusta magnitud, profundidad, distancia, suelo y dirección, y revisa analíticas y zonas a inspeccionar. Herramienta educativa, no cálculo estructural.',
-  alternates: { canonical: CANONICAL },
-  openGraph: {
-    title: 'Simulador sísmico 4D Metalcon | Soluciones Fabrick',
-    description: 'Recorre la estructura, inicia un escenario sísmico y revisa demanda visual, paneles más exigidos y acciones de inspección sin confundir el resultado con ingeniería sísmica.',
-    url: CANONICAL,
-    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Simulador sísmico 4D Metalcon Soluciones Fabrick' }],
-  },
-};
-
-export default function MonitoringPage() {
-  const jsonLd = buildTechnicalToolJsonLd({
-    path: '/herramientas/metalcon/monitoreo',
-    name: 'Simulador sísmico 4D Metalcon',
-    description: 'Simulador educativo e inmersivo para comparar magnitud, intensidad estimada, profundidad, suelo, dirección y demanda relativa por panel.',
-    category: 'EducationalApplication',
-    keywords: ['simulador terremoto', 'Metalcon sismo', 'intensidad Mercalli', 'magnitud sísmica', 'respuesta estructural educativa'],
-  });
-
-  return (
-    <>
-      <StructuredData data={jsonLd} />
-      <StructuralMonitoringGameShell />
-      <TechnicalAuthoritySection
-        eyebrow="Simulación sísmica · metodología y límites"
-        title="Qué representa el terremoto 4D y qué no representa"
-        answer="El laboratorio convierte variables sísmicas y geométricas en índices visuales para comparar escenarios. Magnitud, intensidad estimada, profundidad, distancia, suelo, duración y dirección modifican una demanda relativa; después cada panel recibe un factor por orientación, vanos y arriostramiento para priorizar dónde mirar."
-        method={[
-          'La intensidad MMI se estima desde magnitud, distancia hipocentral, profundidad y suelo mediante una heurística visual de Fabrick.',
-          'La demanda combina intensidad, magnitud, cercanía, poca profundidad, duración y amplificación del suelo; de ella salen proxies de PGA y deriva.',
-          'Cada muro recibe un factor por orientación respecto de la excitación, proporción de vanos y presencia de arriostramiento; los paneles se ordenan por demanda relativa.',
-          'La animación representa propagación, llegada a superficie y respuesta de la malla para explicar el fenómeno; no calcula tiempos de viaje geofísicos reales.',
-        ]}
-        limits={[
-          'No es un análisis modal, espectral, pushover ni no lineal; no entrega capacidad resistente real.',
-          'PGA proxy, deriva proxy, daño, soporte y reparación son índices educativos/comerciales, no resultados de una memoria de cálculo.',
-          'No debe usarse para decidir habitabilidad después de un sismo ni para declarar una estructura segura.',
-        ]}
-        sources={[
-          {
-            label: 'Centro Sismológico Nacional · glosario',
-            href: 'https://www.csn.uchile.cl/sismologia/glosario/',
-            note: 'Define magnitud, intensidad, distancia epicentral y factores que influyen en los efectos observados de un sismo.',
-          },
-          {
-            label: 'MINVU · D.S. 61 diseño sísmico de edificios',
-            href: 'https://www.minvu.gob.cl/wp-content/uploads/2019/05/DECRETO-61-2011-DISEN%CC%83O-SISMICO-DE-EDIFICIOS.pdf',
-            note: 'Marco reglamentario chileno para diseño sísmico de edificios junto con NCh433 en lo que corresponda.',
-          },
-          {
-            label: 'Cintac · Manual de Diseño Metalcon',
-            href: 'https://www.cintac.cl/wp-content/uploads/2020/09/Manual-de-Disen%CC%83o-Metalcon-2020-LW.pdf',
-            note: 'Referencia técnica sobre perfiles, paneles y componentes del sistema; no valida la heurística sísmica de Fabrick.',
-          },
-        ]}
-        related={[
-          { label: 'Configurar panel Metalcon', href: '/herramientas/metalcon' },
-          { label: 'Pasar a presupuesto', href: '/presupuesto?servicio=metalcon' },
-        ]}
-      />
-    </>
-  );
+const CANONICAL=`${SITE_URL}/herramientas/metalcon/monitoreo`;
+export const metadata:Metadata={title:'Comparador sísmico 4D Metalcon vs madera | Soluciones Fabrick',description:'Compara visualmente, bajo el mismo escenario sísmico, una vivienda Metalcon y un entramado de madera. Ajusta magnitud, profundidad, distancia y suelo. Simulación educativa, no cálculo estructural.',alternates:{canonical:CANONICAL},openGraph:{title:'Comparador sísmico 4D Metalcon vs madera | Soluciones Fabrick',description:'Dos sistemas bajo el mismo escenario, con respuesta visual, deriva proxy y zonas a inspeccionar.',url:CANONICAL,images:[{url:'/brand/soluciones-fabrick-social.png',width:1200,height:630,alt:'Comparador sísmico Soluciones Fabrick'}]}};
+export default function MonitoringPage(){
+ const jsonLd=buildTechnicalToolJsonLd({path:'/herramientas/metalcon/monitoreo',name:'Comparador sísmico 4D Metalcon y madera',description:'Simulador educativo para comparar visualmente dos sistemas bajo el mismo escenario sin sustituir ingeniería sísmica.',category:'EducationalApplication',keywords:['simulador terremoto','Metalcon sismo','madera sismo','comparación estructural educativa','intensidad Mercalli']});
+ return <><StructuredData data={jsonLd}/><StructuralMonitoringComparisonShell/><TechnicalAuthoritySection eyebrow="Comparación sísmica · metodología y límites" title="Qué significa comparar Metalcon y madera aquí" answer="El laboratorio aplica el mismo escenario sísmico a dos modelos visuales de referencia. Los porcentajes de respuesta, deriva y afectación son proxies educativos construidos para observar diferencias de comportamiento del escenario, no resultados normativos ni una prueba de que una materialidad sea universalmente superior." method={['Magnitud, distancia, profundidad, duración y suelo forman una demanda visual común.','Cada sistema usa un perfil visual de demostración para animar deformación y destacar uniones, anclajes y zonas que ameritarían inspección.','La vivienda de madera representa un entramado de referencia; la vivienda Metalcon usa la malla del configurador. En ambos casos, diseño, uniones, revestimientos, ejecución y mantenimiento cambian el desempeño real.']} limits={['No es análisis modal, espectral, pushover ni no lineal y no predice colapso.','PGA proxy, deriva proxy, daño y nivel visual no deben usarse para declarar seguridad u habitabilidad.','La comparación no sustituye NCh433/DS61, NCh1198:2024, memoria de cálculo, proyecto ni inspección profesional.']} sources={[{label:'Centro Sismológico Nacional · glosario',href:'https://www.csn.uchile.cl/sismologia/glosario/',note:'Conceptos de magnitud, intensidad y distancia sísmica.'},{label:'MINVU · D.S. 61 diseño sísmico',href:'https://www.minvu.gob.cl/wp-content/uploads/2019/05/DECRETO-61-2011-DISEN%CC%83O-SISMICO-DE-EDIFICIOS.pdf',note:'Marco reglamentario de diseño sísmico de edificios.'},{label:'INN · normas de construcción en madera',href:'https://www.inn.cl/contenedor-de-noticias/calidad-y-sostenibilidad-para-edificaciones-y-construccion-en-material-madera-y-productos-derivados-de-la-madera-a-traves-de-normas-chilenas/',note:'Referencia a NCh1198:2024 para cálculo de construcciones en madera.'},{label:'Cintac · Manual de Diseño Metalcon',href:'https://www.cintac.cl/wp-content/uploads/2020/09/Manual-de-Disen%CC%83o-Metalcon-2020-LW.pdf',note:'Referencia técnica del sistema Metalcon.'}]} related={[{label:'Abrir laboratorio constructivo Metalcon',href:'/herramientas/metalcon/lab'},{label:'Configurar Metalcon',href:'/herramientas/metalcon'},{label:'Pasar a presupuesto',href:'/presupuesto?servicio=metalcon'}]}/></>
 }

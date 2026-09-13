@@ -3,6 +3,7 @@ import RadierCalculatorPremium from '@/components/store/RadierCalculatorPremium'
 import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
 import CollapsibleMeasureControls from '@/components/tools/CollapsibleMeasureControls';
+import ImmersiveLabEntry from '@/components/tools/ImmersiveLabEntry';
 import { buildTechnicalToolJsonLd, SITE_URL } from '@/lib/seo';
 import a11y from '../../mobile-accessibility.module.css';
 
@@ -40,6 +41,7 @@ export default function Page() {
           label="Medidas del radier"
           summary="Forma, largo, ancho, espesor, base compactada, gravilla, uso y terminación"
         />
+        <ImmersiveLabEntry href="/herramientas/radier/lab" label="Lab Radier 4D" />
       </div>
       <TechnicalAuthoritySection
         compact
@@ -70,6 +72,7 @@ export default function Page() {
           },
         ]}
         related={[
+          { label: 'Abrir laboratorio de radier 4D', href: '/herramientas/radier/lab' },
           { label: 'Productos para radier', href: '/tienda/catalogo' },
           { label: 'Cotizar radier', href: '/presupuesto?servicio=radier' },
         ]}

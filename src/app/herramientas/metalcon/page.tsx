@@ -3,6 +3,7 @@ import { MetalconCalculator } from '@/components/store/MetalconCalculator';
 import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
 import CollapsibleMeasureControls from '@/components/tools/CollapsibleMeasureControls';
+import ImmersiveLabEntry from '@/components/tools/ImmersiveLabEntry';
 import { buildTechnicalToolJsonLd, SITE_URL } from '@/lib/seo';
 import a11y from '../../mobile-accessibility.module.css';
 
@@ -40,6 +41,7 @@ export default function MetalconPage() {
           label="Medidas, perfiles y vanos"
           summary="Largo, alto, modulación 40/60 cm, OSB, perfil C, espesor, puerta y ventana"
         />
+        <ImmersiveLabEntry href="/herramientas/metalcon/lab" label="Lab Metalcon 4D" />
       </div>
       <TechnicalAuthoritySection
         compact
@@ -91,6 +93,7 @@ export default function MetalconPage() {
           },
         ]}
         related={[
+          { label: 'Abrir laboratorio constructivo 4D', href: '/herramientas/metalcon/lab' },
           { label: 'Abrir simulador sísmico 4D', href: '/herramientas/metalcon/monitoreo' },
           { label: 'Cotizar Metalcon', href: '/presupuesto?servicio=metalcon' },
         ]}

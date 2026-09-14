@@ -7,6 +7,10 @@ import {
   regularStudOffsets,
   wallLengthM,
 } from '@/lib/metalconAssembly';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const read = (file: string) => fs.readFileSync(path.join(process.cwd(), file), 'utf8');
 
 describe('Metalcon preliminary calculator',()=>{
   it('modulates a six metre wall at 40 cm and adds double jambs',()=>{
@@ -30,6 +34,16 @@ describe('Metalcon preliminary calculator',()=>{
     expect(result.warnings.some(item=>item.includes('1,20 m'))).toBe(true);
     expect(result.warnings.some(item=>item.includes('fuera'))).toBe(true);
     expect(result.warnings.some(item=>item.includes('memoria'))).toBe(true);
+  });
+
+  it('keeps the previous building viewer and adds reversible inspection movement', () => {
+    const calculator = read('src/components/store/MetalconCalculator.tsx');
+    const viewer = read('src/components/store/MetalconCinematicViewer.tsx');
+    expect(calculator).toContain('<MetalconCinematicViewer input={input}/>');
+    expect(calculator).toContain('/herramientas/metalcon/monitoreo');
+    expect(viewer).toContain('Separar panel para inspección');
+    expect(viewer).toContain('Mover montante C');
+    expect(viewer).toContain('Desplazamiento visual reversible');
   });
 });
 

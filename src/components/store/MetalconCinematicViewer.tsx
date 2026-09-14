@@ -55,6 +55,26 @@ const LIGHT: Array<[Light, string]> = [
   ['estudio', 'Estudio'],
 ];
 
+function shiftedWallPreset(preset: MetalconHousePreset, wallId: string | null, offsetM: number): MetalconHousePreset {
+  if (!wallId || Math.abs(offsetM) < 0.001) return preset;
+  return {
+    ...preset,
+    walls: preset.walls.map((wall) => {
+      if (wall.id !== wallId) return wall;
+      const dx = wall.end.x - wall.start.x;
+      const dz = wall.end.z - wall.start.z;
+      const length = Math.max(0.001, Math.hypot(dx, dz));
+      const nx = -dz / length;
+      const nz = dx / length;
+      return {
+        ...wall,
+        start: { x: wall.start.x + nx * offsetM, z: wall.start.z + nz * offsetM },
+        end: { x: wall.end.x + nx * offsetM, z: wall.end.z + nz * offsetM },
+      };
+    }),
+  };
+}
+
 export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
   const [modelId, setModelId] = useState<ViewerModelId>('family-6x8');
   const [view, setView] = useState<ViewerView>('dimensions');
@@ -66,9 +86,12 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
   const [autoRotate, setAutoRotate] = useState(false);
   const [timeline, setTimeline] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [panelOffsetM, setPanelOffsetM] = useState(0);
+  const [profileOffsetM, setProfileOffsetM] = useState(0);
 
   const customPreset = useMemo(() => makeCustomPanelPreset(input), [input]);
   const activePreset = modelId === 'custom-panel' ? customPreset : METALCON_HOUSE_PRESETS[modelId];
+  const interactivePreset = useMemo(() => shiftedWallPreset(activePreset, selectedWallId, panelOffsetM), [activePreset, panelOffsetM, selectedWallId]);
   const summary = useMemo(() => assemblySummary(activePreset, input.spacingCm), [activePreset, input.spacingCm]);
   const selectedWall = activePreset.walls.find((wall) => wall.id === selectedWallId) ?? null;
 
@@ -77,6 +100,8 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
     setIsolateSelected(false);
     setTimeline(0);
     setPlaying(false);
+    setPanelOffsetM(0);
+    setProfileOffsetM(0);
   }, [modelId]);
 
   useEffect(() => {
@@ -99,6 +124,12 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
     setPlaying(true);
     setAutoRotate(false);
     setCameraPreset('perspective');
+  };
+
+  const selectWall = (wallId: string | null) => {
+    setSelectedWallId(wallId);
+    setPanelOffsetM(0);
+    if (!wallId) setIsolateSelected(false);
   };
 
   return (
@@ -130,15 +161,15 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
             <ViewerEnvironment ground={ground} light={light} />
             <CameraDirector preset={activePreset} cameraPreset={cameraPreset} />
             {view === 'profiles' ? (
-              <ProfileScene input={input} />
+              <ProfileScene input={input} offsetM={profileOffsetM} />
             ) : (
               <MetalconAssembly3D
-                preset={activePreset}
+                preset={interactivePreset}
                 spacingCm={input.spacingCm}
                 profileDepthMm={input.cDepthMm}
                 displayMode={view}
                 selectedWallId={selectedWallId}
-                onSelectWall={setSelectedWallId}
+                onSelectWall={(wallId) => selectWall(wallId)}
                 isolateSelected={isolateSelected}
                 assemblyProgress={playing || timeline > 0 ? timeline : null}
               />
@@ -188,7 +219,13 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
           ))}
         </div>
 
-        {view !== 'profiles' ? (
+        {view === 'profiles' ? (
+          <div className="mt-3 rounded-xl border border-[#F6C64A]/15 bg-[#F6C64A]/[.035] p-3">
+            <div className="flex items-center justify-between gap-3 text-[8px] font-black uppercase tracking-[.1em]"><span className="text-white/50">Mover montante C · izquierda ↔ derecha</span><span className="text-[#F6C64A]">{profileOffsetM.toFixed(2)} m</span></div>
+            <input type="range" min={-.75} max={.75} step={.05} value={profileOffsetM} onChange={(event) => setProfileOffsetM(Number(event.target.value))} className="mt-2 w-full accent-[#F6C64A]" />
+            <p className="mt-2 text-[8px] leading-4 text-white/30">Movimiento visual para comprender el encuentro C/U. En el entramado real los montantes siguen la modulación seleccionada de 40/60 cm y el proyecto.</p>
+          </div>
+        ) : (
           <div className="mt-3 rounded-xl border border-white/8 bg-white/[.025] p-3">
             <div className="flex items-center justify-between gap-2">
               <div>
@@ -198,19 +235,26 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
               <button type="button" disabled={!selectedWallId} onClick={() => setIsolateSelected((value) => !value)} className={`rounded-full px-3 py-2 text-[8px] font-black ${selectedWallId ? (isolateSelected ? 'bg-cyan-300 text-black' : 'bg-white/[.07] text-white/65') : 'cursor-not-allowed bg-white/[.03] text-white/20'}`}>{isolateSelected ? 'Ver todos' : 'Aislar'}</button>
             </div>
             <div className="mt-2 flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none]">
-              <button type="button" onClick={() => { setSelectedWallId(null); setIsolateSelected(false); }} className={`shrink-0 rounded-full px-2.5 py-1.5 text-[8px] font-black ${!selectedWallId ? 'bg-white text-black' : 'bg-white/[.05] text-white/45'}`}>Todos</button>
+              <button type="button" onClick={() => selectWall(null)} className={`shrink-0 rounded-full px-2.5 py-1.5 text-[8px] font-black ${!selectedWallId ? 'bg-white text-black' : 'bg-white/[.05] text-white/45'}`}>Todos</button>
               {activePreset.walls.map((wall) => (
-                <button key={wall.id} type="button" onClick={() => setSelectedWallId(wall.id)} className={`shrink-0 rounded-full px-2.5 py-1.5 text-[8px] font-black ${selectedWallId === wall.id ? 'bg-cyan-300 text-black' : 'bg-white/[.05] text-white/45'}`}>{wall.id}</button>
+                <button key={wall.id} type="button" onClick={() => selectWall(wall.id)} className={`shrink-0 rounded-full px-2.5 py-1.5 text-[8px] font-black ${selectedWallId === wall.id ? 'bg-cyan-300 text-black' : 'bg-white/[.05] text-white/45'}`}>{wall.id}</button>
               ))}
             </div>
             {selectedWall ? (
-              <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
-                <div className="rounded-lg bg-black/25 px-3 py-2 text-[8px] leading-4 text-white/48"><b className="text-white/80">{selectedWall.label}</b><br/>{selectedWall.role === 'perimeter' ? 'Perimetral' : 'Interior'} · {selectedWall.structural ? 'marcado estructural' : 'división referencial'} · {selectedWall.openings.length} vano(s)</div>
-                <button type="button" onClick={() => setView('openings')} className="rounded-lg border border-[#F6C64A]/20 px-3 py-2 text-[8px] font-black text-[#F6C64A]">Ver detalle de vano</button>
+              <div className="mt-2 space-y-2">
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+                  <div className="rounded-lg bg-black/25 px-3 py-2 text-[8px] leading-4 text-white/48"><b className="text-white/80">{selectedWall.label}</b><br/>{selectedWall.role === 'perimeter' ? 'Perimetral' : 'Interior'} · {selectedWall.structural ? 'marcado estructural' : 'división referencial'} · {selectedWall.openings.length} vano(s)</div>
+                  <button type="button" onClick={() => setView('openings')} className="rounded-lg border border-[#F6C64A]/20 px-3 py-2 text-[8px] font-black text-[#F6C64A]">Ver detalle de vano</button>
+                </div>
+                <div className="rounded-lg border border-cyan-300/10 bg-cyan-300/[.025] px-3 py-2">
+                  <div className="flex items-center justify-between gap-3 text-[8px] font-black uppercase tracking-[.1em]"><span className="text-white/45">Separar panel para inspección</span><span className="text-cyan-200">{panelOffsetM.toFixed(2)} m</span></div>
+                  <input type="range" min={-.8} max={.8} step={.05} value={panelOffsetM} onChange={(event) => setPanelOffsetM(Number(event.target.value))} className="mt-2 w-full accent-cyan-300" />
+                  <p className="mt-1 text-[8px] leading-4 text-white/28">Desplazamiento visual reversible: no modifica cubicación, anclajes ni posición de proyecto.</p>
+                </div>
               </div>
             ) : null}
           </div>
-        ) : null}
+        )}
 
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <MiniMetric value={summary.panels} label="paneles/tramos" />
@@ -345,13 +389,13 @@ function ViewerEnvironment({ ground, light }: { ground: Ground; light: Light }) 
   </>;
 }
 
-function ProfileScene({ input }: { input: MetalconInput }) {
+function ProfileScene({ input, offsetM }: { input: MetalconInput; offsetM: number }) {
   const depth = input.cDepthMm / 1000;
   const web = Math.max(0.18, depth * 2.2);
   const flange = 0.18;
   return (
     <group position={[0, 1.05, 0]}>
-      <group position={[-1.15, 0, 0]} rotation={[0.18, -0.45, 0.05]}>
+      <group position={[-1.15 + offsetM, 0, 0]} rotation={[0.18, -0.45, 0.05]}>
         <mesh castShadow><boxGeometry args={[0.08, 2.5, web]} /><meshStandardMaterial color="#d9e0e6" metalness={0.86} roughness={0.25} /></mesh>
         <mesh position={[flange / 2, 0, web / 2]} castShadow><boxGeometry args={[flange, 2.5, 0.035]} /><meshStandardMaterial color="#d9e0e6" metalness={0.86} roughness={0.25} /></mesh>
         <mesh position={[flange / 2, 0, -web / 2]} castShadow><boxGeometry args={[flange, 2.5, 0.035]} /><meshStandardMaterial color="#d9e0e6" metalness={0.86} roughness={0.25} /></mesh>

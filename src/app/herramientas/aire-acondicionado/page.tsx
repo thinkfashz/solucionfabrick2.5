@@ -40,6 +40,7 @@ export default async function Page() {
         <AirSimulatorFunnelV9 initialProducts={initialProducts} />
       </div>
       <TechnicalAuthoritySection
+        compact
         eyebrow="Metodología BTU · explicación visible"
         title="Cómo calcula Fabrick la capacidad de aire acondicionado"
         answer="El resultado es una recomendación comercial conservadora para vivienda u oficina en Chile. No usa solo los metros cuadrados: combina superficie, altura, personas, ventanas, tipo de ambiente, asoleamiento, aislación y zona climática antes de elegir la capacidad inmediatamente superior disponible."
@@ -57,7 +58,7 @@ export default async function Page() {
         sources={[
           {
             label: 'SEC · Protocolo de eficiencia para acondicionadores de aire',
-            href: 'https://wlhttp.sec.cl/PublicacionProductos/adjunto?ac=verDocProt&id=462',
+            href: 'https://www.sec.cl/sitio-web/wp-content/uploads/2020/04/PE-1-26-2-EE-Acondicionadores-de-Aire_Eficiencia_2020.pdf',
             note: 'Referencia regulatoria para certificación y eficiencia de equipos de aire acondicionado.',
           },
           {

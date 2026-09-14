@@ -129,7 +129,20 @@ export function calculateRadier(input: RadierInput) {
   const concrete = area * (thickness / 100) * 1.08;
   const stabilized = area * (baseDepth / 100);
   const gravel = area * (gravelDepth / 100);
-  const cementBags25 = Math.ceil(concrete * 7.2);
+  // Mezcla referencial en obra 4:8:9 por volumen (cemento:arena:gravilla).
+  const cementBagVolumeLiters = 25 / 1.44;
+  const mixYieldPerBagM3 = (cementBagVolumeLiters * (21 / 4) / 1.54) / 1000;
+  const cementBags25 = Math.ceil(concrete / mixYieldPerBagM3);
+  const sand = concrete * (8 / 21) * 1.54;
+  const mixGravel = concrete * (9 / 21) * 1.54;
+  const mixerUsefulM3 = .13;
+  const mixerBatches = Math.ceil(concrete / mixerUsefulM3);
+  const truckCapacityM3 = 7;
+  const mixerTrucks = Math.ceil(concrete / truckCapacityM3);
+  const manualMixHours = Math.ceil(mixerBatches * 12 / 60);
+  const pourHours = Math.max(4, Math.ceil(area / 5));
+  const executionDaysFrom = Math.max(1, Math.ceil((area / 35) + .5));
+  const executionDaysTo = Math.max(2, Math.ceil((area / 22) + 1));
   const meshSheets = Math.ceil(area / 13.5);
   const moistureBarrierM2 = area * 1.1;
   const stakes43cm = Math.max(4, Math.ceil(perimeter / 1.5));
@@ -169,6 +182,18 @@ export function calculateRadier(input: RadierInput) {
     stabilized,
     gravel,
     cementBags25,
+    cementBagCoverageM3: mixYieldPerBagM3,
+    cementBagCoverageLiters: mixYieldPerBagM3 * 1000,
+    sand,
+    mixGravel,
+    mixerUsefulM3,
+    mixerBatches,
+    mixerTrucks,
+    truckCapacityM3,
+    manualMixHours,
+    pourHours,
+    executionDaysFrom,
+    executionDaysTo,
     meshSheets,
     moistureBarrierM2,
     stakes43cm,

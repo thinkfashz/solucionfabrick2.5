@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const keys = ['ORDER_TRACKING_SECRET', 'NEXTAUTH_SECRET', 'PAYMENTS_WEBHOOK_SECRET', 'ADMIN_SESSION_SECRET'] as const;
 const originals = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
-const originalNodeEnv = process.env.NODE_ENV;
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -12,8 +11,6 @@ afterEach(() => {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
-  if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
-  else process.env.NODE_ENV = originalNodeEnv;
 });
 
 describe('order tracking signing', () => {

@@ -10,6 +10,8 @@ import {
   CircleDollarSign,
   Gauge,
   Info,
+  Layers3,
+  Menu,
   Pause,
   Play,
   Radar,
@@ -30,12 +32,14 @@ import {
   type MetalconHousePresetId,
 } from '@/lib/metalconAssembly';
 import { MetalconAssembly3D, type MetalconSeismicVisual } from './MetalconAssembly3D';
+import { ConstructionSystems3D, type ConstructionVisibility, type StructuralSystem } from './ConstructionSystems3D';
 import { StoreBottomNav, StorefrontHeader } from './StorefrontChrome';
 
 type Soil = 'rock' | 'firm' | 'soft';
 type IntensityMode = 'estimated' | 'manual';
 
 type SeismicConfig = {
+  system: StructuralSystem;
   modelId: MetalconHousePresetId;
   magnitude: number;
   intensityMode: IntensityMode;
@@ -56,6 +60,10 @@ type PanelDiagnostic = {
   driftProxyPct: number;
   level: 'Bajo' | 'Moderado' | 'Alto' | 'Crítico';
   cause: string;
+  system: string;
+  state: string;
+  damageType: string;
+  recommendation: string;
 };
 
 type Analysis = {
@@ -139,7 +147,12 @@ function analyze(config: SeismicConfig, preset: MetalconHousePreset): Analysis {
       : wall.braced
         ? 'Tramo continuo con pletina localizada y anclajes visualizados.'
         : 'Tramo interior: revisar encuentros y continuidad de fijaciones.';
-    return { id: wall.id, label: wall.label, score, driftProxyPct: localDrift, level: levelFromScore(score), cause };
+    const level = levelFromScore(score);
+    const damageType = config.system === 'wood'
+      ? score >= .76 ? 'rotura/separación de unión' : score >= .56 ? 'agrietamiento' : score >= .34 ? 'deformación' : 'sin daño visible'
+      : score >= .76 ? 'pandeo/torsión' : score >= .56 ? 'falla localizada' : score >= .34 ? 'deformación' : 'sin daño visible';
+    const recommendation = score >= .76 ? 'Aislar y reemplazar con revisión profesional' : score >= .56 ? 'Reforzar o reemplazar tramo' : score >= .34 ? 'Inspeccionar uniones y fijaciones' : 'Mantener y reinspeccionar';
+    return { id: wall.id, label: wall.label, score, driftProxyPct: localDrift, level, cause, system: config.system === 'wood' ? 'Madera' : 'Metalcon', state: score >= .34 ? 'Afectado' : 'Operativo', damageType, recommendation };
   });
 
   const sorted = [...panels].sort((a, b) => b.score - a.score);
@@ -163,8 +176,8 @@ function analyze(config: SeismicConfig, preset: MetalconHousePreset): Analysis {
     critical,
     high,
     affectedWallM,
-    repairLow,
-    repairHigh,
+    repairLow: Math.round(repairLow * (config.system === 'wood' ? .92 : 1)),
+    repairHigh: Math.round(repairHigh * (config.system === 'wood' ? .94 : 1)),
     level,
     panelScores,
     panels: sorted,
@@ -173,6 +186,7 @@ function analyze(config: SeismicConfig, preset: MetalconHousePreset): Analysis {
 
 export function StructuralMonitoringSimulator() {
   const [config, setConfig] = useState<SeismicConfig>({
+    system: 'metalcon',
     modelId: 'family-6x8',
     magnitude: 7.2,
     intensityMode: 'estimated',
@@ -189,6 +203,9 @@ export function StructuralMonitoringSimulator() {
   const [progress, setProgress] = useState(0);
   const [showDamage, setShowDamage] = useState(true);
   const [showSupports, setShowSupports] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [exploded, setExploded] = useState(false);
+  const [visibility, setVisibility] = useState<ConstructionVisibility>({ structure: true, osb: false, membrane: false, insulation: false, interior: false, cladding: false, roof: true, sanitary: false, fixtures: false });
   const preset = METALCON_HOUSE_PRESETS[config.modelId];
   const result = useMemo(() => analyze(config, preset), [config, preset]);
 
@@ -233,30 +250,17 @@ export function StructuralMonitoringSimulator() {
     showDamage,
     showSupports,
   };
+  const toggleLayer = (key: keyof ConstructionVisibility) => setVisibility((current) => ({ ...current, [key]: !current[key] }));
 
   return (
     <div className="min-h-screen bg-[#03070a] text-white">
       <StorefrontHeader />
       <main className="pb-28 md:pb-16">
-        <section className="border-b border-white/10 px-3 py-9 sm:px-6 sm:py-14">
-          <div className="mx-auto flex max-w-[1500px] flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[.24em] text-cyan-300">Digital twin · Three.js · secuencia sísmica 4D educativa</p>
-              <h1 className="mt-3 max-w-5xl text-[clamp(2.8rem,7vw,6.6rem)] font-black leading-[.88] tracking-[-.065em]">Del hipocentro a toda la malla.</h1>
-              <p className="mt-5 max-w-3xl text-sm leading-6 text-white/50 sm:text-base">La simulación ahora mueve la vivienda completa: propagación P/S, onda superficial, dirección de excitación, respuesta de cada panel y diagnóstico final de los tramos más exigidos.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link href="/herramientas/metalcon" className="rounded-full border border-white/15 px-5 py-3 text-xs font-black text-white/70">← Configurar Metalcon</Link>
-              <button type="button" onClick={play} className="flex items-center gap-2 rounded-full bg-[#F6C64A] px-5 py-3 text-xs font-black text-black"><Play size={14} fill="currentColor" /> Reproducir secuencia</button>
-            </div>
-          </div>
-        </section>
-
-        <section className="mx-auto grid max-w-[1500px] gap-5 px-3 py-6 sm:px-6 xl:grid-cols-[minmax(0,1.5fr)_420px] xl:gap-8 xl:py-10">
+        <section className={`mx-auto grid max-w-[1600px] gap-5 px-3 py-3 sm:px-6 ${menuOpen ? 'xl:grid-cols-[minmax(0,1.5fr)_420px]' : 'grid-cols-1'} xl:gap-8 xl:py-6`}>
           <div className="overflow-hidden rounded-[1.8rem] border border-white/10 bg-[#071015]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
               <div><p className="text-[8px] font-black uppercase tracking-[.2em] text-cyan-300">{preset.shortLabel} · malla completa</p><b className="text-xs">Cámara cinemática + respuesta por panel + órbita 360°</b></div>
-              <div className="flex gap-1.5"><Toggle active={showSupports} onClick={() => setShowSupports((value) => !value)} label="Anclajes" /><Toggle active={showDamage} onClick={() => setShowDamage((value) => !value)} label="Daño" /></div>
+              <div className="flex gap-1.5"><Link href="/herramientas/metalcon" className="rounded-full bg-white/[.07] px-3 py-2 text-[8px] font-black text-white/60">← Volver</Link><button type="button" onClick={()=>setMenuOpen(v=>!v)} className="flex items-center gap-1.5 rounded-full bg-[#F6C64A] px-3 py-2 text-[8px] font-black text-black"><Menu size={12}/>{menuOpen?'Cerrar':'Menú'}</button></div>
             </div>
 
             <div className="relative h-[610px] sm:h-[740px]">
@@ -264,13 +268,15 @@ export function StructuralMonitoringSimulator() {
                 <Suspense fallback={null}>
                   <SeismicEnvironment />
                   <SubsurfaceSequence config={config} result={result} progress={progress} playing={playing} />
-                  <MetalconAssembly3D
+                  {visibility.structure ? <MetalconAssembly3D
                     preset={preset}
                     spacingCm={40}
                     profileDepthMm={90}
                     displayMode="bracing"
                     seismic={seismicVisual}
-                  />
+                    structuralSystem={config.system}
+                  /> : null}
+                  <ConstructionSystems3D preset={preset} system={config.system} visibility={visibility} exploded={exploded} />
                   <CameraSequence active={playing} progress={progress} preset={preset} />
                   <OrbitControls makeDefault enabled={!playing} target={[0, 1.05, 0]} enableDamping dampingFactor={0.08} minDistance={2.7} maxDistance={30} maxPolarAngle={Math.PI * 0.84} />
                 </Suspense>
@@ -294,7 +300,14 @@ export function StructuralMonitoringSimulator() {
             </div>
           </div>
 
-          <aside className="space-y-4">
+          {menuOpen ? <aside className="space-y-4">
+            <div className="rounded-[1.6rem] border border-white/10 bg-[#0A1115] p-5">
+              <div className="flex items-center justify-between"><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/40">Sistema y capas</p><Layers3 size={18} className="text-cyan-300" /></div>
+              <div className="mt-3 grid grid-cols-2 gap-2"><ModeButton active={config.system==='metalcon'} onClick={()=>setConfig(v=>({...v,system:'metalcon'}))} label="Metalcon plateado"/><ModeButton active={config.system==='wood'} onClick={()=>setConfig(v=>({...v,system:'wood'}))} label="Entramado madera"/></div>
+              <div className="mt-3 flex flex-wrap gap-1.5">{(['roof','osb','membrane','insulation','interior','cladding','sanitary','fixtures'] as const).map(key=><Toggle key={key} active={visibility[key]} onClick={()=>toggleLayer(key)} label={({roof:'Techumbre',osb:'OSB',membrane:'Membrana',insulation:'Aislación',interior:'Volcanita',cladding:'Siding',sanitary:'Sanitaria',fixtures:'Artefactos'})[key]}/>)}</div>
+              <button type="button" onClick={()=>setExploded(v=>!v)} className="mt-3 w-full rounded-xl border border-cyan-300/20 bg-cyan-300/[.06] py-3 text-[9px] font-black text-cyan-100">{exploded?'Reunir capas':'Explotar capas del muro y techo'}</button>
+              <div className="mt-3 flex gap-1.5"><Toggle active={showSupports} onClick={() => setShowSupports((value) => !value)} label="Anclajes" /><Toggle active={showDamage} onClick={() => setShowDamage((value) => !value)} label="Daño rojo" /></div>
+            </div>
             <div className="rounded-[1.6rem] border border-white/10 bg-[#0A1115] p-5">
               <div className="flex items-center justify-between"><p className="text-[9px] font-black uppercase tracking-[.2em] text-white/40">Modelo de vivienda</p><Radar size={18} className="text-cyan-300" /></div>
               <select value={config.modelId} onChange={(event) => setConfig((value) => ({ ...value, modelId: event.target.value as MetalconHousePresetId }))} className="mt-3 h-12 w-full rounded-xl border border-white/10 bg-[#11181d] px-3 text-xs font-black text-white outline-none">
@@ -342,14 +355,14 @@ export function StructuralMonitoringSimulator() {
               <b className="mt-2 block text-xl tracking-[-.03em]">{clp.format(result.repairLow)} – {clp.format(result.repairHigh)}</b>
               <p className="mt-2 text-[9px] leading-4 text-white/38">Rango paramétrico para inspección/reposición de perfiles, fijaciones y mano de obra de los tramos marcados. No es cotización ni peritaje.</p>
             </div>
-          </aside>
+          </aside> : null}
         </section>
 
         <section className="mx-auto max-w-[1500px] px-3 pb-12 sm:px-6">
           <div className="grid gap-3 lg:grid-cols-[1.1fr_.9fr]">
             <div className="rounded-[1.6rem] border border-white/10 bg-[#0A1115] p-5 sm:p-6">
               <div className="flex items-center justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-300">Ranking de paneles</p><h2 className="mt-2 text-2xl font-black">Dónde mirar primero</h2></div><AlertTriangle size={20} className="text-[#F6C64A]" /></div>
-              <div className="mt-4 space-y-2">{result.panels.slice(0, 6).map((panel) => <PanelRow key={panel.id} panel={panel} />)}</div>
+              <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[850px] border-separate border-spacing-y-2 text-left text-[9px]"><thead className="text-white/35"><tr><th className="px-3">Elemento</th><th>Sistema</th><th>Estado</th><th>Severidad</th><th>Tipo de daño</th><th>Deriva</th><th>Recomendación</th></tr></thead><tbody>{result.panels.map(panel=><DamageRow key={panel.id} panel={panel}/>)}</tbody></table></div>
             </div>
             <div className="space-y-3">
               <Process number="01" title="Ruptura" text={`Foco visual a ${config.depthKm} km y crecimiento de una falla idealizada. La escala subterránea está comprimida para poder verla.`} />
@@ -390,6 +403,11 @@ function Process({ number, title, text }: { number: string; title: string; text:
 function PanelRow({ panel }: { panel: PanelDiagnostic }) {
   const tone = panel.level === 'Crítico' ? 'text-red-300 bg-red-400/10 border-red-400/20' : panel.level === 'Alto' ? 'text-orange-200 bg-orange-300/10 border-orange-300/20' : panel.level === 'Moderado' ? 'text-yellow-100 bg-yellow-300/10 border-yellow-300/20' : 'text-emerald-200 bg-emerald-300/10 border-emerald-300/20';
   return <div className="grid gap-2 rounded-xl border border-white/8 bg-white/[.025] p-3 sm:grid-cols-[1fr_auto] sm:items-center"><div><div className="flex flex-wrap items-center gap-2"><b className="text-xs">{panel.label}</b><span className={`rounded-full border px-2 py-1 text-[7px] font-black ${tone}`}>{panel.level}</span></div><p className="mt-1 text-[8px] leading-4 text-white/35">{panel.cause}</p></div><div className="text-right"><b className="text-lg text-[#F6C64A]">{Math.round(panel.score * 100)}%</b><small className="block text-[7px] text-white/30">deriva proxy {panel.driftProxyPct.toFixed(2)}%</small></div></div>;
+}
+
+function DamageRow({ panel }: { panel: PanelDiagnostic }) {
+  const tone = panel.level === 'Crítico' ? 'text-red-300' : panel.level === 'Alto' ? 'text-orange-200' : panel.level === 'Moderado' ? 'text-yellow-100' : 'text-emerald-200';
+  return <tr className="bg-white/[.035] text-white/60"><td className="rounded-l-xl px-3 py-3 font-black text-white/85">{panel.label}</td><td>{panel.system}</td><td>{panel.state}</td><td className={`font-black ${tone}`}>{panel.level}</td><td>{panel.damageType}</td><td>{panel.driftProxyPct.toFixed(2)}%</td><td className="rounded-r-xl pr-3">{panel.recommendation}</td></tr>;
 }
 
 function SeismicEnvironment() {

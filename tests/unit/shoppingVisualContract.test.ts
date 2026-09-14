@@ -9,6 +9,8 @@ const metalconViewer = readFileSync('src/components/store/MetalconCinematicViewe
 const metalconAssembly = readFileSync('src/components/store/MetalconAssembly3D.tsx', 'utf8');
 const metalconMonitoring = readFileSync('src/components/store/StructuralMonitoringSimulator.tsx', 'utf8');
 const metalconPlans = readFileSync('src/lib/metalconAssembly.ts', 'utf8');
+const metalconLab = readFileSync('src/components/store/MetalconConstructionLab.tsx', 'utf8');
+const radierLab = readFileSync('src/components/store/RadierConstructionLab.tsx', 'utf8');
 
 describe('shopping visual flow contract', () => {
   it('keeps the shopping redesign isolated to the checkout presentation layer', () => {
@@ -79,5 +81,22 @@ describe('shopping visual flow contract', () => {
     expect(metalconMonitoring).toContain('Reparación referencial');
     expect(metalconMonitoring).toContain('no un modelo de ingeniería sísmica');
     expect(metalconMonitoring).toContain('No uses este resultado para decidir habitabilidad');
+  });
+
+  it('adds immersive construction labs without replacing the existing viewers', () => {
+    expect(metalconLab).toContain('Laboratorio constructivo 4D');
+    expect(metalconLab).toContain('OSB estructural');
+    expect(metalconLab).toContain('Lana aislante');
+    expect(metalconLab).toContain('Vulcanita');
+    expect(metalconLab).toContain('Cerámica 60×60');
+    expect(metalconLab).toContain('Fosa 800 L');
+    expect(metalconLab).toContain('Mesón + grifería');
+    expect(metalconLab).toContain('Cubierta y última teja');
+    expect(radierLab).toContain('Laboratorio radier 4D');
+    expect(radierLab).toContain('+0,30 m sobre terreno');
+    expect(radierLab).toContain('Excavación visible');
+    expect(radierLab).toContain('Vegetación');
+    expect(radierLab).toContain('Barrera de humedad');
+    expect(radierLab).toContain('Malla ACMA');
   });
 });

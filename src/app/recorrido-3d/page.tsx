@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment, OrbitControls, RoundedBox } from "@react-three/drei";
+import { OrbitControls, RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -73,7 +73,7 @@ function Walker({move}:{move:React.MutableRefObject<MoveState>}) {
 }
 
 function Scene({move}:{move:React.MutableRefObject<MoveState>}) {
- return <><color attach="background" args={["#9ca99a"]}/><fog attach="fog" args={["#9ca99a",20,48]}/><ambientLight intensity={1.2}/><directionalLight position={[-6,11,6]} intensity={2.5} castShadow/><House/><Walker move={move}/><OrbitControls target={[-3.8,1.1,0]} enablePan={false} minDistance={.2} maxDistance={9} maxPolarAngle={Math.PI*.64}/><Environment preset="apartment"/></>;
+ return <><color attach="background" args={["#9ca99a"]}/><fog attach="fog" args={["#9ca99a",20,48]}/><ambientLight intensity={1.2}/><directionalLight position={[-6,11,6]} intensity={2.5} castShadow/><House/><Walker move={move}/><OrbitControls target={[-3.8,1.1,0]} enablePan={false} minDistance={.2} maxDistance={9} maxPolarAngle={Math.PI*.64}/></>;
 }
 
 export default function Recorrido3DPage(){

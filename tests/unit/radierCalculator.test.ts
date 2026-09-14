@@ -11,8 +11,12 @@ describe('calculateRadier', () => {
     expect(result.concrete).toBeCloseTo(2.592, 3);
     expect(result.stabilized).toBeCloseTo(2.4, 3);
     expect(result.gravel).toBeCloseTo(1.2, 3);
-    expect(result.cementBags25).toBe(19);
+    expect(result.cementBags25).toBe(44);
     expect(result.meshSheets).toBe(2);
+    expect(result.cementBagCoverageLiters).toBeGreaterThan(50);
+    expect(result.cementBagCoverageLiters).toBeLessThan(70);
+    expect(result.mixerBatches).toBe(Math.ceil(result.concrete / .13));
+    expect(result.mixerTrucks).toBe(Math.ceil(result.concrete / 7));
   });
 
   it('calculates 43 cm stakes from the moldaje perimeter at about 1.5 m spacing', () => {

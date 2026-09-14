@@ -14,6 +14,7 @@ import {
   type MetalconAssemblyWall,
   type MetalconHousePreset,
 } from '@/lib/metalconAssembly';
+import type { StructuralSystem } from './ConstructionSystems3D';
 
 export type MetalconAssemblyDisplayMode = 'mesh' | 'dimensions' | 'openings' | 'bracing';
 
@@ -38,6 +39,7 @@ type AssemblyProps = {
   isolateSelected?: boolean;
   assemblyProgress?: number | null;
   seismic?: MetalconSeismicVisual;
+  structuralSystem?: StructuralSystem;
 };
 
 const STEEL = '#d9e0e6';
@@ -74,6 +76,7 @@ export function MetalconAssembly3D({
   isolateSelected = false,
   assemblyProgress = null,
   seismic,
+  structuralSystem = 'metalcon',
 }: AssemblyProps) {
   const assembly = useRef<Group>(null);
   const spacingM = spacingCm / 100;
@@ -116,6 +119,7 @@ export function MetalconAssembly3D({
               damageScore={seismic?.panelScores[currentWall.id] ?? 0}
               showDamage={Boolean(seismic?.showDamage && seismic.progress > 0.62)}
               showSupports={Boolean(seismic?.showSupports)}
+              structuralSystem={structuralSystem}
             />
           );
         })}
@@ -155,6 +159,7 @@ function WallPanel3D({
   damageScore,
   showDamage,
   showSupports,
+  structuralSystem,
 }: {
   wall: MetalconAssemblyWall;
   preset: MetalconHousePreset;
@@ -167,6 +172,7 @@ function WallPanel3D({
   damageScore: number;
   showDamage: boolean;
   showSupports: boolean;
+  structuralSystem: StructuralSystem;
 }) {
   const length = wallLengthM(wall);
   const midpoint = wallMidpoint(wall);
@@ -179,7 +185,7 @@ function WallPanel3D({
   const bottomTrackIntervals = useMemo(() => clearWallIntervals(wall, true), [wall]);
   const blockingIntervals = useMemo(() => clearWallIntervals(wall, false), [wall]);
   const braceIntervals = blockingIntervals.filter((interval) => interval.end - interval.start >= 1.05).slice(0, 2);
-  const baseColor = selected ? CYAN : wall.role === 'perimeter' ? STEEL : STEEL_DARK;
+  const baseColor = selected ? CYAN : structuralSystem === 'wood' ? (wall.role === 'perimeter' ? '#a16d45' : '#7d5235') : wall.role === 'perimeter' ? STEEL : STEEL_DARK;
   const damageColor = damageScore > 0.38 ? scoreColor(damageScore) : baseColor;
   const trackOpacity = phase(assemblyProgress, 0, 0.16);
   const studOpacity = phase(assemblyProgress, 0.12, 0.48);

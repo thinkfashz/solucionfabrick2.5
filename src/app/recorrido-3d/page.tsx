@@ -33,6 +33,10 @@ export default function Walkthrough() {
   const [notice,setNotice] = useState("");
   const [action,setAction] = useState("");
   const [position,setPosition] = useState("-4.0 / 3.8");
+  const [compatible,setCompatible] = useState(false);
+  const [photoZoom,setPhotoZoom] = useState(100);
+  const [photoOffset,setPhotoOffset] = useState(50);
+  const [imageFailed,setImageFailed] = useState(false);
 
   useEffect(() => {
     let disposed=false;
@@ -229,7 +233,7 @@ export default function Walkthrough() {
     return()=>{disposed=true;cleanup()};
   },[retry]);
 
-  const choose=(i:number)=>{setTour(false);engine.current?.tour(false);engine.current?.select(i);setNotice("")};
+  const choose=(i:number)=>{setSelected(i);setImageFailed(false);setPhotoOffset(50);setPhotoZoom(100);setTour(false);engine.current?.tour(false);engine.current?.select(i);setNotice("")};
   const stop=()=>engine.current?.move(0,0);
   const pad=(label:string,x:number,z:number,symbol:string)=><button aria-label={label} disabled={paused||photo||tour} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);engine.current?.move(x,z)}} onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop}>{symbol}</button>;
   return <main className="fw">
@@ -251,9 +255,19 @@ export default function Walkthrough() {
     </div>
     {action&&<output className="fw-action" onClick={()=>setAction("")}>{action}</output>}
     {notice&&<div className="fw-notice" role="alert">{notice}<button onClick={()=>setNotice("")}>Cerrar</button></div>}
-    {(status||error)&&<div className="fw-loading" role="status"><strong>{error?"No se pudo mostrar el recorrido":status}</strong>{error&&<><p>{error}</p><button onClick={()=>setRetry(v=>v+1)}>Reiniciar visor</button><a href={photoUrl(selected)} target="_blank" rel="noreferrer">Abrir fotografía de referencia</a></>}</div>}
+    {(status||error)&&<div className="fw-loading" role="status"><strong>{error?"No se pudo mostrar el recorrido":status}</strong>{error&&<><p>{error}</p><button onClick={()=>setRetry(v=>v+1)}>Reiniciar visor</button><button onClick={()=>setCompatible(true)}>Ver fotografías sin 3D</button></>}</div>}
+    {compatible&&<section className="fw-compatible" aria-label="Recorrido fotográfico compatible">
+      <header><strong>FABRICK · VISTAS FOTOGRÁFICAS</strong><button onClick={()=>setCompatible(false)}>Volver al visor</button></header>
+      <h2>{views[selected].name}</h2><p>Modo compatible sin WebGL · imagen desplazable, sin geometría 3D</p>
+      <nav aria-label="Seleccionar fotografía">{views.map((v,i)=><button key={v.name} aria-pressed={selected===i} onClick={()=>choose(i)}>{i+1} {v.name}</button>)}</nav>
+      <div className="fw-photo-window">
+        {!imageFailed?<img src={photoUrl(selected)} alt={"Fotografía de "+views[selected].name} onError={()=>setImageFailed(true)} style={{width:photoZoom+"%",minWidth:"100%",height:"100%",objectFit:"cover",objectPosition:photoOffset+"% 50%",transform:"translateX("+(-(photoZoom-100)*photoOffset/100/photoZoom*100)+"%)"}}/>:<p role="alert">No se pudo cargar esta fotografía. Selecciona otra vista o vuelve a intentarlo.</p>}
+      </div>
+      <footer><label>Mirar a los lados<input aria-label="Desplazar fotografía" type="range" min="0" max="100" value={photoOffset} onChange={e=>setPhotoOffset(Number(e.target.value))}/></label><label>Zoom<input aria-label="Zoom de fotografía" type="range" min="100" max="250" value={photoZoom} onChange={e=>setPhotoZoom(Number(e.target.value))}/></label><button onClick={()=>choose((selected+1)%views.length)}>Siguiente vista →</button></footer>
+    </section>}
     <style>{`
       .fw{position:fixed;inset:0;z-index:10000;background:#b5c6c9;color:#f7f5ee;font-family:system-ui,sans-serif;isolation:isolate;overflow:hidden}
+      .fw-compatible{position:absolute;inset:0;z-index:10;background:#172923;display:flex;flex-direction:column;padding:16px;gap:12px;overflow:auto}.fw-compatible header{display:flex;justify-content:space-between;align-items:center;gap:10px}.fw-compatible strong{font-size:12px;color:#ffd36a}.fw-compatible h2{margin:0;font-size:22px}.fw-compatible p{margin:0;font-size:12px}.fw-compatible nav{display:flex;gap:6px;overflow:auto;flex-shrink:0}.fw-compatible nav button{white-space:nowrap;font-size:12px}.fw-photo-window{flex:1;min-height:200px;overflow:hidden;border-radius:16px;background:#304238}.fw-compatible footer{display:flex;gap:14px;flex-wrap:wrap}.fw-compatible label{font-size:12px;flex:1;min-width:120px}.fw-compatible input{display:block;width:100%;accent-color:#ffd36a;margin-top:8px}
       .fw *{box-sizing:border-box}.fw button,.fw a{min-height:42px;border:1px solid #ffffff36;background:#172923ed;color:#fff;border-radius:14px;padding:9px 13px;text-decoration:none;font:inherit;cursor:pointer;touch-action:none}
       .fw button:focus-visible,.fw a:focus-visible{outline:3px solid #ffd66c;outline-offset:2px}.fw button:disabled{opacity:.4;cursor:default}.fw button[aria-pressed=true]{background:#ffd36a;color:#17251f}.fw-scene{position:absolute;inset:0}.fw-top{position:absolute;top:max(12px,env(safe-area-inset-top));left:16px;right:16px;display:flex;align-items:center;justify-content:space-between;gap:12px}.fw-top strong{letter-spacing:.15em;text-shadow:0 2px 8px #000}.fw-top span{color:#ffd36a}
       .fw-title{position:absolute;top:82px;left:20px;background:#172923e8;border:1px solid #ffffff30;border-radius:18px;padding:14px 18px;pointer-events:none}.fw-title h1{font-size:24px;line-height:1.25;margin:5px 0}.fw-title small{font-size:9px;letter-spacing:.14em;color:#ffd36a}.fw-title span{font-size:12px;color:#cad9cf}.fw-views{position:absolute;top:193px;left:20px;right:20px;display:flex;gap:6px;overflow:auto;padding-bottom:5px}.fw-views button{white-space:nowrap;font-size:12px}

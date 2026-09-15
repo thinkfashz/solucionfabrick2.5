@@ -45,7 +45,7 @@ export default function ReferenceHouse({previous}:{previous:()=>void}){
    function mesh(g:T.BufferGeometry,m:T.Material,parent:T.Object3D){geometry.push(g);const a=new THREE.Mesh(g,m);parent.add(a);return a}
    function box(p:V,size:V,m:T.Material,parent:T.Object3D){const b=mesh(new THREE.BoxGeometry(...size),m,parent);b.position.set(...p);return b}
    function beam(a:V,b:V,r:number,m:T.Material,parent:T.Object3D){const av=new THREE.Vector3(...a),bv=new THREE.Vector3(...b);const o=box([0,0,0],[r,av.distanceTo(bv),r],m,parent);o.position.copy(av.add(bv).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...b).sub(new THREE.Vector3(...a)).normalize());return o}
-   function surface(points:V[],m:T.Material,parent:T.Object3D){const a:number[]=[];for(let i=1;i<points.length-1;i++)a.push(...points[0],...points[i],...points[i+1]);const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(a,3));g.computeVertexNormals();return mesh(g,m,parent)}
+   function surface(points:V[],m:T.Material,parent:T.Object3D){const a:number[]=[];for(let i=1;i<points.length-1;i++)a.push(...points[0],...points[i],...points[i+1]);const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(a,3));const uv:number[]=[];for(let i=0;i<a.length;i+=3)uv.push(a[i]*.2,a[i+2]*.2);g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.computeVertexNormals();return mesh(g,m,parent)}
    box([0,-.32,0],[48,.3,48],mat('#81917a'),scene);
    box([0,-.06,.85],[width,.24,9.7],concrete,groups[0]);box([.3275,-.06,-4.85],[6.355,.24,1.7],concrete,groups[0]);
    box([0,-.08,-5.35],[width,.18,2.7],wood,groups[0]);box([1.3,-.05,6.15],[3.6,.18,1.11],concrete,groups[0]);
@@ -159,7 +159,7 @@ export default function ReferenceHouse({previous}:{previous:()=>void}){
    <button aria-pressed={plan} onClick={()=>setPlan(!plan)}>Planta 2D</button><button aria-pressed={dimensions} onClick={()=>setDimensions(!dimensions)}>Medidas</button>
   </nav>
   {menu&&<aside className="rh-menu"><div className="rh-menu-head"><h2>Capas constructivas</h2><button aria-label="Cerrar capas" onClick={()=>setMenu(false)}>✕</button></div>
-   <p>Señala o toca una pieza para identificarla. Marca las capas que quieres ver.</p>
+   <p>{plan?'La planta 2D muestra la distribución. Las capas se separan y ocultan en las vistas 3D.':'Señala o toca una pieza para identificarla. Marca las capas que quieres ver.'}</p>
    {layers.map(([name,color],i)=><div className="rh-layer" key={name} data-selected={selected===i}><label><input type="checkbox" checked={visible[i]} onChange={e=>setVisible(v=>v.map((x,j)=>j===i?e.target.checked:x))}/><i style={{background:color}}/><span>{String(i+1).padStart(2,'0')} · {name}</span></label><button aria-label={'Información de '+name} onClick={()=>setSelected(selected===i?null:i)}>ⓘ</button></div>)}
    {selected!==null&&<section className="rh-detail"><strong>{layers[selected][0]}</strong><p>{layers[selected][2]}</p><button onClick={()=>setVisible(layers.map((_,i)=>i===selected))}>Aislar esta capa</button></section>}
    <div className="rh-actions"><button onClick={()=>setVisible(layers.map(()=>true))}>Ver todas</button><button onClick={()=>setVisible(v=>v.map((x,i)=>i>=8||i===6?false:x))}>Retirar techo y cielo</button></div>

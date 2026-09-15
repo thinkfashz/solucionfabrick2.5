@@ -85,18 +85,21 @@ export default function ReferenceHouse({previous}:{previous:()=>void}){
    box([-5.03,2.77,.85],[4.1,.08,9.7],white,groups[6]);box([5.42,2.77,.85],[3.35,.08,9.7],white,groups[6]);
    // Three roof volumes: two lateral wings and central projecting gable.
    const roofFaces:V[][]=[
-    [[-7.7,2.95,-4.5],[-3,4.9,.8],[-3,4.9,1.4],[-7.7,2.95,6.15]],
-    [[7.7,2.95,-4.5],[7.7,2.95,6.15],[3.65,4.9,1.4],[3.65,4.9,.8]],
-    [[-7.7,2.95,6.15],[-3,4.9,1.4],[3.65,4.9,1.4],[7.7,2.95,6.15]],
-    [[-7.7,2.95,-4.5],[-3,4.9,.8],[-3,2.95,-4.5]],
-    [[3.65,2.95,-4.5],[3.65,4.9,.8],[7.7,2.95,-4.5]],
-    [[-3,2.95,-6.2],[.3275,5.1,-6.2],[.3275,5.1,1.4],[-3,4.9,1.4],[-3,2.95,.8]],
-    [[.3275,5.1,-6.2],[3.65,2.95,-6.2],[3.65,2.95,.8],[3.65,4.9,1.4],[.3275,5.1,1.4]],
+    [[-7.7,2.95,-4.5],[-2.6,4.95,1],[-7.7,2.95,6.15]],
+    [[7.7,2.95,-4.5],[7.7,2.95,6.15],[3.3,4.95,1]],
+    [[-7.7,2.95,6.15],[-2.6,4.95,1],[3.3,4.95,1],[7.7,2.95,6.15]],
+    [[-7.7,2.95,-4.5],[-3,2.95,-4.5],[.3275,4.95,1],[-2.6,4.95,1]],
+    [[3.65,2.95,-4.5],[7.7,2.95,-4.5],[3.3,4.95,1],[.3275,4.95,1]],
+    [[-3,2.95,-6.2],[.3275,4.95,-6.2],[.3275,4.95,1],[-3,2.95,-4.5]],
+    [[.3275,4.95,-6.2],[3.65,2.95,-6.2],[3.65,2.95,-4.5],[.3275,4.95,1]],
    ];
    for(const pts of roofFaces){surface(pts.map(p=>[p[0],p[1]-.08,p[2]] as V),osb,groups[9]);surface(pts,roof,groups[9]);for(let i=0;i<pts.length;i++)beam(pts[i],pts[(i+1)%pts.length],.09,steel,groups[8]);}
-   for(let z=-6;z<1.5;z+=.65){const a:V=[-3,2.91,z],b:V=[.3275,5.03,z],c:V=[3.65,2.91,z];beam(a,b,.08,steel,groups[8]);beam(b,c,.08,steel,groups[8]);beam(a,c,.08,steel,groups[8]);beam([.3275,2.91,z],b,.07,steel,groups[8]);beam(a,[.3275,4,z],.06,steel,groups[8]);beam(c,[.3275,4,z],.06,steel,groups[8]);}
-   for(const side of [-1,1])for(let z=-4.2;z<6;z+=.65){const edge=side<0?-7.6:7.6,inner=side<0?-3:3.65;const apex=4.85-Math.max(0,z-1.4)*.4;beam([edge,2.9,z],[inner,apex,z],.09,steel,groups[8]);beam([edge,2.9,z],[inner,2.9,z],.08,steel,groups[8]);beam([inner,2.9,z],[inner,apex,z],.07,steel,groups[8]);}
-   beam([-3,3,-6.2],[.3275,5.15,-6.2],.18,wood,groups[9]);beam([.3275,5.15,-6.2],[3.65,3,-6.2],.18,wood,groups[9]);
+   for(let z=-6;z<1;z+=.65){const a:V=[-3,2.91,z],b:V=[.3275,4.88,z],c:V=[3.65,2.91,z];beam(a,b,.08,steel,groups[8]);beam(b,c,.08,steel,groups[8]);beam(a,c,.08,steel,groups[8]);beam([.3275,2.91,z],b,.07,steel,groups[8]);beam(a,[.3275,4,z],.06,steel,groups[8]);beam(c,[.3275,4,z],.06,steel,groups[8]);}
+   for(const pts of roofFaces){
+    const a=pts[0],b=pts[1],c=pts[pts.length-1];
+    for(let t=.08;t<1;t+=.08){const p=a.map((v,k)=>v+(b[k]-v)*t) as V;const q=c.map((v,k)=>v+(b[k]-v)*t) as V;p[1]-=.1;q[1]-=.1;beam(p,q,.055,steel,groups[8]);}
+   }
+   beam([-3,3,-6.2],[.3275,5,-6.2],.18,wood,groups[9]);beam([.3275,5,-6.2],[3.65,3,-6.2],.18,wood,groups[9]);
    for(const x of [-7.7,7.7]){beam([x,2.91,-4.5],[x,2.91,6.15],.13,roof,groups[9]);beam([x,2.91,6],[x,.1,6],.1,roof,groups[9]);}
    beam([-7.7,2.91,6.15],[7.7,2.91,6.15],.13,roof,groups[9]);
    // Schematic pipes are below the slab, lowered separately in exploded mode.

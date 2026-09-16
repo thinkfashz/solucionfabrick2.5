@@ -3,8 +3,9 @@ import {useEffect,useRef,useState} from 'react';
 import type * as T from 'three';
 import {layers,rooms,walls,width,depth} from './reference-house';
 import './reference-house.css';
+import {materialTexture} from './material-textures';
 type V=[number,number,number];
-type Controls={view:(v:string)=>void;zoom:(d:number)=>void};
+type Controls={view:(v:string)=>void;zoom:(d:number)=>void;tour:(on:boolean)=>void};
 
 function Plan({dimensions}:{dimensions:boolean}){
   return <svg viewBox="-9 -8.5 18 17" role="img" aria-label="Planta interpretada de la referencia, 14,51 por 13,41 metros">
@@ -18,11 +19,12 @@ function Plan({dimensions}:{dimensions:boolean}){
     {dimensions&&<g stroke="#91dded" fill="#dbf7ff" strokeWidth=".035"><path d="M-7.255 7V7.6M7.255 7V7.6M-7.255 7.3H7.255M-8 -6.705H-7.6M-8 6.705H-7.6M-7.8 -6.705V6.705"/><text stroke="none" x="0" y="7.9" textAnchor="middle" fontSize=".4">14,51 m</text><text stroke="none" x="-8.1" y="0" textAnchor="middle" fontSize=".4" transform="rotate(-90 -8.1 0)">13,41 m</text></g>}
   </svg>;
 }
-export default function ReferenceHouse({previous}:{previous:()=>void}){
+export default function ReferenceHouse(){
  const host=useRef<HTMLDivElement>(null),api=useRef<Controls|null>(null);
  const [ready,setReady]=useState(false),[error,setError]=useState(''),[retry,setRetry]=useState(0);
  const [menu,setMenu]=useState(false),[explosion,setExplosion]=useState(0),[visible,setVisible]=useState(layers.map(()=>true));
- const [selected,setSelected]=useState<number|null>(null),[hover,setHover]=useState<number|null>(null),[dimensions,setDimensions]=useState(true),[plan,setPlan]=useState(false),[view,setView]=useState('exterior');
+ const [selected,setSelected]=useState<number|null>(null),[hover,setHover]=useState<number|null>(null),[dimensions,setDimensions]=useState(false),[plan,setPlan]=useState(false),[view,setView]=useState('exterior');
+ const [tour,setTour]=useState(false);
  const settings=useRef({explosion,visible,selected,dimensions});settings.current={explosion,visible,selected,dimensions};
  useEffect(()=>{
   let disposed=false,cleanup=()=>{};setReady(false);setError('');
@@ -30,27 +32,35 @@ export default function ReferenceHouse({previous}:{previous:()=>void}){
    if(disposed||!host.current)return;const root=host.current;
    const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'default'});
    renderer.setPixelRatio(Math.min(devicePixelRatio,1.35));renderer.outputColorSpace=THREE.SRGBColorSpace;
-   renderer.setClearColor('#b9c9ce');root.appendChild(renderer.domElement);
-   const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(46,1,.1,180);
-   scene.add(new THREE.HemisphereLight('#fff6e6','#637163',2.8));
-   const sun=new THREE.DirectionalLight('#fff2db',3);sun.position.set(-10,20,-12);scene.add(sun);
+   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.setClearColor('#b9c9ce');root.appendChild(renderer.domElement);
+   const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(54,1,.08,500);
+   scene.add(new THREE.HemisphereLight('#fff6e6','#637163',1.5));
+   const sun=new THREE.DirectionalLight('#fff2db',3);sun.position.set(-10,20,-12);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-16,right:16,top:16,bottom:-16,near:.5,far:65});sun.shadow.bias=-.001;sun.shadow.normalBias=.035;scene.add(sun);
    const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.minDistance=2;orbit.maxDistance=65;orbit.maxPolarAngle=Math.PI*.49;
    const groups=layers.map((_,i)=>{const g=new THREE.Group();g.userData.layer=i;scene.add(g);return g});
    const geometry:T.BufferGeometry[]=[],materials:T.Material[]=[],textures:T.Texture[]=[];
-   const mat=(color:string,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,metalness,roughness:metalness?.4:.85,side:THREE.DoubleSide});materials.push(m);return m};
+   const mat=(color:string,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,metalness,roughness:metalness?.28:.55,side:THREE.DoubleSide});materials.push(m);return m};
    const steel=mat('#b8c5cf',.8),concrete=mat('#a8aaa3'),wood=mat('#b58c5e'),white=mat('#e7e3d9'),roof=mat('#38434b',.5),osb=mat('#c49b60'),wool=mat('#d8c695'),membrane=mat('#859f9c'),black=mat('#29373f',.4),glass=mat('#91acb3',.15);
+   const textured=(m:T.MeshStandardMaterial,kind:Parameters<typeof materialTexture>[1],color:string,roughness:number,scale:number)=>{const t=materialTexture(THREE,kind,color);if(t){m.color.set('#ffffff');m.map=t.map;m.bumpMap=t.bump;m.bumpScale=scale;textures.push(t.map,t.bump)}m.roughness=roughness;return m};
+   textured(wood,'wood','#b18a5d',.34,.025);textured(white,'plaster','#e9e5dc',.58,.008);textured(concrete,'plaster','#aaa79e',.78,.025);textured(roof,'metal','#495059',.32,.035);
+   const porcelain=textured(mat('#d4cec3'),'tile','#d4cec3',.24,.01),fabric=textured(mat('#8e9a8d'),'fabric','#8e9a8d',.88,.012),gravel=textured(mat('#b8b5ab'),'gravel','#b8b5ab',.92,.09),grass=textured(mat('#77865b'),'grass','#77865b',1,.045);
+   const skyGeo=new THREE.SphereGeometry(180,32,16);geometry.push(skyGeo);
+   const skyMat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,vertexShader:'varying vec3 v;void main(){v=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'varying vec3 v;void main(){vec3 d=normalize(v);float h=max(d.y,0.);vec3 c=mix(vec3(.84,.89,.91),vec3(.24,.51,.76),pow(h,.55));float cloud=sin(d.x*18.+sin(d.z*13.))*sin(d.z*21.+sin(d.x*8.));float mask=smoothstep(.2,.7,cloud)*smoothstep(.05,.22,h)*(1.-smoothstep(.5,.85,h));c=mix(c,vec3(.98,.96,.92),mask*.7);float sun=pow(max(dot(d,normalize(vec3(-.5,.75,-.4))),0.),400.);gl_FragColor=vec4(c+vec3(1.,.8,.5)*sun,1.);}'});materials.push(skyMat);
+   const sky=new THREE.Mesh(skyGeo,skyMat);scene.add(sky);scene.fog=new THREE.Fog('#c7d5d8',55,125);
+   const skyScene=new THREE.Scene();skyScene.add(sky.clone());const pmrem=new THREE.PMREMGenerator(renderer);const environment=pmrem.fromScene(skyScene,.05,.1,300);scene.environment=environment.texture;pmrem.dispose();
    glass.transparent=true;glass.opacity=.3;glass.depthWrite=false;
    const cv=document.createElement('canvas');cv.width=cv.height=256;const cx=cv.getContext('2d');
    if(cx){cx.fillStyle='#c3a071';cx.fillRect(0,0,256,256);let seed=12;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};for(let i=0;i<1600;i++){cx.save();cx.translate(random()*256,random()*256);cx.rotate(random()*Math.PI);cx.fillStyle=['#8d6f47','#d9bb8b','#b18b54'][i%3];cx.fillRect(0,0,3+random()*18,1+random()*3);cx.restore()}const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(2,2);textures.push(tex);osb.map=tex;}
-   function mesh(g:T.BufferGeometry,m:T.Material,parent:T.Object3D){geometry.push(g);const a=new THREE.Mesh(g,m);parent.add(a);return a}
-   function box(p:V,size:V,m:T.Material,parent:T.Object3D){const b=mesh(new THREE.BoxGeometry(...size),m,parent);b.position.set(...p);return b}
+   function mesh(g:T.BufferGeometry,m:T.Material,parent:T.Object3D){geometry.push(g);const a=new THREE.Mesh(g,m);a.castShadow=true;a.receiveShadow=true;parent.add(a);return a}
+   function box(p:V,size:V,m:T.Material,parent:T.Object3D){const geo=new THREE.BoxGeometry(...size);const pos=geo.attributes.position,norm=geo.attributes.normal,uv=geo.attributes.uv;for(let i=0;i<pos.count;i++){const nx=Math.abs(norm.getX(i)),ny=Math.abs(norm.getY(i));uv.setXY(i,nx>.5?pos.getZ(i):pos.getX(i),ny>.5?pos.getZ(i):pos.getY(i))}const b=mesh(geo,m,parent);b.position.set(...p);return b}
    function beam(a:V,b:V,r:number,m:T.Material,parent:T.Object3D){const av=new THREE.Vector3(...a),bv=new THREE.Vector3(...b);const o=box([0,0,0],[r,av.distanceTo(bv),r],m,parent);o.position.copy(av.add(bv).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...b).sub(new THREE.Vector3(...a)).normalize());return o}
    function surface(points:V[],m:T.Material,parent:T.Object3D){const a:number[]=[];for(let i=1;i<points.length-1;i++)a.push(...points[0],...points[i],...points[i+1]);const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(a,3));const uv:number[]=[];for(let i=0;i<a.length;i+=3)uv.push(a[i]*.2,a[i+2]*.2);g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.computeVertexNormals();return mesh(g,m,parent)}
-   box([0,-.32,0],[48,.3,48],mat('#81917a'),scene);
+   box([0,-.32,0],[240,.3,240],grass,scene);box([0,-.155,-10],[19,.04,7],gravel,scene);
    box([0,-.06,.85],[width,.24,9.7],concrete,groups[0]);box([.3275,-.06,-4.85],[6.355,.24,1.7],concrete,groups[0]);
    box([0,-.08,-5.35],[width,.18,2.7],wood,groups[0]);box([1.3,-.05,6.15],[3.6,.18,1.11],concrete,groups[0]);
    for(let z=-6.6;z<-4;z+=.16)box([0,.017,z],[width,.015,.012],black,groups[0]);
    for(let i=0;i<5;i++)box([0,-.13,-8-i*1.1],[2.3,.09,.65],concrete,scene);
+   box([0,.07,.85],[14.1,.04,9.3],porcelain,groups[7]);box([.3275,.07,-4.8],[6,.04,1.7],porcelain,groups[7]);
    // Layers share openings; only pieces outside each opening are constructed.
    for(const w of walls){
     const origin=w.axis==='x'?w.x:w.z,start=origin-w.length/2,end=origin+w.length/2;
@@ -108,20 +118,32 @@ export default function ReferenceHouse({previous}:{previous:()=>void}){
    beam([8.6,-.5,-.7],[8.6,-.6,5],.14,drain,groups[1]);box([8.6,-.38,5],[.8,.65,.8],concrete,groups[1]);beam([8.6,-.6,5],[10.4,-.6,5],.14,drain,groups[1]);
    const tank=mesh(new THREE.CylinderGeometry(.65,.65,2.3,16),mat('#4c646d'),groups[1]);tank.rotation.x=Math.PI/2;tank.position.set(10.4,-.5,5.8);box([10.4,.16,5.2],[.45,.12,.45],black,groups[1]);
    // Simple furniture for legible scale, attached to the finished layer.
-   box([.6,.45,-1.2],[2.5,.7,.95],mat('#9ca99c'),groups[7]);box([.6,.9,-.8],[2.5,.8,.16],mat('#9ca99c'),groups[7]);box([.3,.42,-2.5],[1.2,.12,.65],wood,groups[7]);box([.1,.8,-4.4],[2.1,.12,1],wood,groups[7]);
+   box([.6,.45,-1.2],[2.5,.7,.95],fabric,groups[7]);box([.6,.9,-.8],[2.5,.8,.16],fabric,groups[7]);box([.3,.42,-2.5],[1.2,.12,.65],wood,groups[7]);box([.1,.8,-4.4],[2.1,.12,1],wood,groups[7]);
    for(const [x,z]of [[-5,-1.9],[-4.8,4.15]]){box([x,.32,z],[1.8,.6,2],wood,groups[7]);box([x,.67,z],[1.8,.15,2],white,groups[7]);}
    box([6.65,.5,-.3],[.65,1,2.5],white,groups[7]);box([6.65,1.03,-.3],[.7,.08,2.6],black,groups[7]);
    const dims=new THREE.Group();scene.add(dims);
    function label(text:string,p:V){const c=document.createElement('canvas');c.width=512;c.height=96;const ctx=c.getContext('2d');if(!ctx)return;ctx.fillStyle='#172c36';ctx.fillRect(0,0,512,96);ctx.fillStyle='#d3f7ff';ctx.font='bold 45px sans-serif';ctx.textAlign='center';ctx.fillText(text,256,64);const t=new THREE.CanvasTexture(c);textures.push(t);const m=new THREE.SpriteMaterial({map:t,depthTest:false});materials.push(m);const s=new THREE.Sprite(m);s.position.set(...p);s.scale.set(3.2,.6,1);dims.add(s)}
    const dimMat=mat('#b2ecf5');beam([-7.255,.1,8],[7.255,.1,8],.025,dimMat,dims);beam([-8.6,.1,-6.705],[-8.6,.1,6.705],.025,dimMat,dims);label('14,51 m',[0,.35,8.1]);label('13,41 m',[-8.6,.4,0]);
    for(const x of [-7.255,7.255])beam([x,.1,7.7],[x,.1,8.3],.025,dimMat,dims);for(const z of [-6.705,6.705])beam([-8.9,.1,z],[-8.3,.1,z],.025,dimMat,dims);
+   // Furnished interior: legs, seats, bedding, kitchen fronts and sanitary fixtures.
+   for(const x of [-.8,1])for(const z of [-4.75,-4.05])beam([x,.08,z],[x,.74,z],.06,black,groups[7]);
+   for(const x of [-.75,.05,.85])for(const z of [-5.25,-3.6]){box([x,.47,z],[.47,.1,.45],wood,groups[7]);box([x,.76,z+(z<-4?-.2:.2)],[.47,.6,.055],wood,groups[7]);for(const dx of [-.18,.18])for(const dz of [-.16,.16])beam([x+dx,.1,z+dz],[x+dx,.45,z+dz],.035,black,groups[7]);}
+   for(const x of [-.5,.35,1.2]){box([x,.83,-1.15],[.77,.19,.76],fabric,groups[7]);box([x,1.14,-.87],[.7,.5,.16],fabric,groups[7]);}
+   box([.4,.095,-2],[3.2,.02,2.6],textured(mat('#b5b0a1'),'fabric','#b5b0a1',1,.012),groups[7]);
+   for(const [x,z]of [[-5,-1.9],[-4.8,4.15]]){box([x,.85,z-.7],[1.45,.19,.45],white,groups[7]);box([x,.79,z+.3],[1.85,.08,1.25],fabric,groups[7]);box([x,1.1,z-1.03],[1.9,1.3,.12],wood,groups[7]);box([x+1.3,.4,z-.65],[.6,.65,.55],wood,groups[7]);}
+   for(let z=-1.4;z<.9;z+=.55){box([6.29,.52,z],[.025,.85,.51],wood,groups[7]);beam([6.26,.85,z-.12],[6.26,.85,z+.12],.022,steel,groups[7]);}
+   box([6.6,1.085,-.6],[.45,.035,.6],steel,groups[7]);beam([6.85,1.05,-.6],[6.85,1.42,-.6],.035,steel,groups[7]);beam([6.85,1.42,-.6],[6.6,1.42,-.6],.035,steel,groups[7]);
+   box([5.75,1.12,1],[.8,2.1,.6],steel,groups[7]);
+   for(const [x,z]of [[-5.6,1.8],[3.5,2.5]]){box([x,.47,z],[.52,.64,.7],white,groups[7]);box([x,.92,z+.3],[.5,.58,.16],white,groups[7]);box([x+.85,.6,z],[.7,1,.5],wood,groups[7]);box([x+.85,1.13,z],[.74,.09,.55],porcelain,groups[7]);}
+   for(const [x,z]of [[0,-4.4],[0,-1],[-5,-1.9],[-4.8,4.1],[6,-.5]]){const light=new THREE.PointLight('#ffe5bc',12,9,2);light.position.set(x,2.55,z);groups[7].add(light);beam([x,2.8,z],[x,2.35,z],.025,black,groups[7]);box([x,2.32,z],[.38,.1,.38],white,groups[7]);}
+   for(const x of [-6.8,6.8]){const lamp=new THREE.PointLight('#ffd39a',8,6,2);lamp.position.set(x,2.35,-4.2);scene.add(lamp);}
    // Merge static pieces by material and explosion direction to limit draw calls.
    const layerMaterials:T.MeshStandardMaterial[][]=[];
    scene.updateMatrixWorld(true);
    for(const group of groups){
     const batches=new Map<string,{parts:T.BufferGeometry[];material:T.MeshStandardMaterial;offset:T.Vector3}>();
     group.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const m=o.material as T.MeshStandardMaterial;const offset=(o.parent?.userData.offset as T.Vector3|undefined)||new THREE.Vector3();const key=m.uuid+offset.toArray().join(',');if(!batches.has(key))batches.set(key,{parts:[],material:m,offset});const copy=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();batches.get(key)!.parts.push(copy.applyMatrix4(o.matrixWorld))});
-    group.clear();const clones=new Map<string,T.MeshStandardMaterial>();
+    const lamps=group.children.filter(o=>o instanceof THREE.Light);group.clear();lamps.forEach(o=>group.add(o));const clones=new Map<string,T.MeshStandardMaterial>();
     for(const {parts,material,offset}of batches.values()){const g=mergeGeometries(parts);parts.forEach(p=>p.dispose());if(!g)continue;if(!clones.has(material.uuid)){const clone=material.clone();materials.push(clone);clones.set(material.uuid,clone)}const sub=new THREE.Group();sub.userData.offset=offset;group.add(sub);mesh(g,clones.get(material.uuid)!,sub)}
     layerMaterials.push([...clones.values()]);
    }
@@ -133,42 +155,44 @@ export default function ReferenceHouse({previous}:{previous:()=>void}){
    renderer.domElement.addEventListener('pointermove',move);renderer.domElement.addEventListener('pointerdown',down);renderer.domElement.addEventListener('pointerup',up);renderer.domElement.addEventListener('pointerleave',leave);
    const lost=(e:Event)=>{e.preventDefault();setError('El navegador perdió el contexto 3D. Puedes seguir viendo la planta o reiniciar.');setPlan(true);cancelAnimationFrame(frame)};renderer.domElement.addEventListener('webglcontextlost',lost);
    const size=()=>{const w=root.clientWidth,h=root.clientHeight;renderer.setSize(w,h);camera.aspect=w/Math.max(h,1);camera.updateProjectionMatrix()};const observer=new ResizeObserver(size);observer.observe(root);
-   const presets:Record<string,{p:V;t:V}>= {exterior:{p:[-19,14,-25],t:[0,1.8,0]},aerial:{p:[0,30,-.1],t:[0,0,0]},rear:{p:[20,13,24],t:[0,1,0]},inside:{p:[.4,1.65,-2.8],t:[.3,1.5,-5.8]}};
-   const choose=(v:string)=>{const p=presets[v]||presets.exterior;camera.position.set(...p.p);orbit.target.set(...p.t);orbit.minDistance=v==='inside'?.3:2;orbit.update()};
-   api.current={view:choose,zoom(d){const delta=camera.position.clone().sub(orbit.target);delta.multiplyScalar(d);const length=THREE.MathUtils.clamp(delta.length(),orbit.minDistance,orbit.maxDistance);delta.setLength(length);camera.position.copy(orbit.target).add(delta);orbit.update()}};
+   const presets:Record<string,{p:V;t:V}>= {exterior:{p:[-19,14,-25],t:[0,1.8,0]},aerial:{p:[0,30,-.1],t:[0,0,0]},rear:{p:[20,13,24],t:[0,1,0]},inside:{p:[2,1.65,-2.9],t:[.4,1.2,-1]},dining:{p:[2.4,1.65,-3.6],t:[0,1.1,-4.4]},kitchen:{p:[4.2,1.65,.2],t:[6.6,1.2,-.3]},bedroom:{p:[-3.3,1.65,-.2],t:[-5,1,-2]},bath:{p:[-4.9,1.65,1.2],t:[-5.7,.9,2.1]},garden:{p:[.3,1.65,-4.9],t:[0,1.5,-12]}};
+   let playing=false,tourElapsed=0,tourIndex=0;const stops=['inside','dining','kitchen','bedroom','bath','garden'];
+   const cancelTour=()=>{playing=false;setTour(false)};orbit.addEventListener('start',cancelTour);const visibility=()=>{if(document.hidden)cancelTour()};document.addEventListener('visibilitychange',visibility);
+   const choose=(v:string)=>{const p=presets[v]||presets.exterior;camera.position.set(...p.p);orbit.target.set(...p.t);orbit.minDistance=stops.includes(v)?.3:2;camera.fov=stops.includes(v)?68:54;camera.updateProjectionMatrix();orbit.update();setView(v)};
+   api.current={view(v){playing=false;setTour(false);choose(v)},tour(on){playing=on;tourElapsed=0;tourIndex=0;if(on)choose(stops[0])},zoom(d){const delta=camera.position.clone().sub(orbit.target);delta.multiplyScalar(d);const length=THREE.MathUtils.clamp(delta.length(),orbit.minDistance,orbit.maxDistance);delta.setLength(length);camera.position.copy(orbit.target).add(delta);orbit.update()}};
    choose('exterior');size();let last=0;
-   const render=(now:number)=>{if(disposed)return;frame=requestAnimationFrame(render);if(now-last<32)return;last=now;const s=settings.current,e=s.explosion/100;
+   const render=(now:number)=>{if(disposed)return;frame=requestAnimationFrame(render);if(now-last<32)return;const dt=Math.min((now-last)/1000,.1);last=now;if(playing){tourElapsed+=dt;const target=presets[stops[tourIndex]].t;orbit.target.set(target[0]+Math.sin(tourElapsed*.35)*.25,target[1],target[2]);if(tourElapsed>6){tourIndex=(tourIndex+1)%stops.length;choose(stops[tourIndex]);tourElapsed=0}}const s=settings.current,e=s.explosion/100;
     for(let i=0;i<groups.length;i++){const g=groups[i];g.visible=s.visible[i];const y=i===1?-2*e:i>=8?(i===8?4:7)*e:i===6?1.5*e:0;g.position.y=THREE.MathUtils.lerp(g.position.y,y,.15);for(const child of g.children){if(child.userData.offset){const dest=child.userData.offset as T.Vector3;child.position.lerp(dest.clone().multiplyScalar(e),.15)}}}
     const highlighted=s.selected??hoverLayer;
     layerMaterials.forEach((list,i)=>list.forEach(m=>{m.emissive.set(highlighted===i?'#278ba3':'#000000');m.emissiveIntensity=highlighted===i?.3:0}));
     dims.visible=s.dimensions;orbit.update();renderer.render(scene,camera);
    };frame=requestAnimationFrame(render);setReady(true);
-   cleanup=()=>{cancelAnimationFrame(frame);observer.disconnect();orbit.dispose();renderer.domElement.removeEventListener('pointermove',move);renderer.domElement.removeEventListener('pointerdown',down);renderer.domElement.removeEventListener('pointerup',up);renderer.domElement.removeEventListener('pointerleave',leave);renderer.domElement.removeEventListener('webglcontextlost',lost);geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();api.current=null};
+   cleanup=()=>{cancelAnimationFrame(frame);observer.disconnect();orbit.removeEventListener('start',cancelTour);document.removeEventListener('visibilitychange',visibility);orbit.dispose();renderer.domElement.removeEventListener('pointermove',move);renderer.domElement.removeEventListener('pointerdown',down);renderer.domElement.removeEventListener('pointerup',up);renderer.domElement.removeEventListener('pointerleave',leave);renderer.domElement.removeEventListener('webglcontextlost',lost);geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment.dispose();renderer.dispose();renderer.domElement.remove();api.current=null};
   }).catch(()=>{if(!disposed){setError('Este dispositivo no pudo iniciar WebGL. La planta con medidas sigue disponible.');setPlan(true)}});
   return()=>{disposed=true;cleanup()};
  },[retry]);
- const cameraView=(v:string)=>{setView(v);setPlan(false);api.current?.view(v)};
+ const cameraView=(v:string)=>{setTour(false);setView(v);setPlan(false);if(!['exterior','aerial','rear'].includes(v)){setExplosion(0);setVisible(layers.map(()=>true));setSelected(null)}api.current?.view(v)};
+ const startTour=()=>{setPlan(false);setExplosion(0);setVisible(layers.map(()=>true));setSelected(null);setTour(!tour);api.current?.tour(!tour);setMenu(false)};
  const reset=()=>{setExplosion(0);setVisible(layers.map(()=>true));setSelected(null);cameraView('exterior')};
  return <main className="rh">
   <div className="rh-canvas" ref={host}/>
   {(plan||error)&&<div className="rh-plan"><Plan dimensions={dimensions}/></div>}
-  <header className="rh-top"><a href="/herramientas/metalcon">← Volver</a><strong>FABRICK <span>CASA REFERENCIA</span></strong><button onClick={()=>setMenu(!menu)} aria-expanded={menu}>☰ Capas</button></header>
-  <section className="rh-title"><small>MODELO INTERACTIVO · INTERPRETACIÓN VISUAL</small><h1>Frontón central y alas laterales</h1><p>14,51 × 13,41 m · imagen de referencia: 165 m²</p></section>
-  <nav className="rh-views" aria-label="Cámaras y planta">
-   {[['exterior','Exterior'],['aerial','Aérea'],['rear','Posterior'],['inside','Interior']].map(([id,title])=><button key={id} disabled={!!error} aria-pressed={!plan&&view===id} onClick={()=>cameraView(id)}>{title}</button>)}
-   <button aria-pressed={plan} onClick={()=>setPlan(!plan)}>Planta 2D</button><button aria-pressed={dimensions} onClick={()=>setDimensions(!dimensions)}>Medidas</button>
-  </nav>
-  {menu&&<aside className="rh-menu"><div className="rh-menu-head"><h2>Capas constructivas</h2><button aria-label="Cerrar capas" onClick={()=>setMenu(false)}>✕</button></div>
+  <header className="rh-top"><a href="/herramientas/metalcon">← Volver</a><strong>FABRICK <span>CASA REFERENCIA</span></strong><button onClick={()=>setMenu(!menu)} aria-expanded={menu}>☰ Menú</button></header>
+  <div className="rh-location">{view==='exterior'?'Casa de referencia':view==='inside'?'Living':view==='dining'?'Comedor':view==='kitchen'?'Cocina':view==='bedroom'?'Dormitorio':view==='bath'?'Baño':view==='garden'?'Hacia el jardín':view==='aerial'?'Vista aérea':'Vista posterior'} <span>14,51 × 13,41 m</span></div>
+  {menu&&<aside className="rh-menu"><div className="rh-menu-head"><h2>Explorar la casa</h2><button aria-label="Cerrar capas" onClick={()=>setMenu(false)}>✕</button></div>
+   <details open><summary>Cámaras y recorrido</summary><nav className="rh-camera-grid" aria-label="Cámaras y planta">{[['exterior','Exterior'],['aerial','Aérea'],['rear','Posterior'],['inside','Living'],['dining','Comedor'],['kitchen','Cocina'],['bedroom','Dormitorio'],['bath','Baño'],['garden','Jardín']].map(([id,title])=><button key={id} disabled={!!error} aria-pressed={!plan&&view===id} onClick={()=>{cameraView(id);setMenu(false)}}>{title}</button>)}<button aria-pressed={plan} onClick={()=>{setTour(false);api.current?.tour(false);setPlan(!plan)}}>Planta 2D</button><button aria-pressed={dimensions} onClick={()=>setDimensions(!dimensions)}>Medidas</button><button disabled={!!error} aria-pressed={tour} onClick={startTour}>{tour?'Detener':'Recorrido automático'}</button></nav></details>
+   <details open={selected!==null||undefined}><summary>Capas y vista explotada</summary><div className="rh-slider"><label htmlFor="explode">Separación <strong>{explosion}%</strong></label><input id="explode" aria-label="Separar capas" type="range" min="0" max="100" value={explosion} disabled={plan||!!error} onChange={e=>{setTour(false);api.current?.tour(false);setExplosion(Number(e.target.value))}}/></div>
    <p>{plan?'La planta 2D muestra la distribución. Las capas se separan y ocultan en las vistas 3D.':'Señala o toca una pieza para identificarla. Marca las capas que quieres ver.'}</p>
    {layers.map(([name,color],i)=><div className="rh-layer" key={name} data-selected={selected===i}><label><input type="checkbox" checked={visible[i]} onChange={e=>setVisible(v=>v.map((x,j)=>j===i?e.target.checked:x))}/><i style={{background:color}}/><span>{String(i+1).padStart(2,'0')} · {name}</span></label><button aria-label={'Información de '+name} onClick={()=>setSelected(selected===i?null:i)}>ⓘ</button></div>)}
    {selected!==null&&<section className="rh-detail"><strong>{layers[selected][0]}</strong><p>{layers[selected][2]}</p><button onClick={()=>setVisible(layers.map((_,i)=>i===selected))}>Aislar esta capa</button></section>}
    <div className="rh-actions"><button onClick={()=>setVisible(layers.map(()=>true))}>Ver todas</button><button onClick={()=>setVisible(v=>v.map((x,i)=>i>=8||i===6?false:x))}>Retirar techo y cielo</button></div>
-   <details><summary>Medidas y alcance</summary><p>Cotas generales copiadas de la imagen: 14,51 × 13,41 m. Los 165 m² son el dato publicado en ella; no se calculan multiplicando esas cotas, que abarcan espacios exteriores. Distribución, alturas y espesores modelados son aproximados.</p><p>La referencia combina un frontón central con faldones laterales. Se conserva esa silueta; la fotografía no permite confirmar una cubierta de exactamente tres faldones.</p><p>Es un modelo conceptual, no un plano de ejecución ni un cálculo estructural.</p></details>
-   <button className="rh-previous" onClick={previous}>Abrir recorrido anterior</button>
+   </details><details><summary>Medidas y alcance</summary><p>Cotas generales copiadas de la imagen: 14,51 × 13,41 m. Los 165 m² son el dato publicado en ella; no se calculan multiplicando esas cotas, que abarcan espacios exteriores. Distribución, alturas y espesores modelados son aproximados.</p><p>La referencia combina un frontón central con faldones laterales. Se conserva esa silueta; la fotografía no permite confirmar una cubierta de exactamente tres faldones.</p><p>Es un modelo conceptual, no un plano de ejecución ni un cálculo estructural.</p></details>
+   <button className="rh-previous" onClick={reset}>Restablecer casa</button>
   </aside>}
   {hover!==null&&!menu&&!plan&&<output className="rh-hover">{String(hover+1).padStart(2,'0')} · {layers[hover][0]} · Toca para inspeccionar</output>}
   {error&&<div className="rh-error" role="status">{error}<button onClick={()=>{setPlan(false);setRetry(x=>x+1)}}>Reintentar 3D</button></div>}
   {!ready&&!error&&<div className="rh-loading" role="status">Construyendo la casa de referencia…</div>}
-  <footer className="rh-bottom"><div className="rh-slider"><label htmlFor="explode">Vista explotada <strong>{explosion}%</strong></label><input id="explode" aria-label="Separar capas" type="range" min="0" max="100" value={explosion} disabled={plan||!!error} onChange={e=>setExplosion(Number(e.target.value))}/></div><div className="rh-tools"><button disabled={plan||!!error} onClick={()=>setExplosion(explosion?0:75)}>{explosion?'Ensamblar':'Separar'}</button><button aria-label="Acercar" disabled={plan||!!error} onClick={()=>api.current?.zoom(.85)}>＋</button><button aria-label="Alejar" disabled={plan||!!error} onClick={()=>api.current?.zoom(1.18)}>−</button><button onClick={reset}>Restablecer</button></div><small>{plan?'Planta interpretada · áreas transcritas de la referencia':'Arrastra para girar · pellizca para acercar · dos dedos para desplazar'}</small></footer>
+  <footer className="rh-dock"><button disabled={!!error} aria-pressed={tour} onClick={startTour}>{tour?'Ⅱ Detener':'▷ Recorrer'}</button><button aria-label="Acercar" disabled={plan||!!error} onClick={()=>api.current?.zoom(.85)}>＋</button><button aria-label="Alejar" disabled={plan||!!error} onClick={()=>api.current?.zoom(1.18)}>−</button><button onClick={()=>{setMenu(true)}}>Ajustes</button></footer>
+
  </main>;
 }

@@ -1,3 +1,7 @@
 "use client";
-import ReferenceHouse from './ReferenceHouse';
-export default function Walkthrough(){return <ReferenceHouse/>;}
+
+import ExperienceShell from "./ExperienceShell";
+
+export default function Walkthrough() {
+  return <ExperienceShell />;
+}

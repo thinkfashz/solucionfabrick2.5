@@ -1,11 +1,129 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import ReferenceHouse from "./ReferenceHouse";
 import "./experience-shell.css";
 
 type LightMode = "day" | "sunset" | "night";
 type Soil = "rock" | "firm" | "soft";
+type Motion = "horizontal" | "vertical" | "mixed";
+type LabTab = "quake" | "light" | "controls";
+
+type MaterialInfo = { material: string; place: string; note: string };
+type AreaInfo = { title: string; subtitle: string; materials: MaterialInfo[] };
+
+const BRAND = {
+  yellow: "#FFE600",
+  yellow2: "#FFD400",
+  yellowLight: "#FFF45C",
+  ink: "#08090A",
+  navy: "#07182D",
+  blue: "#1F6FB2",
+  white: "#F7FAFC",
+};
+
+const CAMERAS = [
+  ["Exterior", "Casa de referencia"],
+  ["Living", "Living"],
+  ["Comedor", "Comedor"],
+  ["Cocina", "Cocina"],
+  ["Dormitorio", "Dormitorio"],
+  ["Baño", "Baño"],
+  ["Jardín", "Hacia el jardín"],
+  ["Posterior", "Vista posterior"],
+  ["Aérea", "Vista aérea"],
+] as const;
+
+const AREA: Record<string, AreaInfo> = {
+  "Casa de referencia": {
+    title: "Exterior · envolvente",
+    subtitle: "Fachada, cubierta, vanos y transición hacia terraza.",
+    materials: [
+      { material: "Revestimiento exterior", place: "Fachadas", note: "Terminación clara + paños de madera; solución visual de referencia." },
+      { material: "Cubierta metálica", place: "Techumbre", note: "Acabado oscuro con reflejo controlado y sombras marcadas." },
+      { material: "Vidrio + perfilería", place: "Vanos", note: "Cristal representado y marcos oscuros; dimensiones conceptuales." },
+      { material: "Hormigón", place: "Radier / acceso", note: "Base exterior y peldaños con textura mineral." },
+    ],
+  },
+  Living: {
+    title: "Living · zona social",
+    subtitle: "Vista interior principal con conexión hacia terraza.",
+    materials: [
+      { material: "Volcanita / yeso", place: "Muros y cielos", note: "Terminación interior clara, mate y continua." },
+      { material: "Porcelanato", place: "Piso", note: "Superficie clara de baja rugosidad visual." },
+      { material: "Madera", place: "Mobiliario / cielo", note: "Tono cálido para contraste con estructura oscura." },
+      { material: "Textil", place: "Sofá / alfombra", note: "Material blando con roughness alto y lectura mate." },
+    ],
+  },
+  Comedor: {
+    title: "Comedor · iluminación cálida",
+    subtitle: "Área social vinculada a cocina y ventanales.",
+    materials: [
+      { material: "Madera", place: "Mesa / sillas", note: "Veta cálida y acabado semimate." },
+      { material: "Metal negro", place: "Luminarias", note: "Cuerpos oscuros con luz puntual cálida." },
+      { material: "Porcelanato", place: "Piso", note: "Continuidad visual con living y cocina." },
+      { material: "Vidrio", place: "Fachada", note: "Conecta visualmente interior y paisaje exterior." },
+    ],
+  },
+  Cocina: {
+    title: "Cocina · trabajo y apoyo",
+    subtitle: "Módulos, cubierta, acero y luz funcional.",
+    materials: [
+      { material: "Madera nogal", place: "Muebles", note: "Frentes cálidos para módulos bajos y altos." },
+      { material: "Piedra clara", place: "Cubierta", note: "Superficie mineral clara de apoyo y preparación." },
+      { material: "Acero inoxidable", place: "Grifería / equipos", note: "Metal de roughness bajo-medio para reflejos controlados." },
+      { material: "Yeso-cartón", place: "Muros", note: "Plano neutro para equilibrar madera y metal." },
+    ],
+  },
+  Dormitorio: {
+    title: "Dormitorio · descanso",
+    subtitle: "Escala doméstica, textiles y terminaciones cálidas.",
+    materials: [
+      { material: "Textil", place: "Cama / tapiz", note: "Tejido mate para absorber reflejos." },
+      { material: "Madera", place: "Respaldo / velador", note: "Elemento cálido de baja saturación." },
+      { material: "Yeso", place: "Muros", note: "Terminación interior neutra y continua." },
+      { material: "Vidrio", place: "Ventana", note: "Aporte de iluminación natural y relación exterior." },
+    ],
+  },
+  Baño: {
+    title: "Baño · zona húmeda",
+    subtitle: "Superficies lavables, vidrio y equipamiento sanitario.",
+    materials: [
+      { material: "Porcelanato / cerámica", place: "Piso / muro", note: "Material mineral para zona húmeda." },
+      { material: "Vidrio", place: "Mampara", note: "Transparencia controlada y reflejos suaves." },
+      { material: "Acero", place: "Grifería", note: "Detalle metálico de acabado limpio." },
+      { material: "Madera", place: "Mueble", note: "Contraste cálido fuera del contacto directo con agua." },
+    ],
+  },
+  "Hacia el jardín": {
+    title: "Jardín · paisaje",
+    subtitle: "Transición vivienda–terreno y acceso exterior.",
+    materials: [
+      { material: "Pasto", place: "Terreno", note: "Cobertura vegetal de roughness alto." },
+      { material: "Gravilla", place: "Senderos", note: "Árido de granulometría visual irregular." },
+      { material: "Hormigón", place: "Peldaños", note: "Base mineral mate y resistente visualmente." },
+      { material: "Madera exterior", place: "Terraza", note: "Tablas cálidas como transición hacia la vivienda." },
+    ],
+  },
+  "Vista posterior": {
+    title: "Posterior · envolvente",
+    subtitle: "Lectura de vanos, terminaciones y encuentro con cubierta.",
+    materials: [
+      { material: "Revestimiento", place: "Muros", note: "Terminación exterior con cámara y soporte representados por capas." },
+      { material: "Vidrio", place: "Vanos", note: "Aberturas que concentran discontinuidades del muro." },
+      { material: "Metal", place: "Cubierta", note: "Plano superior con canalización de aguas representada." },
+    ],
+  },
+  "Vista aérea": {
+    title: "Aérea · lectura completa",
+    subtitle: "Volumetría, techumbre y relación entre los cuerpos de la casa.",
+    materials: [
+      { material: "Cubierta metálica", place: "Techos", note: "Permite revisar encuentros, pendientes y bordes." },
+      { material: "OSB + estructura", place: "Capas", note: "Disponibles desde el modo despiece para inspección conceptual." },
+      { material: "Hormigón / terreno", place: "Base", note: "Lectura general de implantación y accesos." },
+    ],
+  },
+};
 
 const SOIL: Record<Soil, { label: string; factor: number; mmiBoost: number }> = {
   rock: { label: "Roca / suelo muy firme", factor: 0.78, mmiBoost: -0.7 },
@@ -32,16 +150,36 @@ function level(score: number) {
   return "Bajo";
 }
 
+function clickByText(selector: string, text: string) {
+  const nodes = Array.from(document.querySelectorAll<HTMLButtonElement>(selector));
+  const button = nodes.find((node) => node.textContent?.trim() === text || node.getAttribute("aria-label") === text);
+  button?.click();
+  return Boolean(button);
+}
+
 export default function ExperienceShell() {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<LabTab>("quake");
+  const [infoOpen, setInfoOpen] = useState(true);
   const [light, setLight] = useState<LightMode>("day");
+  const [exposure, setExposure] = useState(100);
+  const [temperature, setTemperature] = useState(4200);
+  const [interiorLights, setInteriorLights] = useState(true);
+  const [exteriorLights, setExteriorLights] = useState(true);
+  const [soundOn, setSoundOn] = useState(false);
+  const [areaName, setAreaName] = useState("Casa de referencia");
+  const [cameraIndex, setCameraIndex] = useState(0);
   const [magnitude, setMagnitude] = useState(7.2);
   const [depthKm, setDepthKm] = useState(28);
   const [distanceKm, setDistanceKm] = useState(35);
   const [duration, setDuration] = useState(22);
   const [soil, setSoil] = useState<Soil>("firm");
+  const [motion, setMotion] = useState<Motion>("mixed");
+  const [frequencyHz, setFrequencyHz] = useState(1.7);
+  const [directionDeg, setDirectionDeg] = useState(35);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const audioRef = useRef<{ ctx: AudioContext; ambient: GainNode; rumble: GainNode; oscillator: OscillatorNode; source: AudioBufferSourceNode } | null>(null);
 
   const analysis = useMemo(() => {
     const estimatedMmi = estimateMmi(magnitude, depthKm, distanceKm, soil);
@@ -50,22 +188,57 @@ export default function ExperienceShell() {
     const shallow = clamp(1 - depthKm / 150);
     const distance = clamp(1 - distanceKm / 250);
     const time = clamp((duration - 5) / 55);
-    const hazard = clamp((mag * 0.34 + intensity * 0.38 + shallow * 0.1 + distance * 0.08 + time * 0.06 + 0.04) * SOIL[soil].factor);
-    const damage = Math.round(clamp((hazard - 0.18) / 0.72) * 100);
+    const frequency = clamp((frequencyHz - 0.5) / 3.5);
+    const motionFactor = motion === "mixed" ? 1.08 : motion === "vertical" ? 1.04 : 1;
+    const hazard = clamp((mag * 0.33 + intensity * 0.37 + shallow * 0.1 + distance * 0.07 + time * 0.06 + frequency * 0.03 + 0.04) * SOIL[soil].factor * motionFactor);
+    const damage = Math.round(clamp((hazard - 0.17) / 0.73) * 100);
     const drift = Math.round(Math.pow(hazard, 1.58) * 1.9 * 100) / 100;
     const pga = Math.round((0.015 + Math.pow(hazard, 1.72) * 0.72) * 100) / 100;
-    const roof = clamp(hazard * 0.92);
-    const openings = clamp(hazard * 1.08);
-    const sanitary = clamp(hazard * 0.78);
+    const zones = {
+      foundation: clamp(hazard * (motion === "vertical" ? 1.12 : 0.9)),
+      walls: clamp(hazard * 0.96),
+      openings: clamp(hazard * (motion === "horizontal" ? 1.14 : 1.07)),
+      cornices: clamp(hazard * 1.08),
+      windows: clamp(hazard * (motion === "mixed" ? 1.17 : 1.03)),
+      roof: clamp(hazard * (frequencyHz > 2.4 ? 1.1 : 0.94)),
+      sanitary: clamp(hazard * (soil === "soft" ? 1.04 : 0.78)),
+    };
     const support = Math.round(clamp(1 - hazard * 0.62 + 0.08) * 100);
-    return { estimatedMmi, hazard, damage, drift, pga, roof, openings, sanitary, support };
-  }, [magnitude, depthKm, distanceKm, duration, soil]);
+    const angle = (directionDeg * Math.PI) / 180;
+    const sideScores = [
+      ["Norte", clamp(hazard * (0.86 + Math.abs(Math.cos(angle)) * 0.25))],
+      ["Este", clamp(hazard * (0.86 + Math.abs(Math.sin(angle)) * 0.25))],
+      ["Sur", clamp(hazard * (0.86 + Math.abs(Math.cos(angle + Math.PI)) * 0.25))],
+      ["Oeste", clamp(hazard * (0.86 + Math.abs(Math.sin(angle + Math.PI)) * 0.25))],
+    ] as const;
+    return { estimatedMmi, hazard, damage, drift, pga, zones, support, sideScores };
+  }, [magnitude, depthKm, distanceKm, duration, soil, motion, frequencyHz, directionDeg]);
+
+  const phase = progress <= 0 ? "idle" : progress < 0.12 ? "hypocenter" : progress < 0.34 ? "propagation" : progress < 0.88 ? "surface" : "aftermath";
+  const waveProgress = clamp((progress - 0.12) / 0.22);
+  const area = AREA[areaName] ?? AREA["Casa de referencia"];
+  const mmiRoman = MMI[Math.min(11, Math.max(0, Math.round(analysis.estimatedMmi) - 1))];
+
+  useEffect(() => {
+    const node = document.querySelector(".rh-location");
+    if (!node) return;
+    const sync = () => {
+      const raw = node.childNodes[0]?.textContent?.trim() || node.textContent?.split("14,51")[0]?.trim() || "Casa de referencia";
+      setAreaName(raw);
+      const index = CAMERAS.findIndex(([, location]) => location === raw);
+      if (index >= 0) setCameraIndex(index);
+    };
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(node, { subtree: true, childList: true, characterData: true });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!playing) return;
-    setProgress(0);
+    setProgress(0.001);
     const started = performance.now();
-    const visualMs = Math.max(8000, Math.min(18000, duration * 360));
+    const visualMs = Math.max(12000, Math.min(22000, duration * 430));
     let raf = 0;
     const tick = (now: number) => {
       const next = clamp((now - started) / visualMs);
@@ -77,71 +250,229 @@ export default function ExperienceShell() {
     return () => cancelAnimationFrame(raf);
   }, [playing, duration]);
 
-  const shake = 1 + analysis.hazard * 12;
-  const speed = Math.max(70, 250 - magnitude * 19);
-  const sceneStyle = { "--sf-shake": `${shake}px`, "--sf-speed": `${speed}ms` } as CSSProperties;
-  const mmiRoman = MMI[Math.min(11, Math.max(0, Math.round(analysis.estimatedMmi) - 1))];
-  const priority = analysis.damage >= 75 ? "Evacuar y aislar zonas dañadas" : analysis.damage >= 45 ? "Inspección profesional antes de reocupar" : analysis.damage >= 20 ? "Revisar uniones, vanos y terminaciones" : "Inspección visual preventiva";
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const quakeGain = soundOn && phase === "surface" ? 0.035 + analysis.hazard * 0.12 : 0.0001;
+    audio.rumble.gain.setTargetAtTime(quakeGain, audio.ctx.currentTime, 0.12);
+    audio.oscillator.frequency.setTargetAtTime(26 + frequencyHz * 12, audio.ctx.currentTime, 0.18);
+    audio.ambient.gain.setTargetAtTime(soundOn ? (light === "night" ? 0.016 : 0.026) : 0.0001, audio.ctx.currentTime, 0.2);
+  }, [soundOn, phase, analysis.hazard, frequencyHz, light]);
+
+  const ensureAudio = () => {
+    if (audioRef.current) return audioRef.current;
+    const ctx = new AudioContext();
+    const seconds = 3;
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (0.45 + 0.55 * Math.sin((i / data.length) * Math.PI));
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 1100;
+    const ambient = ctx.createGain();
+    ambient.gain.value = 0.0001;
+    source.connect(filter).connect(ambient).connect(ctx.destination);
+    source.start();
+    const oscillator = ctx.createOscillator();
+    oscillator.type = "sine";
+    oscillator.frequency.value = 42;
+    const rumble = ctx.createGain();
+    rumble.gain.value = 0.0001;
+    oscillator.connect(rumble).connect(ctx.destination);
+    oscillator.start();
+    audioRef.current = { ctx, ambient, rumble, oscillator, source };
+    return audioRef.current;
+  };
+
+  useEffect(() => () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.source.stop();
+    audio.oscillator.stop();
+    void audio.ctx.close();
+  }, []);
+
+  const goCamera = (index: number) => {
+    const next = (index + CAMERAS.length) % CAMERAS.length;
+    setCameraIndex(next);
+    const label = CAMERAS[next][0];
+    if (clickByText(".rh-camera-grid button", label)) return;
+    const menu = Array.from(document.querySelectorAll<HTMLButtonElement>(".rh-top button")).find((button) => button.textContent?.includes("Menú"));
+    menu?.click();
+    window.setTimeout(() => clickByText(".rh-camera-grid button", label), 60);
+  };
+
+  const zoom = (direction: "in" | "out") => {
+    clickByText(".rh-dock button", direction === "in" ? "Acercar" : "Alejar");
+  };
+
+  const cycleLight = () => setLight((value) => value === "day" ? "sunset" : value === "sunset" ? "night" : "day");
+
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.();
+    else await document.exitFullscreen?.();
+  };
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === "INPUT" || target?.tagName === "SELECT" || target?.tagName === "TEXTAREA") return;
+      const key = event.key.toLowerCase();
+      if (["w", "a", "s", "d", "q", "e", "f", "l", "m", "r"].includes(key)) event.preventDefault();
+      if (key === "a" || key === "q") goCamera(cameraIndex - 1);
+      if (key === "d" || key === "e") goCamera(cameraIndex + 1);
+      if (key === "w") zoom("in");
+      if (key === "s") zoom("out");
+      if (key === "f") void toggleFullscreen();
+      if (key === "l") cycleLight();
+      if (key === "m") setOpen((value) => !value);
+      if (key === "r") { setProgress(0); setPlaying(true); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cameraIndex]);
+
+  const priority = analysis.damage >= 75 ? "Aislar la zona y solicitar evaluación profesional" : analysis.damage >= 45 ? "Inspección profesional antes de reocupar" : analysis.damage >= 20 ? "Revisar uniones, vanos y terminaciones" : "Inspección visual preventiva";
+  const shake = 1 + analysis.hazard * 13;
+  const speed = Math.max(64, 260 - magnitude * 18 - frequencyHz * 10);
+  const sceneStyle = {
+    "--sf-shake": `${shake}px`,
+    "--sf-speed": `${speed}ms`,
+    "--sf-brightness": `${Math.max(45, exposure)}%`,
+    "--sf-depth": `${clamp(depthKm / 150) * 100}%`,
+    "--sf-wave": `${waveProgress * 100}%`,
+    "--sf-interior-light": interiorLights ? "1" : "0",
+    "--sf-exterior-light": exteriorLights ? "1" : "0",
+    "--sf-temp": `${clamp((temperature - 2700) / 3800)}`,
+  } as CSSProperties;
 
   return (
-    <div className={`sf-experience sf-light-${light}`}>
-      <div className={`sf-scene ${playing ? "is-quaking" : ""}`} style={sceneStyle}>
+    <div className={`sf-experience sf-light-${light} sf-phase-${phase}`} style={sceneStyle}>
+      <div className={`sf-scene ${phase === "surface" ? "is-quaking" : ""}`}>
         <ReferenceHouse />
+        <div className="sf-light-sim" aria-hidden="true" />
       </div>
 
-      {(playing || progress > 0) && analysis.damage >= 18 ? (
-        <div className="sf-damage-map" aria-hidden="true">
-          <span className="sf-damage-pin pin-roof" style={{ opacity: 0.25 + analysis.roof * 0.75 }}><b>Techumbre</b><small>{level(analysis.roof)}</small></span>
-          <span className="sf-damage-pin pin-openings" style={{ opacity: 0.25 + analysis.openings * 0.75 }}><b>Vanos / uniones</b><small>{level(analysis.openings)}</small></span>
-          <span className="sf-damage-pin pin-sanitary" style={{ opacity: 0.25 + analysis.sanitary * 0.75 }}><b>Red sanitaria</b><small>{level(analysis.sanitary)}</small></span>
+      <div className="sf-brand-hud">
+        <img src="/brand/soluciones-fabrick-mobile.svg" alt="" />
+        <div><small>RECORRIDO 3D · MODO INTERACTIVO</small><strong>{area.title}</strong><span>{area.subtitle}</span></div>
+      </div>
+
+      <nav className="sf-quick" aria-label="Controles rápidos">
+        <button aria-pressed={infoOpen} onClick={() => setInfoOpen((v) => !v)}><span>ⓘ</span><small>Info</small></button>
+        <button onClick={cycleLight}><span>{light === "night" ? "☾" : "☀"}</span><small>Luz</small></button>
+        <button aria-pressed={soundOn} onClick={() => { const audio = ensureAudio(); void audio.ctx.resume(); setSoundOn((v) => !v); }}><span>{soundOn ? "🔊" : "🔇"}</span><small>Ambiente</small></button>
+        <button onClick={() => void toggleFullscreen()}><span>⛶</span><small>Pantalla</small></button>
+        <button aria-pressed={open} onClick={() => setOpen((v) => !v)}><span>⌁</span><small>Lab</small></button>
+      </nav>
+
+      {infoOpen ? (
+        <aside className="sf-area-card">
+          <header><div><small>MATERIALES DE ESTA ÁREA</small><strong>{area.title}</strong></div><button onClick={() => setInfoOpen(false)}>×</button></header>
+          <div className="sf-material-list">
+            {area.materials.map((item, index) => <article key={item.material}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{item.material}</strong><small>{item.place}</small><p>{item.note}</p></div></article>)}
+          </div>
+          <footer><span>Texturas web: PBR/CC0 cuando estén disponibles</span><span>Modelo conceptual</span></footer>
+        </aside>
+      ) : null}
+
+      <div className="sf-gamepad" aria-label="Controles tipo videojuego">
+        <button className="up" onClick={() => zoom("in")} aria-label="Acercar">W</button>
+        <button className="left" onClick={() => goCamera(cameraIndex - 1)} aria-label="Cámara anterior">A</button>
+        <button className="down" onClick={() => zoom("out")} aria-label="Alejar">S</button>
+        <button className="right" onClick={() => goCamera(cameraIndex + 1)} aria-label="Cámara siguiente">D</button>
+      </div>
+
+      <nav className="sf-camera-dock" aria-label="Cámaras del recorrido">
+        <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex - 1)}>‹</button>
+        <div>{CAMERAS.map(([label], index) => <button key={label} aria-pressed={cameraIndex === index} onClick={() => goCamera(index)}><span>{index + 1}</span>{label}</button>)}</div>
+        <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex + 1)}>›</button>
+      </nav>
+
+      {(phase === "hypocenter" || phase === "propagation") ? (
+        <div className="sf-seismic-stage" aria-live="polite">
+          <div className="sf-earth-section">
+            <div className="sf-surface-line"><span>SUPERFICIE · CASA</span></div>
+            <div className="sf-wave-front" />
+            <div className="sf-hypocenter"><i /><b>Hipocentro</b><small>{depthKm} km · M {magnitude.toFixed(1)}</small></div>
+            <div className="sf-depth-line"><span>{phase === "hypocenter" ? "Energía iniciada en profundidad" : "Frente de onda propagándose hacia superficie"}</span></div>
+          </div>
         </div>
       ) : null}
 
-      <button className="sf-lab-toggle" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-        <img src="/brand/soluciones-fabrick-mobile.svg" alt="" />
-        <span><small>FABRICK LAB</small>Sismo · ambiente</span>
-        <b>{open ? "×" : "＋"}</b>
-      </button>
+      {(phase === "surface" || phase === "aftermath") && analysis.damage >= 12 ? (
+        <div className="sf-damage-map" aria-hidden="true">
+          {[
+            ["pin-roof", "Techumbre", analysis.zones.roof],
+            ["pin-cornice", "Cornisas / encuentros", analysis.zones.cornices],
+            ["pin-window", "Ventanas", analysis.zones.windows],
+            ["pin-wall", "Muros / uniones", analysis.zones.walls],
+            ["pin-foundation", "Fundación", analysis.zones.foundation],
+            ["pin-sanitary", "Red sanitaria", analysis.zones.sanitary],
+          ].map(([className, label, score]) => <span key={String(label)} className={`sf-damage-pin ${className}`} style={{ opacity: 0.3 + Number(score) * 0.7 }}><b>{label}</b><small>{level(Number(score))}</small></span>)}
+        </div>
+      ) : null}
 
       {open ? (
-        <aside className="sf-lab" aria-label="Simulador sísmico y ambiente del recorrido">
+        <aside className="sf-lab" aria-label="Fabrick Lab">
           <header>
             <img src="/brand/soluciones-fabrick-mobile.svg" alt="Soluciones Fabrick" />
-            <div><small>RECORRIDO 3D · LAB</small><strong>Casa + simulación sísmica</strong></div>
+            <div><small>FABRICK LAB</small><strong>Visor técnico interactivo</strong></div>
             <button aria-label="Cerrar laboratorio" onClick={() => setOpen(false)}>×</button>
           </header>
+          <nav className="sf-lab-tabs">
+            <button aria-pressed={tab === "quake"} onClick={() => setTab("quake")}>Sismo</button>
+            <button aria-pressed={tab === "light"} onClick={() => setTab("light")}>Iluminación</button>
+            <button aria-pressed={tab === "controls"} onClick={() => setTab("controls")}>Controles</button>
+          </nav>
 
-          <section>
-            <h2>Ambiente</h2>
-            <div className="sf-segmented">
-              {(["day", "sunset", "night"] as LightMode[]).map((mode) => <button key={mode} aria-pressed={light === mode} onClick={() => setLight(mode)}>{mode === "day" ? "Día" : mode === "sunset" ? "Atardecer" : "Noche"}</button>)}
-            </div>
-          </section>
+          {tab === "quake" ? <>
+            <section>
+              <div className="sf-section-title"><h2>Escenario sísmico</h2><span>MMI {mmiRoman}</span></div>
+              <label>Magnitud <b>{magnitude.toFixed(1)}</b><input type="range" min="4" max="9.5" step="0.1" value={magnitude} onChange={(e) => setMagnitude(Number(e.target.value))} /></label>
+              <label>Profundidad <b>{depthKm} km</b><input type="range" min="5" max="150" step="1" value={depthKm} onChange={(e) => setDepthKm(Number(e.target.value))} /></label>
+              <label>Distancia epicentral <b>{distanceKm} km</b><input type="range" min="0" max="250" step="5" value={distanceKm} onChange={(e) => setDistanceKm(Number(e.target.value))} /></label>
+              <label>Duración <b>{duration} s</b><input type="range" min="5" max="60" step="1" value={duration} onChange={(e) => setDuration(Number(e.target.value))} /></label>
+              <label>Frecuencia visual <b>{frequencyHz.toFixed(1)} Hz</b><input type="range" min="0.5" max="4" step="0.1" value={frequencyHz} onChange={(e) => setFrequencyHz(Number(e.target.value))} /></label>
+              <label>Dirección de movimiento <b>{directionDeg}°</b><input type="range" min="0" max="359" step="1" value={directionDeg} onChange={(e) => setDirectionDeg(Number(e.target.value))} /></label>
+              <label>Tipo de movimiento<select value={motion} onChange={(e) => setMotion(e.target.value as Motion)}><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option><option value="mixed">Mixto</option></select></label>
+              <label>Suelo<select value={soil} onChange={(e) => setSoil(e.target.value as Soil)}><option value="rock">Roca / muy firme</option><option value="firm">Firme</option><option value="soft">Blando</option></select></label>
+              <button className="sf-play" disabled={playing} onClick={() => { setProgress(0); setPlaying(true); }}>{playing ? "Simulación en curso…" : progress > 0 ? "↻ Reiniciar terremoto" : "▶ Inicializar terremoto"}</button>
+              <div className="sf-progress"><i style={{ width: `${progress * 100}%` }} /></div>
+              <div className="sf-phase-readout"><b>{phase === "idle" ? "Preparado" : phase === "hypocenter" ? "Hipocentro" : phase === "propagation" ? "Propagación" : phase === "surface" ? "Respuesta en superficie" : "Evaluación posterior"}</b><span>{Math.round(progress * 100)}%</span></div>
+            </section>
+            <section className="sf-results">
+              <h2>Análisis visual del escenario</h2>
+              <div className="sf-metrics"><article><small>Daño proxy</small><strong>{analysis.damage}%</strong></article><article><small>PGA proxy</small><strong>{analysis.pga} g</strong></article><article><small>Deriva proxy</small><strong>{analysis.drift}%</strong></article><article><small>Soporte ref.</small><strong>{analysis.support}%</strong></article></div>
+              <p><b>Prioridad:</b> {priority}.</p>
+              <div className="sf-zone-grid">{Object.entries({ "Fundación": analysis.zones.foundation, "Muros": analysis.zones.walls, "Vanos": analysis.zones.openings, "Cornisas": analysis.zones.cornices, "Ventanas": analysis.zones.windows, "Techumbre": analysis.zones.roof, "Sanitaria": analysis.zones.sanitary }).map(([name, score]) => <div key={name}><span>{name}</span><i><b style={{ width: `${score * 100}%` }} /></i><small>{level(score)}</small></div>)}</div>
+              <h3>Lectura por fachadas</h3>
+              <div className="sf-side-grid">{analysis.sideScores.map(([name, score]) => <article key={name}><span>{name}</span><strong>{Math.round(score * 100)}%</strong><small>{level(score)}</small></article>)}</div>
+            </section>
+          </> : null}
 
-          <section>
-            <div className="sf-section-title"><h2>Terremoto</h2><span>MMI {mmiRoman}</span></div>
-            <label>Magnitud <b>{magnitude.toFixed(1)}</b><input type="range" min="4" max="9.5" step="0.1" value={magnitude} onChange={(event) => setMagnitude(Number(event.target.value))} /></label>
-            <label>Profundidad <b>{depthKm} km</b><input type="range" min="5" max="150" step="1" value={depthKm} onChange={(event) => setDepthKm(Number(event.target.value))} /></label>
-            <label>Distancia epicentral <b>{distanceKm} km</b><input type="range" min="0" max="250" step="5" value={distanceKm} onChange={(event) => setDistanceKm(Number(event.target.value))} /></label>
-            <label>Duración <b>{duration} s</b><input type="range" min="5" max="60" step="1" value={duration} onChange={(event) => setDuration(Number(event.target.value))} /></label>
-            <label>Suelo<select value={soil} onChange={(event) => setSoil(event.target.value as Soil)}><option value="rock">Roca / muy firme</option><option value="firm">Firme</option><option value="soft">Blando</option></select></label>
-            <button className="sf-play" onClick={() => setPlaying((value) => !value)}>{playing ? "Pausar simulación" : progress > 0 ? "Repetir simulación" : "Reproducir simulación"}</button>
-            <div className="sf-progress"><i style={{ width: `${progress * 100}%` }} /></div>
-          </section>
+          {tab === "light" ? <>
+            <section>
+              <h2>Iluminación cinematográfica</h2>
+              <div className="sf-segmented">{(["day", "sunset", "night"] as LightMode[]).map((mode) => <button key={mode} aria-pressed={light === mode} onClick={() => setLight(mode)}>{mode === "day" ? "Día" : mode === "sunset" ? "Atardecer" : "Noche"}</button>)}</div>
+              <label>Exposición <b>{exposure}%</b><input type="range" min="45" max="145" step="1" value={exposure} onChange={(e) => setExposure(Number(e.target.value))} /></label>
+              <label>Temperatura <b>{temperature} K</b><input type="range" min="2700" max="6500" step="100" value={temperature} onChange={(e) => setTemperature(Number(e.target.value))} /></label>
+              <div className="sf-switches"><button aria-pressed={interiorLights} onClick={() => setInteriorLights((v) => !v)}>Lámparas interiores <b>{interiorLights ? "ON" : "OFF"}</b></button><button aria-pressed={exteriorLights} onClick={() => setExteriorLights((v) => !v)}>Luces exteriores <b>{exteriorLights ? "ON" : "OFF"}</b></button></div>
+            </section>
+            <section className="sf-light-map"><h2>Mapa de iluminación del modelo</h2><div><article><b>5</b><span>Puntos interiores</span><small>Living, comedor, dormitorios y cocina representados con PointLight.</small></article><article><b>2</b><span>Puntos exteriores</span><small>Fachada frontal / terraza.</small></article></div><p>El visor conserva ACES Filmic y sombras suaves. Día, atardecer y noche ajustan exposición y ambiente sin reemplazar la geometría existente.</p></section>
+          </> : null}
 
-          <section className="sf-results">
-            <h2>Lectura del escenario</h2>
-            <div className="sf-metrics"><article><small>Daño visual</small><strong>{analysis.damage}%</strong></article><article><small>PGA proxy</small><strong>{analysis.pga} g</strong></article><article><small>Deriva proxy</small><strong>{analysis.drift}%</strong></article><article><small>Soporte</small><strong>{analysis.support}%</strong></article></div>
-            <p><b>Prioridad:</b> {priority}.</p>
-            <ul><li>Vanos y uniones: {level(analysis.openings)}</li><li>Techumbre y cielos: {level(analysis.roof)}</li><li>Red sanitaria: {level(analysis.sanitary)}</li></ul>
-          </section>
+          {tab === "controls" ? <section className="sf-control-help">
+            <h2>Controles tipo videojuego</h2>
+            <div className="sf-key-grid"><kbd>W</kbd><span>Acercar cámara</span><kbd>S</kbd><span>Alejar cámara</span><kbd>A / Q</kbd><span>Cámara anterior</span><kbd>D / E</kbd><span>Cámara siguiente</span><kbd>L</kbd><span>Cambiar ambiente</span><kbd>F</kbd><span>Pantalla completa</span><kbd>M</kbd><span>Abrir / cerrar Lab</span><kbd>R</kbd><span>Reiniciar sismo</span></div>
+            <p>También puedes arrastrar para orbitar, usar la rueda o pellizco para zoom y abrir el menú nativo para capas, planta y despiece.</p>
+            <button className="sf-native-menu" onClick={() => clickByText(".rh-top button", "☰ Menú")}>Abrir capas y despiece</button>
+          </section> : null}
 
-          <details>
-            <summary>Guía rápida de controles</summary>
-            <p><b>Girar:</b> arrastra sobre la vivienda. <b>Zoom:</b> rueda, pinza o botones +/−. <b>Cámaras:</b> usa ‹ Recorrer ›. <b>Capas:</b> Ajustes permite explotar estructura, terminaciones y redes. <b>Sismo:</b> configura escenario y pulsa reproducir; los marcadores rojos muestran zonas de atención visual.</p>
-          </details>
-
-          <p className="sf-disclaimer">Modelo educativo/comercial. MMI, PGA proxy, deriva, soporte y daño son referencias visuales; no sustituyen cálculo estructural, estudio de suelo, NCh433/DS61, inspección profesional ni evaluación de habitabilidad post-sismo. No representa una probabilidad de supervivencia.</p>
+          <p className="sf-disclaimer">Simulación educativa/comercial. MMI, PGA proxy, deriva, soporte y daño son referencias visuales; no sustituyen cálculo estructural, estudio de suelo, NCh433/DS61, ingeniería, inspección profesional ni evaluación de habitabilidad post-sismo. El modelo geométrico es conceptual y no representa una probabilidad de supervivencia.</p>
         </aside>
       ) : null}
     </div>

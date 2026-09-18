@@ -551,15 +551,19 @@ export default function VisualCmsRuntime() {
       return match ? Number.parseFloat(match[1]) || 1 : 1;
     };
     const touchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 2 || !selectedRef.current) return;
+      if (event.touches.length !== 2 || !(selectedRef.current instanceof HTMLImageElement)) return;
+      event.preventDefault();
       imageDrag = null;
       pinchStartDistance = Math.max(1, distance(event.touches));
       pinchStartScale = scaleFrom(window.getComputedStyle(selectedRef.current).transform);
+      selectedRef.current.style.setProperty('touch-action', 'none', 'important');
     };
     const touchMove = (event: TouchEvent) => {
-      if (event.touches.length !== 2 || !selectedRef.current || !pinchStartDistance) return;
+      if (event.touches.length !== 2 || !(selectedRef.current instanceof HTMLImageElement) || !pinchStartDistance) return;
       event.preventDefault();
-      const scale = Math.min(3, Math.max(0.35, pinchStartScale * distance(event.touches) / pinchStartDistance));
+      const scale = Math.min(4, Math.max(0.25, pinchStartScale * distance(event.touches) / pinchStartDistance));
+      selectedRef.current.style.setProperty('transform', `scale(${scale})`, 'important');
+      selectedRef.current.style.setProperty('transform-origin', 'center center', 'important');
       window.parent.postMessage({ type: 'cms:visual-pinch', selector: uniqueSelector(selectedRef.current), scale: Number(scale.toFixed(3)) }, window.location.origin);
     };
     const touchEnd = () => { pinchStartDistance = 0; };
@@ -570,7 +574,7 @@ export default function VisualCmsRuntime() {
     document.addEventListener('pointermove', pointerMove, { capture: true, passive: false });
     document.addEventListener('pointerup', pointerUp, true);
     document.addEventListener('pointercancel', pointerUp, true);
-    document.addEventListener('touchstart', touchStart, { capture: true, passive: true });
+    document.addEventListener('touchstart', touchStart, { capture: true, passive: false });
     document.addEventListener('touchmove', touchMove, { capture: true, passive: false });
     document.addEventListener('touchend', touchEnd, true);
     window.parent.postMessage({ type: 'cms:visual-ready', route: routeKey(pathname) }, window.location.origin);

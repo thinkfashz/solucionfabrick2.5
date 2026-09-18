@@ -49,6 +49,6 @@ export function materialTexture(T:typeof Three,kind:TextureKind,color:string){
  const map=new T.CanvasTexture(canvas);map.wrapS=map.wrapT=T.RepeatWrapping;map.colorSpace=T.SRGBColorSpace;map.anisotropy=8;
  const bump=new T.CanvasTexture(bumpCanvas);bump.wrapS=bump.wrapT=T.RepeatWrapping;bump.colorSpace=T.NoColorSpace;bump.anisotropy=4;
  const roughness=new T.CanvasTexture(roughCanvas);roughness.wrapS=roughness.wrapT=T.RepeatWrapping;roughness.colorSpace=T.NoColorSpace;roughness.anisotropy=4;
- const remote=POLYHAVEN[kind];if(remote){asyncOverlay(canvas,remote.diffuse,()=>{map.needsUpdate=true},color);asyncOverlay(bumpCanvas,remote.displacement,()=>{bump.needsUpdate=true});asyncOverlay(roughCanvas,remote.roughness,()=>{roughness.needsUpdate=true})}
+ const remote=POLYHAVEN[kind];if(remote){asyncOverlay(canvas,remote.diffuse,()=>{map.needsUpdate=true},color);if(!lowDetail){asyncOverlay(bumpCanvas,remote.displacement,()=>{bump.needsUpdate=true});asyncOverlay(roughCanvas,remote.roughness,()=>{roughness.needsUpdate=true})}}
  return {map,bump,roughness,source:remote?.id??'procedural'};
 }

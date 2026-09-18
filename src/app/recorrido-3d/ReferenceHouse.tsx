@@ -124,10 +124,12 @@ export default function ReferenceHouse(){
     const t=materialTexture(THREE,kind,color);
     if(t){
      m.color.set('#ffffff');m.map=t.map;m.normalMap=t.normal;m.roughnessMap=t.roughness;
-     const repeat=kind==='grass'?.58:kind==='gravel'?.72:kind==='wood'?.85:kind==='tile'?.72:kind==='metal'?.9:1;
-     for(const tx of [t.map,t.bump,t.roughness,t.normal]){tx.repeat.set(repeat,repeat);tx.anisotropy=mobile?2:8}
+     if(t.ao){m.aoMap=t.ao;m.aoMapIntensity=kind==='grass'?.72:.58}
+     // Procedural UVs are expressed in metres. Grass001 is ~1.4 m square.
+     const repeat=kind==='grass'?(1/1.4):kind==='gravel'?.72:kind==='wood'?.85:kind==='tile'?.72:kind==='metal'?.9:1;
+     for(const tx of [t.map,t.bump,t.roughness,t.normal,t.ao]){if(!tx)continue;tx.repeat.set(repeat,repeat);tx.anisotropy=mobile?2:8}
      m.normalScale.set(normalStrength,normalStrength);
-     textures.push(t.map,t.bump,t.roughness,t.normal)
+     textures.push(t.map,t.bump,t.roughness,t.normal,...(t.ao?[t.ao]:[]))
     }
     m.roughness=roughness;return m
    };
@@ -165,9 +167,9 @@ export default function ReferenceHouse(){
    const cv=document.createElement('canvas');cv.width=cv.height=256;const cx=cv.getContext('2d');
    if(cx){cx.fillStyle='#c3a071';cx.fillRect(0,0,256,256);let seed=12;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};for(let i=0;i<1600;i++){cx.save();cx.translate(random()*256,random()*256);cx.rotate(random()*Math.PI);cx.fillStyle=['#8d6f47','#d9bb8b','#b18b54'][i%3];cx.fillRect(0,0,3+random()*18,1+random()*3);cx.restore()}const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(2,2);textures.push(tex);osb.map=tex;}
    function mesh(g:T.BufferGeometry,m:T.Material,parent:T.Object3D){geometry.push(g);const a=new THREE.Mesh(g,m);a.castShadow=!m.transparent;a.receiveShadow=true;parent.add(a);return a}
-   function box(p:V,size:V,m:T.Material,parent:T.Object3D){const geo=new THREE.BoxGeometry(...size);const pos=geo.attributes.position,norm=geo.attributes.normal,uv=geo.attributes.uv;for(let i=0;i<pos.count;i++){const nx=Math.abs(norm.getX(i)),ny=Math.abs(norm.getY(i));uv.setXY(i,nx>.5?pos.getZ(i):pos.getX(i),ny>.5?pos.getZ(i):pos.getY(i))}const b=mesh(geo,m,parent);b.position.set(...p);return b}
+   function box(p:V,size:V,m:T.Material,parent:T.Object3D){const geo=new THREE.BoxGeometry(...size);const pos=geo.attributes.position,norm=geo.attributes.normal,uv=geo.attributes.uv;for(let i=0;i<pos.count;i++){const nx=Math.abs(norm.getX(i)),ny=Math.abs(norm.getY(i));uv.setXY(i,nx>.5?pos.getZ(i):pos.getX(i),ny>.5?pos.getZ(i):pos.getY(i))}geo.setAttribute('uv1',uv.clone());const b=mesh(geo,m,parent);b.position.set(...p);return b}
    function beam(a:V,b:V,r:number,m:T.Material,parent:T.Object3D){const av=new THREE.Vector3(...a),bv=new THREE.Vector3(...b);const o=box([0,0,0],[r,av.distanceTo(bv),r],m,parent);o.position.copy(av.add(bv).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...b).sub(new THREE.Vector3(...a)).normalize());return o}
-   function surface(points:V[],m:T.Material,parent:T.Object3D){const a:number[]=[];for(let i=1;i<points.length-1;i++)a.push(...points[0],...points[i],...points[i+1]);const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(a,3));const uv:number[]=[];for(let i=0;i<a.length;i+=3)uv.push(a[i]*.2,a[i+2]*.2);g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.computeVertexNormals();return mesh(g,m,parent)}
+   function surface(points:V[],m:T.Material,parent:T.Object3D){const a:number[]=[];for(let i=1;i<points.length-1;i++)a.push(...points[0],...points[i],...points[i+1]);const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(a,3));const uv:number[]=[];for(let i=0;i<a.length;i+=3)uv.push(a[i]*.2,a[i+2]*.2);const uvAttr=new THREE.Float32BufferAttribute(uv,2);g.setAttribute('uv',uvAttr);g.setAttribute('uv1',uvAttr.clone());g.computeVertexNormals();return mesh(g,m,parent)}
    box([0,-.32,0],[240,.3,240],grass,proceduralTerrain);box([0,-.155,-10],[19,.04,7],gravel,proceduralTerrain);
    const patchMat=new THREE.MeshStandardMaterial({color:'#405a36',roughness:1,transparent:true,opacity:.14,depthWrite:false});materials.push(patchMat);
    const patchGeo=new THREE.CircleGeometry(1,16);geometry.push(patchGeo);

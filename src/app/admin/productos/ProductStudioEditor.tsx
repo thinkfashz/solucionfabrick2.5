@@ -403,6 +403,18 @@ export default function ProductStudioEditor({
   const cover = form.image_url || gallery[0]?.url || '';
   const stockAmount = Math.max(0, Math.floor(numberValue(form.stock)));
   const canPublish = stockAmount > 0;
+  const relatedCandidates = catalogProducts
+    .filter((item) => item.id !== product?.id)
+    .sort((a, b) => {
+      const aSame = a.category_id && a.category_id === form.category_id ? 1 : 0;
+      const bSame = b.category_id && b.category_id === form.category_id ? 1 : 0;
+      if (aSame !== bSame) return bSame - aSame;
+      if (Boolean(a.featured) !== Boolean(b.featured)) return Number(Boolean(b.featured)) - Number(Boolean(a.featured));
+      return a.name.localeCompare(b.name, 'es');
+    });
+  const selectedRelatedProducts = relatedIds
+    .map((id) => catalogProducts.find((item) => item.id === id))
+    .filter((item): item is ProductStudioRecord => Boolean(item));
 
   const marketIntel = record(record(product?.specifications).market_intel);
   const hasMarketIntel = Object.keys(marketIntel).length > 0;
@@ -778,7 +790,6 @@ export default function ProductStudioEditor({
               <Panel title="Información principal" description="Lo esencial para reconocer, vender y encontrar el producto.">
                 <Field label="Nombre del producto" required><input className={inputClass} value={form.name} onChange={(event) => setField('name', event.target.value)} placeholder="Ej. Aire acondicionado inverter 12.000 BTU" /></Field>
                 <div className="mt-4"><Field label="Frase comercial"><input className={inputClass} value={form.tagline} onChange={(event) => setField('tagline', event.target.value)} placeholder="Una frase breve y útil" /></Field></div>
-                <div className="mt-4"><Field label="Descripción"><textarea className={`${inputClass} min-h-36 py-3`} value={form.description} onChange={(event) => setField('description', event.target.value)} placeholder="Describe qué es, para quién sirve y qué debe saber el comprador." /></Field></div>
                 <div className="mt-4 grid gap-4 md:grid-cols-2"><Field label="Categoría"><select className={inputClass} value={form.category_id} onChange={(event) => setField('category_id', event.target.value)}><option value="">Sin categoría</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field><Field label="Stock"><input type="number" min="0" className={inputClass} value={form.stock} onChange={(event) => setField('stock', event.target.value)} /></Field></div>
                 <div className="mt-4 grid gap-4 md:grid-cols-3"><Field label="SKU"><input className={inputClass} value={form.sku} onChange={(event) => setField('sku', event.target.value)} placeholder="Código interno" /></Field><Field label="EAN"><input className={inputClass} value={form.ean} onChange={(event) => setField('ean', event.target.value)} placeholder="Código de barras" /></Field><Field label="Entrega estimada"><div className="relative"><input type="number" min="0" className={`${inputClass} pr-14`} value={form.delivery_days} onChange={(event) => setField('delivery_days', event.target.value)} /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-black/35">días</span></div></Field></div>
               </Panel>
@@ -792,6 +803,20 @@ export default function ProductStudioEditor({
                 {productReviews.length ? <div className="space-y-3">{productReviews.map((review) => <article key={review.id} className="rounded-xl border border-black/8 bg-white p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><b className="text-sm">{review.author_name}</b><span className={`rounded-full px-2 py-1 text-[9px] font-black ${review.status === 'published' ? 'bg-emerald-100 text-emerald-800' : review.status === 'archived' ? 'bg-black/8 text-black/45' : 'bg-amber-100 text-amber-800'}`}>{review.status === 'published' ? 'Publicada' : review.status === 'archived' ? 'Archivada' : 'Pendiente'}</span></div><div className="mt-1 flex gap-0.5">{[1,2,3,4,5].map((value) => <Star key={value} className={`h-3.5 w-3.5 ${value <= review.rating ? 'fill-[#d18b16] text-[#d18b16]' : 'text-black/15'}`} />)}</div></div><button type="button" disabled={reviewBusyId === review.id} onClick={() => void moderateReview(review, { verified_purchase: !review.verified_purchase })} className={`rounded-lg px-2.5 py-2 text-[9px] font-black ${review.verified_purchase ? 'bg-emerald-100 text-emerald-800' : 'bg-black/[0.05] text-black/45'}`}>{review.verified_purchase ? '✓ Compra verificada' : 'Marcar verificada'}</button></div><p className="mt-3 text-xs leading-5 text-black/60">{review.body}</p><div className="mt-3 grid grid-cols-2 gap-2 sm:flex">{review.status !== 'published' ? <button type="button" disabled={reviewBusyId === review.id} onClick={() => void moderateReview(review, { status: 'published' })} className="rounded-lg bg-emerald-700 px-3 py-2 text-[10px] font-black text-white">Publicar</button> : null}{review.status !== 'archived' ? <button type="button" disabled={reviewBusyId === review.id} onClick={() => void moderateReview(review, { status: 'archived' })} className="rounded-lg bg-black/[0.06] px-3 py-2 text-[10px] font-black text-black/55">Archivar</button> : null}{reviewBusyId === review.id ? <span className="inline-flex items-center gap-1 px-2 text-[10px] text-black/35"><Loader2 className="h-3 w-3 animate-spin" />Guardando</span> : null}</div></article>)}</div> : <div className="rounded-xl bg-black/[0.025] p-5 text-center text-xs text-black/40">Todavía no hay opiniones para moderar.</div>}
               </Panel> : null}
             </div>
+          ) : null}
+
+          {section === 'investigar' ? (
+            <ProductResearchPanel
+              product={{ name: form.name, description: form.description, tagline: form.tagline, category: categoryName, price: basePrice }}
+              provider={aiProvider}
+              model={aiModel}
+              guide={contentGuide}
+              initialQuery={String(researchMemory.query || form.name)}
+              onApplyContent={applyResearchContent}
+              onUseReference={useResearchReference}
+              onAddReferenceImage={addReferenceImage}
+              onRememberResearch={(memory) => setResearchMemory((current) => ({ ...current, ...memory }))}
+            />
           ) : null}
 
           {section === 'precio' ? (
@@ -819,12 +844,29 @@ export default function ProductStudioEditor({
             </div>
           ) : null}
 
+          {section === 'contenido' ? (
+            <div className="space-y-4">
+              <Panel title="Descripción pública" description="Este contenido sí lo verá el cliente. Puedes escribirlo manualmente o rellenarlo desde Investigación.">
+                <Field label="Descripción completa"><textarea className={`${inputClass} min-h-44 py-3`} value={form.description} onChange={(event) => setField('description', event.target.value)} placeholder="Explica qué es el producto, para qué sirve, qué debe verificar el comprador y cómo encaja en su proyecto." /></Field>
+                <div className="mt-4"><Field label="Frase comercial"><input className={inputClass} value={form.tagline} onChange={(event) => setField('tagline', event.target.value)} placeholder="Resumen breve para la cabecera de la ficha" /></Field></div>
+              </Panel>
+
+              <Panel title="Características del producto" description="Solo estas características se publican. Los datos internos, notas e información de IA no se mezclan con la ficha del cliente.">
+                <div className="space-y-2">
+                  {publicFeatures.map((feature, index) => <div key={index} className="grid grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)_42px] gap-2"><input className={inputClass} value={feature.label} onChange={(event) => updatePublicFeature(index, { label: event.target.value })} placeholder="Ej. Potencia" /><input className={inputClass} value={feature.value} onChange={(event) => updatePublicFeature(index, { value: event.target.value })} placeholder="Ej. 12.000 BTU" /><button type="button" onClick={() => removePublicFeature(index)} className="grid h-11 place-items-center rounded-xl bg-red-50 text-red-700" aria-label="Quitar característica"><Trash2 className="h-4 w-4" /></button></div>)}
+                </div>
+                <button type="button" onClick={addPublicFeature} className="mt-3 min-h-10 rounded-xl border border-black/10 bg-white px-4 text-xs font-black">+ Añadir característica</button>
+                {!publicFeatures.length ? <p className="mt-3 rounded-xl bg-[#f6f1e8] p-4 text-xs leading-5 text-black/40">Aún no hay características públicas. Puedes buscarlas en <button type="button" onClick={() => setSection('investigar')} className="font-black text-[#9b6a12]">Investigar</button> y aplicar solo las que estén respaldadas por referencias.</p> : null}
+              </Panel>
+            </div>
+          ) : null}
+
           {section === 'imagenes' ? (
             <div className="space-y-4">
               <Panel title="Portada y galería" description="Sube, ordena y elige la portada sin salir del editor.">
                 <button type="button" disabled={busy !== ''} onClick={() => fileRef.current?.click()} className="flex min-h-28 w-full items-center justify-center gap-3 rounded-xl border border-dashed border-[#bb872c]/35 bg-[#fff6db] text-sm font-black text-[#7c5615] transition hover:bg-[#ffefbd] disabled:opacity-50">{busy === 'upload' ? <Loader2 className="h-5 w-5 animate-spin" /> : <CloudUpload className="h-5 w-5" />}{busy === 'upload' ? 'Subiendo imágenes…' : 'Subir imágenes del producto'}</button>
                 <input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={(event) => { const files = Array.from(event.target.files || []); if (files.length) void uploadFiles(files); event.target.value = ''; }} />
-                {gallery.length ? <div className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3">{gallery.map((image, index) => <article key={image.url} className={`overflow-hidden rounded-xl border bg-white ${form.image_url === image.url ? 'border-[#d18b16] ring-2 ring-[#d18b16]/15' : 'border-black/8'}`}><div className="relative aspect-[4/3] bg-[#f3eee4] p-2"><img src={image.url} alt="" className="h-full w-full rounded-lg object-contain" />{form.image_url === image.url ? <span className="absolute left-2 top-2 rounded-full bg-[#111214] px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#f5c75d]">Portada</span> : null}</div><div className="grid grid-cols-4 gap-1.5 p-2"><button type="button" onClick={() => setField('image_url', image.url)} className="col-span-2 rounded-lg bg-black/[0.05] px-2 py-2 text-[10px] font-black hover:bg-[#fff0bd]">Usar portada</button><button type="button" disabled={index === 0} onClick={() => moveImage(index, -1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronLeft className="h-4 w-4" /></button><button type="button" disabled={index === gallery.length - 1} onClick={() => moveImage(index, 1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronRight className="h-4 w-4" /></button><button type="button" onClick={() => removeImage(image)} className="col-span-4 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2 py-2 text-[10px] font-black text-red-700"><Trash2 className="h-3.5 w-3.5" />Quitar</button></div></article>)}</div> : <div className="mt-4 rounded-xl bg-black/[0.025] p-8 text-center text-sm text-black/40"><ImageIcon className="mx-auto mb-2 h-8 w-8 opacity-30" />Todavía no hay imágenes.</div>}
+                {gallery.length ? <div className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3">{gallery.map((image, index) => <article key={image.url} className={`overflow-hidden rounded-xl border bg-white ${form.image_url === image.url ? 'border-[#d18b16] ring-2 ring-[#d18b16]/15' : 'border-black/8'}`}><div className="relative aspect-[4/3] bg-[#f3eee4] p-2"><img src={image.url} alt="" className="h-full w-full rounded-lg object-contain" />{form.image_url === image.url ? <span className="absolute left-2 top-2 rounded-full bg-[#111214] px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#f5c75d]">Portada</span> : null}{image.source?.startsWith('reference:') ? <span className="absolute bottom-2 left-2 rounded-full bg-violet-700 px-2 py-1 text-[8px] font-black uppercase text-white">Referencia</span> : null}</div><div className="grid grid-cols-4 gap-1.5 p-2"><button type="button" onClick={() => setField('image_url', image.url)} className="col-span-2 rounded-lg bg-black/[0.05] px-2 py-2 text-[10px] font-black hover:bg-[#fff0bd]">Usar portada</button><button type="button" disabled={index === 0} onClick={() => moveImage(index, -1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronLeft className="h-4 w-4" /></button><button type="button" disabled={index === gallery.length - 1} onClick={() => moveImage(index, 1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronRight className="h-4 w-4" /></button><button type="button" onClick={() => removeImage(image)} className="col-span-4 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2 py-2 text-[10px] font-black text-red-700"><Trash2 className="h-3.5 w-3.5" />Quitar</button></div></article>)}</div> : <div className="mt-4 rounded-xl bg-black/[0.025] p-8 text-center text-sm text-black/40"><ImageIcon className="mx-auto mb-2 h-8 w-8 opacity-30" />Todavía no hay imágenes.</div>}
               </Panel>
             </div>
           ) : null}

@@ -129,10 +129,10 @@ const AREA: Record<string, AreaInfo> = {
   Cocina: {
     title:"Cocina · trabajo y almacenamiento",subtitle:"Módulos bajos y altos, cubierta, refrigerador, lavaplatos y luz funcional.",
     materials:[
-      {material:"Melamina / madera",place:"Muebles bajos y altos",note:"Frentes cálidos y modulares."},
-      {material:"Piedra / cubierta mineral",place:"Mesón",note:"Plano de preparación de acabado claro."},
-      {material:"Acero inoxidable",place:"Lavaplatos / grifería",note:"Superficie resistente y fácil de limpiar."},
-      {material:"Herraje amortiguado 110°",place:"Puertas superiores",note:"Bisagra ajustable con cierre suave; apertura animada en el visor."},
+      {id:"mueble-cocina-metod",material:"Mueble modular METOD",place:"Muebles bajos y altos",note:"Módulos calibrados a referencias comerciales chilenas."},
+      {id:"cubierta-mineral-cocina",material:"Piedra / cubierta mineral",place:"Mesón",note:"Plano de preparación de acabado claro."},
+      {id:"acero-inox-cocina",material:"Acero inoxidable",place:"Lavaplatos / grifería",note:"Superficie resistente y fácil de limpiar."},
+      {id:"herraje-utrusta-110",material:"Herraje amortiguado 110°",place:"Puertas superiores",note:"Bisagra ajustable con cierre suave; apertura animada en el visor."},
       {id:"volcanita-st",material:"Yeso cartón",place:"Muros",note:"Fondo blanco neutro para aumentar luminosidad."}
     ]
   },

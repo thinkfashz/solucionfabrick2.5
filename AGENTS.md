@@ -131,3 +131,11 @@ Available languages:
 - Storage: Upload files to buckets, store URLs in database
 - AI operations are OpenAI-compatible
 - **EXTRA IMPORTANT**: Use Tailwind CSS 3.4 (do not upgrade to v4). Lock these dependencies in `package.json`
+
+## Installed Design / Frontend Agent Skills
+
+For every frontend, UI, UX, interaction, responsive, animation, motion, visual-polish, or 3D-viewer task, read `.agents/SKILLS_POLICY.md` before editing code and follow its mandatory skill-routing rules.
+
+The vendored rules under `.agents/skills/` include Taste Skill, Impeccable, and Emil Kowalski's design/animation skills.
+
+Repository-specific requirements in this AGENTS.md take precedence over generic third-party skill defaults. In particular, keep Tailwind CSS 3.4 unless this repository rule is explicitly changed.

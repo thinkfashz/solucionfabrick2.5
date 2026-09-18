@@ -187,7 +187,13 @@ export default function ReferenceHouse(){
    const cable=mat('#ffd400'),cable2=mat('#1f6fb2');box([4.95,1.55,4.8],[.45,.62,.12],black,electricGroup);
    beam([4.95,1.8,4.75],[4.95,2.55,-3.5],.025,cable,electricGroup);
    for(const [x,z] of [[0,-4.4],[0,-1],[-5,-1.9],[-4.8,4.1],[6,-.5]]){beam([4.95,2.55,z],[x,2.55,z],.018,cable,electricGroup);beam([x,2.55,z],[x,1.05,z],.014,cable2,electricGroup);box([x,1.05,z],[.12,.16,.05],white,electricGroup);}
-   for(const [x,z]of [[-5.6,1.8],[3.5,2.5]]){box([x,.47,z],[.52,.64,.7],white,groups[7]);box([x,.92,z+.3],[.5,.58,.16],white,groups[7]);box([x+.85,.6,z],[.7,1,.5],wood,groups[7]);box([x+.85,1.13,z],[.74,.09,.55],porcelain,groups[7]);}
+   // Tres baños reales: principal, visitas y baño de dormitorio 2. La logia queda como recinto de servicio.
+   for(const [x,z] of [[-6.62,.7],[2.18,1.72],[2.18,3.58]]){
+    box([x,.47,z],[.52,.64,.7],white,groups[7]);box([x,.92,z+.3],[.5,.58,.16],white,groups[7]);
+    box([x+.72,.57,z],[.58,.92,.48],wood,groups[7]);box([x+.72,1.06,z],[.62,.075,.53],porcelain,groups[7]);
+    const bowl=mesh(new THREE.CylinderGeometry(.18,.23,.12,20),white,groups[7]);bowl.position.set(x+.72,1.11,z);bowl.scale.set(1,.42,1);
+    box([x-.56,1.02,z-.28],[.035,1.85,.78],glass,groups[7]);
+   }
    for(const [index,[x,z]]of [[0,-4.4],[0,-1],[-5,-1.9],[-4.8,4.1],[6,-.5]].entries()){const light=new THREE.PointLight('#ffe2b5',18,8.5,2);light.position.set(x,2.55,z);if(!mobile&&index<2){light.castShadow=true;light.shadow.mapSize.set(512,512);light.shadow.bias=-.002}indoorLights.push(light);groups[7].add(light);beam([x,2.8,z],[x,2.35,z],.025,black,groups[7]);box([x,2.32,z],[.38,.1,.38],white,groups[7]);}
    for(const x of [-6.8,6.8]){const lamp=new THREE.PointLight('#ffd39a',12,6,2);lamp.position.set(x,2.35,-4.2);outdoorLights.push(lamp);scene.add(lamp);}
    for(const w of walls){const a:V=w.axis==='x'?[w.x-w.length/2,2.66,w.z]:[w.x,2.66,w.z-w.length/2];const b:V=w.axis==='x'?[w.x+w.length/2,2.66,w.z]:[w.x,2.66,w.z+w.length/2];beam(a,b,.055,white,groups[6]);}

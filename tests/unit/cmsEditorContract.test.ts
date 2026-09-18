@@ -108,20 +108,29 @@ describe('Fabrick Studio v2 editor contract', () => {
     expect(homeEditor).toContain('delay: 220');
     expect(homeEditor).toContain('SortableContext');
   });
-  it('connects the contextual editor directly to the real CMS state and mounts all page tools', () => {
+  it('uses one responsive dropdown inspector without mounting the legacy contextual inspector', () => {
     const universal = readFileSync('src/app/admin/editor/UniversalVisualEditorClient.tsx', 'utf8');
-    const contextual = readFileSync('src/app/admin/editor/VisualCmsContextEditorBridge.tsx', 'utf8');
     const unified = readFileSync('src/app/admin/editor/UnifiedCmsEditorClient.tsx', 'utf8');
 
-    expect(universal).toContain("cms:visual-editor-direct");
-    expect(universal).toContain("cms:visual-editor-selection-sync");
-    expect(universal).toContain("cms:visual-editor-target");
-    expect(contextual).toContain("sendDirectEditorAction('color'");
-    expect(contextual).toContain("sendDirectEditorAction('background'");
-    expect(contextual).toContain("[data-visual-cms-editor-root=\"1\"]");
-    expect(unified).toContain('<VisualCmsContextEditorBridge />');
+    expect(universal).toContain('Menú de edición');
+    expect(universal).toContain('Contenido · texto, enlaces, imágenes y visibilidad');
+    expect(universal).toContain('Diseño · colores, tipografía, fondo y bordes');
+    expect(universal).toContain('Medidas · tamaños, espacios, escala y responsive');
+    expect(universal).toContain('CONTROL_HINTS');
+    expect(universal).not.toContain("document.addEventListener('input', handler, true)");
+    expect(unified).not.toContain('<VisualCmsContextEditorBridge />');
     expect(unified).toContain('<VisualCmsCloudinaryBridge />');
     expect(unified).toContain('<VisualCmsCloudinaryPolish />');
+  });
+
+  it('applies selected text color to visible nested button content instead of only the parent', () => {
+    const visualRuntime = readFileSync('src/components/cms/VisualCmsRuntime.tsx', 'utf8');
+
+    expect(visualRuntime).toContain('applyVisualColor');
+    expect(visualRuntime).toContain("style.setProperty('color', value, 'important')");
+    expect(visualRuntime).toContain('COLOR_DESCENDANT_SELECTOR');
+    expect(visualRuntime).toContain('colorDescendants');
+    expect(visualRuntime).toContain('visibleTextChild');
   });
 
   it('keeps the page editor full-screen and exposes real Cloudinary folders plus touch image scaling', () => {

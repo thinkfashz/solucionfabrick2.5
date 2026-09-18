@@ -30,19 +30,19 @@ const AMBIENCE = {
 } as const;
 
 const CAMERAS = [
-  ["Exterior", "Casa de referencia"],
-  ["Living", "Living"],
-  ["Comedor", "Comedor"],
-  ["Cocina", "Cocina"],
-  ["Principal", "Dormitorio principal"],
-  ["Baño ppal.", "Baño principal"],
-  ["Hab. 2", "Dormitorio 2"],
-  ["Baño hab. 2", "Baño dormitorio 2"],
-  ["Visitas", "Baño de visitas"],
-  ["Logia", "Logia"],
-  ["Jardín", "Hacia el jardín"],
-  ["Posterior", "Vista posterior"],
-  ["Aérea", "Vista aérea"],
+  ["Exterior", "Casa de referencia", "exterior"],
+  ["Living", "Living", "inside"],
+  ["Comedor", "Comedor", "dining"],
+  ["Cocina", "Cocina", "kitchen"],
+  ["Principal", "Dormitorio principal", "primary-bedroom"],
+  ["Baño ppal.", "Baño principal", "primary-bath"],
+  ["Hab. 2", "Dormitorio 2", "bedroom2"],
+  ["Baño hab. 2", "Baño dormitorio 2", "bath2"],
+  ["Visitas", "Baño de visitas", "guestbath"],
+  ["Logia", "Logia", "laundry"],
+  ["Jardín", "Hacia el jardín", "garden"],
+  ["Posterior", "Vista posterior", "rear"],
+  ["Aérea", "Vista aérea", "aerial"],
 ] as const;
 
 const AREA: Record<string, AreaInfo> = {
@@ -375,7 +375,7 @@ export default function ExperienceShell() {
     const next = (index + CAMERAS.length) % CAMERAS.length;
     setCameraIndex(next);
     const audio=audioRef.current;if(audio&&soundOn){const tone=audio.ctx.createOscillator(),gain=audio.ctx.createGain();tone.type="sine";tone.frequency.value=520;gain.gain.setValueAtTime(.0001,audio.ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.012,audio.ctx.currentTime+.01);gain.gain.exponentialRampToValueAtTime(.0001,audio.ctx.currentTime+.065);tone.connect(gain).connect(audio.ctx.destination);tone.start();tone.stop(audio.ctx.currentTime+.075);}
-    window.dispatchEvent(new CustomEvent("fabrick:camera",{detail:{view:CAMERAS[next][1] === "Casa de referencia" ? "exterior" : ["Living","Comedor","Cocina","Dormitorio principal","Baño principal","Dormitorio 2","Baño dormitorio 2","Baño de visitas","Logia","Hacia el jardín","Vista posterior","Vista aérea"].indexOf(CAMERAS[next][1])>=0 ? ["inside","dining","kitchen","primary-bedroom","primary-bath","bedroom2","bath2","guestbath","laundry","garden","rear","aerial"][["Living","Comedor","Cocina","Dormitorio principal","Baño principal","Dormitorio 2","Baño dormitorio 2","Baño de visitas","Logia","Hacia el jardín","Vista posterior","Vista aérea"].indexOf(CAMERAS[next][1])] : "exterior"}}));
+    window.dispatchEvent(new CustomEvent("fabrick:camera",{detail:{view:CAMERAS[next][2]}}));
   };
 
   const zoom = (direction: "in" | "out") => {

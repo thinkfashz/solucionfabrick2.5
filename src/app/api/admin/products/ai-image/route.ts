@@ -173,10 +173,13 @@ export async function POST(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'products', action: 'update' });
   if (!auth.ok) return auth.response;
 
-  const body = await request.json().catch(() => ({})) as { productId?: unknown; mode?: unknown; instructions?: unknown; candidateCount?: unknown; applyFirst?: unknown };
+  const body = await request.json().catch(() => ({})) as { productId?: unknown; mode?: unknown; instructions?: unknown; candidateCount?: unknown; applyFirst?: unknown; referenceUrls?: unknown };
   const productId = clean(body.productId, 140);
   const mode: Mode = body.mode === 'improve' ? 'improve' : 'generate';
   const instructions = clean(body.instructions, MAX_INSTRUCTIONS);
+  const referenceUrls = Array.isArray(body.referenceUrls)
+    ? Array.from(new Set(body.referenceUrls.map((value) => clean(value, 2000)).filter((url) => /^https:\/\//i.test(url)))).slice(0, 3)
+    : [];
   const candidateCount = Math.min(2, Math.max(1, Math.trunc(Number(body.candidateCount || 1)) || 1));
   const applyFirst = body.applyFirst !== false;
   if (!productId) return NextResponse.json({ error: 'Selecciona un producto guardado.' }, { status: 400 });
@@ -192,13 +195,17 @@ export async function POST(request: NextRequest) {
     const openRouter = await getOpenRouterCredentials();
     if (!openRouter) return NextResponse.json({ error: 'OpenRouter no está configurado. Añade la API en Administrador > Integraciones para habilitar generación de imágenes.' }, { status: 503 });
     const model = await chooseImageModel(openRouter.apiKey, openRouter.appName, openRouter.siteUrl, mode);
-    const prompt = buildPrompt(product, mode, instructions);
+    const prompt = `${buildPrompt(product, mode, instructions)}${referenceUrls.length ? '\n\nSe adjuntan referencias visuales elegidas por el administrador. Úsalas solo para comprender identidad, forma, proporción y presentación del producto. No copies logos, marcas de agua, textos ni fondos de terceros.' : ''}`;
     const callImages = async (count: number, suffix = '') => {
       const payload: Record<string, unknown> = { model: model.id, prompt: suffix ? `${prompt}\n\n${suffix}` : prompt, n: count };
       if (supports(model, 'aspect_ratio')) payload.aspect_ratio = '1:1';
       if (supports(model, 'resolution')) payload.resolution = '1K';
       if (supports(model, 'output_format')) payload.output_format = 'webp';
-      if (mode === 'improve') payload.input_references = [{ type: 'image_url', image_url: { url: product.image_url } }];
+      const inputReferences = Array.from(new Set([
+        ...(mode === 'improve' && product.image_url ? [product.image_url] : []),
+        ...referenceUrls,
+      ])).slice(0, 4);
+      if (inputReferences.length) payload.input_references = inputReferences.map((url) => ({ type: 'image_url', image_url: { url } }));
       const response = await fetch('https://openrouter.ai/api/v1/images', {
         method: 'POST',
         headers: {
@@ -250,6 +257,7 @@ export async function POST(request: NextRequest) {
       instructions: instructions || null,
       cost_usd: reportedCost || null,
       candidate_count: assets.length,
+      reference_urls: referenceUrls,
       cover_applied: applyFirst,
     };
     await persistProductImages(product, tenantId, assets, metadata, applyFirst);

@@ -65,3 +65,8 @@
  .sf-gamepad{left:10px;bottom:92px;width:94px;height:66px;grid-template:repeat(2,30px)/repeat(3,28px);opacity:.48}
  .sf-quick{bottom:89px}
 }
+
+.sf-area-select{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;margin:8px 0 7px;padding:6px 7px;border-radius:10px;background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.065)}
+.sf-area-select span{font-size:7px;letter-spacing:.09em;text-transform:uppercase;color:#7eaed5}
+.sf-area-select select{min-width:0;width:100%;height:28px;padding:0 26px 0 8px;border:1px solid rgba(255,230,0,.12);border-radius:8px;background:#07182d;color:#f7fafc;font:600 9px Manrope,system-ui,sans-serif;outline:none}
+.sf-area-select select:focus{border-color:rgba(255,230,0,.46);box-shadow:0 0 0 2px rgba(255,230,0,.07)}

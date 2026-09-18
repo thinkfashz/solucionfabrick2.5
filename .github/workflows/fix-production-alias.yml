@@ -32,3 +32,5 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: team_TZgqGIz6S5jHiYRoWSHNRzJQ
           VERCEL_PROJECT_ID: prj_spvhOqbD6vthFGyvuTRMTGsfHpNu
+
+# trigger-v2

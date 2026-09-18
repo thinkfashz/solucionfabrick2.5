@@ -93,20 +93,25 @@ export default function ReferenceHouse(){
    const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=!mobile;orbit.dampingFactor=.12;orbit.rotateSpeed=mobile?.92:.68;orbit.panSpeed=mobile?.9:.72;orbit.zoomSpeed=mobile?1:.78;orbit.minDistance=2;orbit.maxDistance=65;orbit.maxPolarAngle=Math.PI*.49;orbit.screenSpacePanning=true;
    orbit.touches.ONE=THREE.TOUCH.ROTATE;orbit.touches.TWO=THREE.TOUCH.DOLLY_PAN;
    const houseRoot=new THREE.Group();houseRoot.name='house-root';scene.add(houseRoot);
-   const architecturalAssets=await loadOptionalArchitecturalAssets(THREE,renderer);
-   const blenderHouse=architecturalAssets?.house??null,gaeaTerrain=architecturalAssets?.terrain??null;
-   const externalRoles=architecturalAssets?.byRole;
-   const externalKitchenDoors=architecturalAssets?.kitchenDoors??[];
-   const externalDoorMeta=externalKitchenDoors.map((door,index)=>({
-    door,closedY:door.rotation.y,
-    sign:Number(door.userData.openSign)||((door.name.includes('_R')||index%2)?-1:1),
-    angle:THREE.MathUtils.degToRad(Number(door.userData.openAngleDeg)||110)
-   }));
+   let architecturalAssets:Awaited<ReturnType<typeof loadOptionalArchitecturalAssets>>=null;
+   let blenderHouse:T.Group|null=null,gaeaTerrain:T.Group|null=null,externalRoles:NonNullable<Awaited<ReturnType<typeof loadOptionalArchitecturalAssets>>>['byRole']|undefined;
+   let externalDoorMeta:{door:T.Object3D;closedY:number;sign:number;angle:number}[]=[];
    const roleHas=(role:'architecture'|'kitchen'|'bath'|'structure'|'electric'|'water'|'sanitary')=>Boolean(externalRoles?.get(role)?.some(o=>o instanceof THREE.Mesh));
    const setExternalRole=(role:'architecture'|'kitchen'|'bath'|'structure'|'electric'|'water'|'sanitary'|'unknown',visible:boolean)=>{
     for(const object of externalRoles?.get(role)??[])if(object instanceof THREE.Mesh||object instanceof THREE.Light)object.visible=visible;
    };
-   if(blenderHouse)houseRoot.add(blenderHouse);if(gaeaTerrain)scene.add(gaeaTerrain);
+   const architecturalAssetPromise=loadOptionalArchitecturalAssets(THREE,renderer).then((assets)=>{
+    if(!assets)return;
+    if(disposed){assets.dispose();return}
+    architecturalAssets=assets;blenderHouse=assets.house;gaeaTerrain=assets.terrain;externalRoles=assets.byRole;
+    externalDoorMeta=assets.kitchenDoors.map((door,index)=>({
+     door,closedY:door.rotation.y,
+     sign:Number(door.userData.openSign)||((door.name.includes('_R')||index%2)?-1:1),
+     angle:THREE.MathUtils.degToRad(Number(door.userData.openAngleDeg)||110)
+    }));
+    if(blenderHouse)houseRoot.add(blenderHouse);if(gaeaTerrain)scene.add(gaeaTerrain);
+    renderer.shadowMap.needsUpdate=true;
+   });
    const groups=layers.map((_,i)=>{const g=new THREE.Group();g.userData.layer=i;houseRoot.add(g);return g});
    const electricGroup=new THREE.Group();electricGroup.name='electrical-plan';electricGroup.visible=false;houseRoot.add(electricGroup);
    const waterGroup=new THREE.Group();waterGroup.name='water-plan';waterGroup.visible=false;houseRoot.add(waterGroup);
@@ -465,7 +470,7 @@ export default function ReferenceHouse(){
     layerMaterials.forEach((list,i)=>list.forEach(m=>{m.emissive.set(highlighted===i?'#278ba3':'#000000');m.emissiveIntensity=highlighted===i?.3:0}));
     dims.visible=s.dimensions;orbit.update();renderer.render(scene,camera);
    };renderer.render(scene,camera);frame=requestAnimationFrame(render);setReady(true);
-   cleanup=()=>{cancelAnimationFrame(frame);observer.disconnect();orbit.removeEventListener('start',orbitStart);orbit.removeEventListener('end',orbitEnd);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('fabrick:lighting',lightingEvent);window.removeEventListener('fabrick:quake',quakeHandler);window.removeEventListener('fabrick:kitchen',kitchenHandler);orbit.dispose();renderer.domElement.removeEventListener('pointermove',move);renderer.domElement.removeEventListener('pointerdown',down);renderer.domElement.removeEventListener('pointerup',up);renderer.domElement.removeEventListener('pointerleave',leave);renderer.domElement.removeEventListener('webglcontextlost',lost);geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());architecturalAssets?.dispose();environment?.dispose();renderer.dispose();renderer.domElement.remove();api.current=null};
+   cleanup=()=>{void architecturalAssetPromise;cancelAnimationFrame(frame);observer.disconnect();orbit.removeEventListener('start',orbitStart);orbit.removeEventListener('end',orbitEnd);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('fabrick:lighting',lightingEvent);window.removeEventListener('fabrick:quake',quakeHandler);window.removeEventListener('fabrick:kitchen',kitchenHandler);orbit.dispose();renderer.domElement.removeEventListener('pointermove',move);renderer.domElement.removeEventListener('pointerdown',down);renderer.domElement.removeEventListener('pointerup',up);renderer.domElement.removeEventListener('pointerleave',leave);renderer.domElement.removeEventListener('webglcontextlost',lost);geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());architecturalAssets?.dispose();environment?.dispose();renderer.dispose();renderer.domElement.remove();api.current=null};
   }).catch(()=>{if(!disposed){setError('Este dispositivo no pudo iniciar WebGL. La planta con medidas sigue disponible.');setPlan(true)}});
   return()=>{disposed=true;cleanup()};
  },[retry]);

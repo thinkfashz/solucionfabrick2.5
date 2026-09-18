@@ -23,3 +23,31 @@
 .rh-load-card small,.rh-load-card li[data-done=true],.rh-load-tip{color:#fff45c}
 .rh-load-track i{background:linear-gradient(90deg,#ffb000,#ffe600)}
 .rh-camera-fade{background:#071525}
+
+
+/* Architectural navigator: category-led menu and clean drafting-style model controls. */
+.rh-menu{width:390px;padding:12px;background:rgba(7,20,33,.94);border-radius:14px}
+.rh-menu-head{position:sticky;top:-12px;z-index:2;margin:-12px -12px 4px;padding:12px;background:rgba(7,20,33,.97);border-bottom:1px solid rgba(255,255,255,.07)}
+.rh-menu-head h2{font-size:14px;letter-spacing:.01em}
+.rh-menu-head button{min-width:30px;min-height:30px;width:30px;height:30px;padding:0;border-radius:8px}
+.rh-menu details{padding:0 0 7px;margin:0;border-bottom:1px solid rgba(255,255,255,.07)}
+.rh-menu summary{display:grid;grid-template-columns:26px 1fr;grid-template-rows:auto auto;column-gap:7px;align-items:center;padding:9px 2px;list-style:none;font-size:11px}.rh-menu summary::-webkit-details-marker{display:none}
+.rh-menu summary>span{grid-row:1/3;display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:rgba(255,230,0,.09);color:#ffe600;font-size:7px}
+.rh-menu summary>small{font-size:7px;font-weight:500;color:#8398aa}
+.rh-menu-category{padding:4px 0 9px}.rh-menu-category h3{margin:5px 0 1px;font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:#fff45c}.rh-menu-category p{margin:0 0 6px!important;font-size:8px!important;line-height:1.35!important;color:#8599aa!important}
+.rh-camera-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.rh-camera-choice{display:flex;min-height:42px!important;flex-direction:column;align-items:flex-start;justify-content:center;padding:6px 7px!important;text-align:left}
+.rh-camera-choice strong{font-size:9px;line-height:1.15}.rh-camera-choice small{margin-top:2px;font-size:6px;color:#8298aa}.rh-camera-choice[aria-pressed=true] small{color:#39390a}
+.rh-menu-tools{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:5px 0 2px}.rh-menu-tools button{min-height:43px;padding:5px!important;font-size:8px!important}.rh-menu-tools small{display:block;margin-top:2px;font-size:6px;color:#8398aa}.rh-menu-tools button[aria-pressed=true] small{color:#37370a}
+.rh-layer{margin:2px 0}.rh-layer label{padding:6px 2px;font-size:9px}.rh-layer input{width:15px;height:15px}.rh-layer i{height:16px}.rh-layer button{min-height:28px;padding:2px 7px;font-size:9px}
+.rh-actions button,.rh-detail button,.rh-previous{min-height:32px!important;padding:6px 8px!important;font-size:9px!important}
+.rh-slider label,.rh-quality{font-size:9px}.rh-quality select{padding:8px;font-size:9px}
+.rh-menu p{font-size:9px;line-height:1.45}
+
+@media(max-width:650px){
+ .rh-menu{padding:9px}.rh-menu-head{top:-9px;margin:-9px -9px 3px;padding:9px}
+ .rh-camera-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .rh-camera-choice{min-height:38px!important}.rh-camera-choice strong{font-size:8px}.rh-camera-choice small{font-size:6px}
+ .rh-menu-tools{grid-template-columns:1fr 1fr 1fr}
+ .rh-menu details{padding-bottom:4px}.rh-menu summary{padding:7px 1px}
+}

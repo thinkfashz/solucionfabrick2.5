@@ -1,17 +1,17 @@
 import type * as Three from 'three';
 
 type TextureKind='wood'|'plaster'|'tile'|'gravel'|'grass'|'fabric'|'metal';
-type RemoteAsset={id:string;provider:'polyhaven'|'ambientcg';diffuse:string;displacement:string;roughness:string;normal:string;source:string;realWorldScaleM?:number};
+type RemoteAsset={id:string;provider:'polyhaven'|'ambientcg';diffuse:string;displacement:string;roughness:string;normal:string;ao?:string;source:string;realWorldScaleM?:number};
 
-// Web-sized CC0 sources from Poly Haven, mirrored to the project's Cloudinary CDN.
-// The procedural maps remain the immediate fallback, so first paint does not wait for network assets.
-// License: https://polyhaven.com/license (CC0).
-const POLYHAVEN:Partial<Record<TextureKind,RemoteAsset>>={
+// Web-sized CC0 sources mirrored to the project's Cloudinary CDN.
+// Poly Haven supplies most architectural materials; ambientCG Grass001 supplies the terrain grass.
+// Procedural maps remain the immediate fallback, so first paint never waits for network assets.
+const PBR_LIBRARY:Partial<Record<TextureKind,RemoteAsset>>={
  wood:{id:'wooden_planks',provider:'polyhaven',source:'https://polyhaven.com/a/wooden_planks',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745510/fabrick/recorrido-3d/pbr/wood/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745516/fabrick/recorrido-3d/pbr/wood/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745521/fabrick/recorrido-3d/pbr/wood/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789759477/fabrick/recorrido-3d/pbr/wood/normal.jpg'},
  plaster:{id:'white_plaster_02',provider:'polyhaven',source:'https://polyhaven.com/a/white_plaster_02',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745526/fabrick/recorrido-3d/pbr/plaster/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745532/fabrick/recorrido-3d/pbr/plaster/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745536/fabrick/recorrido-3d/pbr/plaster/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789759483/fabrick/recorrido-3d/pbr/plaster/normal.jpg'},
  tile:{id:'floor_tiles_08',provider:'polyhaven',source:'https://polyhaven.com/a/floor_tiles_08',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745542/fabrick/recorrido-3d/pbr/tile/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745547/fabrick/recorrido-3d/pbr/tile/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745553/fabrick/recorrido-3d/pbr/tile/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789759492/fabrick/recorrido-3d/pbr/tile/normal.jpg'},
  gravel:{id:'gravel',provider:'polyhaven',source:'https://polyhaven.com/a/gravel',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745557/fabrick/recorrido-3d/pbr/gravel/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745562/fabrick/recorrido-3d/pbr/gravel/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745567/fabrick/recorrido-3d/pbr/gravel/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789759505/fabrick/recorrido-3d/pbr/gravel/normal.jpg'},
- grass:{id:'Grass001',provider:'ambientcg',source:'https://ambientcg.com/view?id=Grass001',realWorldScaleM:1.4,diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789761954/fabrick/recorrido-3d/pbr/grass-ambientcg/color.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789761979/fabrick/recorrido-3d/pbr/grass-ambientcg/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789761966/fabrick/recorrido-3d/pbr/grass-ambientcg/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789761960/fabrick/recorrido-3d/pbr/grass-ambientcg/normal.jpg'},
+ grass:{id:'Grass001',provider:'ambientcg',source:'https://ambientcg.com/view?id=Grass001',realWorldScaleM:1.4,diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789761954/fabrick/recorrido-3d/pbr/grass-ambientcg/color.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789761979/fabrick/recorrido-3d/pbr/grass-ambientcg/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789761966/fabrick/recorrido-3d/pbr/grass-ambientcg/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789761960/fabrick/recorrido-3d/pbr/grass-ambientcg/normal.jpg',ao:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789761972/fabrick/recorrido-3d/pbr/grass-ambientcg/ao.jpg'},
  metal:{id:'corrugated_iron',provider:'polyhaven',source:'https://polyhaven.com/a/corrugated_iron',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745588/fabrick/recorrido-3d/pbr/metal/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745592/fabrick/recorrido-3d/pbr/metal/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745597/fabrick/recorrido-3d/pbr/metal/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789759510/fabrick/recorrido-3d/pbr/metal/normal.jpg'},
 };
 
@@ -37,7 +37,8 @@ export function materialTexture(T:typeof Three,kind:TextureKind,color:string){
  const bumpCanvas=document.createElement('canvas');bumpCanvas.width=bumpCanvas.height=size;const bc=bumpCanvas.getContext('2d');
  const roughCanvas=document.createElement('canvas');roughCanvas.width=roughCanvas.height=size;const rc=roughCanvas.getContext('2d');
  const normalCanvas=document.createElement('canvas');normalCanvas.width=normalCanvas.height=size;const nc=normalCanvas.getContext('2d');
- if(!c||!bc||!rc||!nc)return null;c.fillStyle=color;c.fillRect(0,0,size,size);bc.fillStyle='#808080';bc.fillRect(0,0,size,size);nc.fillStyle='#8080ff';nc.fillRect(0,0,size,size);
+ const aoCanvas=document.createElement('canvas');aoCanvas.width=aoCanvas.height=size;const ac=aoCanvas.getContext('2d');
+ if(!c||!bc||!rc||!nc||!ac)return null;c.fillStyle=color;c.fillRect(0,0,size,size);bc.fillStyle='#808080';bc.fillRect(0,0,size,size);nc.fillStyle='#8080ff';nc.fillRect(0,0,size,size);ac.fillStyle='#ffffff';ac.fillRect(0,0,size,size);
  const roughBase=kind==='metal'?92:kind==='tile'?86:kind==='wood'?112:kind==='fabric'?225:kind==='grass'||kind==='gravel'?238:190;rc.fillStyle=`rgb(${roughBase},${roughBase},${roughBase})`;rc.fillRect(0,0,size,size);
  let seed=731;const random=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296};
  for(let i=0;i<(lowDetail?3600:15000);i++){const x=random()*size,y=random()*size,a=random()>.5?'rgba(255,255,255,.08)':'rgba(0,0,0,.07)';c.fillStyle=a;c.fillRect(x,y,1+random()*3,1+random()*3);bc.fillStyle=random()>.5?'#999':'#666';bc.fillRect(x,y,1+random()*3,1+random()*3);const rv=Math.max(30,Math.min(250,roughBase+(random()-.5)*28));rc.fillStyle=`rgb(${rv},${rv},${rv})`;rc.fillRect(x,y,2+random()*5,2+random()*5)}
@@ -51,7 +52,8 @@ export function materialTexture(T:typeof Three,kind:TextureKind,color:string){
  const bump=new T.CanvasTexture(bumpCanvas);bump.wrapS=bump.wrapT=T.RepeatWrapping;bump.colorSpace=T.NoColorSpace;bump.anisotropy=4;
  const roughness=new T.CanvasTexture(roughCanvas);roughness.wrapS=roughness.wrapT=T.RepeatWrapping;roughness.colorSpace=T.NoColorSpace;roughness.anisotropy=4;
  const normal=new T.CanvasTexture(normalCanvas);normal.wrapS=normal.wrapT=T.RepeatWrapping;normal.colorSpace=T.NoColorSpace;normal.anisotropy=lowDetail?2:8;
- const remote=POLYHAVEN[kind];
+ const ao=lowDetail?null:new T.CanvasTexture(aoCanvas);if(ao){ao.wrapS=ao.wrapT=T.RepeatWrapping;ao.colorSpace=T.NoColorSpace;ao.anisotropy=8}
+ const remote=PBR_LIBRARY[kind];
  if(remote){
   const web=(url:string)=>lowDetail?url.replace('w_768','w_512'):url;
   asyncOverlay(canvas,web(remote.diffuse),()=>{map.needsUpdate=true},color);
@@ -60,7 +62,8 @@ export function materialTexture(T:typeof Three,kind:TextureKind,color:string){
   if(!lowDetail){
    asyncOverlay(bumpCanvas,remote.displacement,()=>{bump.needsUpdate=true});
    asyncOverlay(roughCanvas,remote.roughness,()=>{roughness.needsUpdate=true});
+   if(remote.ao&&ao)asyncOverlay(aoCanvas,remote.ao,()=>{ao.needsUpdate=true});
   }
  }
- return {map,bump,roughness,normal,source:remote?.id??'procedural',provider:remote?.provider??'procedural',sourceUrl:remote?.source,realWorldScaleM:remote?.realWorldScaleM};
+ return {map,bump,roughness,normal,ao,source:remote?.id??'procedural',provider:remote?.provider??'procedural',sourceUrl:remote?.source,realWorldScaleM:remote?.realWorldScaleM};
 }

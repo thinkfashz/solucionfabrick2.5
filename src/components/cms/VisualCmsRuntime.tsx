@@ -175,7 +175,7 @@ function applyOverride(element: HTMLElement, override: VisualCmsElementOverride,
     }
     if (typeof override.alt === 'string') element.setAttribute('alt', override.alt);
   }
-  if (override.hidden === true) element.style.display = 'none';
+  if (override.hidden === true || override.trashed === true) element.style.display = 'none';
   applyStylePatch(element, override.styles?.all);
   applyStylePatch(element, override.styles?.[device]);
   applyIconOverride(element, override);
@@ -322,6 +322,7 @@ function selectionPayload(element: HTMLElement) {
   const similar = similarSelectorFor(element);
   return {
     selector: uniqueSelector(element),
+    cmsId: element.dataset.cmsId || null,
     similarSelector: similar?.selector || null,
     similarCount: similar?.count || 0,
     tag: element.tagName.toLowerCase(),
@@ -381,6 +382,15 @@ function elementsForSelector(selector: string): HTMLElement[] {
   }
 }
 
+function elementsForOverride(override: VisualCmsElementOverride): HTMLElement[] {
+  const cmsId = override.cmsId?.trim();
+  if (cmsId) {
+    const byId = elementsForSelector(`[data-cms-id="${escapeAttributeValue(cmsId)}"]`);
+    if (byId.length) return byId;
+  }
+  return elementsForSelector(override.selector);
+}
+
 export default function VisualCmsRuntime() {
   const pathname = usePathname() || '/';
   const stored = useSiteContent('visual-overrides');
@@ -422,7 +432,7 @@ export default function VisualCmsRuntime() {
 
     for (const layer of layers) {
       const resolved = Object.values(layer!.elements)
-        .map((override) => ({ override, elements: elementsForSelector(override.selector) }))
+        .map((override) => ({ override, elements: elementsForOverride(override) }))
         .filter((entry) => entry.elements.length > 0)
         .sort((a, b) => b.elements.length - a.elements.length);
 

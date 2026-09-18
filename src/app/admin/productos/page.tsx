@@ -35,7 +35,7 @@ import ProductCategoryManager from './ProductCategoryManager';
 import ProductStudioEditor, { type ProductStudioRecord } from './ProductStudioEditor';
 
 type Filter = 'all' | 'active' | 'hidden' | 'featured' | 'low-stock' | 'without-image' | 'without-seo' | 'market';
-type Sort = 'newest' | 'name' | 'price-desc' | 'price-asc' | 'stock-asc';
+type Sort = 'attention' | 'newest' | 'name' | 'featured-first' | 'price-desc' | 'price-asc' | 'stock-asc' | 'stock-desc';
 
 function numberValue(value: unknown) {
   const parsed = Number(String(value ?? '').replace(/[^0-9.-]/g, ''));
@@ -110,7 +110,7 @@ export default function AdminProductosPage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
-  const [sort, setSort] = useState<Sort>('newest');
+  const [sort, setSort] = useState<Sort>('attention');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [studio, setStudio] = useState<{ mode: 'create' | 'edit'; product?: ProductStudioRecord } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -185,10 +185,25 @@ export default function AdminProductosPage() {
       return true;
     });
     return result.sort((a, b) => {
+      if (sort === 'attention') {
+        const attentionScore = (product: ProductStudioRecord) =>
+          (!product.image_url ? 4 : 0) +
+          (!hasSeo(product) ? 3 : 0) +
+          (!product.description ? 2 : 0) +
+          (numberValue(product.stock) <= 0 ? 2 : numberValue(product.stock) <= 5 ? 1 : 0) +
+          (numberValue(product.price) <= 0 ? 3 : 0);
+        const delta = attentionScore(b) - attentionScore(a);
+        if (delta) return delta;
+      }
+      if (sort === 'featured-first') {
+        const delta = Number(Boolean(b.featured)) - Number(Boolean(a.featured));
+        if (delta) return delta;
+      }
       if (sort === 'name') return a.name.localeCompare(b.name, 'es');
       if (sort === 'price-desc') return numberValue(b.price) - numberValue(a.price);
       if (sort === 'price-asc') return numberValue(a.price) - numberValue(b.price);
       if (sort === 'stock-asc') return numberValue(a.stock) - numberValue(b.stock);
+      if (sort === 'stock-desc') return numberValue(b.stock) - numberValue(a.stock);
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
     });
   }, [products, query, filter, sort, categoryMap]);
@@ -302,7 +317,7 @@ export default function AdminProductosPage() {
 
       {selectedIds.length ? <section className="sticky top-20 z-30 flex flex-col gap-3 rounded-2xl bg-[#111214]/96 p-3 text-white shadow-xl backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-black">{selectedIds.length} seleccionado{selectedIds.length === 1 ? '' : 's'}</p><p className="text-[11px] text-white/40">Acciones rápidas sin abrir cada ficha.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => void bulkPatch({ activo: true })} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black">Activar</button><button type="button" onClick={() => void bulkPatch({ activo: false })} className="rounded-lg bg-white/10 px-3 py-2 text-xs font-black">Ocultar</button><button type="button" onClick={() => void bulkPatch({ featured: true })} className="rounded-lg bg-[#f5c75d] px-3 py-2 text-xs font-black text-black">Destacar</button><button type="button" onClick={() => void bulkPatch({ featured: false })} className="rounded-lg bg-white/10 px-3 py-2 text-xs font-black">Quitar destacado</button><button type="button" onClick={() => setSelectedIds([])} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-black">Cancelar</button></div></section> : null}
 
-      <section className="rounded-2xl border border-black/7 bg-[#efe6d6] p-3 shadow-sm sm:p-4"><div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_180px_190px]"><label className="relative"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar producto, SKU, EAN, categoría o proveedor" className="min-h-11 w-full rounded-xl border border-black/8 bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#d18b16]" /></label><select value={filter} onChange={(event) => setFilter(event.target.value as Filter)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="all">Todos</option><option value="market">Desde radar</option><option value="active">Activos</option><option value="hidden">Ocultos</option><option value="featured">Destacados</option><option value="low-stock">Stock crítico</option><option value="without-image">Sin imagen</option><option value="without-seo">SEO pendiente</option></select><select value={sort} onChange={(event) => setSort(event.target.value as Sort)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="newest">Más recientes</option><option value="name">Nombre A-Z</option><option value="price-desc">Precio mayor</option><option value="price-asc">Precio menor</option><option value="stock-asc">Stock menor</option></select></div></section>
+      <section className="rounded-2xl border border-black/7 bg-[#efe6d6] p-3 shadow-sm sm:p-4"><div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_180px_190px]"><label className="relative"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar producto, SKU, EAN, categoría o proveedor" className="min-h-11 w-full rounded-xl border border-black/8 bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#d18b16]" /></label><select value={filter} onChange={(event) => setFilter(event.target.value as Filter)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="all">Todos</option><option value="market">Desde radar</option><option value="active">Activos</option><option value="hidden">Ocultos</option><option value="featured">Destacados</option><option value="low-stock">Stock crítico</option><option value="without-image">Sin imagen</option><option value="without-seo">SEO pendiente</option></select><select value={sort} onChange={(event) => setSort(event.target.value as Sort)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="attention">Necesita atención primero</option><option value="featured-first">Destacados primero</option><option value="newest">Más recientes</option><option value="name">Nombre A-Z</option><option value="price-desc">Precio mayor</option><option value="price-asc">Precio menor</option><option value="stock-asc">Stock menor</option><option value="stock-desc">Stock mayor</option></select></div></section>
 
       <section className="overflow-hidden rounded-[1.6rem] border border-black/7 bg-[#fffaf0] shadow-sm">
         <div className="hidden grid-cols-[46px_minmax(280px,1fr)_150px_120px_92px_110px_116px] items-center gap-3 border-b border-black/7 bg-[#f1e8d8] px-4 py-3 text-[9px] font-black uppercase tracking-[.14em] text-black/35 lg:grid"><span></span><span>Producto</span><span>Precio</span><span>Stock</span><span>SEO</span><span>Estado</span><span>Acciones</span></div>

@@ -247,6 +247,7 @@ function clickByText(selector: string, text: string) {
 }
 
 export default function ExperienceShell() {
+  const shellRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<LabTab>("quake");
   const [infoOpen, setInfoOpen] = useState(false);
@@ -359,6 +360,16 @@ export default function ExperienceShell() {
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("fabrick:technical", { detail: { mode: technicalMode, stage: constructionStage } }));
   }, [technicalMode, constructionStage]);
+
+  useEffect(() => {
+    const handler=(event:Event)=>{
+      const active=Boolean((event as CustomEvent<{active?:boolean}>).detail?.active);
+      shellRef.current?.classList.toggle("sf-is-interacting",active);
+    };
+    window.addEventListener("fabrick:interaction",handler);
+    return()=>window.removeEventListener("fabrick:interaction",handler);
+  }, []);
+
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -518,7 +529,7 @@ export default function ExperienceShell() {
   } as CSSProperties;
 
   return (
-    <div className={`sf-experience sf-light-${light} sf-phase-${phase}`} style={sceneStyle} data-interior-lights={interiorLights} data-exterior-lights={exteriorLights} data-tech={technicalMode}>
+    <div ref={shellRef} className={`sf-experience sf-light-${light} sf-phase-${phase}`} style={sceneStyle} data-interior-lights={interiorLights} data-exterior-lights={exteriorLights} data-tech={technicalMode}>
       <div className="sf-scene">
         <ReferenceHouse />
         <div className="sf-light-sim" aria-hidden="true" />

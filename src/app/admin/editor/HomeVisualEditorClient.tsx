@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArchiveRestore,
   ChevronDown,
   ChevronUp,
   Copy,
@@ -9,6 +10,7 @@ import {
   EyeOff,
   GripVertical,
   Loader2,
+  Lock,
   Monitor,
   Redo2,
   RotateCcw,
@@ -16,8 +18,10 @@ import {
   SlidersHorizontal,
   Smartphone,
   Tablet,
+  Trash2,
   Type,
   Undo2,
+  Unlock,
 } from 'lucide-react';
 import HomeVisualInspector from './HomeVisualInspector';
 import type { PreviewTextAction } from '@/components/cms/HomeVisualTextToolbar';
@@ -53,7 +57,7 @@ const WIDTHS: Record<VisualDevice, string> = { mobile: '390px', tablet: '768px',
 const DEVICE_LABELS: Record<VisualDevice, string> = { mobile: 'Móvil', tablet: 'Tablet', desktop: 'PC' };
 
 type PreviewCardAction = RepeatedItemAction | 'toggle-hidden' | 'inspect';
-type PreviewSectionAction = 'move-up' | 'move-down' | 'duplicate' | 'toggle-enabled' | 'inspect';
+type PreviewSectionAction = 'move-up' | 'move-down' | 'duplicate' | 'toggle-enabled' | 'toggle-lock' | 'trash' | 'restore-trash' | 'inspect';
 
 export default function HomeVisualEditorClient() {
   const [draft, setDraft] = useState<HomePageContent>(DEFAULT_HOME_PAGE);
@@ -363,6 +367,11 @@ export default function HomeVisualEditorClient() {
   }
 
   function reorder(id: string, direction: -1 | 1) {
+    const source = draftRef.current.sections.find((section) => section.id === id);
+    if (source?.editor?.lock?.move === true) {
+      setStatus('La sección está bloqueada y no se puede mover.');
+      return;
+    }
     commitDraft((current) => {
       const list = [...current.sections].sort((a, b) => a.order - b.order);
       const index = list.findIndex((section) => section.id === id);
@@ -375,6 +384,11 @@ export default function HomeVisualEditorClient() {
 
   function moveSection(sourceId: string, targetId: string) {
     if (!sourceId || sourceId === targetId) return;
+    const source = draftRef.current.sections.find((section) => section.id === sourceId);
+    if (source?.editor?.lock?.move === true || source?.editor?.trashed === true) {
+      setStatus('La sección está bloqueada o en papelera y no se puede mover.');
+      return;
+    }
     commitDraft((current) => {
       const list = [...current.sections].sort((a, b) => a.order - b.order);
       const sourceIndex = list.findIndex((section) => section.id === sourceId);
@@ -389,6 +403,10 @@ export default function HomeVisualEditorClient() {
   }
 
   function duplicate(section: HomeVisualSection) {
+    if (section.editor?.lock?.move === true || section.editor?.lock?.content === true || section.editor?.trashed === true) {
+      setStatus('Desbloquea la sección antes de duplicarla.');
+      return;
+    }
     const copy: HomeVisualSection = {
       ...section,
       id: `${section.type}-${Date.now().toString(36)}`,
@@ -396,6 +414,7 @@ export default function HomeVisualEditorClient() {
       order: section.order + 5,
       style: JSON.parse(JSON.stringify(section.style)) as HomeVisualSectionStyle,
       content: JSON.parse(JSON.stringify(section.content)) as Record<string, unknown>,
+      editor: undefined,
     };
     commitDraft((current) => ({ ...current, sections: [...current.sections, copy] }), false);
     selectSection(copy.id);
@@ -403,6 +422,49 @@ export default function HomeVisualEditorClient() {
 
   function handlePreviewSectionAction(action: PreviewSectionAction) {
     if (!selected) return;
+    const sectionLocked = Boolean(selected.editor?.lock?.move || selected.editor?.lock?.remove || selected.editor?.lock?.content || selected.editor?.lock?.style);
+
+    if (action === 'toggle-lock') {
+      const next = !sectionLocked;
+      patchSection(selected.id, (section) => ({
+        ...section,
+        editor: {
+          ...(section.editor || {}),
+          lock: { move: next, remove: next, content: next, style: next },
+        },
+      }));
+      setStatus(next ? 'Sección bloqueada: contenido, diseño, movimiento y eliminación protegidos.' : 'Sección desbloqueada.');
+      return;
+    }
+
+    if (action === 'restore-trash') {
+      patchSection(selected.id, (section) => ({
+        ...section,
+        enabled: true,
+        editor: { ...(section.editor || {}), trashed: false, trashedAt: '' },
+      }));
+      setStatus('Sección restaurada desde la papelera.');
+      return;
+    }
+
+    if (action === 'trash') {
+      if (selected.editor?.lock?.remove === true) {
+        setStatus('La sección está protegida contra eliminación. Desbloquéala primero.');
+        return;
+      }
+      patchSection(selected.id, (section) => ({
+        ...section,
+        enabled: false,
+        editor: { ...(section.editor || {}), trashed: true, trashedAt: new Date().toISOString() },
+      }));
+      setStatus('Sección enviada a la papelera del borrador. Puedes restaurarla antes de publicar.');
+      return;
+    }
+
+    if (sectionLocked && action !== 'inspect') {
+      setStatus('La sección está bloqueada. Desbloquéala para modificar su estructura o visibilidad.');
+      return;
+    }
     if (action === 'move-up') {
       if (selectedIndex <= 0) return;
       reorder(selected.id, -1);
@@ -487,11 +549,11 @@ export default function HomeVisualEditorClient() {
 
       <div className="grid min-h-[calc(100dvh-4rem)] lg:grid-cols-[270px_minmax(0,1fr)_380px]">
         <aside className="border-b border-white/8 bg-[#0B0C0E] p-3 lg:border-b-0 lg:border-r lg:p-4">
-          <div className="mb-3 flex items-center justify-between"><span className="text-[9px] font-black uppercase tracking-[.18em] text-white/35">Estructura</span><span className="text-[9px] text-white/25">{ordered.filter((section) => section.enabled).length}/{ordered.length}</span></div>
+          <div className="mb-3 flex items-center justify-between"><span className="text-[9px] font-black uppercase tracking-[.18em] text-white/35">Estructura</span><span className="text-[9px] text-white/25">{ordered.filter((section) => section.enabled && section.editor?.trashed !== true).length}/{ordered.length}</span></div>
           <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible">
             {ordered.map((section, index) => (
-              <button key={section.id} type="button" draggable onDragStart={() => setDraggedId(section.id)} onDragEnd={() => setDraggedId(null)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (draggedId) moveSection(draggedId, section.id); setDraggedId(null); }} onClick={() => selectSection(section.id)} className={`min-w-[185px] rounded-xl border p-3 text-left transition lg:min-w-0 ${draggedId === section.id ? 'opacity-45' : ''} ${section.id === selected?.id ? 'border-[#FFB000]/55 bg-[#FFB000]/8' : 'border-white/8 bg-black/25 hover:border-white/20'}`}>
-                <div className="flex items-center gap-2"><GripVertical className="h-3.5 w-3.5 shrink-0 text-white/20" /><span className="grid h-6 w-6 place-items-center rounded-md bg-white/5 text-[9px] font-black text-white/30">{String(index + 1).padStart(2, '0')}</span><span className="min-w-0 flex-1 truncate text-xs font-black">{section.label}</span>{section.enabled ? <Eye className="h-3.5 w-3.5 text-emerald-300/70" /> : <EyeOff className="h-3.5 w-3.5 text-white/25" />}</div>
+              <button key={section.id} type="button" draggable={section.editor?.lock?.move !== true && section.editor?.trashed !== true} onDragStart={() => setDraggedId(section.id)} onDragEnd={() => setDraggedId(null)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (draggedId) moveSection(draggedId, section.id); setDraggedId(null); }} onClick={() => selectSection(section.id)} className={`min-w-[185px] rounded-xl border p-3 text-left transition lg:min-w-0 ${draggedId === section.id ? 'opacity-45' : ''} ${section.editor?.trashed === true ? 'border-red-400/20 bg-red-400/[.04] opacity-65' : section.id === selected?.id ? 'border-[#FFB000]/55 bg-[#FFB000]/8' : 'border-white/8 bg-black/25 hover:border-white/20'}`}>
+                <div className="flex items-center gap-2"><GripVertical className={`h-3.5 w-3.5 shrink-0 ${section.editor?.lock?.move === true ? 'text-[#FFB000]/60' : 'text-white/20'}`} /><span className="grid h-6 w-6 place-items-center rounded-md bg-white/5 text-[9px] font-black text-white/30">{String(index + 1).padStart(2, '0')}</span><span className="min-w-0 flex-1 truncate text-xs font-black">{section.label}</span>{section.editor?.lock?.move === true ? <Lock className="h-3.5 w-3.5 text-[#FFB000]/70" /> : null}{section.editor?.trashed === true ? <Trash2 className="h-3.5 w-3.5 text-red-300/70" /> : section.enabled ? <Eye className="h-3.5 w-3.5 text-emerald-300/70" /> : <EyeOff className="h-3.5 w-3.5 text-white/25" />}</div>
               </button>
             ))}
           </div>
@@ -515,6 +577,8 @@ export default function HomeVisualEditorClient() {
                 <button type="button" title="Mover bloque abajo" aria-label="Mover bloque abajo" disabled={selectedIndex < 0 || selectedIndex >= ordered.length - 1} onClick={() => handlePreviewSectionAction('move-down')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/8 bg-white/[.04] text-white/65 disabled:opacity-20"><ChevronDown className="h-3.5 w-3.5" /></button>
                 <button type="button" title="Duplicar bloque" aria-label="Duplicar bloque" onClick={() => handlePreviewSectionAction('duplicate')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/8 bg-white/[.04] text-white/65"><Copy className="h-3.5 w-3.5" /></button>
                 <button type="button" title={selected.enabled ? 'Ocultar bloque' : 'Mostrar bloque'} aria-label={selected.enabled ? 'Ocultar bloque' : 'Mostrar bloque'} onClick={() => handlePreviewSectionAction('toggle-enabled')} className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border ${selected.enabled ? 'border-emerald-300/15 bg-emerald-300/[.06] text-emerald-200' : 'border-white/8 bg-white/[.04] text-white/40'}`}>{selected.enabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}</button>
+                <button type="button" title={selected.editor?.lock?.move ? 'Desbloquear sección' : 'Bloquear sección'} aria-label={selected.editor?.lock?.move ? 'Desbloquear sección' : 'Bloquear sección'} onClick={() => handlePreviewSectionAction('toggle-lock')} className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border ${selected.editor?.lock?.move ? 'border-[#FFB000]/30 bg-[#FFB000]/12 text-[#FFD879]' : 'border-white/8 bg-white/[.04] text-white/55'}`}>{selected.editor?.lock?.move ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}</button>
+                {selected.editor?.trashed === true ? <button type="button" title="Restaurar desde papelera" aria-label="Restaurar desde papelera" onClick={() => handlePreviewSectionAction('restore-trash')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-emerald-400/20 bg-emerald-400/8 text-emerald-200"><ArchiveRestore className="h-3.5 w-3.5" /></button> : <button type="button" title="Enviar a papelera" aria-label="Enviar a papelera" disabled={selected.editor?.lock?.remove === true} onClick={() => handlePreviewSectionAction('trash')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-red-400/15 bg-red-400/5 text-red-200/70 disabled:opacity-25"><Trash2 className="h-3.5 w-3.5" /></button>}
                 <button type="button" title="Inspector de diseño" aria-label="Inspector de diseño" onClick={() => handlePreviewSectionAction('inspect')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[#FFB000]/20 bg-[#FFB000]/10 text-[#FFD879]"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
               </div>
             ) : null}
@@ -523,7 +587,18 @@ export default function HomeVisualEditorClient() {
         </section>
 
         <aside id="home-visual-inspector-panel" className="scroll-mt-20 border-t border-white/8 bg-[#0B0C0E] p-4 lg:border-l lg:border-t-0">
-          {selected ? <HomeVisualInspector section={selected} device={device} selectedField={selectedField} setSelectedField={setSelectedField} patch={(updater) => patchSection(selected.id, updater)} reorder={(direction) => reorder(selected.id, direction)} duplicate={() => duplicate(selected)} /> : null}
+          {selected ? (
+            <>
+              <div className="mb-3 grid gap-2 rounded-xl border border-white/8 bg-black/25 p-2.5">
+                <div className="flex items-center justify-between gap-2"><div><p className="text-[8px] font-black uppercase tracking-[.12em] text-white/30">Protección de sección</p><p className="text-[9px] font-bold text-white/55">{selected.id}</p></div>{selected.editor?.lock?.move ? <Lock className="h-4 w-4 text-[#FFB000]" /> : <Unlock className="h-4 w-4 text-white/25" />}</div>
+                <button type="button" onClick={() => handlePreviewSectionAction('toggle-lock')} className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg border text-[9px] font-black ${selected.editor?.lock?.move ? 'border-[#FFB000]/35 bg-[#FFB000]/10 text-[#FFD879]' : 'border-white/10 bg-white/[.03] text-white/55'}`}>{selected.editor?.lock?.move ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}{selected.editor?.lock?.move ? 'Desbloquear sección' : 'Bloquear sección'}</button>
+                {selected.editor?.trashed === true ? <button type="button" onClick={() => handlePreviewSectionAction('restore-trash')} className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/8 text-[9px] font-black text-emerald-200"><ArchiveRestore className="h-3.5 w-3.5" /> Restaurar desde papelera</button> : <button type="button" onClick={() => handlePreviewSectionAction('trash')} disabled={selected.editor?.lock?.remove === true} className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-400/15 bg-red-400/5 text-[9px] font-black text-red-200/70 disabled:opacity-30"><Trash2 className="h-3.5 w-3.5" /> Enviar a papelera</button>}
+              </div>
+              <div className={selected.editor?.lock?.content || selected.editor?.lock?.style ? 'pointer-events-none opacity-45' : ''}>
+                <HomeVisualInspector section={selected} device={device} selectedField={selectedField} setSelectedField={setSelectedField} patch={(updater) => patchSection(selected.id, updater)} reorder={(direction) => reorder(selected.id, direction)} duplicate={() => duplicate(selected)} />
+              </div>
+            </>
+          ) : null}
           <p className="mt-5 border-t border-white/8 pt-4 text-[9px] leading-5 text-white/30">{status}</p>
         </aside>
       </div>

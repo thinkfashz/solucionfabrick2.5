@@ -56,7 +56,9 @@ function roleForName(name: string): AssetNodeRole {
 function indexScene(root: Three.Object3D | null, byRole: Map<AssetNodeRole, Three.Object3D[]>) {
   const kitchenDoors: Three.Object3D[] = [];
   root?.traverse((object) => {
-    const role = roleForName(object.name);
+    const directRole = roleForName(object.name);
+    const inheritedRole = object.parent?.userData?.fabrickRole as AssetNodeRole | undefined;
+    const role = directRole === "unknown" && inheritedRole ? inheritedRole : directRole;
     if (!byRole.has(role)) byRole.set(role, []);
     byRole.get(role)!.push(object);
     object.userData.fabrickRole = role;

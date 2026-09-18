@@ -62,6 +62,7 @@ function cloneSection(section: HomeVisualSection): HomeVisualSection {
     order: section.order + 5,
     style: JSON.parse(JSON.stringify(section.style)) as HomeVisualSectionStyle,
     content: JSON.parse(JSON.stringify(section.content)) as Record<string, unknown>,
+    editor: undefined,
   };
 }
 
@@ -76,6 +77,10 @@ function applySectionAction(content: HomePageContent, sectionId: string, action:
   const ordered = [...content.sections].sort((a, b) => a.order - b.order);
   const index = ordered.findIndex((section) => section.id === sectionId);
   if (index < 0) return content;
+  const current = ordered[index];
+  if (current.editor?.trashed === true) return content;
+  if (action === 'duplicate' && (current.editor?.lock?.move === true || current.editor?.lock?.content === true)) return content;
+  if (action !== 'duplicate' && current.editor?.lock?.move === true) return content;
 
   if (action === 'duplicate') {
     if (NON_DUPLICABLE_SECTION_TYPES.has(ordered[index].type)) return content;
@@ -95,6 +100,7 @@ function applySectionRelocate(content: HomePageContent, sectionId: string, targe
   const from = ordered.findIndex((section) => section.id === sectionId);
   const to = ordered.findIndex((section) => section.id === targetSectionId);
   if (from < 0 || to < 0 || from === to) return content;
+  if (ordered[from].editor?.lock?.move === true || ordered[from].editor?.trashed === true) return content;
   const [moved] = ordered.splice(from, 1);
   ordered.splice(to, 0, moved);
   return normalizedSections(content, ordered);
@@ -116,16 +122,29 @@ function applyInsertBlock(content: HomePageContent, templateId: string, afterSec
 
 function applyRemoveLibraryBlock(content: HomePageContent, sectionId: string) {
   if (!isHomeVisualLibraryBlockId(sectionId)) return content;
-  const ordered = [...content.sections].sort((a, b) => a.order - b.order);
-  const next = ordered.filter((section) => section.id !== sectionId);
-  if (next.length === ordered.length) return content;
-  return normalizedSections(content, next);
+  let changed = false;
+  const sections = content.sections.map((section) => {
+    if (section.id !== sectionId) return section;
+    if (section.editor?.lock?.remove === true) return section;
+    changed = true;
+    return {
+      ...section,
+      enabled: false,
+      editor: {
+        ...(section.editor || {}),
+        trashed: true,
+        trashedAt: new Date().toISOString(),
+      },
+    };
+  });
+  return changed ? normalizeHomePage({ ...content, sections }) : content;
 }
 
 function applyCardAction(content: HomePageContent, sectionId: string, container: string, action: StructureAction) {
   let changed = false;
   const sections = content.sections.map((section) => {
     if (section.id !== sectionId) return section;
+    if (section.editor?.trashed === true || section.editor?.lock?.move === true || section.editor?.lock?.content === true) return section;
     const result = mutateRepeatedItem(section, container, action as RepeatedItemAction);
     if (!result) return section;
     changed = true;
@@ -138,6 +157,7 @@ function applyCardRelocate(content: HomePageContent, sectionId: string, containe
   let changed = false;
   const sections = content.sections.map((section) => {
     if (section.id !== sectionId) return section;
+    if (section.editor?.trashed === true || section.editor?.lock?.move === true) return section;
     const source = getRepeatedItemPosition(section, container);
     const target = getRepeatedItemPosition(section, targetContainer);
     if (!source || !target || source.key !== target.key || source.index === target.index || source.length !== target.length) return section;
@@ -311,11 +331,16 @@ export default function VisualCmsHomeStructureBridge() {
       if (data?.type === 'cms:visual-home-remove-block' && typeof data.sectionId === 'string') {
         void ensureLoaded().then((current) => {
           if (!isHomeVisualLibraryBlockId(data.sectionId)) {
-            emitState('Solo los bloques creados desde la biblioteca se eliminan desde este control.');
+            emitState('Solo los bloques creados desde la biblioteca se envían a papelera desde este control.');
+            return;
+          }
+          const selected = current.sections.find((section) => section.id === data.sectionId);
+          if (selected?.editor?.lock?.remove === true) {
+            emitState('Este bloque está protegido contra eliminación.');
             return;
           }
           const next = applyRemoveLibraryBlock(current, data.sectionId!);
-          if (!commitDraft(current, next, 'Bloque eliminado del borrador. Puedes deshacerlo.')) emitState('El bloque ya no existe en el borrador.');
+          if (!commitDraft(current, next, 'Bloque enviado a la papelera del borrador. Puedes deshacerlo o restaurarlo desde Inicio.')) emitState('El bloque ya estaba en papelera o está protegido.');
         }).catch((error) => emitState(error instanceof Error ? error.message : 'No se pudo eliminar el bloque.'));
         return;
       }

@@ -197,3 +197,56 @@
 .sf-quake-hud{position:fixed;z-index:31;left:50%;top:12px;transform:translateX(-50%);display:grid;grid-template-columns:34px minmax(150px,230px);gap:8px;align-items:center;min-width:245px;padding:6px 8px 8px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(5,16,29,.72);box-shadow:0 9px 26px rgba(0,0,0,.2)}
 .sf-quake-hud>span{display:grid;place-items:center;width:31px;height:31px;border-radius:8px;background:rgba(255,230,0,.1);color:#ffe600;font-size:8px;font-weight:800}.sf-quake-hud>div{display:flex;min-width:0;flex-direction:column}.sf-quake-hud strong{font-size:9px}.sf-quake-hud small{margin-top:2px;overflow:hidden;color:#8da4b6;font-size:6px;text-overflow:ellipsis;white-space:nowrap}.sf-quake-hud>i{position:absolute;left:8px;right:auto;bottom:3px;height:2px;border-radius:2px;background:#ffe600;transition:width .08s linear}
 @media(max-width:700px){.sf-quake-hud{top:8px;min-width:205px;grid-template-columns:29px 1fr;padding:5px 7px 7px}.sf-quake-hud>span{width:27px;height:27px}.sf-quake-hud strong{font-size:8px}.sf-quake-hud small{font-size:5px}}
+
+
+/* Viewer v5 — restrained architectural UI. One scene, one active surface, minimal motion. */
+.sf-experience{
+ --sf-surface:rgba(7,16,27,.88);
+ --sf-surface-soft:rgba(7,16,27,.68);
+ --sf-line:rgba(214,226,235,.10);
+ --sf-text:#f6f8fa;
+ --sf-muted:#91a4b3;
+ --sf-accent:#ffe600;
+ --ease-out:cubic-bezier(.23,1,.32,1);
+ --ease-drawer:cubic-bezier(.32,.72,0,1);
+}
+.sf-quick,.sf-camera-dock,.sf-area-card,.sf-material-detail,.sf-lab,.sf-damage-detail{
+ background:var(--sf-surface);
+ border-color:var(--sf-line);
+ box-shadow:0 12px 34px rgba(0,0,0,.22);
+ backdrop-filter:blur(6px);
+ -webkit-backdrop-filter:blur(6px);
+}
+.sf-quick{border-radius:12px}
+.sf-quick button{border-radius:8px;transition:background-color 140ms var(--ease-out),color 140ms var(--ease-out),border-color 140ms var(--ease-out)}
+.sf-camera-dock{border-radius:12px}
+.sf-camera-current{background:transparent!important}
+.sf-camera-current strong{letter-spacing:-.01em}
+.sf-camera-current small{color:var(--sf-muted)}
+.sf-area-card,.sf-material-detail,.sf-damage-detail{border-radius:12px}
+.sf-material-row{background:transparent;border-color:rgba(255,255,255,.055);transition:border-color 160ms var(--ease-out),background-color 160ms var(--ease-out),transform 160ms var(--ease-out)}
+.sf-material-row>i{opacity:.72}
+.sf-camera-sheet{background:#07131f;border-color:var(--sf-line);box-shadow:0 -16px 42px rgba(0,0,0,.28);animation:sfSheetUp 220ms var(--ease-drawer)}
+.sf-camera-sheet section nav button{transition:background-color 160ms var(--ease-out),border-color 160ms var(--ease-out),color 160ms var(--ease-out)}
+.sf-sheet-handle{touch-action:none;cursor:grab}.sf-sheet-handle:active{cursor:grabbing}
+.sf-damage-pin{animation:none!important;backdrop-filter:none;box-shadow:0 8px 22px rgba(0,0,0,.22)}
+.sf-damage-toast{transition:transform 160ms var(--ease-out),opacity 160ms var(--ease-out)}
+.sf-damage-toast-main{touch-action:pan-y}
+.sf-lab{backdrop-filter:blur(7px) saturate(105%);-webkit-backdrop-filter:blur(7px) saturate(105%)}
+.sf-lab-tabs button,.sf-segmented button,.sf-switches button,.sf-native-menu,.sf-play{transition:background-color 160ms var(--ease-out),border-color 160ms var(--ease-out),color 160ms var(--ease-out),transform 120ms var(--ease-out)}
+.sf-play:active,.sf-native-menu:active{transform:scale(.985)}
+.sf-progress i{transition:transform 120ms linear;width:100%!important;transform:scaleX(var(--sf-progress,0));transform-origin:left center}
+.sf-quake-hud>i{transition:transform 80ms linear;width:calc(100% - 16px)!important;transform:scaleX(var(--sf-quake-progress,0));transform-origin:left center}
+
+@media(hover:hover) and (pointer:fine){
+ .sf-material-row:hover:not(:disabled){border-color:rgba(255,230,0,.26);background:rgba(255,230,0,.035);transform:translateY(-1px)}
+ .sf-camera-sheet section nav button:hover{border-color:rgba(255,230,0,.22);background:rgba(255,230,0,.035)}
+}
+@media(hover:none),(pointer:coarse){
+ .sf-material-row:hover:not(:disabled){transform:none}
+}
+@media(prefers-reduced-motion:reduce){
+ .sf-camera-sheet{animation:none!important}
+ .sf-damage-toast,.sf-material-row,.sf-quick button,.sf-camera-sheet section nav button,.sf-lab-tabs button,.sf-segmented button,.sf-switches button,.sf-native-menu,.sf-play{transition-duration:0ms!important}
+ .sf-hypocenter i{animation:none!important}
+}

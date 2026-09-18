@@ -310,7 +310,7 @@ export default function UniversalVisualEditorClient() {
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; route?: string; element?: Selection; action?: string; value?: string; selector?: string; x?: number; y?: number; kind?: 'Imagen' | 'Fondo' | 'Icono'; url?: string; publicId?: string; folder?: string; targetMode?: TargetMode; elementScope?: ElementScope } | null;
+      const data = event.data as { type?: string; route?: string; element?: Selection; action?: string; value?: string; selector?: string; x?: number; y?: number; kind?: 'Imagen' | 'Fondo' | 'Icono'; url?: string; publicId?: string; folder?: string } | null;
       if (data?.type === 'cms:preview-ready' || data?.type === 'cms:visual-ready') {
         setIframeReady(true);
         sendPreview(draft);
@@ -327,7 +327,7 @@ export default function UniversalVisualEditorClient() {
         setStatus(`Editando ${selected.tag}: ${selected.label || selected.selector}`);
         if (window.innerWidth < 1280) setMobilePanel('inspector');
       }
-      if ((data?.type === 'cms:visual-inline-action' || data?.type === 'cms:visual-editor-direct') && selection) {
+      if (data?.type === 'cms:visual-inline-action' && selection) {
         const value = typeof data.value === 'string' ? data.value : '';
         switch (data.action) {
           case 'text': updateSelected({ text: value }); setInspectorTab('content'); break;
@@ -350,10 +350,6 @@ export default function UniversalVisualEditorClient() {
           default: break;
         }
         if (window.innerWidth < 1280) setMobilePanel('inspector');
-      }
-      if (data?.type === 'cms:visual-editor-target') {
-        if (data.targetMode === 'single' || data.targetMode === 'similar') setTargetMode(data.targetMode);
-        if (data.elementScope === 'page' || data.elementScope === 'global') setElementScope(data.elementScope);
       }
       if (data?.type === 'cms:visual-cloudinary-apply' && selection && typeof data.url === 'string') {
         if (data.kind === 'Imagen') {
@@ -430,26 +426,6 @@ export default function UniversalVisualEditorClient() {
     };
     updateSelected({ styles: { [styleScope]: nextStyle } });
   }
-
-  useEffect(() => {
-    if (!selection) return;
-    const resolvedComputed: VisualCmsStylePatch = {
-      ...selection.computed,
-      ...(override?.styles?.all || {}),
-      ...(styleScope !== 'all' ? (override?.styles?.[styleScope] || {}) : {}),
-    };
-    window.postMessage({
-      type: 'cms:visual-editor-selection-sync',
-      element: {
-        ...selection,
-        text: override?.text ?? selection.text,
-        href: override?.href ?? selection.href,
-        src: override?.src ?? selection.src,
-        alt: override?.alt ?? selection.alt,
-        computed: resolvedComputed,
-      },
-    }, window.location.origin);
-  }, [selection, override, styleScope]);
 
   function resetSelected() {
     if (!selection || !targetSelector) return;

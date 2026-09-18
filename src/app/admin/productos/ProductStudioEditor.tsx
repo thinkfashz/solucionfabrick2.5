@@ -135,6 +135,9 @@ type SeoState = {
   secondaryKeywords: string;
 };
 
+type AiProviderChoice = 'openrouter' | 'ollama';
+type AiModelOption = { id: string; name: string };
+
 const inputClass = 'min-h-11 w-full rounded-xl border border-black/10 bg-white px-3.5 text-sm font-semibold text-[#111214] outline-none transition focus:border-[#d18b16] focus:ring-2 focus:ring-[#d18b16]/10';
 
 function numberValue(value: unknown) {
@@ -254,6 +257,13 @@ export default function ProductStudioEditor({
   const [marketingOptions, setMarketingOptions] = useState<MarketingOption[]>([]);
   const [imageObservations, setImageObservations] = useState<string[]>([]);
   const [aiWarnings, setAiWarnings] = useState<string[]>([]);
+  const initialSpecs = record(product?.specifications);
+  const [contentGuide, setContentGuide] = useState(() => String(initialSpecs.ai_content_guide || ''));
+  const [adminNotes, setAdminNotes] = useState(() => String(initialSpecs.admin_notes || ''));
+  const [aiProvider, setAiProvider] = useState<AiProviderChoice>(() => initialSpecs.ai_provider === 'ollama' ? 'ollama' : 'openrouter');
+  const [aiModel, setAiModel] = useState(() => String(initialSpecs.ai_model || ''));
+  const [aiModels, setAiModels] = useState<Record<AiProviderChoice, AiModelOption[]>>({ openrouter: [], ollama: [] });
+  const [autoFillFromGuide, setAutoFillFromGuide] = useState(() => initialSpecs.ai_autofill_from_guide === true);
   const [busy, setBusy] = useState<'save' | 'upload' | 'ai' | ''>('');
   const [notice, setNotice] = useState<{ type: 'ok' | 'error' | 'info'; text: string } | null>(null);
 
@@ -268,6 +278,12 @@ export default function ProductStudioEditor({
     setMarketingOptions([]);
     setImageObservations([]);
     setAiWarnings([]);
+    const nextSpecs = record(product?.specifications);
+    setContentGuide(String(nextSpecs.ai_content_guide || ''));
+    setAdminNotes(String(nextSpecs.admin_notes || ''));
+    setAiProvider(nextSpecs.ai_provider === 'ollama' ? 'ollama' : 'openrouter');
+    setAiModel(String(nextSpecs.ai_model || ''));
+    setAutoFillFromGuide(nextSpecs.ai_autofill_from_guide === true);
     setSection('ficha');
     setNotice(null);
   }, [mode, product?.id]);
@@ -275,6 +291,30 @@ export default function ProductStudioEditor({
   useEffect(() => {
     if (!form.category_id && categories[0]?.id) setForm((current) => ({ ...current, category_id: categories[0].id }));
   }, [categories, form.category_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/admin/modelos-ia/list', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((json: { providers?: Array<{ id?: string; configured?: boolean; models?: AiModelOption[] }> }) => {
+        if (cancelled) return;
+        const next: Record<AiProviderChoice, AiModelOption[]> = { openrouter: [], ollama: [] };
+        for (const provider of json.providers || []) {
+          if ((provider.id === 'openrouter' || provider.id === 'ollama') && provider.configured && Array.isArray(provider.models)) {
+            next[provider.id] = provider.models.map((model) => ({ id: String(model.id), name: String(model.name || model.id) })).filter((model) => model.id);
+          }
+        }
+        setAiModels(next);
+        setAiModel((current) => current || next[aiProvider][0]?.id || '');
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const available = aiModels[aiProvider];
+    if (available.length && !available.some((model) => model.id === aiModel)) setAiModel(available[0].id);
+  }, [aiProvider, aiModels, aiModel]);
 
   const categoryName = categories.find((item) => item.id === form.category_id)?.name || 'General';
   const cost = numberValue(form.supplier_price);
@@ -287,6 +327,8 @@ export default function ProductStudioEditor({
   const checkoutReference = salePrice + shipping + tax;
   const margin = basePrice > 0 && cost > 0 ? Math.round(((basePrice - cost) / basePrice) * 100) : null;
   const cover = form.image_url || gallery[0]?.url || '';
+  const stockAmount = Math.max(0, Math.floor(numberValue(form.stock)));
+  const canPublish = stockAmount > 0;
 
   const marketIntel = record(record(product?.specifications).market_intel);
   const hasMarketIntel = Object.keys(marketIntel).length > 0;
@@ -319,7 +361,20 @@ export default function ProductStudioEditor({
   }, [form.name, form.description, form.category_id, form.stock, basePrice, cover, seo.title, seo.description, seo.primaryKeyword]);
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => {
+      const next = { ...current, [key]: value };
+      if (key === 'stock' && numberValue(value) <= 0) next.activo = false;
+      return next;
+    });
+  }
+
+  function setProductActive(value: boolean) {
+    if (value && !canPublish) {
+      setNotice({ type: 'info', text: 'Para mostrar este producto en el catálogo necesitas al menos 1 unidad de stock.' });
+      setSection('ficha');
+      return;
+    }
+    setField('activo', value);
   }
 
   async function uploadFiles(files: File[]) {
@@ -390,13 +445,15 @@ export default function ProductStudioEditor({
       };
       const [commerceResponse, marketingResponse] = await Promise.all([
         fetch('/api/admin/products/ai-commerce', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product: productPayload }) }),
-        fetch('/api/admin/products/ai-marketing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product: productPayload, imageUrls, goal: 'mejorar ficha, posicionamiento, SEO y conversión', location: 'Chile' }) }),
+        fetch('/api/admin/products/ai-marketing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product: productPayload, imageUrls, goal: 'mejorar ficha, posicionamiento, SEO y conversión', location: 'Chile', provider: aiProvider, model: aiModel || undefined, guide: contentGuide }) }),
       ]);
       const commerceJson = await commerceResponse.json().catch(() => ({})) as { analysis?: CommerceAnalysis; error?: string; warning?: string };
       const marketingJson = await marketingResponse.json().catch(() => ({})) as { options?: MarketingOption[]; imageObservations?: string[]; warnings?: string[]; error?: string };
       if (!commerceResponse.ok && !marketingResponse.ok) throw new Error(commerceJson.error || marketingJson.error || 'La IA no pudo analizar este producto.');
       if (commerceJson.analysis) setCommerce(commerceJson.analysis);
-      setMarketingOptions(Array.isArray(marketingJson.options) ? marketingJson.options.slice(0, 2) : []);
+      const nextOptions = Array.isArray(marketingJson.options) ? marketingJson.options.slice(0, 2) : [];
+      setMarketingOptions(nextOptions);
+      if (autoFillFromGuide && nextOptions[0]) applyMarketing(nextOptions[0]);
       setImageObservations(Array.isArray(marketingJson.imageObservations) ? marketingJson.imageObservations : []);
       setAiWarnings([
         ...(commerceJson.warning ? [commerceJson.warning] : []),
@@ -487,6 +544,11 @@ export default function ProductStudioEditor({
         discount_percentage: discount,
         default_markup_percentage: markup,
         auto_markup_enabled: autoMarkup,
+        ai_content_guide: contentGuide.trim() || null,
+        admin_notes: adminNotes.trim() || null,
+        ai_provider: aiProvider,
+        ai_model: aiModel || null,
+        ai_autofill_from_guide: autoFillFromGuide,
         seo: seoPayload,
         ...(refreshedMarketIntel ? { market_intel: refreshedMarketIntel } : {}),
         ...(commerce ? { commerce_ai: commerce } : {}),
@@ -505,7 +567,7 @@ export default function ProductStudioEditor({
         stock: form.stock === '' ? null : Number(form.stock),
         delivery_days: form.delivery_days === '' ? null : Number(form.delivery_days),
         image_url: form.image_url || cleanGallery[0]?.url || null,
-        activo: form.activo,
+        activo: form.activo && canPublish,
         featured: form.featured,
         sku: form.sku.trim() || null,
         ean: form.ean.trim() || null,
@@ -573,7 +635,7 @@ export default function ProductStudioEditor({
               </Panel>
 
               <Panel title="Estado y origen" description="Controla visibilidad sin mezclarla con la edición del contenido.">
-                <div className="grid gap-3 sm:grid-cols-2"><ToggleCard title="Producto activo" text="Visible y disponible en el catálogo." checked={form.activo} onChange={(value) => setField('activo', value)} /><ToggleCard title="Destacado" text="Puede aparecer en posiciones prioritarias." checked={form.featured} onChange={(value) => setField('featured', value)} /></div>
+                <div className="grid gap-3 sm:grid-cols-2"><ToggleCard title="Producto activo" text={canPublish ? "Visible en el catálogo mientras tenga stock." : "Oculto automáticamente: añade al menos 1 unidad de stock."} checked={form.activo && canPublish} onChange={setProductActive} /><ToggleCard title="Destacado" text="Puede aparecer en posiciones prioritarias." checked={form.featured} onChange={(value) => setField('featured', value)} /></div>
                 <details className="mt-4 rounded-xl border border-black/8 bg-black/[0.025] p-4"><summary className="cursor-pointer text-xs font-black uppercase tracking-[.12em] text-black/55">Datos de proveedor / importación</summary><div className="mt-4 grid gap-4 md:grid-cols-2"><Field label="Proveedor"><input className={inputClass} value={form.source} onChange={(event) => setField('source', event.target.value)} /></Field><Field label="URL de origen"><input className={inputClass} value={form.source_url} onChange={(event) => setField('source_url', event.target.value)} /></Field></div></details>
               </Panel>
             </div>
@@ -609,14 +671,25 @@ export default function ProductStudioEditor({
               <Panel title="Portada y galería" description="Sube, ordena y elige la portada sin salir del editor.">
                 <button type="button" disabled={busy !== ''} onClick={() => fileRef.current?.click()} className="flex min-h-28 w-full items-center justify-center gap-3 rounded-xl border border-dashed border-[#bb872c]/35 bg-[#fff6db] text-sm font-black text-[#7c5615] transition hover:bg-[#ffefbd] disabled:opacity-50">{busy === 'upload' ? <Loader2 className="h-5 w-5 animate-spin" /> : <CloudUpload className="h-5 w-5" />}{busy === 'upload' ? 'Subiendo imágenes…' : 'Subir imágenes del producto'}</button>
                 <input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={(event) => { const files = Array.from(event.target.files || []); if (files.length) void uploadFiles(files); event.target.value = ''; }} />
-                {gallery.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{gallery.map((image, index) => <article key={image.url} className={`overflow-hidden rounded-xl border bg-white ${form.image_url === image.url ? 'border-[#d18b16] ring-2 ring-[#d18b16]/15' : 'border-black/8'}`}><div className="relative aspect-[4/3] bg-[#f3eee4] p-2"><img src={image.url} alt="" className="h-full w-full rounded-lg object-contain" />{form.image_url === image.url ? <span className="absolute left-2 top-2 rounded-full bg-[#111214] px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#f5c75d]">Portada</span> : null}</div><div className="grid grid-cols-4 gap-1.5 p-2"><button type="button" onClick={() => setField('image_url', image.url)} className="col-span-2 rounded-lg bg-black/[0.05] px-2 py-2 text-[10px] font-black hover:bg-[#fff0bd]">Usar portada</button><button type="button" disabled={index === 0} onClick={() => moveImage(index, -1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronLeft className="h-4 w-4" /></button><button type="button" disabled={index === gallery.length - 1} onClick={() => moveImage(index, 1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronRight className="h-4 w-4" /></button><button type="button" onClick={() => removeImage(image)} className="col-span-4 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2 py-2 text-[10px] font-black text-red-700"><Trash2 className="h-3.5 w-3.5" />Quitar</button></div></article>)}</div> : <div className="mt-4 rounded-xl bg-black/[0.025] p-8 text-center text-sm text-black/40"><ImageIcon className="mx-auto mb-2 h-8 w-8 opacity-30" />Todavía no hay imágenes.</div>}
+                {gallery.length ? <div className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3">{gallery.map((image, index) => <article key={image.url} className={`overflow-hidden rounded-xl border bg-white ${form.image_url === image.url ? 'border-[#d18b16] ring-2 ring-[#d18b16]/15' : 'border-black/8'}`}><div className="relative aspect-[4/3] bg-[#f3eee4] p-2"><img src={image.url} alt="" className="h-full w-full rounded-lg object-contain" />{form.image_url === image.url ? <span className="absolute left-2 top-2 rounded-full bg-[#111214] px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#f5c75d]">Portada</span> : null}</div><div className="grid grid-cols-4 gap-1.5 p-2"><button type="button" onClick={() => setField('image_url', image.url)} className="col-span-2 rounded-lg bg-black/[0.05] px-2 py-2 text-[10px] font-black hover:bg-[#fff0bd]">Usar portada</button><button type="button" disabled={index === 0} onClick={() => moveImage(index, -1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronLeft className="h-4 w-4" /></button><button type="button" disabled={index === gallery.length - 1} onClick={() => moveImage(index, 1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronRight className="h-4 w-4" /></button><button type="button" onClick={() => removeImage(image)} className="col-span-4 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2 py-2 text-[10px] font-black text-red-700"><Trash2 className="h-3.5 w-3.5" />Quitar</button></div></article>)}</div> : <div className="mt-4 rounded-xl bg-black/[0.025] p-8 text-center text-sm text-black/40"><ImageIcon className="mx-auto mb-2 h-8 w-8 opacity-30" />Todavía no hay imágenes.</div>}
               </Panel>
             </div>
           ) : null}
 
           {section === 'seo' ? (
             <div className="space-y-4">
-              <Panel title="Análisis inteligente" description="Una sola acción revisa posicionamiento comercial, precio, imágenes, SEO y copy. Nada se aplica sin tu aprobación.">
+              <Panel title="Guía de contenido + IA" description="Define cómo quieres presentar este producto. La guía se guarda con la ficha y puede usarse con OpenRouter u Ollama.">
+                <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+                  <Field label="Guía para IA"><textarea className={`${inputClass} min-h-32 py-3`} value={contentGuide} onChange={(event) => setContentGuide(event.target.value.slice(0, 3000))} placeholder="Ej. tono técnico pero simple, destacar instalación, público en Chile, no inventar medidas, priorizar intención de compra y preguntas frecuentes…" /></Field>
+                  <div className="grid gap-3">
+                    <Field label="Proveedor IA"><select className={inputClass} value={aiProvider} onChange={(event) => setAiProvider(event.target.value as AiProviderChoice)}><option value="openrouter">OpenRouter</option><option value="ollama">Ollama</option></select></Field>
+                    <Field label="Modelo"><select className={inputClass} value={aiModel} onChange={(event) => setAiModel(event.target.value)}><option value="">Automático</option>{aiModels[aiProvider].map((model) => <option key={model.id} value={model.id}>{model.name}</option>)}</select></Field>
+                  </div>
+                </div>
+                <label className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-black/8 bg-white p-4"><span><b className="block text-sm">Autorrellenar desde la guía</b><small className="mt-1 block max-w-2xl text-xs leading-5 text-black/40">Al analizar, aplica automáticamente la primera propuesta a nombre, descripción y SEO. Puedes seguir editando antes de guardar.</small></span><Toggle checked={autoFillFromGuide} onChange={setAutoFillFromGuide} label="Autorrellenar desde la guía" /></label>
+              </Panel>
+
+              <Panel title="Análisis inteligente" description="Una sola acción revisa posicionamiento comercial, precio, imágenes, SEO y copy. Nada se guarda hasta que pulses Guardar.">
                 <div className="flex flex-col gap-3 rounded-xl bg-[#111214] p-4 text-white sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[#f5c75d]" /><p className="text-sm font-black">Fabrick Commerce AI</p></div><p className="mt-1 max-w-xl text-xs leading-5 text-white/50">Usa los datos del producto y hasta 8 imágenes para generar recomendaciones editables.</p></div><button type="button" onClick={() => void runAiSuite()} disabled={busy !== ''} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#f5c75d] px-4 text-xs font-black text-black disabled:opacity-50">{busy === 'ai' ? <Loader2 className="h-4 w-4 animate-spin" /> : <WandSparkles className="h-4 w-4" />}{busy === 'ai' ? 'Analizando…' : 'Analizar producto'}</button></div>
 
                 {commerce ? <div className="mt-4 rounded-xl border border-black/8 bg-[#f7efdc] p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#966917]">Diagnóstico comercial</p><h3 className="mt-1 text-lg font-black">Demanda {commerce.estimatedDemand}/100 · Compra {commerce.estimatedPurchasePopularity}/100</h3></div><span className="rounded-xl bg-white px-3 py-2 text-sm font-black">Precio IA {money(commerce.recommendedPrice)}</span></div><div className="mt-3 grid gap-2 sm:grid-cols-3"><MiniMetric label="Banda baja" value={money(commerce.priceLow)} /><MiniMetric label="Banda media" value={money(commerce.priceMid)} /><MiniMetric label="Banda alta" value={money(commerce.priceHigh)} /></div><p className="mt-3 text-xs leading-5 text-black/55">{commerce.positioning}</p><p className="mt-2 text-[11px] leading-5 text-black/40">{commerce.evidenceNote}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={applyCommerceCopy} className="rounded-lg bg-white px-3 py-2 text-xs font-black">Aplicar copy</button><button type="button" onClick={applyCommercePrice} className="rounded-lg bg-[#111214] px-3 py-2 text-xs font-black text-[#f5c75d]">Aplicar precio sugerido</button></div></div> : null}
@@ -633,6 +706,9 @@ export default function ProductStudioEditor({
                 <div className="mt-4 grid gap-4 md:grid-cols-2"><Field label="Slug"><input className={inputClass} value={seo.slug} onChange={(event) => setSeo((current) => ({ ...current, slug: slugify(event.target.value) }))} placeholder={slugify(form.name)} /></Field><Field label="Palabra clave principal"><input className={inputClass} value={seo.primaryKeyword} onChange={(event) => setSeo((current) => ({ ...current, primaryKeyword: event.target.value }))} /></Field></div>
                 <div className="mt-4"><Field label="Palabras secundarias"><input className={inputClass} value={seo.secondaryKeywords} onChange={(event) => setSeo((current) => ({ ...current, secondaryKeywords: event.target.value }))} placeholder="separadas por coma" /></Field></div>
               </Panel>
+              <Panel title="Comentarios internos" description="Notas privadas para compras, proveedor, publicación o próximas revisiones. No se muestran al cliente.">
+                <Field label="Notas del equipo"><textarea className={`${inputClass} min-h-28 py-3`} value={adminNotes} onChange={(event) => setAdminNotes(event.target.value.slice(0, 3000))} placeholder="Ej. confirmar ficha técnica con proveedor, revisar nueva foto, stock reservado, validar costo antes de campaña…" /></Field>
+              </Panel>
             </div>
           ) : null}
         </main>
@@ -641,7 +717,7 @@ export default function ProductStudioEditor({
           <div className="overflow-hidden rounded-2xl border border-black/8 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-black/7 px-4 py-3"><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-black/35">Vista previa</p><p className="mt-0.5 text-xs font-black">Como ficha de catálogo</p></div><Eye className="h-4 w-4 text-black/30" /></div>
             <div className="aspect-[4/3] bg-[#f1ece2] p-4">{cover ? <img src={cover} alt={form.name} className="h-full w-full object-contain" /> : <div className="grid h-full place-items-center text-black/15"><Package className="h-12 w-12" /></div>}</div>
-            <div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-black">{form.name || 'Nombre del producto'}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-[.12em] text-[#9b6b19]">{categoryName}</p></div>{form.featured ? <Star className="h-4 w-4 fill-[#f5c75d] text-[#b67c15]" /> : null}</div><p className="mt-3 line-clamp-3 text-xs leading-5 text-black/45">{form.tagline || form.description || 'Añade una descripción para mejorar la ficha.'}</p><div className="mt-4 flex items-end justify-between"><div><p className="text-xl font-black">{money(salePrice)}</p>{discount > 0 ? <p className="text-[10px] text-black/35 line-through">{money(basePrice)}</p> : null}</div><span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${form.activo ? 'bg-emerald-100 text-emerald-800' : 'bg-black/8 text-black/45'}`}>{form.activo ? 'Activo' : 'Oculto'}</span></div></div>
+            <div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-black">{form.name || 'Nombre del producto'}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-[.12em] text-[#9b6b19]">{categoryName}</p></div>{form.featured ? <Star className="h-4 w-4 fill-[#f5c75d] text-[#b67c15]" /> : null}</div><p className="mt-3 line-clamp-3 text-xs leading-5 text-black/45">{form.tagline || form.description || 'Añade una descripción para mejorar la ficha.'}</p><div className="mt-4 flex items-end justify-between"><div><p className="text-xl font-black">{money(salePrice)}</p>{discount > 0 ? <p className="text-[10px] text-black/35 line-through">{money(basePrice)}</p> : null}</div><span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${form.activo && canPublish ? 'bg-emerald-100 text-emerald-800' : 'bg-black/8 text-black/45'}`}>{form.activo && canPublish ? 'Activo' : !canPublish ? 'Oculto · sin stock' : 'Oculto'}</span></div></div>
           </div>
 
           {hasMarketIntel ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"><div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-emerald-900/45">Radar de mercado</p><p className="mt-1 text-lg font-black">{cost > 0 ? money(currentNetProfit) : 'Costo pendiente'}</p></div><TrendingUp className="h-5 w-5 text-emerald-700" /></div><p className="mt-1 text-[11px] text-emerald-900/55">Utilidad estimada con reserva {marketReservePct || 0}% · margen {cost > 0 ? `${currentNetMargin.toFixed(1)}%` : '—'}.</p><div className="mt-3 flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-[11px]"><span className="text-emerald-900/50">Mediana mercado</span><b>{marketMedian ? money(marketMedian) : '—'}</b></div></div> : null}

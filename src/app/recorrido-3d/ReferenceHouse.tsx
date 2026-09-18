@@ -273,11 +273,11 @@ export default function ReferenceHouse(){
    for(const x of [-.5,.35,1.2]){box([x,.83,-1.15],[.77,.19,.76],fabric,groups[7]);box([x,1.14,-.87],[.7,.5,.16],fabric,groups[7]);}
    box([.4,.095,-2],[3.2,.02,2.6],textured(mat('#b5b0a1'),'fabric','#b5b0a1',1,.012),groups[7]);
    for(const [x,z]of [[-5,-1.9],[-4.8,4.15]]){box([x,.85,z-.7],[1.45,.19,.45],white,groups[7]);box([x,.79,z+.3],[1.85,.08,1.25],fabric,groups[7]);box([x,1.1,z-1.03],[1.9,1.3,.12],wood,groups[7]);box([x+1.3,.4,z-.65],[.6,.65,.55],wood,groups[7]);}
-   // Cocina modular compacta: referencias dimensionales tipo SEKTION.
-   // Base ~0,61 m profundidad / 0,762 m cuerpo; superiores ~0,376 m profundidad / 0,762 m alto.
+   // Cocina modular compacta: proporciones METOD verificadas en IKEA Chile.
+   // Base ~0,60 m profundidad / 0,80 m cuerpo; superiores ~0,37 m profundidad / 0,80 m alto.
    const kitchenCabinet=mat('#d9d2c7'),kitchenFront=mat('#edeae2'),countertop=mat('#c8c7c2'),appliance=mat('#aeb5b8',.72),handleMat=mat('#2c343a',.7);
-   const baseDepth=.61,baseHeight=.762,worktopY=.93,kitchenX=6.84;
-   const modules=[{w:.61,z:-1.22,type:'sink'},{w:.76,z:-.535,type:'drawers'},{w:.61,z:.15,type:'cooktop'},{w:.46,z:.685,type:'storage'}] as const;
+   const baseDepth=.60,baseHeight=.80,worktopY=.945,kitchenX=6.84;
+   const modules=[{w:.60,z:-1.20,type:'sink'},{w:.80,z:-.50,type:'drawers'},{w:.60,z:.20,type:'cooktop'},{w:.40,z:.70,type:'storage'}] as const;
    for(const module of modules){
     box([kitchenX,.12+baseHeight/2,module.z],[baseDepth,baseHeight,module.w-.018],kitchenCabinet,kitchenInteractive);
     box([kitchenX-baseDepth/2-.012,.12+baseHeight/2,module.z],[.024,baseHeight-.035,module.w-.045],kitchenFront,kitchenInteractive);
@@ -294,9 +294,9 @@ export default function ReferenceHouse(){
    box([kitchenX-.325,.48,.15],[.035,.5,.48],appliance,kitchenInteractive);
    // Refrigerador y despensa lateral.
    box([6.82,1.15,1.34],[.68,2.06,.62],appliance,kitchenInteractive);box([6.46,1.15,1.34],[.025,1.94,.54],black,kitchenInteractive);
-   box([6.82,1.15,-1.82],[.61,2.06,.46],kitchenFront,kitchenInteractive);
-   // Muebles superiores: profundidad 0,376 m, altura 0,762 m.
-   const upperDepth=.376,upperHeight=.762,upperY=2.13;const kitchenDoors:T.Group[]=[];
+   box([6.82,1.15,-1.82],[.60,2.06,.40],kitchenFront,kitchenInteractive);
+   // Muebles superiores METOD: fondo de sistema 0,37 m, altura 0,80 m.
+   const upperDepth=.37,upperHeight=.80,upperY=2.13;const kitchenDoors:T.Group[]=[];
    for(const module of modules){
     if(module.type==='cooktop')continue;
     box([7.01,upperY,module.z],[upperDepth,upperHeight,module.w-.022],kitchenCabinet,kitchenInteractive);

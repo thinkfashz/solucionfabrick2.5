@@ -294,15 +294,15 @@ export default function ReferenceHouse(){
    const choose=(v:string,instant=false)=>{const p=presets[v]||presets.exterior;const toFov=p.fov??(stops.includes(v)?64:52);zoomGoal=null;
     orbit.minDistance=stops.includes(v)?.3:2;
     if(instant||reducedMotion){camera.position.set(...p.p);orbit.target.set(...p.t);camera.fov=toFov;camera.updateProjectionMatrix();orbit.update();}
-    else {transition={time:0,portal:stops.includes(v)||stops.includes(currentView),fromP:camera.position.clone(),fromT:orbit.target.clone(),toP:new THREE.Vector3(...p.p),toT:new THREE.Vector3(...p.t),fromFov:camera.fov,toFov,switched:false};orbit.enabled=false;}
+    else {transition={time:0,portal:!mobile&&(stops.includes(v)||stops.includes(currentView)),fromP:camera.position.clone(),fromT:orbit.target.clone(),toP:new THREE.Vector3(...p.p),toT:new THREE.Vector3(...p.t),fromFov:camera.fov,toFov,switched:false};orbit.enabled=false;}
     currentView=v;setView(v);
    };
    api.current={view(v){cancelTour();choose(v)},tour(on){cancelTour();playing=on;setTour(on);tourElapsed=0;tourIndex=0;if(on)choose(stops[0])},zoom(d){if(transition)return;const length=camera.position.distanceTo(orbit.target);zoomGoal=THREE.MathUtils.clamp((zoomGoal??length)*d,orbit.minDistance,orbit.maxDistance)}};
    choose('exterior',true);size();let last=0,lastQuality='',lastShadowState='';
    setLoadStep(3);
    const render=(now:number)=>{if(disposed)return;frame=requestAnimationFrame(render);if(now-last<16)return;const dt=Math.min((now-last)/1000,.05);last=now;
-    if(transition){const tr=transition;tr.time+=dt;const duration=tr.portal?.62:.82;const t=Math.min(tr.time/duration,1),ease=t*t*(3-2*t);
-     if(tr.portal){if(cameraFade.current)cameraFade.current.style.opacity=String(Math.sin(Math.PI*t)*.98);if(t>=.5&&!tr.switched){camera.position.copy(tr.toP);orbit.target.copy(tr.toT);camera.fov=tr.toFov;tr.switched=true;}}
+    if(transition){const tr=transition;tr.time+=dt;const duration=tr.portal?.38:(mobile?.24:.44);const t=Math.min(tr.time/duration,1),ease=t*t*(3-2*t);
+     if(tr.portal){if(cameraFade.current)cameraFade.current.style.opacity=String(Math.sin(Math.PI*t)*.58);if(t>=.5&&!tr.switched){camera.position.copy(tr.toP);orbit.target.copy(tr.toT);camera.fov=tr.toFov;tr.switched=true;}}
      else {const start=new THREE.Spherical().setFromVector3(tr.fromP.clone().sub(tr.fromT)),end=new THREE.Spherical().setFromVector3(tr.toP.clone().sub(tr.toT));let angle=end.theta-start.theta;angle=Math.atan2(Math.sin(angle),Math.cos(angle));const pos=new THREE.Spherical(THREE.MathUtils.lerp(start.radius,end.radius,ease),THREE.MathUtils.lerp(start.phi,end.phi,ease),start.theta+angle*ease);orbit.target.lerpVectors(tr.fromT,tr.toT,ease);camera.position.setFromSpherical(pos).add(orbit.target);camera.fov=THREE.MathUtils.lerp(tr.fromFov,tr.toFov,ease);}
      camera.updateProjectionMatrix();if(t===1){transition=null;orbit.enabled=true;if(cameraFade.current)cameraFade.current.style.opacity='0';}
     } else if(playing){tourElapsed+=dt;const target=presets[stops[tourIndex]].t;orbit.target.set(target[0]+Math.sin(tourElapsed*.35)*.25,target[1],target[2]);if(tourElapsed>7){tourIndex=(tourIndex+1)%stops.length;choose(stops[tourIndex]);tourElapsed=0}}

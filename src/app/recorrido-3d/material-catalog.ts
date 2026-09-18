@@ -13,6 +13,27 @@ export type MaterialInfo = {
 
 export const materialCatalog: MaterialInfo[] = [
   {
+    id: "cesped-pbr",
+    name: "Césped natural PBR · Grass001",
+    category: "Paisajismo / terreno",
+    locations: ["Jardín", "Perímetro exterior", "Entorno de terraza"],
+    dimensions: "Textura de referencia ≈ 1,4 × 1,4 m por tile",
+    use: "Representación visual del césped y lectura de escala del entorno.",
+    reason: "La escala física y los mapas BaseColor, Normal GL y Roughness reducen repetición artificial y evitan el aspecto plano del terreno.",
+    stage: "Paisajismo",
+    source: "https://ambientcg.com/view?id=Grass001"
+  },
+  {
+    id: "gaea-terrain",
+    name: "Terreno digital Gaea",
+    category: "Topografía visual",
+    locations: ["Implantación", "Jardín", "Accesos"],
+    dimensions: "Extensión y altura según heightfield exportado",
+    use: "Representar desniveles, pendientes y máscaras de superficie en el recorrido.",
+    reason: "Permite separar forma del terreno de sus materiales y exportar height, normal, AO y splat maps hacia Blender/Three.js.",
+    stage: "Terreno / implantación"
+  },
+  {
     id: "volcanita-st",
     name: "Yeso cartón ST",
     category: "Terminación interior",

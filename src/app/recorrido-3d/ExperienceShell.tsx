@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import ReferenceHouse from "./ReferenceHouse";
+import { materialById } from "./material-catalog";
 import "./experience-shell.css";
 
 type LightMode = "day" | "sunset" | "night";
 type Soil = "rock" | "firm" | "soft";
 type Motion = "horizontal" | "vertical" | "mixed";
-type LabTab = "quake" | "light" | "controls";
+type LabTab = "quake" | "light" | "technical" | "controls";
 
-type MaterialInfo = { material: string; place: string; note: string };
+type MaterialInfo = { id?: string; material: string; place: string; note: string };
 type AreaInfo = { title: string; subtitle: string; materials: MaterialInfo[] };
+type TechnicalMode = "architecture" | "structure" | "electric" | "water" | "sanitary" | "underfloor" | "stage";
 
 const BRAND = {
   yellow: "#FFE600",
@@ -27,8 +29,12 @@ const CAMERAS = [
   ["Living", "Living"],
   ["Comedor", "Comedor"],
   ["Cocina", "Cocina"],
-  ["Dormitorio", "Dormitorio"],
-  ["Baño", "Baño"],
+  ["Principal", "Dormitorio principal"],
+  ["Baño ppal.", "Baño principal"],
+  ["Hab. 2", "Dormitorio 2"],
+  ["Baño hab. 2", "Baño dormitorio 2"],
+  ["Visitas", "Baño de visitas"],
+  ["Logia", "Logia"],
   ["Jardín", "Hacia el jardín"],
   ["Posterior", "Vista posterior"],
   ["Aérea", "Vista aérea"],
@@ -39,90 +45,116 @@ const AREA: Record<string, AreaInfo> = {
     title: "Exterior · envolvente",
     subtitle: "Fachada, cubierta, vanos y transición hacia terraza.",
     materials: [
-      { material: "Revestimiento exterior", place: "Fachadas", note: "Terminación clara + paños de madera; solución visual de referencia." },
-      { material: "Cubierta metálica", place: "Techumbre", note: "Acabado oscuro con reflejo controlado y sombras marcadas." },
-      { material: "Vidrio + perfilería", place: "Vanos", note: "Cristal representado y marcos oscuros; dimensiones conceptuales." },
-      { material: "Hormigón", place: "Radier / acceso", note: "Base exterior y peldaños con textura mineral." },
+      { id:"siding-fibrocemento", material:"Siding fibrocemento", place:"Fachadas", note:"Revestimiento exterior ventilado de referencia." },
+      { id:"cubierta-metalica", material:"Cubierta metálica", place:"Techumbre", note:"Terminación oscura con rugosidad y reflejo controlados." },
+      { material:"Vidrio + perfilería", place:"Vanos", note:"Cristal y marcos oscuros para conectar interior y exterior." },
+      { id:"hormigon", material:"Hormigón", place:"Radier / acceso", note:"Base exterior, terraza y peldaños." },
     ],
   },
   Living: {
-    title: "Living · zona social",
-    subtitle: "Vista interior principal con conexión hacia terraza.",
-    materials: [
-      { material: "Volcanita / yeso", place: "Muros y cielos", note: "Terminación interior clara, mate y continua." },
-      { material: "Porcelanato", place: "Piso", note: "Superficie clara de baja rugosidad visual." },
-      { material: "Madera", place: "Mobiliario / cielo", note: "Tono cálido para contraste con estructura oscura." },
-      { material: "Textil", place: "Sofá / alfombra", note: "Material blando con roughness alto y lectura mate." },
-    ],
+    title:"Living · zona social", subtitle:"Muros blancos, luz natural y conexión hacia terraza.",
+    materials:[
+      {id:"volcanita-st",material:"Yeso cartón ST",place:"Muros y cielos",note:"Terminación blanca mate sobre tabiquería seca."},
+      {id:"porcelanato",material:"Porcelanato",place:"Piso",note:"Superficie continua y fácil de mantener."},
+      {material:"Madera",place:"Mobiliario",note:"Contraste cálido con muros blancos."},
+      {material:"Textil",place:"Sofá / alfombra",note:"Acabado mate de alta rugosidad."}
+    ]
   },
   Comedor: {
-    title: "Comedor · iluminación cálida",
-    subtitle: "Área social vinculada a cocina y ventanales.",
-    materials: [
-      { material: "Madera", place: "Mesa / sillas", note: "Veta cálida y acabado semimate." },
-      { material: "Metal negro", place: "Luminarias", note: "Cuerpos oscuros con luz puntual cálida." },
-      { material: "Porcelanato", place: "Piso", note: "Continuidad visual con living y cocina." },
-      { material: "Vidrio", place: "Fachada", note: "Conecta visualmente interior y paisaje exterior." },
-    ],
+    title:"Comedor · zona social",subtitle:"Mesa, luminaria y continuidad visual con cocina.",
+    materials:[
+      {material:"Madera",place:"Mesa / sillas",note:"Veta cálida y acabado semimate."},
+      {material:"Metal oscuro",place:"Luminarias",note:"Cuerpos discretos para luz puntual."},
+      {id:"porcelanato",material:"Porcelanato",place:"Piso",note:"Continuidad con living y cocina."},
+      {material:"Vidrio",place:"Vanos",note:"Aporte de iluminación natural."}
+    ]
   },
   Cocina: {
-    title: "Cocina · trabajo y apoyo",
-    subtitle: "Módulos, cubierta, acero y luz funcional.",
-    materials: [
-      { material: "Madera nogal", place: "Muebles", note: "Frentes cálidos para módulos bajos y altos." },
-      { material: "Piedra clara", place: "Cubierta", note: "Superficie mineral clara de apoyo y preparación." },
-      { material: "Acero inoxidable", place: "Grifería / equipos", note: "Metal de roughness bajo-medio para reflejos controlados." },
-      { material: "Yeso-cartón", place: "Muros", note: "Plano neutro para equilibrar madera y metal." },
-    ],
+    title:"Cocina · trabajo y almacenamiento",subtitle:"Módulos bajos y altos, cubierta, refrigerador, lavaplatos y luz funcional.",
+    materials:[
+      {material:"Melamina / madera",place:"Muebles bajos y altos",note:"Frentes cálidos y modulares."},
+      {material:"Piedra / cubierta mineral",place:"Mesón",note:"Plano de preparación de acabado claro."},
+      {material:"Acero inoxidable",place:"Lavaplatos / grifería",note:"Superficie resistente y fácil de limpiar."},
+      {id:"volcanita-st",material:"Yeso cartón",place:"Muros",note:"Fondo blanco neutro para aumentar luminosidad."}
+    ]
   },
-  Dormitorio: {
-    title: "Dormitorio · descanso",
-    subtitle: "Escala doméstica, textiles y terminaciones cálidas.",
-    materials: [
-      { material: "Textil", place: "Cama / tapiz", note: "Tejido mate para absorber reflejos." },
-      { material: "Madera", place: "Respaldo / velador", note: "Elemento cálido de baja saturación." },
-      { material: "Yeso", place: "Muros", note: "Terminación interior neutra y continua." },
-      { material: "Vidrio", place: "Ventana", note: "Aporte de iluminación natural y relación exterior." },
-    ],
+  "Dormitorio principal": {
+    title:"Dormitorio principal",subtitle:"Zona privada asociada a baño principal.",
+    materials:[
+      {id:"volcanita-st",material:"Yeso cartón ST",place:"Muros",note:"Acabado blanco mate."},
+      {material:"Madera",place:"Respaldo / veladores",note:"Acento cálido de baja saturación."},
+      {material:"Textil",place:"Cama",note:"Superficie blanda con roughness alto."},
+      {material:"Vidrio",place:"Ventana",note:"Iluminación natural y ventilación visual."}
+    ]
   },
-  Baño: {
-    title: "Baño · zona húmeda",
-    subtitle: "Superficies lavables, vidrio y equipamiento sanitario.",
-    materials: [
-      { material: "Porcelanato / cerámica", place: "Piso / muro", note: "Material mineral para zona húmeda." },
-      { material: "Vidrio", place: "Mampara", note: "Transparencia controlada y reflejos suaves." },
-      { material: "Acero", place: "Grifería", note: "Detalle metálico de acabado limpio." },
-      { material: "Madera", place: "Mueble", note: "Contraste cálido fuera del contacto directo con agua." },
-    ],
+  "Baño principal": {
+    title:"Baño principal",subtitle:"Zona húmeda vinculada al dormitorio principal.",
+    materials:[
+      {id:"volcanita-rh",material:"Yeso cartón RH",place:"Muros protegidos",note:"Placa para ambientes expuestos a humedad."},
+      {id:"porcelanato",material:"Porcelanato / cerámica",place:"Piso y zona húmeda",note:"Superficie lavable."},
+      {material:"Vidrio",place:"Mampara",note:"Transparencia y control de salpicaduras."},
+      {material:"Acero",place:"Grifería",note:"Terminación metálica de uso sanitario."}
+    ]
+  },
+  "Dormitorio 2": {
+    title:"Dormitorio 2",subtitle:"Segunda habitación con baño asociado.",
+    materials:[
+      {id:"volcanita-st",material:"Yeso cartón ST",place:"Muros",note:"Acabado interior blanco y ligero."},
+      {material:"Madera",place:"Mobiliario",note:"Muebles de escala residencial."},
+      {material:"Textil",place:"Cama",note:"Acabado mate."}
+    ]
+  },
+  "Baño dormitorio 2": {
+    title:"Baño dormitorio 2",subtitle:"Segundo baño privado; independiente de la logia.",
+    materials:[
+      {id:"volcanita-rh",material:"Yeso cartón RH",place:"Muros",note:"Solución referencial para recinto húmedo."},
+      {id:"porcelanato",material:"Porcelanato / cerámica",place:"Piso / muro",note:"Terminación lavable."},
+      {id:"pvc-110",material:"PVC sanitario",place:"Descarga principal",note:"Trazado conceptual bajo piso."}
+    ]
+  },
+  "Baño de visitas": {
+    title:"Baño de visitas",subtitle:"Baño de apoyo en la zona pública.",
+    materials:[
+      {id:"volcanita-rh",material:"Yeso cartón RH",place:"Muros",note:"Revestimiento referencial para humedad."},
+      {id:"porcelanato",material:"Porcelanato / cerámica",place:"Piso",note:"Terminación durable y lavable."},
+      {material:"Acero",place:"Grifería",note:"Accesorios sanitarios."}
+    ]
+  },
+  Logia: {
+    title:"Logia · servicio",subtitle:"Lavado, apoyo de cocina y redes de agua; no corresponde a un baño.",
+    materials:[
+      {id:"volcanita-rh",material:"Yeso cartón RH",place:"Muros",note:"Adecuado como referencia en recinto de servicio con humedad."},
+      {id:"porcelanato",material:"Porcelanato",place:"Piso",note:"Superficie lavable."},
+      {material:"Agua fría/caliente",place:"Lavadora / lavadero",note:"Trazado técnico conceptual visible por capas."},
+      {material:"PVC sanitario",id:"pvc-110",place:"Descarga",note:"Red sanitaria conceptual bajo radier."}
+    ]
   },
   "Hacia el jardín": {
-    title: "Jardín · paisaje",
-    subtitle: "Transición vivienda–terreno y acceso exterior.",
-    materials: [
-      { material: "Pasto", place: "Terreno", note: "Cobertura vegetal de roughness alto." },
-      { material: "Gravilla", place: "Senderos", note: "Árido de granulometría visual irregular." },
-      { material: "Hormigón", place: "Peldaños", note: "Base mineral mate y resistente visualmente." },
-      { material: "Madera exterior", place: "Terraza", note: "Tablas cálidas como transición hacia la vivienda." },
-    ],
+    title:"Jardín · paisaje",subtitle:"Transición vivienda–terreno y acceso exterior.",
+    materials:[
+      {material:"Pasto",place:"Terreno",note:"Cobertura vegetal de roughness alto."},
+      {material:"Gravilla",place:"Senderos",note:"Árido de lectura irregular."},
+      {id:"hormigon",material:"Hormigón",place:"Peldaños",note:"Base mineral mate."},
+      {material:"Madera exterior",place:"Terraza",note:"Transición cálida hacia la vivienda."}
+    ]
   },
   "Vista posterior": {
-    title: "Posterior · envolvente",
-    subtitle: "Lectura de vanos, terminaciones y encuentro con cubierta.",
-    materials: [
-      { material: "Revestimiento", place: "Muros", note: "Terminación exterior con cámara y soporte representados por capas." },
-      { material: "Vidrio", place: "Vanos", note: "Aberturas que concentran discontinuidades del muro." },
-      { material: "Metal", place: "Cubierta", note: "Plano superior con canalización de aguas representada." },
-    ],
+    title:"Posterior · envolvente",subtitle:"Vanos, revestimientos y encuentro con cubierta.",
+    materials:[
+      {id:"siding-fibrocemento",material:"Siding fibrocemento",place:"Muros",note:"Piel exterior de referencia."},
+      {material:"Vidrio",place:"Vanos",note:"Aberturas y discontinuidades del muro."},
+      {id:"cubierta-metalica",material:"Metal",place:"Cubierta",note:"Plano superior y aguas lluvia."}
+    ]
   },
   "Vista aérea": {
-    title: "Aérea · lectura completa",
-    subtitle: "Volumetría, techumbre y relación entre los cuerpos de la casa.",
-    materials: [
-      { material: "Cubierta metálica", place: "Techos", note: "Permite revisar encuentros, pendientes y bordes." },
-      { material: "OSB + estructura", place: "Capas", note: "Disponibles desde el modo despiece para inspección conceptual." },
-      { material: "Hormigón / terreno", place: "Base", note: "Lectura general de implantación y accesos." },
-    ],
-  },
+    title:"Aérea · lectura completa",subtitle:"Volumetría, techumbre y relación de recintos.",
+    materials:[
+      {id:"cubierta-metalica",material:"Cubierta metálica",place:"Techos",note:"Encuentros, pendientes y bordes."},
+      {id:"osb-estructural",material:"OSB",place:"Capas",note:"Visible en modo estructura/despiece."},
+      {id:"metalcon",material:"Metalcon",place:"Estructura",note:"Entramado conceptual por capas."},
+      {id:"hormigon",material:"Hormigón",place:"Base",note:"Implantación general de la vivienda."}
+    ]
+  }
 };
 
 const SOIL: Record<Soil, { label: string; factor: number; mmiBoost: number }> = {
@@ -169,6 +201,9 @@ export default function ExperienceShell() {
   const [soundOn, setSoundOn] = useState(false);
   const [areaName, setAreaName] = useState("Casa de referencia");
   const [cameraIndex, setCameraIndex] = useState(0);
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const [technicalMode, setTechnicalMode] = useState<TechnicalMode>("architecture");
+  const [constructionStage, setConstructionStage] = useState(12);
   const [magnitude, setMagnitude] = useState(7.2);
   const [depthKm, setDepthKm] = useState(28);
   const [distanceKm, setDistanceKm] = useState(35);
@@ -179,7 +214,7 @@ export default function ExperienceShell() {
   const [directionDeg, setDirectionDeg] = useState(35);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const audioRef = useRef<{ ctx: AudioContext; ambient: GainNode; rumble: GainNode; oscillator: OscillatorNode; source: AudioBufferSourceNode } | null>(null);
+  const audioRef = useRef<{ ctx: AudioContext; ambient: GainNode; rumble: GainNode; oscillator: OscillatorNode; source: AudioBufferSourceNode; filter: BiquadFilterNode } | null>(null);
 
   const analysis = useMemo(() => {
     const estimatedMmi = estimateMmi(magnitude, depthKm, distanceKm, soil);
@@ -217,6 +252,7 @@ export default function ExperienceShell() {
   const phase = progress <= 0 ? "idle" : progress < 0.12 ? "hypocenter" : progress < 0.34 ? "propagation" : progress < 0.88 ? "surface" : "aftermath";
   const waveProgress = clamp((progress - 0.12) / 0.22);
   const area = AREA[areaName] ?? AREA["Casa de referencia"];
+  const selectedMaterial = selectedMaterialId ? materialById[selectedMaterialId] : null;
   const mmiRoman = MMI[Math.min(11, Math.max(0, Math.round(analysis.estimatedMmi) - 1))];
 
   useEffect(() => {
@@ -251,12 +287,21 @@ export default function ExperienceShell() {
   }, [playing, duration]);
 
   useEffect(() => {
+    window.dispatchEvent(new CustomEvent("fabrick:lighting", { detail: { mode: light, exposure, temperature, interiorLights, exteriorLights } }));
+  }, [light, exposure, temperature, interiorLights, exteriorLights]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("fabrick:technical", { detail: { mode: technicalMode, stage: constructionStage } }));
+  }, [technicalMode, constructionStage]);
+
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const quakeGain = soundOn && phase === "surface" ? 0.035 + analysis.hazard * 0.12 : 0.0001;
     audio.rumble.gain.setTargetAtTime(quakeGain, audio.ctx.currentTime, 0.12);
     audio.oscillator.frequency.setTargetAtTime(26 + frequencyHz * 12, audio.ctx.currentTime, 0.18);
-    audio.ambient.gain.setTargetAtTime(soundOn ? (light === "night" ? 0.016 : 0.026) : 0.0001, audio.ctx.currentTime, 0.2);
+    audio.ambient.gain.setTargetAtTime(soundOn ? (light === "night" ? 0.011 : light === "sunset" ? 0.018 : 0.022) : 0.0001, audio.ctx.currentTime, 0.2);
+    audio.filter.frequency.setTargetAtTime(light === "night" ? 650 : light === "sunset" ? 950 : 1450, audio.ctx.currentTime, 0.35);
   }, [soundOn, phase, analysis.hazard, frequencyHz, light]);
 
   const ensureAudio = () => {
@@ -283,7 +328,7 @@ export default function ExperienceShell() {
     rumble.gain.value = 0.0001;
     oscillator.connect(rumble).connect(ctx.destination);
     oscillator.start();
-    audioRef.current = { ctx, ambient, rumble, oscillator, source };
+    audioRef.current = { ctx, ambient, rumble, oscillator, source, filter };
     return audioRef.current;
   };
 
@@ -299,6 +344,7 @@ export default function ExperienceShell() {
     const next = (index + CAMERAS.length) % CAMERAS.length;
     setCameraIndex(next);
     const label = CAMERAS[next][0];
+    const audio=audioRef.current;if(audio&&soundOn){const tone=audio.ctx.createOscillator(),gain=audio.ctx.createGain();tone.type="sine";tone.frequency.value=520;gain.gain.setValueAtTime(.0001,audio.ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.018,audio.ctx.currentTime+.012);gain.gain.exponentialRampToValueAtTime(.0001,audio.ctx.currentTime+.09);tone.connect(gain).connect(audio.ctx.destination);tone.start();tone.stop(audio.ctx.currentTime+.1);}
     if (clickByText(".rh-camera-grid button", label)) return;
     const menu = Array.from(document.querySelectorAll<HTMLButtonElement>(".rh-top button")).find((button) => button.textContent?.includes("Menú"));
     menu?.click();
@@ -350,7 +396,7 @@ export default function ExperienceShell() {
   } as CSSProperties;
 
   return (
-    <div className={`sf-experience sf-light-${light} sf-phase-${phase}`} style={sceneStyle}>
+    <div className={`sf-experience sf-light-${light} sf-phase-${phase}`} style={sceneStyle} data-interior-lights={interiorLights} data-exterior-lights={exteriorLights} data-tech={technicalMode}>
       <div className={`sf-scene ${phase === "surface" ? "is-quaking" : ""}`}>
         <ReferenceHouse />
         <div className="sf-light-sim" aria-hidden="true" />
@@ -373,11 +419,31 @@ export default function ExperienceShell() {
         <aside className="sf-area-card">
           <header><div><small>MATERIALES DE ESTA ÁREA</small><strong>{area.title}</strong></div><button onClick={() => setInfoOpen(false)}>×</button></header>
           <div className="sf-material-list">
-            {area.materials.map((item, index) => <article key={item.material}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{item.material}</strong><small>{item.place}</small><p>{item.note}</p></div></article>)}
+            {area.materials.map((item, index) => <button type="button" className="sf-material-row" key={item.material} disabled={!item.id} onClick={() => item.id && setSelectedMaterialId(item.id)}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{item.material}</strong><small>{item.place}</small><p>{item.note}</p></div><i>{item.id ? "›" : ""}</i></button>)}
           </div>
           <footer><span>Texturas web: PBR/CC0 cuando estén disponibles</span><span>Modelo conceptual</span></footer>
         </aside>
       ) : null}
+
+      {selectedMaterial ? <aside className="sf-material-detail" aria-live="polite">
+        <header><div><small>FICHA DE MATERIAL</small><strong>{selectedMaterial.name}</strong></div><button onClick={() => setSelectedMaterialId(null)}>×</button></header>
+        <dl>
+          <div><dt>Lugar</dt><dd>{selectedMaterial.locations.join(" · ")}</dd></div>
+          {selectedMaterial.dimensions ? <div><dt>Dimensiones</dt><dd>{selectedMaterial.dimensions}</dd></div> : null}
+          {selectedMaterial.thickness ? <div><dt>Espesor</dt><dd>{selectedMaterial.thickness}</dd></div> : null}
+          <div><dt>Uso</dt><dd>{selectedMaterial.use}</dd></div>
+          <div><dt>Por qué se usa</dt><dd>{selectedMaterial.reason}</dd></div>
+          <div><dt>Etapa</dt><dd>{selectedMaterial.stage}</dd></div>
+        </dl>
+        {selectedMaterial.source ? <a href={selectedMaterial.source} target="_blank" rel="noreferrer">Fuente técnica/comercial ↗</a> : <small>Dimensión final sujeta a especificación y cálculo del proyecto.</small>}
+      </aside> : null}
+
+      <nav className="sf-tech-dock" aria-label="Capas técnicas">
+        {([
+          ["architecture","ARQ","Arquitectura"],["structure","EST","Estructura"],["electric","ELEC","Eléctrico"],["water","AGUA","Agua"],["sanitary","SAN","Sanitario"],["underfloor","SUB","Bajo piso"],["stage","ETAPAS","Etapas"]
+        ] as [TechnicalMode,string,string][]).map(([mode,short,label]) => <button key={mode} title={label} aria-pressed={technicalMode===mode} onClick={() => {setTechnicalMode(mode);setSelectedMaterialId(null);}}><b>{short}</b><small>{label}</small></button>)}
+      </nav>
+      {technicalMode==="stage" ? <div className="sf-stage-mini"><span>Etapa <b>{constructionStage}/12</b></span><input aria-label="Etapa constructiva" type="range" min="1" max="12" value={constructionStage} onChange={(e)=>setConstructionStage(Number(e.target.value))}/><small>{["Terreno","Fundación","Estructura","OSB","Instalaciones","Aislación","Membranas","Revestimientos","Cielos","Terminaciones","Muebles","Terminada"][constructionStage-1]}</small></div> : null}
 
       <div className="sf-gamepad" aria-label="Controles tipo videojuego">
         <button className="up" onClick={() => zoom("in")} aria-label="Acercar">W</button>
@@ -426,6 +492,7 @@ export default function ExperienceShell() {
           <nav className="sf-lab-tabs">
             <button aria-pressed={tab === "quake"} onClick={() => setTab("quake")}>Sismo</button>
             <button aria-pressed={tab === "light"} onClick={() => setTab("light")}>Iluminación</button>
+            <button aria-pressed={tab === "technical"} onClick={() => setTab("technical")}>Planos</button>
             <button aria-pressed={tab === "controls"} onClick={() => setTab("controls")}>Controles</button>
           </nav>
 
@@ -462,8 +529,22 @@ export default function ExperienceShell() {
               <label>Temperatura <b>{temperature} K</b><input type="range" min="2700" max="6500" step="100" value={temperature} onChange={(e) => setTemperature(Number(e.target.value))} /></label>
               <div className="sf-switches"><button aria-pressed={interiorLights} onClick={() => setInteriorLights((v) => !v)}>Lámparas interiores <b>{interiorLights ? "ON" : "OFF"}</b></button><button aria-pressed={exteriorLights} onClick={() => setExteriorLights((v) => !v)}>Luces exteriores <b>{exteriorLights ? "ON" : "OFF"}</b></button></div>
             </section>
-            <section className="sf-light-map"><h2>Mapa de iluminación del modelo</h2><div><article><b>5</b><span>Puntos interiores</span><small>Living, comedor, dormitorios y cocina representados con PointLight.</small></article><article><b>2</b><span>Puntos exteriores</span><small>Fachada frontal / terraza.</small></article></div><p>El visor conserva ACES Filmic y sombras suaves. Día, atardecer y noche ajustan exposición y ambiente sin reemplazar la geometría existente.</p></section>
+            <section className="sf-light-map"><h2>Mapa de iluminación del modelo</h2><div><article><b>5</b><span>Puntos interiores</span><small>Living, comedor, dormitorios y cocina representados con PointLight.</small></article><article><b>2</b><span>Puntos exteriores</span><small>Fachada frontal / terraza.</small></article></div><p>ACES Filmic, sol direccional, luz hemisférica y luminarias Three.js cambian físicamente entre día, atardecer y noche. Las sombras se adaptan a móvil/escritorio.</p></section>
           </> : null}
+
+          {tab === "technical" ? <section className="sf-control-help">
+            <h2>Planos y etapas</h2>
+            <p>Alterna arquitectura, estructura, eléctrico, agua y sanitario. En Agua/Sanitario se reduce la envolvente para leer los recorridos bajo la vivienda; Eléctrico muestra tablero, troncal y derivaciones conceptuales.</p>
+            <div className="sf-switches">
+              <button aria-pressed={technicalMode==="architecture"} onClick={()=>setTechnicalMode("architecture")}>Arquitectura <b>ARQ</b></button>
+              <button aria-pressed={technicalMode==="structure"} onClick={()=>setTechnicalMode("structure")}>Estructura <b>EST</b></button>
+              <button aria-pressed={technicalMode==="electric"} onClick={()=>setTechnicalMode("electric")}>Plano eléctrico <b>ELEC</b></button>
+              <button aria-pressed={technicalMode==="water"} onClick={()=>setTechnicalMode("water")}>Agua potable <b>AGUA</b></button>
+              <button aria-pressed={technicalMode==="sanitary"} onClick={()=>setTechnicalMode("sanitary")}>Sanitario <b>SAN</b></button>
+            </div>
+            <label>Progreso constructivo <b>{constructionStage}/12</b><input type="range" min="1" max="12" value={constructionStage} onChange={(e)=>{setTechnicalMode("stage");setConstructionStage(Number(e.target.value));}}/></label>
+            <p>Los recorridos son esquemáticos. El proyecto eléctrico, hidráulico y sanitario definitivo debe dimensionarse con normativa, cálculo y profesionales competentes.</p>
+          </section> : null}
 
           {tab === "controls" ? <section className="sf-control-help">
             <h2>Controles tipo videojuego</h2>

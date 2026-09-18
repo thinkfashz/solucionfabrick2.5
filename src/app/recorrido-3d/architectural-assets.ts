@@ -12,19 +12,58 @@ export type FabrickAssetManifest = {
 export const ARCHITECTURAL_ASSETS: FabrickAssetManifest = {
   version: "2026.09",
   units: "meters",
-  // Blender/Gaea exports plug in here when the optimized assets are ready.
-  // Keeping these null preserves the fast procedural house as a production fallback.
-  houseUrl: null,
-  terrainUrl: null,
-  dracoDecoderPath: null,
-  ktx2TranscoderPath: null,
+  // Set these at deploy time after the Blender/Gaea assets are uploaded.
+  // Null keeps the current procedural scene as an instant fallback.
+  houseUrl: process.env.NEXT_PUBLIC_FABRICK_HOUSE_GLB || null,
+  terrainUrl: process.env.NEXT_PUBLIC_FABRICK_TERRAIN_GLB || null,
+  dracoDecoderPath: process.env.NEXT_PUBLIC_FABRICK_DRACO_PATH || null,
+  ktx2TranscoderPath: process.env.NEXT_PUBLIC_FABRICK_KTX2_PATH || null,
 };
+
+export type AssetNodeRole =
+  | "architecture"
+  | "kitchen"
+  | "bath"
+  | "structure"
+  | "electric"
+  | "water"
+  | "sanitary"
+  | "terrain"
+  | "light"
+  | "unknown";
 
 export type LoadedArchitecturalAssets = {
   house: Three.Group | null;
   terrain: Three.Group | null;
+  byRole: Map<AssetNodeRole, Three.Object3D[]>;
+  kitchenDoors: Three.Object3D[];
   dispose: () => void;
 };
+
+function roleForName(name: string): AssetNodeRole {
+  if (name.startsWith("ARCH_")) return "architecture";
+  if (name.startsWith("KITCH_")) return "kitchen";
+  if (name.startsWith("BATH_")) return "bath";
+  if (name.startsWith("STRUCT_")) return "structure";
+  if (name.startsWith("MEP_ELEC_")) return "electric";
+  if (name.startsWith("MEP_WATER_")) return "water";
+  if (name.startsWith("MEP_SAN_")) return "sanitary";
+  if (name.startsWith("TERRAIN_")) return "terrain";
+  if (name.startsWith("LIGHT_")) return "light";
+  return "unknown";
+}
+
+function indexScene(root: Three.Object3D | null, byRole: Map<AssetNodeRole, Three.Object3D[]>) {
+  const kitchenDoors: Three.Object3D[] = [];
+  root?.traverse((object) => {
+    const role = roleForName(object.name);
+    if (!byRole.has(role)) byRole.set(role, []);
+    byRole.get(role)!.push(object);
+    object.userData.fabrickRole = role;
+    if (object.name.startsWith("KITCH_DOOR_")) kitchenDoors.push(object);
+  });
+  return kitchenDoors;
+}
 
 function prepareScene(T: typeof import("three"), root: Three.Object3D, mobile: boolean) {
   root.traverse((object) => {
@@ -105,9 +144,15 @@ export async function loadOptionalArchitecturalAssets(
     prepareScene(T, terrain, mobile);
   }
 
+  const byRole = new Map<AssetNodeRole, Three.Object3D[]>();
+  const kitchenDoors = indexScene(house, byRole);
+  indexScene(terrain, byRole);
+
   return {
     house,
     terrain,
+    byRole,
+    kitchenDoors,
     dispose: () => {
       draco?.dispose();
       ktx2?.dispose();

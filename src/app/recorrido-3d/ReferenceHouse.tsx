@@ -371,8 +371,9 @@ export default function ReferenceHouse(){
    if(disposed){geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());architecturalAssets?.dispose();environment?.dispose();orbit.dispose();renderer.dispose();renderer.domElement.remove();return;}
    // Merge static pieces by material and explosion direction to limit draw calls.
    // Structural layers also receive a lightweight edge pass for a cleaner CAD/SketchUp-style reading.
-   const layerMaterials:T.MeshStandardMaterial[][]=[],structureEdges:T.LineSegments[]=[];
+   const layerMaterials:T.MeshStandardMaterial[][]=[],structureEdges:T.LineSegments[]=[],finishEdges:T.LineSegments[]=[];
    const edgeMaterial=new THREE.LineBasicMaterial({color:'#273845',transparent:true,opacity:.58});materials.push(edgeMaterial);
+   const finishEdgeMaterial=new THREE.LineBasicMaterial({color:'#263944',transparent:true,opacity:.16,depthWrite:false});materials.push(finishEdgeMaterial);
    scene.updateMatrixWorld(true);
    for(const group of groups){
     const batches=new Map<string,{parts:T.BufferGeometry[];material:T.MeshStandardMaterial;offset:T.Vector3}>();
@@ -384,6 +385,7 @@ export default function ReferenceHouse(){
      const sub=new THREE.Group();sub.userData.offset=offset;group.add(sub);mesh(g,clones.get(material.uuid)!,sub);
      const layerIndex=Number(group.userData.layer);
      if(layerIndex===2||layerIndex===3||layerIndex===8){const eg=new THREE.EdgesGeometry(g,28);geometry.push(eg);const lines=new THREE.LineSegments(eg,edgeMaterial);lines.visible=false;lines.renderOrder=3;sub.add(lines);structureEdges.push(lines);}
+     if(!mobile&&(layerIndex===6||layerIndex===7||layerIndex===9)){const eg=new THREE.EdgesGeometry(g,38);geometry.push(eg);const lines=new THREE.LineSegments(eg,finishEdgeMaterial);lines.visible=false;lines.renderOrder=2;sub.add(lines);finishEdges.push(lines);}
     }
     layerMaterials.push([...clones.values()]);
    }
@@ -465,7 +467,7 @@ export default function ReferenceHouse(){
     waterGroup.visible=!externalModeAvailable&&(mode==='water'||mode==='underfloor');
     sanitaryGroup.visible=!externalModeAvailable&&(mode==='sanitary'||mode==='underfloor');
     kitchenInteractive.visible=!externalModeAvailable&&(mode==='architecture'||mode==='stage');
-    structureEdges.forEach(line=>line.visible=!externalModeAvailable&&mode==='structure');
+    structureEdges.forEach(line=>line.visible=!externalModeAvailable&&mode==='structure');finishEdges.forEach(line=>line.visible=!externalModeAvailable&&mode==='architecture'&&s.quality!=='light');
     kitchenDoorValue=THREE.MathUtils.damp(kitchenDoorValue,kitchenDoorTarget,9,dt);
     kitchenDoors.forEach((door,index)=>{door.rotation.y=(index%2?1:-1)*kitchenDoorValue*THREE.MathUtils.degToRad(110)});
     externalDoorMeta.forEach(({door,closedY,sign,angle})=>{door.rotation.y=closedY+sign*kitchenDoorValue*angle});

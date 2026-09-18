@@ -192,3 +192,8 @@
  .sf-damage-toast-stack{max-height:136px;overflow:hidden}
  .sf-damage-map .pin-cornice{display:none}
 }
+
+
+.sf-quake-hud{position:fixed;z-index:31;left:50%;top:12px;transform:translateX(-50%);display:grid;grid-template-columns:34px minmax(150px,230px);gap:8px;align-items:center;min-width:245px;padding:6px 8px 8px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(5,16,29,.72);box-shadow:0 9px 26px rgba(0,0,0,.2)}
+.sf-quake-hud>span{display:grid;place-items:center;width:31px;height:31px;border-radius:8px;background:rgba(255,230,0,.1);color:#ffe600;font-size:8px;font-weight:800}.sf-quake-hud>div{display:flex;min-width:0;flex-direction:column}.sf-quake-hud strong{font-size:9px}.sf-quake-hud small{margin-top:2px;overflow:hidden;color:#8da4b6;font-size:6px;text-overflow:ellipsis;white-space:nowrap}.sf-quake-hud>i{position:absolute;left:8px;right:auto;bottom:3px;height:2px;border-radius:2px;background:#ffe600;transition:width .08s linear}
+@media(max-width:700px){.sf-quake-hud{top:8px;min-width:205px;grid-template-columns:29px 1fr;padding:5px 7px 7px}.sf-quake-hud>span{width:27px;height:27px}.sf-quake-hud strong{font-size:8px}.sf-quake-hud small{font-size:5px}}

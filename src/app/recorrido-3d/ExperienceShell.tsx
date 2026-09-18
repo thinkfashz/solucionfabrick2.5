@@ -45,6 +45,38 @@ const CAMERAS = [
   ["Aérea", "Vista aérea", "aerial"],
 ] as const;
 
+const CAMERA_GROUPS = [
+  { title: "Exterior", note: "Volumen, fachada y entorno", ids: [0,10,11,12] },
+  { title: "Zona social", note: "Espacios de uso diario", ids: [1,2,3] },
+  { title: "Zona privada", note: "Dormitorios y baños", ids: [4,5,6,7] },
+  { title: "Servicio", note: "Apoyo y visitas", ids: [8,9] },
+] as const;
+
+type DamageId = "roof"|"cornices"|"windows"|"walls"|"foundation"|"sanitary";
+const DAMAGE_META: Record<DamageId,{label:string;location:string;check:string}> = {
+  roof:{label:"Techumbre",location:"Encuentros y cubierta",check:"Revisar fijaciones, apoyos y encuentros de cubierta."},
+  cornices:{label:"Cornisas / encuentros",location:"Uniones superiores",check:"Revisar separaciones, fisuras y continuidad de encuentros."},
+  windows:{label:"Ventanas",location:"Vanos y marcos",check:"Revisar marco, sello y encuentro muro–vano."},
+  walls:{label:"Muros / uniones",location:"Tabiques y esquinas",check:"Revisar uniones, fisuras y desplazamientos visibles."},
+  foundation:{label:"Fundación",location:"Base / radier",check:"Revisar asentamientos, fisuras y continuidad del apoyo."},
+  sanitary:{label:"Red sanitaria",location:"Bajo piso",check:"Revisar uniones, pendientes y posibles pérdidas."},
+};
+
+function SwipeDamage({id,label,score,onDismiss,onOpen}:{id:DamageId;label:string;score:number;onDismiss:(id:DamageId)=>void;onOpen:(id:DamageId)=>void}) {
+  const start=useRef(0); const [dx,setDx]=useState(0); const [dragging,setDragging]=useState(false);
+  const end=()=>{ if(Math.abs(dx)>64) onDismiss(id); setDx(0); setDragging(false); };
+  return <article className="sf-damage-toast" data-level={level(score).toLowerCase()} style={{transform:`translateX(${dx}px)`,opacity:Math.max(.25,1-Math.abs(dx)/180)}}>
+    <button className="sf-damage-toast-main" onClick={()=>onOpen(id)}
+      onPointerDown={(e)=>{start.current=e.clientX;setDragging(true);e.currentTarget.setPointerCapture?.(e.pointerId)}}
+      onPointerMove={(e)=>{if(dragging)setDx(e.clientX-start.current)}}
+      onPointerUp={end} onPointerCancel={end}>
+      <span className="sf-damage-dot"/><div><strong>{label}</strong><small>{DAMAGE_META[id].location}</small></div><b>{level(score)}</b>
+    </button>
+    <button className="sf-damage-dismiss" aria-label={"Descartar "+label} onClick={()=>onDismiss(id)}>×</button>
+  </article>;
+}
+
+
 const AREA: Record<string, AreaInfo> = {
   "Casa de referencia": {
     title: "Exterior · envolvente",
@@ -206,6 +238,9 @@ export default function ExperienceShell() {
   const [soundOn, setSoundOn] = useState(false);
   const [areaName, setAreaName] = useState("Casa de referencia");
   const [cameraIndex, setCameraIndex] = useState(0);
+  const [cameraSheet, setCameraSheet] = useState(false);
+  const [dismissedDamage, setDismissedDamage] = useState<DamageId[]>([]);
+  const [selectedDamage, setSelectedDamage] = useState<DamageId | null>(null);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
   const [technicalMode, setTechnicalMode] = useState<TechnicalMode>("architecture");
   const [constructionStage, setConstructionStage] = useState(12);
@@ -278,19 +313,20 @@ export default function ExperienceShell() {
 
   useEffect(() => {
     if (!playing) return;
-    setProgress(0.001);
+    setDismissedDamage([]); setSelectedDamage(null); setProgress(0.001);
     const started = performance.now();
-    const visualMs = Math.max(12000, Math.min(22000, duration * 430));
-    let raf = 0;
+    const visualMs = Math.max(10500, Math.min(19000, duration * 390));
+    let raf = 0, lastUi = 0;
     const tick = (now: number) => {
       const next = clamp((now - started) / visualMs);
-      setProgress(next);
-      if (next >= 1) setPlaying(false);
+      window.dispatchEvent(new CustomEvent("fabrick:quake",{detail:{active:next<1,progress:next,hazard:analysis.hazard,frequencyHz,directionDeg,motion}}));
+      if(now-lastUi>48 || next>=1){ setProgress(next); lastUi=now; }
+      if (next >= 1) { setPlaying(false); window.dispatchEvent(new CustomEvent("fabrick:quake",{detail:{active:false,progress:1,hazard:analysis.hazard,frequencyHz,directionDeg,motion}})); }
       else raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [playing, duration]);
+    return () => { cancelAnimationFrame(raf); window.dispatchEvent(new CustomEvent("fabrick:quake",{detail:{active:false,progress:0,hazard:0,frequencyHz,directionDeg,motion}})); };
+  }, [playing, duration, analysis.hazard, frequencyHz, directionDeg, motion]);
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("fabrick:lighting", { detail: { mode: light, exposure, temperature, interiorLights, exteriorLights } }));
@@ -373,7 +409,7 @@ export default function ExperienceShell() {
 
   const goCamera = (index: number) => {
     const next = (index + CAMERAS.length) % CAMERAS.length;
-    setCameraIndex(next);
+    setCameraIndex(next); setCameraSheet(false); setInfoOpen(false); setSelectedMaterialId(null);
     const audio=audioRef.current;if(audio&&soundOn){const tone=audio.ctx.createOscillator(),gain=audio.ctx.createGain();tone.type="sine";tone.frequency.value=520;gain.gain.setValueAtTime(.0001,audio.ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.012,audio.ctx.currentTime+.01);gain.gain.exponentialRampToValueAtTime(.0001,audio.ctx.currentTime+.065);tone.connect(gain).connect(audio.ctx.destination);tone.start();tone.stop(audio.ctx.currentTime+.075);}
     window.dispatchEvent(new CustomEvent("fabrick:camera",{detail:{view:CAMERAS[next][2]}}));
   };
@@ -424,7 +460,7 @@ export default function ExperienceShell() {
 
   return (
     <div className={`sf-experience sf-light-${light} sf-phase-${phase}`} style={sceneStyle} data-interior-lights={interiorLights} data-exterior-lights={exteriorLights} data-tech={technicalMode}>
-      <div className={`sf-scene ${phase === "surface" ? "is-quaking" : ""}`}>
+      <div className="sf-scene">
         <ReferenceHouse />
         <div className="sf-light-sim" aria-hidden="true" />
       </div>
@@ -436,10 +472,9 @@ export default function ExperienceShell() {
 
       <nav className="sf-quick" aria-label="Controles rápidos">
         <button onClick={() => window.dispatchEvent(new Event("fabrick:menu"))}><span>☰</span><small>Modelo</small></button>
-        <button aria-pressed={infoOpen} onClick={() => setInfoOpen((v) => !v)}><span>ⓘ</span><small>Info</small></button>
+        <button onClick={() => {setTab("quake");setOpen(true)}}><span>⌁</span><small>Sismo</small></button>
         <button onClick={cycleLight}><span>{light === "night" ? "☾" : "☀"}</span><small>Luz</small></button>
-        <button aria-pressed={soundOn} onClick={() => { const audio = ensureAudio(); const media = ensureAmbienceMedia(); void audio.ctx.resume(); if (!soundOn) { const active = light === "night" ? media.night : media.day; active.volume = light === "night" ? 0.11 : 0.16; void active.play().catch(() => {}); } else { media.day.pause(); media.night.pause(); } setSoundOn((v) => !v); }}><span>{soundOn ? "🔊" : "🔇"}</span><small>Audio</small></button>
-        <button aria-pressed={open} onClick={() => setOpen((v) => !v)}><span>⌁</span><small>Lab</small></button>
+        <button aria-pressed={infoOpen} onClick={() => setInfoOpen((v) => !v)}><span>ⓘ</span><small>Info</small></button>
       </nav>
 
       {infoOpen ? (
@@ -482,10 +517,17 @@ export default function ExperienceShell() {
 
       <nav className="sf-camera-dock" aria-label="Cámaras del recorrido">
         <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex - 1)} aria-label="Vista anterior">‹</button>
-        <button className="sf-camera-current" onClick={() => window.dispatchEvent(new Event("fabrick:menu"))}><span>{cameraIndex + 1}/{CAMERAS.length}</span><strong>{CAMERAS[cameraIndex][0]}</strong><small>Toca para elegir ambiente</small></button>
-        <div className="sf-camera-list">{CAMERAS.map(([label], index) => <button key={label} aria-pressed={cameraIndex === index} onClick={() => goCamera(index)}><span>{index + 1}</span>{label}</button>)}</div>
+        <button className="sf-camera-current" onClick={() => setCameraSheet(true)}><span>{cameraIndex + 1}/{CAMERAS.length}</span><strong>{CAMERAS[cameraIndex][0]}</strong><small>Elegir ambiente</small></button>
         <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex + 1)} aria-label="Vista siguiente">›</button>
       </nav>
+
+      {cameraSheet ? <div className="sf-sheet-backdrop" onPointerDown={(e)=>{if(e.target===e.currentTarget)setCameraSheet(false)}}>
+        <aside className="sf-camera-sheet" aria-label="Elegir cámara">
+          <div className="sf-sheet-handle"/><header><div><small>VISTAS</small><strong>Elige un ambiente</strong></div><button onClick={()=>setCameraSheet(false)}>×</button></header>
+          {CAMERA_GROUPS.map(group=><section key={group.title}><div><strong>{group.title}</strong><small>{group.note}</small></div><nav>{group.ids.map(index=><button key={CAMERAS[index][0]} aria-pressed={cameraIndex===index} onClick={()=>goCamera(index)}><span>{String(index+1).padStart(2,"0")}</span><b>{CAMERAS[index][0]}</b></button>)}</nav></section>)}
+          {areaName==="Cocina" ? <button className="sf-kitchen-motion" onClick={()=>window.dispatchEvent(new CustomEvent("fabrick:kitchen",{detail:{toggle:true}}))}>Abrir / cerrar muebles superiores <span>110°</span></button> : null}
+        </aside>
+      </div> : null}
 
       {(phase === "hypocenter" || phase === "propagation") ? (
         <div className="sf-seismic-stage" aria-live="polite">
@@ -498,18 +540,31 @@ export default function ExperienceShell() {
         </div>
       ) : null}
 
-      {(phase === "surface" || phase === "aftermath") && analysis.damage >= 12 ? (
-        <div className="sf-damage-map" aria-hidden="true">
-          {[
-            ["pin-roof", "Techumbre", analysis.zones.roof],
-            ["pin-cornice", "Cornisas / encuentros", analysis.zones.cornices],
-            ["pin-window", "Ventanas", analysis.zones.windows],
-            ["pin-wall", "Muros / uniones", analysis.zones.walls],
-            ["pin-foundation", "Fundación", analysis.zones.foundation],
-            ["pin-sanitary", "Red sanitaria", analysis.zones.sanitary],
-          ].map(([className, label, score]) => <span key={String(label)} className={`sf-damage-pin ${className}`} style={{ opacity: 0.3 + Number(score) * 0.7 }}><b>{label}</b><small>{level(Number(score))}</small></span>)}
+      {(phase === "surface" || phase === "aftermath") && analysis.damage >= 12 ? <>
+        <div className="sf-damage-map">
+          {([
+            ["roof","pin-roof",analysis.zones.roof],["cornices","pin-cornice",analysis.zones.cornices],["windows","pin-window",analysis.zones.windows],
+            ["walls","pin-wall",analysis.zones.walls],["foundation","pin-foundation",analysis.zones.foundation],["sanitary","pin-sanitary",analysis.zones.sanitary]
+          ] as [DamageId,string,number][]).filter(([id])=>!dismissedDamage.includes(id)).map(([id,className,score]) =>
+            <button key={id} className={`sf-damage-pin ${className}`} data-level={level(score).toLowerCase()} style={{opacity:.52+score*.48}} onClick={()=>setSelectedDamage(id)}>
+              <i/><b>{DAMAGE_META[id].label}</b><small>{level(score)}</small>
+            </button>)}
         </div>
-      ) : null}
+        <div className="sf-damage-toast-stack" aria-live="polite">
+          {([
+            ["walls",analysis.zones.walls],["windows",analysis.zones.windows],["roof",analysis.zones.roof],["foundation",analysis.zones.foundation],["sanitary",analysis.zones.sanitary]
+          ] as [DamageId,number][]).filter(([id,score])=>score>=.22&&!dismissedDamage.includes(id)).slice(0,4).map(([id,score])=>
+            <SwipeDamage key={id} id={id} label={DAMAGE_META[id].label} score={score} onOpen={setSelectedDamage} onDismiss={(damageId)=>setDismissedDamage(v=>[...v,damageId])}/>)}
+        </div>
+        {selectedDamage ? <aside className="sf-damage-detail">
+          <header><div><small>INSPECCIÓN VISUAL</small><strong>{DAMAGE_META[selectedDamage].label}</strong></div><button onClick={()=>setSelectedDamage(null)}>×</button></header>
+          <p><b>Zona</b>{DAMAGE_META[selectedDamage].location}</p>
+          <p><b>Nivel relativo</b>{level(analysis.zones[selectedDamage])}</p>
+          <p><b>Qué revisar</b>{DAMAGE_META[selectedDamage].check}</p>
+          <small>Índice visual educativo. No sustituye inspección ni cálculo estructural.</small>
+          <button className="sf-damage-reviewed" onClick={()=>{setDismissedDamage(v=>[...v,selectedDamage]);setSelectedDamage(null)}}>Marcar revisado</button>
+        </aside> : null}
+      </> : null}
 
       {open ? (
         <aside className="sf-lab" aria-label="Fabrick Lab">
@@ -536,7 +591,7 @@ export default function ExperienceShell() {
               <label>Dirección de movimiento <b>{directionDeg}°</b><input type="range" min="0" max="359" step="1" value={directionDeg} onChange={(e) => setDirectionDeg(Number(e.target.value))} /></label>
               <label>Tipo de movimiento<select value={motion} onChange={(e) => setMotion(e.target.value as Motion)}><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option><option value="mixed">Mixto</option></select></label>
               <label>Suelo<select value={soil} onChange={(e) => setSoil(e.target.value as Soil)}><option value="rock">Roca / muy firme</option><option value="firm">Firme</option><option value="soft">Blando</option></select></label>
-              <button className="sf-play" disabled={playing} onClick={() => { setProgress(0); setPlaying(true); }}>{playing ? "Simulación en curso…" : progress > 0 ? "↻ Reiniciar terremoto" : "▶ Inicializar terremoto"}</button>
+              <button className="sf-play" disabled={playing} onClick={() => { const audio=ensureAudio();void audio.ctx.resume();setProgress(0);setPlaying(true); }}>{playing ? "Simulación en curso…" : progress > 0 ? "↻ Reiniciar terremoto" : "▶ Inicializar terremoto"}</button>
               <div className="sf-progress"><i style={{ width: `${progress * 100}%` }} /></div>
               <div className="sf-phase-readout"><b>{phase === "idle" ? "Preparado" : phase === "hypocenter" ? "Hipocentro" : phase === "propagation" ? "Propagación" : phase === "surface" ? "Respuesta en superficie" : "Evaluación posterior"}</b><span>{Math.round(progress * 100)}%</span></div>
             </section>

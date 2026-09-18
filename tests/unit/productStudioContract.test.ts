@@ -87,4 +87,87 @@ describe('Product Studio mobile commerce contract', () => {
     expect(editor).toContain('Opiniones y moderación');
     expect(editor).toContain('Marcar verificada');
   });
+  it('grounds product research in selected online references and official Mercado Libre item details', () => {
+    const panel = readFileSync('src/components/admin/products/ProductResearchPanel.tsx', 'utf8');
+    const research = readFileSync('src/app/api/admin/products/research/route.ts', 'utf8');
+    const editor = readFileSync('src/app/admin/productos/ProductStudioEditor.tsx', 'utf8');
+
+    expect(panel).toContain('/api/admin/market-intel/search');
+    expect(panel).toContain('/api/admin/products/research');
+    expect(panel).toContain('Precio');
+    expect(panel).toContain('Referencias encontradas');
+    expect(research).toContain('https://api.mercadolibre.com/items/');
+    expect(research).toContain('sourceIndexes');
+    expect(research).toContain('No inventes potencia, dimensiones, materiales');
+    expect(research).toContain("resolveTenantProviderConfig('ollama'");
+    expect(editor).toContain('public_features');
+    expect(editor).toContain('product_research');
+  });
+
+  it('supports online visual references without auto-publishing them as the cover', () => {
+    const dock = readFileSync('src/components/admin/products/ProductAiImageDock.tsx', 'utf8');
+    const api = readFileSync('src/app/api/admin/products/ai-image/route.ts', 'utf8');
+
+    expect(dock).toContain('Referencias visuales online');
+    expect(dock).toContain('/api/admin/market-intel/search');
+    expect(dock).toContain('selectedReferences');
+    expect(dock).toContain('referenceUrls: selectedReferences');
+    expect(api).toContain('referenceUrls');
+    expect(api).toContain('input_references');
+    expect(api).toContain('No copies logos, marcas de agua');
+  });
+
+  it('offers an unsaved customer preview and explicit related product control', () => {
+    const editor = readFileSync('src/app/admin/productos/ProductStudioEditor.tsx', 'utf8');
+    const preview = readFileSync('src/components/admin/products/ProductPreviewModal.tsx', 'utf8');
+
+    expect(editor).toContain("label: 'Publicación'");
+    expect(editor).toContain('related_product_ids');
+    expect(editor).toContain('Productos relacionados');
+    expect(editor).toContain('<ProductPreviewModal');
+    expect(preview).toContain('Vista previa privada');
+    expect(preview).toContain('Ficha que verá el cliente');
+  });
+
+  it('keeps storefront characteristics public-only and prioritizes explicit related products', () => {
+    const storefront = readFileSync('src/app/tienda/[id]/ProductoClient.tsx', 'utf8');
+
+    expect(storefront).toContain('specifications?.public_features');
+    expect(storefront).toContain('related_product_ids');
+    expect(storefront).not.toContain('FALLBACK_CATALOG_PRODUCTS');
+    expect(storefront).toContain('orderedReviews');
+    expect(storefront).toContain('ratingBreakdown');
+    expect(storefront).toContain('Productos relacionados');
+  });
+
+  it('provides a central review workspace with replies, featured state and Ollama analysis', () => {
+    const page = readFileSync('src/app/admin/opiniones-productos/page.tsx', 'utf8');
+    const api = readFileSync('src/app/api/product-reviews/route.ts', 'utf8');
+    const analyze = readFileSync('src/app/api/admin/product-reviews/analyze/route.ts', 'utf8');
+    const schema = readFileSync('scripts/ensure-product-reviews-schema.mjs', 'utf8');
+    const nav = readFileSync('src/components/admin/AdminShell.tsx', 'utf8');
+
+    expect(page).toContain('Opiniones de productos');
+    expect(page).toContain('Analizar con');
+    expect(page).toContain('Destacar');
+    expect(page).toContain('Respuesta de Soluciones Fabrick');
+    expect(api).toContain('product_name');
+    expect(api).toContain('featured');
+    expect(schema).toContain('featured boolean');
+    expect(schema).toContain('analysis jsonb');
+    expect(analyze).toContain("body.provider === 'openrouter' ? 'openrouter' : 'ollama'");
+    expect(analyze).toContain('replySuggestion');
+    expect(nav).toContain('/admin/opiniones-productos');
+  });
+
+  it('orders the catalog by items needing attention before secondary sort choices', () => {
+    const page = readFileSync('src/app/admin/productos/page.tsx', 'utf8');
+
+    expect(page).toContain("useState<Sort>('attention')");
+    expect(page).toContain('Necesita atención primero');
+    expect(page).toContain('attentionScore');
+    expect(page).toContain('Destacados primero');
+    expect(page).toContain('Stock mayor');
+  });
+
 });

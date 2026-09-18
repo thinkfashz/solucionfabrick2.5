@@ -3,16 +3,10 @@ import Link from 'next/link';
 import {
   Activity,
   ArrowRight,
-  BadgeCheck,
-  Headphones,
   Images,
   Layers3,
-  Leaf,
   PanelsTopLeft,
   ReceiptText,
-  ShieldCheck,
-  Truck,
-  Users,
   Wind,
 } from 'lucide-react';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
@@ -22,115 +16,257 @@ import MetalconSeismicStory from './MetalconSeismicStory';
 import styles from './HomePremiumV10.module.css';
 
 const CLOUD = 'https://res.cloudinary.com/disghf6xc/image/upload';
-const ORIGINALS = `${CLOUD}/soluciones-fabrick/diseno-20260908`;
-const RADIER_VISUAL = `${CLOUD}/c_limit,w_1100/f_auto/q_auto/v1788934479/hormigon-radier.png`;
-const INSPIRATION_COVER = HOME_PREMIUM_VISUALS.kitchen;
+const ORIGINALS = CLOUD + '/soluciones-fabrick/diseno-20260908';
+const RADIER_VISUAL = CLOUD + '/c_limit,w_1100/f_auto/q_auto/v1788934479/hormigon-radier.png';
 
 const CATEGORIES = [
-  { key: 'air', eyebrow: 'Climatización', title: 'Aire acondicionado', text: 'Calcula BTU, compara capacidad y encuentra el equipo adecuado para tu espacio.', image: `${ORIGINALS}/aire-acondicionado.png`, href: '/herramientas/aire-acondicionado', cta: 'Calcular BTU', alt: 'Aire acondicionado split blanco' },
-  { key: 'radier', eyebrow: 'Obra base', title: 'Radier', text: 'Ingresa medidas, espesor y forma para estimar hormigón, materiales y referencia de costo.', image: RADIER_VISUAL, href: '/herramientas/radier', cta: 'Calcular radier', alt: 'Hormigón para cálculo de radier' },
-  { key: 'metal', eyebrow: 'Estructuras', title: 'Metalcon', text: 'Configura paneles, vanos, perfiles y refuerzos antes de pasar a presupuesto o simulación sísmica.', image: HOME_PREMIUM_VISUALS.metalcon, href: '/herramientas/metalcon', cta: 'Abrir configurador', alt: 'Estructura Metalcon y Steel Frame de referencia' },
+  {
+    key: 'air',
+    eyebrow: 'Climatización',
+    title: 'Aire acondicionado',
+    text: 'Calcula BTU, compara capacidad y encuentra el equipo adecuado para tu espacio.',
+    image: ORIGINALS + '/aire-acondicionado.png',
+    href: '/herramientas/aire-acondicionado',
+    cta: 'Calcular BTU',
+    alt: 'Aire acondicionado split blanco',
+  },
+  {
+    key: 'radier',
+    eyebrow: 'Obra base',
+    title: 'Radier',
+    text: 'Ingresa medidas, espesor y forma para estimar hormigón, materiales y referencia de costo.',
+    image: RADIER_VISUAL,
+    href: '/herramientas/radier',
+    cta: 'Calcular radier',
+    alt: 'Hormigón para cálculo de radier',
+  },
+  {
+    key: 'metal',
+    eyebrow: 'Estructuras',
+    title: 'Metalcon',
+    text: 'Configura paneles, vanos, perfiles y refuerzos antes de pasar a presupuesto o simulación sísmica.',
+    image: HOME_PREMIUM_VISUALS.metalcon,
+    href: '/herramientas/metalcon',
+    cta: 'Abrir configurador',
+    alt: 'Estructura Metalcon y Steel Frame de referencia',
+  },
 ] as const;
 
 const TOOLS = [
-  { title: 'Inspiraciones', text: 'Explora cocinas, viviendas, muebles y soluciones reales antes de decidir.', href: '/proyectos', cta: 'Explorar ideas', Icon: Images, featured: false, image: INSPIRATION_COVER },
-  { title: 'Calculadora de aire', text: 'BTU, consumo estimado, equipo sugerido y acceso a compra o instalación.', href: '/herramientas/aire-acondicionado', cta: 'Calcular aire ideal', Icon: Wind, featured: false, image: null },
-  { title: 'Calculadora de radier', text: 'Superficie, espesor, volumen y materiales con lectura clara del proyecto.', href: '/herramientas/radier', cta: 'Calcular radier', Icon: Layers3, featured: false, image: null },
-  { title: 'Paneles Metalcon', text: 'Arma el panel, revisa perfiles y entiende la lógica de la estructura.', href: '/herramientas/metalcon', cta: 'Diseñar estructura', Icon: PanelsTopLeft, featured: false, image: null },
-  { title: 'Simulador sísmico 4D', text: 'Prueba intensidad, profundidad, respuesta estructural, daño estimado y reparación referencial.', href: '/herramientas/metalcon/monitoreo', cta: 'Simular terremoto', Icon: Activity, featured: true, image: null },
-  { title: 'Presupuesto guiado', text: 'Selecciona servicios, ingresa medidas, compara rangos y envía el detalle por correo o WhatsApp.', href: '/presupuesto', cta: 'Armar presupuesto', Icon: ReceiptText, featured: false, image: null },
+  {
+    number: '01',
+    title: 'Inspiraciones',
+    text: 'Explora cocinas, viviendas y soluciones reales antes de decidir qué construir.',
+    href: '/proyectos',
+    cta: 'Explorar ideas',
+    Icon: Images,
+  },
+  {
+    number: '02',
+    title: 'Calculadora de aire',
+    text: 'BTU, consumo estimado, equipo sugerido y acceso a compra o instalación.',
+    href: '/herramientas/aire-acondicionado',
+    cta: 'Calcular aire ideal',
+    Icon: Wind,
+  },
+  {
+    number: '03',
+    title: 'Calculadora de radier',
+    text: 'Superficie, espesor, volumen y materiales con una lectura clara del proyecto.',
+    href: '/herramientas/radier',
+    cta: 'Calcular radier',
+    Icon: Layers3,
+  },
+  {
+    number: '04',
+    title: 'Paneles Metalcon',
+    text: 'Arma el panel, revisa perfiles y entiende la lógica de la estructura.',
+    href: '/herramientas/metalcon',
+    cta: 'Diseñar estructura',
+    Icon: PanelsTopLeft,
+  },
+  {
+    number: '05',
+    title: 'Simulador sísmico 4D',
+    text: 'Prueba intensidad, profundidad, respuesta estructural, daño estimado y reparación referencial.',
+    href: '/herramientas/metalcon/monitoreo',
+    cta: 'Simular sismo',
+    Icon: Activity,
+  },
+  {
+    number: '06',
+    title: 'Presupuesto guiado',
+    text: 'Selecciona servicios, agrega medidas y lleva una referencia ordenada a WhatsApp o correo.',
+    href: '/presupuesto',
+    cta: 'Armar presupuesto',
+    Icon: ReceiptText,
+  },
 ] as const;
 
-export default function HomePremiumV10({ copyrightText, socialLinks }: {
+const HERO_STEPS = [
+  ['01', 'Explora', 'Mira soluciones y referencias antes de elegir.'],
+  ['02', 'Calcula', 'Convierte medidas en cantidades y rangos.'],
+  ['03', 'Decide', 'Compara alternativas y arma tu presupuesto.'],
+] as const;
+
+export default function HomePremiumV10({
+  copyrightText,
+  socialLinks,
+}: {
   copyrightText?: string;
   socialLinks?: { facebook?: string; instagram?: string; tiktok?: string };
 }) {
-  return <main className={`home-v10 ${styles.home}`}>
-    <section className={styles.hero} aria-labelledby="home-title">
-      <div className={styles.atmosphere} />
-      <Image src={`${ORIGINALS}/casa.png`} alt="Casa contemporánea con ventanales y acceso iluminado" width={1536} height={1152} priority unoptimized className={styles.house} />
-      <div className={styles.heroShade} />
-      <div className={styles.heroContent}>
-        <p className={styles.eyebrow}>Construye un mejor mañana <span /></p>
-        <h1 id="home-title">Soluciones<br />que <span>hacen hogar</span></h1>
-        <p className={styles.intro}>Diseña, calcula y compara antes de construir. Herramientas reales para pasar de una idea a una decisión concreta.</p>
-        <div className={styles.actions}>
-          <Link href="/herramientas/metalcon/monitoreo" className={styles.primary}>Simular sismo <Activity size={18} /></Link>
-          <Link href="/herramientas/aire-acondicionado" className={styles.secondary}>Calcular aire ideal</Link>
-        </div>
-      </div>
-      <div className={styles.trust}>
-        <Trust Icon={ShieldCheck} title="Calidad" text="garantizada" />
-        <Trust Icon={Truck} title="Proyectos" text="planificados" />
-        <Trust Icon={Headphones} title="Asesoría" text="especializada" />
-      </div>
-    </section>
+  const orderedCategories = [CATEGORIES[2], CATEGORIES[1], CATEGORIES[0]] as const;
 
-    <div className={styles.content}>
-      <section className={styles.categories} aria-label="Herramientas principales">
-        {CATEGORIES.map(item => <article key={item.key} className={`${styles.category} ${styles[item.key]}`}>
-          {item.key === 'air' && <Image src={`${CLOUD}/v1788843275/air-lifestyle-room-v10.jpg`} alt="" fill sizes="(max-width: 767px) 100vw, 33vw" className={styles.room} />}
-          <Image src={item.image} alt={item.alt} width={1536} height={1152} unoptimized className={styles.categoryImage} />
-          {item.key === 'air' && <div className={styles.coolAir} />}
-          <div className={styles.categoryText}>
-            <p>{item.eyebrow}</p><h2>{item.title}</h2><div>{item.text}</div>
-            <Link href={item.href} className={styles.primary}>{item.cta} <ArrowRight size={17} /></Link>
+  return (
+    <main className={styles.home}>
+      <section className={styles.hero} aria-labelledby="home-title">
+        <div className={styles.heroInner}>
+          <div className={styles.heroCopy}>
+            <p className={styles.kicker}>Soluciones Fabrick · construcción + herramientas digitales</p>
+            <h1 id="home-title">Antes de construir, <span>entiende tu proyecto.</span></h1>
+            <p className={styles.intro}>
+              Calcula, compara y visualiza decisiones de obra antes de gastar. Menos improvisación, más claridad para avanzar.
+            </p>
+            <div className={styles.actions}>
+              <Link href="/presupuesto" className={styles.primary}>Calcular mi proyecto <ArrowRight size={17} /></Link>
+              <Link href="/recorrido-3d" className={styles.secondary}>Recorrer vivienda 3D</Link>
+            </div>
           </div>
-        </article>)}
-      </section>
 
-      <section className={styles.toolHub} aria-labelledby="tools-title">
-        <div className={styles.toolHeading}>
-          <div><p>Herramientas Fabrick</p><h2 id="tools-title">Antes de cotizar, entiende tu proyecto.</h2></div>
-          <span>Calculadoras, inspiración, estructura y simulación conectadas en una sola ruta.</span>
+          <Link href="/recorrido-3d" className={styles.heroVisual} aria-label="Abrir recorrido 3D de vivienda">
+            <Image
+              src={HOME_PREMIUM_VISUALS.house}
+              alt="Vivienda contemporánea de referencia Soluciones Fabrick"
+              fill
+              priority
+              unoptimized
+              sizes="(max-width: 900px) 100vw, 48vw"
+            />
+            <span className={styles.visualShade} />
+            <span className={styles.visualLabel}><b>Recorrido 3D</b><small>Explora espacios, materiales y estructura</small></span>
+            <span className={styles.visualArrow}><ArrowRight size={18} /></span>
+          </Link>
         </div>
-        <div className={styles.toolGrid}>
-          {TOOLS.map(({ title, text, href, cta, Icon, featured, image }) => <Link key={title} href={href} className={`${styles.toolCard} ${featured ? styles.toolFeatured : ''} ${image ? 'relative isolate overflow-hidden' : ''}`}>
-            {image ? <>
-              <Image src={image} alt="Inspiración de cocina remodelada Soluciones Fabrick" fill unoptimized sizes="(max-width: 767px) 100vw, 33vw" className="absolute inset-0 -z-20 h-full w-full object-cover object-center opacity-55" />
-              <span aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(115deg,rgba(5,10,13,.96)_4%,rgba(5,10,13,.76)_54%,rgba(5,10,13,.34))]" />
-            </> : null}
-            <span className={`${styles.toolIcon} relative z-10`}><Icon aria-hidden /></span>
-            <div className="relative z-10"><h3>{title}</h3><p className={image ? '!text-[#D1D9DD]' : undefined}>{text}</p></div>
-            <span className={`${styles.toolCta} relative z-10`}>{cta}<ArrowRight size={16}/></span>
-          </Link>)}
+
+        <div className={styles.heroSteps} aria-label="Cómo funciona Fabrick">
+          {HERO_STEPS.map(([number, title, text]) => (
+            <div key={number}>
+              <span>{number}</span>
+              <strong>{title}</strong>
+              <p>{text}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      <section className={styles.values} aria-label="Nuestro compromiso">
-        <Trust Icon={Leaf} title="Construcción responsable" text="Soluciones para un futuro sostenible." />
-        <Trust Icon={Users} title="Cerca de tu proyecto" text="Atención para cada etapa de tu obra." />
-        <Trust Icon={BadgeCheck} title="Calidad y confianza" text="Materiales para construir mejor." />
-        <Trust Icon={Headphones} title="Soporte experto" text="Te acompañamos en cada paso." />
-      </section>
+      <div className={styles.content}>
+        <section className={styles.startSection} aria-labelledby="start-title">
+          <header className={styles.sectionIntro}>
+            <p>Empieza por lo que necesitas resolver</p>
+            <h2 id="start-title">Tres decisiones de obra, una ruta clara.</h2>
+            <span>No necesitas recorrer todo el sitio. Entra directo al cálculo o configurador que corresponde.</span>
+          </header>
 
-      <section className={styles.featured} aria-labelledby="featured-title">
-        <div className={styles.sectionHeading}><div><h2 id="featured-title">Accesos rápidos</h2><p>Las tres herramientas que más ayudan a decidir antes de ejecutar.</p></div><Link href="/presupuesto">Ir al presupuesto <ArrowRight size={18} /></Link></div>
-        <div className={styles.products}>{CATEGORIES.map(item => <Link key={item.key} href={item.href} className={styles.product}>
-          <Image src={item.image} alt={item.alt} width={1536} height={1152} unoptimized />
-          <span>{item.title}<ArrowRight size={17} /></span>
-        </Link>)}</div>
-      </section>
+          <div className={styles.categoryLayout}>
+            {orderedCategories.map((item, index) => (
+              <article key={item.key} className={styles.category + ' ' + (index === 0 ? styles.categoryLead : '') + ' ' + styles[item.key]}>
+                <Image
+                  src={item.image}
+                  alt={item.alt}
+                  fill
+                  unoptimized
+                  sizes={index === 0 ? '(max-width: 900px) 100vw, 58vw' : '(max-width: 900px) 100vw, 38vw'}
+                  className={styles.categoryImage}
+                />
+                <span className={styles.categoryShade} />
+                <div className={styles.categoryBody}>
+                  <p>{item.eyebrow}</p>
+                  <h3>{item.title}</h3>
+                  <span>{item.text}</span>
+                  <Link href={item.href}>{item.cta}<ArrowRight size={16} /></Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
 
-      <section className={styles.globalCalculator}>
-        <div><p>Calculadora global</p><h2>Todos los trabajos y rangos en un solo presupuesto.</h2><span>Selecciona el servicio, ingresa medidas, compara mano de obra con trabajo vendido y envía el detalle por correo o WhatsApp.</span></div>
-        <Link href="/presupuesto" className={styles.primary}>Calcular proyecto completo <ArrowRight size={18}/></Link>
-      </section>
-      <ConstructionM2Calculator />
-    </div>
+        <section className={styles.walkthrough} aria-labelledby="walkthrough-title">
+          <div className={styles.walkthroughVisual}>
+            <Image
+              src={HOME_PREMIUM_VISUALS.architecture}
+              alt="Estructura de vivienda para recorrido 3D Soluciones Fabrick"
+              fill
+              unoptimized
+              sizes="(max-width: 900px) 100vw, 56vw"
+            />
+          </div>
+          <div className={styles.walkthroughCopy}>
+            <p>Del plano a una experiencia entendible</p>
+            <h2 id="walkthrough-title">Mira la vivienda antes de hablar de terminaciones.</h2>
+            <span>
+              Recorre ambientes, revisa capas constructivas y entiende dónde van estructura, instalaciones y materiales.
+              El visor es una herramienta de comprensión; el diseño definitivo se valida para cada proyecto.
+            </span>
+            <div>
+              <Link href="/recorrido-3d" className={styles.primary}>Abrir recorrido 3D <ArrowRight size={17} /></Link>
+              <Link href="/proyectos" className={styles.textLink}>Ver inspiraciones</Link>
+            </div>
+          </div>
+        </section>
 
-    <MetalconSeismicStory />
+        <section className={styles.toolIndex} aria-labelledby="workbench-title">
+          <header className={styles.toolIntro}>
+            <p>Herramientas Fabrick</p>
+            <h2 id="workbench-title">No adivines. Usa la herramienta correcta.</h2>
+            <span>Calculadoras, visualización y presupuesto organizados por tarea, no por “features”.</span>
+          </header>
 
-    <div className={styles.content}>
-      <footer className={styles.footer}>
-        <FabrickFullLogo compact theme="light" />
-        <div><Link href="/servicios">Soluciones</Link><Link href="/proyectos">Inspiraciones</Link><Link href="/herramientas/metalcon/monitoreo">Simulador sísmico</Link><Link href="/contacto">Contacto</Link>{socialLinks?.instagram && <a href={socialLinks.instagram} target="_blank" rel="noreferrer">Instagram</a>}</div>
-        <p>{copyrightText || `© ${new Date().getFullYear()} Soluciones Fabrick.`}</p>
-      </footer>
-    </div>
-  </main>;
-}
+          <div className={styles.toolList}>
+            {TOOLS.map(({ number, title, text, href, cta, Icon }) => (
+              <Link key={title} href={href} className={styles.toolRow}>
+                <span className={styles.toolNumber}>{number}</span>
+                <span className={styles.toolIcon}><Icon aria-hidden strokeWidth={1.7} /></span>
+                <span className={styles.toolCopy}><strong>{title}</strong><small>{text}</small></span>
+                <span className={styles.toolCta}>{cta}<ArrowRight size={15} /></span>
+              </Link>
+            ))}
+          </div>
+        </section>
 
-function Trust({ Icon, title, text }: { Icon: typeof ShieldCheck; title: string; text: string }) {
-  return <div className={styles.trustItem}><Icon strokeWidth={1.5} aria-hidden /><span><strong>{title}</strong><span>{text}</span></span></div>;
+        <section className={styles.budgetBridge} aria-labelledby="budget-title">
+          <div>
+            <p>Presupuesto guiado</p>
+            <h2 id="budget-title">Pasa del cálculo a una referencia de costo ordenada.</h2>
+            <span>
+              Selecciona el trabajo, ingresa tus medidas y compara mano de obra con trabajo vendido antes de conversar una cotización final.
+            </span>
+          </div>
+          <Link href="/presupuesto" className={styles.primary}>Armar presupuesto <ArrowRight size={17} /></Link>
+        </section>
+
+        <ConstructionM2Calculator />
+      </div>
+
+      <MetalconSeismicStory />
+
+      <div className={styles.content}>
+        <footer className={styles.footer}>
+          <div className={styles.footerBrand}>
+            <FabrickFullLogo compact theme="light" />
+            <p>Herramientas claras para tomar mejores decisiones de construcción.</p>
+          </div>
+          <nav aria-label="Enlaces del pie">
+            <Link href="/servicios">Soluciones</Link>
+            <Link href="/proyectos">Inspiraciones</Link>
+            <Link href="/recorrido-3d">Recorrido 3D</Link>
+            <Link href="/herramientas/metalcon/monitoreo">Simulador sísmico</Link>
+            <Link href="/contacto">Contacto</Link>
+            {socialLinks?.instagram ? <a href={socialLinks.instagram} target="_blank" rel="noreferrer">Instagram</a> : null}
+          </nav>
+          <p className={styles.copyright}>{copyrightText || '© ' + new Date().getFullYear() + ' Soluciones Fabrick.'}</p>
+        </footer>
+      </div>
+    </main>
+  );
 }

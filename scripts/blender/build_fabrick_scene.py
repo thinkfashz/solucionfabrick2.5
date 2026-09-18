@@ -146,17 +146,74 @@ def build_architecture(collections):
     white = material("MAT_Wall_White_Matte", (0.91, 0.91, 0.89), .88)
     concrete = material("MAT_Concrete", (.45, .46, .44), .92)
     floor = material("MAT_Porcelain_Warm", (.73, .70, .64), .48)
+    glass = material("MAT_Glass", (.42, .58, .64), .18)
+    glass.diffuse_color = (.42, .58, .64, .32)
+    glass.surface_render_method = "DITHERED"
+    door_mat = material("MAT_Door_Warm", (.42, .28, .16), .58)
 
     radier = cube("ARCH_FLOOR_Radier", (0, .85, -.08), (WIDTH, 9.7, .16), collections["ARCH"], concrete)
     radier["materialId"] = "hormigon"
     finish = cube("ARCH_FLOOR_Finish", (0, .85, .025), (14.1, 9.3, .045), collections["ARCH"], floor)
     finish["materialId"] = "porcelanato"
 
-    for index, (x, z, length, axis) in enumerate(WALLS, 1):
+    for index, (x, z, length, axis, openings) in enumerate(WALLS, 1):
         obj = wall(f"ARCH_WALL_{index:02d}", x, z, length, axis, collections["ARCH"], white)
         obj["roomSystem"] = "architecture"
         obj["finish"] = "white-matte"
         obj["materialId"] = "volcanita-st"
+
+        for opening_index, (center, opening_w, sill, head) in enumerate(openings, 1):
+            opening_h = max(.05, head - sill)
+            ox = center if axis == "x" else x
+            oz = z if axis == "x" else center
+            cutter_dims = (opening_w, WALL_T * 5, opening_h) if axis == "x" else (WALL_T * 5, opening_w, opening_h)
+            cutter = cube(
+                f"TEMP_OPENING_{index:02d}_{opening_index:02d}",
+                (ox, oz, sill + opening_h / 2),
+                cutter_dims,
+                collections["ARCH"],
+            )
+            modifier = obj.modifiers.new(name=f"OPENING_{opening_index:02d}", type="BOOLEAN")
+            modifier.operation = "DIFFERENCE"
+            modifier.solver = "EXACT"
+            modifier.object = cutter
+            bpy.context.view_layer.objects.active = obj
+            obj.select_set(True)
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+            obj.select_set(False)
+            bpy.data.objects.remove(cutter, do_unlink=True)
+
+            if sill <= .01:
+                hinge = bpy.data.objects.new(f"ARCH_DOOR_W{index:02d}_{opening_index:02d}", None)
+                hinge_x = center - opening_w / 2 if axis == "x" else x
+                hinge_z = z if axis == "x" else center - opening_w / 2
+                hinge.location = viewer_to_blender((hinge_x, hinge_z, 0))
+                hinge["openAngleDeg"] = 95
+                hinge["openSign"] = 1
+                hinge["openingWidthM"] = opening_w
+                collections["ARCH"].objects.link(hinge)
+
+                panel = cube(
+                    f"ARCH_DOOR_W{index:02d}_{opening_index:02d}_PANEL",
+                    (hinge_x, hinge_z, 0),
+                    (opening_w, .045, head) if axis == "x" else (.045, opening_w, head),
+                    collections["ARCH"],
+                    door_mat,
+                )
+                panel.parent = hinge
+                panel.matrix_parent_inverse.identity()
+                panel.location = (opening_w / 2, 0, head / 2) if axis == "x" else (0, -opening_w / 2, head / 2)
+            else:
+                window = cube(
+                    f"ARCH_WINDOW_W{index:02d}_{opening_index:02d}",
+                    (ox, oz, sill + opening_h / 2),
+                    (opening_w, .032, opening_h) if axis == "x" else (.032, opening_w, opening_h),
+                    collections["ARCH"],
+                    glass,
+                )
+                window["openingWidthM"] = opening_w
+                window["sillM"] = sill
+                window["headM"] = head
 
     for room_id, label, x, z, w, d in ROOMS:
         marker = bpy.data.objects.new(f"ARCH_ROOM_{room_id.upper().replace('-', '_')}", None)
@@ -229,14 +286,14 @@ def build_kitchen(collections):
 
         door = cube(
             f"KITCH_DOOR_{idx:02d}_PANEL",
-            (0, (width - .05) / 2, 0),
+            (6.81, z - width / 2 + .02, upper_y),
             (.035, width - .05, upper_h - .04),
             collections["KITCH"],
             front,
         )
-        # Re-parent while preserving local placement.
         door.parent = hinge
-        door.matrix_parent_inverse = hinge.matrix_world.inverted()
+        door.matrix_parent_inverse.identity()
+        door.location = (0, -(width - .05) / 2, 0)
 
     cube("KITCH_SINK_01", (6.48, -1.22, .96), (.42, .44, .08), collections["KITCH"], steel)
 
@@ -245,11 +302,14 @@ def build_structure(collections):
     steel = material("MAT_Metalcon", (.67, .72, .75), .34, .72)
     osb = material("MAT_OSB", (.67, .47, .25), .76)
 
-    for index, (x, z, length, axis) in enumerate(WALLS, 1):
+    for index, (x, z, length, axis, openings) in enumerate(WALLS, 1):
         # Lightweight guide studs. Detailed production framing should come from the approved model.
         count = max(2, int(length / .8))
         for stud in range(count + 1):
             offset = -length / 2 + length * stud / count
+            coordinate = (x + offset) if axis == "x" else (z + offset)
+            if any(abs(coordinate - center) < opening_w / 2 - .04 for center, opening_w, _, _ in openings):
+                continue
             sx = x + (offset if axis == "x" else 0)
             sz = z + (offset if axis == "z" else 0)
             stud_obj = cube(f"STRUCT_METALCON_W{index:02d}_{stud:02d}", (sx, sz, WALL_H / 2), (.055, .055, WALL_H), collections["STRUCT"], steel)

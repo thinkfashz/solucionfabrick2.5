@@ -119,3 +119,31 @@ Cuando los assets estén listos:
 - interiores: preferir lightmaps/baked AO cuando el modelo Blender esté estabilizado;
 - usar transform/opacity para HUD y paneles;
 - probar en Vivo V50 Lite además de escritorio antes de merge.
+
+
+## 7. Exportación reproducible desde Blender
+
+El repositorio incluye:
+
+`scripts/blender/export_fabrick_glb.py`
+
+Ejemplo:
+
+```bash
+blender fabrick-house.blend --background --python scripts/blender/export_fabrick_glb.py -- --output //public/3d/fabrick/house/fabrick-house-v1.glb
+```
+
+El script:
+
+- fuerza unidades métricas;
+- valida las colecciones arquitectónicas/técnicas;
+- verifica los prefijos de objetos;
+- aplica rotación/escala en mallas estáticas;
+- conserva pivotes de puertas/cajones animables;
+- exporta custom properties como glTF extras;
+- exporta luces/cámaras/animaciones cuando existen;
+- genera un `.report.json` con conteos y advertencias.
+
+Usa `--strict` cuando la escena ya esté estabilizada para bloquear exportaciones con colecciones o nombres inválidos.
+
+No se habilita compresión agresiva de forma ciega: primero se valida el GLB base, después se activa Meshopt/gltfpack/KTX2 en una segunda etapa cuando el decoder/transcoder esté servido por la aplicación.

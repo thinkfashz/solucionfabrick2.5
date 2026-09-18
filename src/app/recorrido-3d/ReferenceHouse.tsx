@@ -62,7 +62,7 @@ export default function ReferenceHouse(){
    const geometry:T.BufferGeometry[]=[],materials:T.Material[]=[],textures:T.Texture[]=[];
    const mat=(color:string,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,metalness,roughness:metalness?.28:.55,side:THREE.DoubleSide});materials.push(m);return m};
    const steel=mat('#b8c5cf',.8),concrete=mat('#a8aaa3'),wood=mat('#b58c5e'),white=mat('#f5f3ec'),roof=mat('#38434b',.5),osb=mat('#c49b60'),wool=mat('#d8c695'),membrane=mat('#859f9c'),black=mat('#29373f',.4),glass=mat('#91acb3',.15);
-   const textured=(m:T.MeshStandardMaterial,kind:Parameters<typeof materialTexture>[1],color:string,roughness:number,scale:number)=>{const t=materialTexture(THREE,kind,color);if(t){m.color.set('#ffffff');m.map=t.map;m.bumpMap=t.bump;m.bumpScale=scale;textures.push(t.map,t.bump)}m.roughness=roughness;return m};
+   const textured=(m:T.MeshStandardMaterial,kind:Parameters<typeof materialTexture>[1],color:string,roughness:number,scale:number)=>{const t=materialTexture(THREE,kind,color);if(t){m.color.set('#ffffff');m.map=t.map;m.bumpMap=t.bump;m.roughnessMap=t.roughness;m.bumpScale=scale;textures.push(t.map,t.bump,t.roughness)}m.roughness=roughness;return m};
    textured(wood,'wood','#b18a5d',.34,.025);textured(white,'plaster','#f5f3ec',.72,.006);textured(concrete,'plaster','#aaa79e',.82,.02);textured(roof,'metal','#495059',.36,.026);
    const porcelain=textured(mat('#d4cec3'),'tile','#d4cec3',.24,.01),fabric=textured(mat('#8e9a8d'),'fabric','#8e9a8d',.88,.012),gravel=textured(mat('#b8b5ab'),'gravel','#b8b5ab',.92,.09),grass=textured(mat('#77865b'),'grass','#77865b',1,.045);
    const skyGeo=new THREE.SphereGeometry(180,32,16);geometry.push(skyGeo);

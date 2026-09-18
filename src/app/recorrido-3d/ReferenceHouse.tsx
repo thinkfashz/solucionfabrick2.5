@@ -386,10 +386,18 @@ export default function ReferenceHouse(){
     layerMaterials.push([...clones.values()]);
    }
    const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let hoverLayer:number|null=null,downX=0,downY=0,downPointer='mouse',frame=0;
-   const pick=(e:PointerEvent)=>{const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,1-(e.clientY-r.top)/r.height*2);ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(groups.filter(g=>g.visible),true)[0];let o:T.Object3D|undefined=hit?.object;while(o&&o.userData.layer===undefined)o=o.parent||undefined;return o?.userData.layer??null};
+   const aim=(e:PointerEvent)=>{const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,1-(e.clientY-r.top)/r.height*2);ray.setFromCamera(pointer,camera)};
+   const pick=(e:PointerEvent)=>{aim(e);const hit=ray.intersectObjects(groups.filter(g=>g.visible),true)[0];let o:T.Object3D|undefined=hit?.object;while(o&&o.userData.layer===undefined)o=o.parent||undefined;return o?.userData.layer??null};
+   const inspectExternal=(e:PointerEvent)=>{
+    if(!blenderHouse||!blenderHouse.visible)return false;aim(e);const hit=ray.intersectObject(blenderHouse,true)[0]?.object;if(!hit)return false;
+    let o:T.Object3D|null=hit;let materialId:string|undefined;
+    while(o&&!materialId){materialId=typeof o.userData.materialId==='string'?o.userData.materialId:undefined;o=o.parent}
+    if(!materialId)return false;
+    window.dispatchEvent(new CustomEvent('fabrick:material-inspect',{detail:{materialId,name:hit.name}}));return true;
+   };
    let lastPick=0;const move=(e:PointerEvent)=>{if(e.pointerType!=='mouse'||e.buttons||performance.now()-lastPick<140)return;lastPick=performance.now();hoverLayer=pick(e);setHover(hoverLayer);renderer.domElement.style.cursor=hoverLayer===null?'grab':'pointer'};
    const down=(e:PointerEvent)=>{downX=e.clientX;downY=e.clientY;downPointer=e.pointerType;if(e.pointerType!=='mouse'&&hoverLayer!==null){hoverLayer=null;setHover(null)}};
-   const up=(e:PointerEvent)=>{const tapLimit=downPointer==='touch'?9:5;if(Math.hypot(e.clientX-downX,e.clientY-downY)<tapLimit){const layer=pick(e);setSelected(layer);if(layer!==null&&downPointer==='mouse')setMenu(true)}};
+   const up=(e:PointerEvent)=>{const tapLimit=downPointer==='touch'?9:5;if(Math.hypot(e.clientX-downX,e.clientY-downY)<tapLimit){if(inspectExternal(e))return;const layer=pick(e);setSelected(layer);if(layer!==null&&downPointer==='mouse')setMenu(true)}};
    const leave=()=>{hoverLayer=null;setHover(null)};
    renderer.domElement.addEventListener('pointermove',move);renderer.domElement.addEventListener('pointerdown',down);renderer.domElement.addEventListener('pointerup',up);renderer.domElement.addEventListener('pointerleave',leave);
    const lost=(e:Event)=>{e.preventDefault();setError('El navegador perdió el contexto 3D. Puedes seguir viendo la planta o reiniciar.');setPlan(true);cancelAnimationFrame(frame)};renderer.domElement.addEventListener('webglcontextlost',lost);

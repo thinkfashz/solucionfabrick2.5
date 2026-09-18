@@ -51,3 +51,13 @@
  .rh-menu-tools{grid-template-columns:1fr 1fr 1fr}
  .rh-menu details{padding-bottom:4px}.rh-menu summary{padding:7px 1px}
 }
+
+
+.rh-view-presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;margin:3px 0 7px}
+.rh-view-presets button{display:flex;min-height:42px;flex-direction:column;align-items:flex-start;justify-content:center;padding:6px 7px!important;text-align:left}
+.rh-view-presets strong{font-size:9px}.rh-view-presets small{margin-top:2px;font-size:6px;color:#8094a6}
+.rh-layer-groups{display:grid;gap:6px;margin-top:5px}.rh-layer-groups>section{padding:6px;border-radius:9px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.055)}
+.rh-layer-groups>section>h3{margin:0 0 3px;font-size:7px;text-transform:uppercase;letter-spacing:.1em;color:#8398aa}
+@media(max-width:650px){
+ .rh-view-presets{grid-template-columns:1fr 1fr}.rh-layer-groups{gap:4px}.rh-layer-groups>section{padding:5px}
+}

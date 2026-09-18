@@ -34,6 +34,48 @@ export const materialCatalog: MaterialInfo[] = [
     stage: "Terreno / implantación"
   },
   {
+    id: "mueble-cocina-metod",
+    name: "Módulo de cocina METOD",
+    category: "Mobiliario de cocina",
+    locations: ["Cocina · muebles bajos", "Cocina · muebles superiores"],
+    dimensions: "Base de referencia 60 × 60 × 80 cm; mural 60 × 37 × 80 cm",
+    thickness: "Estructura comercial de referencia 18 mm",
+    use: "Almacenamiento modular bajo cubierta y en muro.",
+    reason: "Usa una modulación repetible que ordena lavaplatos, cajones, cocción y almacenamiento sin sobredimensionar una cocina compacta.",
+    stage: "Mobiliario / terminaciones",
+    source: "https://www.ikea.com/cl/es/p/metod-mueble-base-blanco-50205626/"
+  },
+  {
+    id: "herraje-utrusta-110",
+    name: "Bisagra amortiguada 110°",
+    category: "Herraje de cocina",
+    locations: ["Puertas de muebles superiores"],
+    dimensions: "Ángulo de apertura 110°",
+    use: "Apertura y cierre de puertas superiores.",
+    reason: "El amortiguador integrado reduce golpes; la regulación en varios ejes facilita alinear los frentes.",
+    stage: "Mobiliario / herrajes",
+    source: "https://www.ikea.com/cl/es/p/utrusta-bisagra-integrada-cierre-suave-80524882/"
+  },
+  {
+    id: "cubierta-mineral-cocina",
+    name: "Cubierta mineral / piedra",
+    category: "Superficie de trabajo",
+    locations: ["Cocina · mesón"],
+    dimensions: "Profundidad visual del modelo ≈ 60–66 cm; largo según modulación",
+    use: "Superficie continua de preparación y apoyo.",
+    reason: "La baja porosidad visual, la rigidez y el acabado claro ayudan a mantener una zona de trabajo legible y luminosa.",
+    stage: "Mobiliario / terminaciones"
+  },
+  {
+    id: "acero-inox-cocina",
+    name: "Acero inoxidable",
+    category: "Equipamiento de cocina",
+    locations: ["Lavaplatos", "Grifería", "Horno / electrodomésticos"],
+    use: "Superficies expuestas a agua, calor y limpieza frecuente.",
+    reason: "Entrega una terminación resistente, higiénica y visualmente compatible con equipamiento de cocina.",
+    stage: "Equipamiento"
+  },
+  {
     id: "volcanita-st",
     name: "Yeso cartón ST",
     category: "Terminación interior",

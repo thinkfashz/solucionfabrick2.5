@@ -6,23 +6,6 @@ import { useEffect } from 'react';
 
 const FIELD_LABELS = new Set(['URL / Cloudinary', 'Imagen de fondo', 'Reemplazar por SVG / PNG']);
 
-const QUICK_FOLDERS = [
-  ['', 'Todo'],
-  ['fabrick/visual-cms', 'Visual CMS'],
-  ['fabrick/home', 'Home'],
-  ['fabrick/banners', 'Banners'],
-  ['fabrick/productos', 'Productos'],
-  ['fabrick/servicios', 'Servicios'],
-] as const;
-
-function setNativeInputValue(input: HTMLInputElement, value: string) {
-  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-  if (setter) setter.call(input, value);
-  else input.value = value;
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  input.dispatchEvent(new Event('change', { bubbles: true }));
-}
-
 function looksLikeImageUrl(value: string) {
   const clean = value.trim();
   return clean.startsWith('https://') || clean.startsWith('http://') || clean.startsWith('data:image/');
@@ -78,50 +61,10 @@ function mountFieldPreview(label: HTMLLabelElement) {
   render();
 }
 
-function mountQuickFolders(dialog: HTMLElement) {
-  if (dialog.dataset.cloudinaryPolishFolders === '1') return;
-  const prefixInput = dialog.querySelector<HTMLInputElement>('input[placeholder="Prefijo/carpeta"]');
-  if (!prefixInput) return;
-
-  const filterButton = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button')).find((button) => button.textContent?.trim() === 'Filtrar');
-  if (!filterButton) return;
-
-  dialog.dataset.cloudinaryPolishFolders = '1';
-  const row = document.createElement('div');
-  row.dataset.cloudinaryPolishNode = '1';
-  row.className = 'flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-white/8 px-2.5 py-2 [scrollbar-width:none] sm:px-3';
-
-  for (const [folder, label] of QUICK_FOLDERS) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'h-7 shrink-0 rounded-full border border-white/10 bg-black/25 px-2.5 text-[8px] font-black text-white/45 transition hover:border-[#FFB000]/35 hover:text-[#FFB000]';
-    button.textContent = label;
-    button.dataset.folder = folder;
-    button.addEventListener('click', () => {
-      setNativeInputValue(prefixInput, folder);
-      const uploadFolderInput = Array.from(dialog.querySelectorAll<HTMLInputElement>('input')).find((candidate) => candidate.value.startsWith('fabrick/'));
-      if (folder && uploadFolderInput) setNativeInputValue(uploadFolderInput, folder);
-      filterButton.click();
-      row.querySelectorAll<HTMLButtonElement>('button').forEach((item) => {
-        const selected = item.dataset.folder === folder;
-        item.classList.toggle('border-[#FFB000]/60', selected);
-        item.classList.toggle('bg-[#FFB000]/10', selected);
-        item.classList.toggle('text-[#FFB000]', selected);
-      });
-    });
-    row.appendChild(button);
-  }
-
-  const searchArea = prefixInput.closest('div.grid');
-  if (searchArea?.parentElement) searchArea.insertAdjacentElement('afterend', row);
-  else dialog.querySelector('header')?.insertAdjacentElement('afterend', row);
-}
-
 export default function VisualCmsCloudinaryPolish() {
   useEffect(() => {
     const scan = () => {
       document.querySelectorAll<HTMLLabelElement>('label').forEach(mountFieldPreview);
-      document.querySelectorAll<HTMLElement>('[role="dialog"][aria-label="Biblioteca Cloudinary"]').forEach(mountQuickFolders);
     };
 
     scan();
@@ -132,7 +75,6 @@ export default function VisualCmsCloudinaryPolish() {
       observer.disconnect();
       document.querySelectorAll<HTMLElement>('[data-cloudinary-polish-node="1"]').forEach((node) => node.remove());
       document.querySelectorAll<HTMLElement>('[data-cloudinary-polish-preview="1"]').forEach((node) => delete node.dataset.cloudinaryPolishPreview);
-      document.querySelectorAll<HTMLElement>('[data-cloudinary-polish-folders="1"]').forEach((node) => delete node.dataset.cloudinaryPolishFolders);
     };
   }, []);
 

@@ -499,7 +499,7 @@ export default function ExperienceShell() {
         <button aria-pressed={infoOpen} onClick={() => setInfoOpen((v) => !v)}><span>ⓘ</span><small>Info</small></button>
       </nav>
 
-      {playing ? <div className="sf-quake-hud" aria-live="polite"><span>{phase==="hypocenter"?"01":phase==="propagation"?"02":phase==="surface"?"03":"04"}/04</span><div><strong>{phase==="hypocenter"?"Hipocentro":phase==="propagation"?"Propagación":phase==="surface"?"Respuesta de la vivienda":"Inspección"}</strong><small>{phase==="surface"?"Movimiento "+motion+" · "+directionDeg+"°":phase==="propagation"?"Onda ascendiendo hacia superficie":phase==="hypocenter"?depthKm+" km de profundidad":"Evaluando zonas afectadas"}</small></div><i style={{width:`${Math.round(progress*100)}%`}}/></div> : null}
+      {playing ? <div className="sf-quake-hud" aria-live="polite"><span>{phase==="hypocenter"?"01":phase==="propagation"?"02":phase==="surface"?"03":"04"}/04</span><div><strong>{phase==="hypocenter"?"Hipocentro":phase==="propagation"?"Propagación":phase==="surface"?"Respuesta de la vivienda":"Inspección"}</strong><small>{phase==="surface"?"Movimiento "+motion+" · "+directionDeg+"°":phase==="propagation"?"Onda ascendiendo hacia superficie":phase==="hypocenter"?depthKm+" km de profundidad":"Evaluando zonas afectadas"}</small></div><i style={{"--sf-quake-progress":progress} as CSSProperties}/></div> : null}
 
       {infoOpen ? (
         <aside className="sf-area-card">
@@ -621,7 +621,7 @@ export default function ExperienceShell() {
               <label>Tipo de movimiento<select value={motion} onChange={(e) => setMotion(e.target.value as Motion)}><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option><option value="mixed">Mixto</option></select></label>
               <label>Suelo<select value={soil} onChange={(e) => setSoil(e.target.value as Soil)}><option value="rock">Roca / muy firme</option><option value="firm">Firme</option><option value="soft">Blando</option></select></label>
               <button className="sf-play" disabled={playing} onClick={() => { const audio=ensureAudio();void audio.ctx.resume();setProgress(0);setOpen(false);setPlaying(true); }}>{playing ? "Simulación en curso…" : progress > 0 ? "↻ Reiniciar terremoto" : "▶ Inicializar terremoto"}</button>
-              <div className="sf-progress"><i style={{ width: `${progress * 100}%` }} /></div>
+              <div className="sf-progress"><i style={{"--sf-progress":progress} as CSSProperties} /></div>
               <div className="sf-phase-readout"><b>{phase === "idle" ? "Preparado" : phase === "hypocenter" ? "Hipocentro" : phase === "propagation" ? "Propagación" : phase === "surface" ? "Respuesta en superficie" : "Evaluación posterior"}</b><span>{Math.round(progress * 100)}%</span></div>
             </section>
             <section className="sf-results">

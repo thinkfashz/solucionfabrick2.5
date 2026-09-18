@@ -281,17 +281,23 @@ export default function ReferenceHouse(){
    for(const module of modules){
     box([kitchenX,.12+baseHeight/2,module.z],[baseDepth,baseHeight,module.w-.018],kitchenCabinet,kitchenInteractive);
     box([kitchenX-baseDepth/2-.012,.12+baseHeight/2,module.z],[.024,baseHeight-.035,module.w-.045],kitchenFront,kitchenInteractive);
-    beam([kitchenX-baseDepth/2-.03,.42,module.z-module.w*.28],[kitchenX-baseDepth/2-.03,.42,module.z+module.w*.28],.014,handleMat,kitchenInteractive);
+    beam([kitchenX-baseDepth/2-.03,.68,module.z-module.w*.28],[kitchenX-baseDepth/2-.03,.68,module.z+module.w*.28],.014,handleMat,kitchenInteractive);
    }
    box([kitchenX-.015,worktopY,-.27],[.66,.055,2.52],countertop,kitchenInteractive);
-   // Fregadero y grifería.
-   box([kitchenX-.34,worktopY+.012,-1.22],[.055,.018,.42],appliance,kitchenInteractive);
-   box([kitchenX-.34,worktopY+.012,-1.22],[.055,.025,.28],black,kitchenInteractive);
-   beam([kitchenX-.42,worktopY+.02,-1.22],[kitchenX-.42,1.26,-1.22],.025,appliance,kitchenInteractive);
-   beam([kitchenX-.42,1.26,-1.22],[kitchenX-.55,1.26,-1.22],.025,appliance,kitchenInteractive);
-   // Encimera y horno bajo cubierta.
-   box([kitchenX-.34,worktopY+.025,.15],[.055,.02,.44],black,kitchenInteractive);
-   box([kitchenX-.325,.48,.15],[.035,.5,.48],appliance,kitchenInteractive);
+   // Fregadero, cuba y grifería: lectura volumétrica sin geometría pesada.
+   const sinkX=kitchenX-baseDepth/2+.035,sinkZ=-1.20;
+   box([sinkX,worktopY-.055,sinkZ],[.40,.07,.38],black,kitchenInteractive);
+   for(const z of [sinkZ-.22,sinkZ+.22])box([sinkX,worktopY+.018,z],[.46,.025,.035],appliance,kitchenInteractive);
+   for(const x of [sinkX-.23,sinkX+.23])box([x,worktopY+.018,sinkZ],[.035,.025,.47],appliance,kitchenInteractive);
+   beam([sinkX+.13,worktopY+.02,sinkZ],[sinkX+.13,1.25,sinkZ],.025,appliance,kitchenInteractive);
+   beam([sinkX+.13,1.25,sinkZ],[sinkX-.04,1.25,sinkZ],.025,appliance,kitchenInteractive);
+   beam([sinkX-.04,1.25,sinkZ],[sinkX-.04,1.18,sinkZ],.02,appliance,kitchenInteractive);
+   // Encimera, horno y campana sobre el módulo de cocción.
+   const cookZ=.20;
+   box([sinkX,worktopY+.025,cookZ],[.48,.025,.52],black,kitchenInteractive);
+   box([kitchenX-baseDepth/2-.018,.50,cookZ],[.035,.58,.52],appliance,kitchenInteractive);
+   box([6.93,2.05,cookZ],[.25,.38,.56],appliance,kitchenInteractive);
+   box([6.79,1.84,cookZ],[.04,.025,.48],ledMat,kitchenInteractive);
    // Refrigerador y despensa lateral.
    box([6.82,1.15,1.34],[.68,2.06,.62],appliance,kitchenInteractive);box([6.46,1.15,1.34],[.025,1.94,.54],black,kitchenInteractive);
    box([6.82,1.15,-1.82],[.60,2.06,.40],kitchenFront,kitchenInteractive);

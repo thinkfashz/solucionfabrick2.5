@@ -27,6 +27,8 @@ import {
   X,
 } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
+import ProductResearchPanel, { type ProductPublicFeature } from '@/components/admin/products/ProductResearchPanel';
+import ProductPreviewModal from '@/components/admin/products/ProductPreviewModal';
 
 export type ProductStudioRecord = {
   id: string;
@@ -56,7 +58,7 @@ export type ProductStudioRecord = {
 };
 
 type GalleryImage = { url: string; public_id?: string; source?: string };
-type Section = 'ficha' | 'precio' | 'imagenes' | 'seo';
+type Section = 'ficha' | 'investigar' | 'precio' | 'contenido' | 'imagenes' | 'seo' | 'publicacion';
 
 type CommerceAnalysis = {
   title: string;
@@ -135,6 +137,20 @@ type SeoState = {
   secondaryKeywords: string;
 };
 
+type AiProviderChoice = 'openrouter' | 'ollama';
+type AiModelOption = { id: string; name: string };
+type AdminProductReview = {
+  id: string;
+  author_name: string;
+  author_email?: string | null;
+  rating: number;
+  body: string;
+  status: 'pending' | 'published' | 'archived';
+  verified_purchase?: boolean;
+  admin_reply?: string | null;
+  created_at: string;
+};
+
 const inputClass = 'min-h-11 w-full rounded-xl border border-black/10 bg-white px-3.5 text-sm font-semibold text-[#111214] outline-none transition focus:border-[#d18b16] focus:ring-2 focus:ring-[#d18b16]/10';
 
 function numberValue(value: unknown) {
@@ -202,6 +218,29 @@ function initialForm(product?: ProductStudioRecord): FormState {
   };
 }
 
+function initialPublicFeatures(product?: ProductStudioRecord): ProductPublicFeature[] {
+  const specs = record(product?.specifications);
+  const raw = specs.public_features;
+  if (Array.isArray(raw)) {
+    return raw.map((item) => {
+      const row = record(item);
+      return { label: String(row.label || '').trim(), value: String(row.value || '').trim() };
+    }).filter((item) => item.label && item.value).slice(0, 30);
+  }
+  if (raw && typeof raw === 'object') {
+    return Object.entries(raw as Record<string, unknown>)
+      .map(([label, value]) => ({ label: label.trim(), value: String(value ?? '').trim() }))
+      .filter((item) => item.label && item.value)
+      .slice(0, 30);
+  }
+  return [];
+}
+
+function initialRelatedIds(product?: ProductStudioRecord) {
+  const specs = record(product?.specifications);
+  return Array.isArray(specs.related_product_ids) ? specs.related_product_ids.map(String).filter(Boolean).slice(0, 12) : [];
+}
+
 function initialSeo(product?: ProductStudioRecord): SeoState {
   const specs = record(product?.specifications);
   const seo = record(specs.seo);
@@ -254,6 +293,20 @@ export default function ProductStudioEditor({
   const [marketingOptions, setMarketingOptions] = useState<MarketingOption[]>([]);
   const [imageObservations, setImageObservations] = useState<string[]>([]);
   const [aiWarnings, setAiWarnings] = useState<string[]>([]);
+  const initialSpecs = record(product?.specifications);
+  const [contentGuide, setContentGuide] = useState(() => String(initialSpecs.ai_content_guide || ''));
+  const [adminNotes, setAdminNotes] = useState(() => String(initialSpecs.admin_notes || ''));
+  const [aiProvider, setAiProvider] = useState<AiProviderChoice>(() => initialSpecs.ai_provider === 'ollama' ? 'ollama' : 'openrouter');
+  const [aiModel, setAiModel] = useState(() => String(initialSpecs.ai_model || ''));
+  const [aiModels, setAiModels] = useState<Record<AiProviderChoice, AiModelOption[]>>({ openrouter: [], ollama: [] });
+  const [autoFillFromGuide, setAutoFillFromGuide] = useState(() => initialSpecs.ai_autofill_from_guide === true);
+  const [publicFeatures, setPublicFeatures] = useState<ProductPublicFeature[]>(() => initialPublicFeatures(product));
+  const [relatedIds, setRelatedIds] = useState<string[]>(() => initialRelatedIds(product));
+  const [catalogProducts, setCatalogProducts] = useState<ProductStudioRecord[]>([]);
+  const [researchMemory, setResearchMemory] = useState<Record<string, unknown>>(() => record(initialSpecs.product_research));
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [productReviews, setProductReviews] = useState<AdminProductReview[]>([]);
+  const [reviewBusyId, setReviewBusyId] = useState('');
   const [busy, setBusy] = useState<'save' | 'upload' | 'ai' | ''>('');
   const [notice, setNotice] = useState<{ type: 'ok' | 'error' | 'info'; text: string } | null>(null);
 
@@ -268,6 +321,17 @@ export default function ProductStudioEditor({
     setMarketingOptions([]);
     setImageObservations([]);
     setAiWarnings([]);
+    const nextSpecs = record(product?.specifications);
+    setContentGuide(String(nextSpecs.ai_content_guide || ''));
+    setAdminNotes(String(nextSpecs.admin_notes || ''));
+    setAiProvider(nextSpecs.ai_provider === 'ollama' ? 'ollama' : 'openrouter');
+    setAiModel(String(nextSpecs.ai_model || ''));
+    setAutoFillFromGuide(nextSpecs.ai_autofill_from_guide === true);
+    setPublicFeatures(initialPublicFeatures(product));
+    setRelatedIds(initialRelatedIds(product));
+    setResearchMemory(record(nextSpecs.product_research));
+    setPreviewOpen(false);
+    setProductReviews([]);
     setSection('ficha');
     setNotice(null);
   }, [mode, product?.id]);
@@ -275,6 +339,56 @@ export default function ProductStudioEditor({
   useEffect(() => {
     if (!form.category_id && categories[0]?.id) setForm((current) => ({ ...current, category_id: categories[0].id }));
   }, [categories, form.category_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/admin/modelos-ia/list', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((json: { providers?: Array<{ id?: string; configured?: boolean; models?: AiModelOption[] }> }) => {
+        if (cancelled) return;
+        const next: Record<AiProviderChoice, AiModelOption[]> = { openrouter: [], ollama: [] };
+        for (const provider of json.providers || []) {
+          if ((provider.id === 'openrouter' || provider.id === 'ollama') && provider.configured && Array.isArray(provider.models)) {
+            next[provider.id] = provider.models.map((model) => ({ id: String(model.id), name: String(model.name || model.id) })).filter((model) => model.id);
+          }
+        }
+        setAiModels(next);
+        setAiModel((current) => current || next[aiProvider][0]?.id || '');
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const available = aiModels[aiProvider];
+    if (available.length && !available.some((model) => model.id === aiModel)) setAiModel(available[0].id);
+  }, [aiProvider, aiModels, aiModel]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/admin/products', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((json: { products?: ProductStudioRecord[] }) => {
+        if (!cancelled) setCatalogProducts(Array.isArray(json.products) ? json.products : []);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [product?.id]);
+
+  useEffect(() => {
+    if (mode !== 'edit' || !product?.id) {
+      setProductReviews([]);
+      return;
+    }
+    let cancelled = false;
+    void fetch(`/api/product-reviews?scope=admin&product=${encodeURIComponent(product.id)}`, { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((json: { reviews?: AdminProductReview[] }) => {
+        if (!cancelled) setProductReviews(Array.isArray(json.reviews) ? json.reviews : []);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [mode, product?.id]);
 
   const categoryName = categories.find((item) => item.id === form.category_id)?.name || 'General';
   const cost = numberValue(form.supplier_price);
@@ -287,6 +401,20 @@ export default function ProductStudioEditor({
   const checkoutReference = salePrice + shipping + tax;
   const margin = basePrice > 0 && cost > 0 ? Math.round(((basePrice - cost) / basePrice) * 100) : null;
   const cover = form.image_url || gallery[0]?.url || '';
+  const stockAmount = Math.max(0, Math.floor(numberValue(form.stock)));
+  const canPublish = stockAmount > 0;
+  const relatedCandidates = catalogProducts
+    .filter((item) => item.id !== product?.id)
+    .sort((a, b) => {
+      const aSame = a.category_id && a.category_id === form.category_id ? 1 : 0;
+      const bSame = b.category_id && b.category_id === form.category_id ? 1 : 0;
+      if (aSame !== bSame) return bSame - aSame;
+      if (Boolean(a.featured) !== Boolean(b.featured)) return Number(Boolean(b.featured)) - Number(Boolean(a.featured));
+      return a.name.localeCompare(b.name, 'es');
+    });
+  const selectedRelatedProducts = relatedIds
+    .map((id) => catalogProducts.find((item) => item.id === id))
+    .filter((item): item is ProductStudioRecord => Boolean(item));
 
   const marketIntel = record(record(product?.specifications).market_intel);
   const hasMarketIntel = Object.keys(marketIntel).length > 0;
@@ -319,7 +447,65 @@ export default function ProductStudioEditor({
   }, [form.name, form.description, form.category_id, form.stock, basePrice, cover, seo.title, seo.description, seo.primaryKeyword]);
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => {
+      const next = { ...current, [key]: value };
+      if (key === 'stock' && numberValue(value) <= 0) next.activo = false;
+      return next;
+    });
+  }
+
+  function setProductActive(value: boolean) {
+    if (value && !canPublish) {
+      setNotice({ type: 'info', text: 'Para mostrar este producto en el catálogo necesitas al menos 1 unidad de stock.' });
+      setSection('ficha');
+      return;
+    }
+    setField('activo', value);
+  }
+
+  function applyResearchContent(value: { tagline: string; description: string; features: ProductPublicFeature[] }) {
+    setForm((current) => ({
+      ...current,
+      tagline: value.tagline || current.tagline,
+      description: value.description || current.description,
+    }));
+    if (value.features.length) setPublicFeatures(value.features.slice(0, 30));
+    setSection('contenido');
+    setNotice({ type: 'ok', text: 'Información contrastada aplicada al borrador. Revisa cada característica antes de guardar.' });
+  }
+
+  function useResearchReference(ref: { source: string; sourceId: string | null; url: string; price: number | null; currency: string | null }) {
+    setForm((current) => ({
+      ...current,
+      source: ref.source || current.source,
+      source_id: ref.sourceId || current.source_id,
+      source_url: ref.url || current.source_url,
+      supplier_price: ref.price ? String(Math.round(ref.price)) : current.supplier_price,
+      supplier_currency: ref.currency || current.supplier_currency,
+    }));
+    setNotice({ type: 'info', text: 'Referencia aplicada como origen/costo provisional. Confirma que corresponda a tu proveedor real antes de guardar.' });
+  }
+
+  function addReferenceImage(url: string, source: string) {
+    if (!/^https:\/\//i.test(url)) return;
+    setGallery((current) => uniqueImages([...current, { url, source: `reference:${source}` }]).slice(0, 20));
+    setNotice({ type: 'info', text: 'Imagen añadida como referencia. Revisa derechos, calidad y correspondencia antes de usarla como portada pública.' });
+  }
+
+  function addPublicFeature() {
+    setPublicFeatures((current) => [...current, { label: '', value: '' }].slice(0, 30));
+  }
+
+  function updatePublicFeature(index: number, patch: Partial<ProductPublicFeature>) {
+    setPublicFeatures((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+  }
+
+  function removePublicFeature(index: number) {
+    setPublicFeatures((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function toggleRelatedProduct(id: string) {
+    setRelatedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id].slice(0, 8));
   }
 
   async function uploadFiles(files: File[]) {
@@ -390,20 +576,22 @@ export default function ProductStudioEditor({
       };
       const [commerceResponse, marketingResponse] = await Promise.all([
         fetch('/api/admin/products/ai-commerce', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product: productPayload }) }),
-        fetch('/api/admin/products/ai-marketing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product: productPayload, imageUrls, goal: 'mejorar ficha, posicionamiento, SEO y conversión', location: 'Chile' }) }),
+        fetch('/api/admin/products/ai-marketing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product: productPayload, imageUrls, goal: 'mejorar ficha, posicionamiento, SEO y conversión', location: 'Chile', provider: aiProvider, model: aiModel || undefined, guide: contentGuide }) }),
       ]);
       const commerceJson = await commerceResponse.json().catch(() => ({})) as { analysis?: CommerceAnalysis; error?: string; warning?: string };
       const marketingJson = await marketingResponse.json().catch(() => ({})) as { options?: MarketingOption[]; imageObservations?: string[]; warnings?: string[]; error?: string };
       if (!commerceResponse.ok && !marketingResponse.ok) throw new Error(commerceJson.error || marketingJson.error || 'La IA no pudo analizar este producto.');
       if (commerceJson.analysis) setCommerce(commerceJson.analysis);
-      setMarketingOptions(Array.isArray(marketingJson.options) ? marketingJson.options.slice(0, 2) : []);
+      const nextOptions = Array.isArray(marketingJson.options) ? marketingJson.options.slice(0, 2) : [];
+      setMarketingOptions(nextOptions);
+      if (autoFillFromGuide && nextOptions[0]) applyMarketing(nextOptions[0]);
       setImageObservations(Array.isArray(marketingJson.imageObservations) ? marketingJson.imageObservations : []);
       setAiWarnings([
         ...(commerceJson.warning ? [commerceJson.warning] : []),
         ...(Array.isArray(marketingJson.warnings) ? marketingJson.warnings : []),
       ]);
       setSection('seo');
-      setNotice({ type: 'ok', text: 'Análisis listo. Nada se aplica automáticamente: tú eliges qué recomendación usar.' });
+      setNotice({ type: 'ok', text: autoFillFromGuide && nextOptions[0] ? 'Análisis listo. La primera propuesta se aplicó al borrador según tu guía; revísala antes de guardar.' : 'Análisis listo. Tú eliges qué recomendación aplicar antes de guardar.' });
     } catch (error) {
       setNotice({ type: 'error', text: error instanceof Error ? error.message : 'Error analizando el producto.' });
     } finally {
@@ -442,6 +630,30 @@ export default function ProductStudioEditor({
       secondaryKeywords: option.secondaryKeywords.join(', '),
     });
     setNotice({ type: 'ok', text: 'Propuesta SEO y comercial aplicada. Revisa antes de guardar.' });
+  }
+
+  async function moderateReview(review: AdminProductReview, patch: Partial<Pick<AdminProductReview, 'status' | 'verified_purchase' | 'admin_reply'>>) {
+    setReviewBusyId(review.id);
+    try {
+      const response = await fetch('/api/product-reviews', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: review.id,
+          status: patch.status || review.status,
+          verifiedPurchase: patch.verified_purchase ?? review.verified_purchase ?? false,
+          adminReply: patch.admin_reply ?? review.admin_reply ?? '',
+        }),
+      });
+      const json = await response.json().catch(() => ({})) as { review?: AdminProductReview; error?: string };
+      if (!response.ok || !json.review) throw new Error(json.error || 'No se pudo moderar la opinión.');
+      setProductReviews((current) => current.map((item) => item.id === review.id ? json.review! : item));
+      setNotice({ type: 'ok', text: patch.status === 'published' ? 'Opinión publicada.' : patch.status === 'archived' ? 'Opinión archivada.' : 'Opinión actualizada.' });
+    } catch (error) {
+      setNotice({ type: 'error', text: error instanceof Error ? error.message : 'No se pudo moderar la opinión.' });
+    } finally {
+      setReviewBusyId('');
+    }
   }
 
   async function submit(event: FormEvent) {
@@ -487,6 +699,14 @@ export default function ProductStudioEditor({
         discount_percentage: discount,
         default_markup_percentage: markup,
         auto_markup_enabled: autoMarkup,
+        ai_content_guide: contentGuide.trim() || null,
+        admin_notes: adminNotes.trim() || null,
+        ai_provider: aiProvider,
+        ai_model: aiModel || null,
+        ai_autofill_from_guide: autoFillFromGuide,
+        public_features: Object.fromEntries(publicFeatures.filter((item) => item.label.trim() && item.value.trim()).map((item) => [item.label.trim(), item.value.trim()])),
+        related_product_ids: relatedIds.filter((id) => id && id !== product?.id).slice(0, 8),
+        product_research: researchMemory,
         seo: seoPayload,
         ...(refreshedMarketIntel ? { market_intel: refreshedMarketIntel } : {}),
         ...(commerce ? { commerce_ai: commerce } : {}),
@@ -505,7 +725,7 @@ export default function ProductStudioEditor({
         stock: form.stock === '' ? null : Number(form.stock),
         delivery_days: form.delivery_days === '' ? null : Number(form.delivery_days),
         image_url: form.image_url || cleanGallery[0]?.url || null,
-        activo: form.activo,
+        activo: form.activo && canPublish,
         featured: form.featured,
         sku: form.sku.trim() || null,
         ean: form.ean.trim() || null,
@@ -532,9 +752,12 @@ export default function ProductStudioEditor({
 
   const sections: Array<{ id: Section; label: string; icon: typeof Package }> = [
     { id: 'ficha', label: 'Ficha', icon: Package },
-    { id: 'precio', label: 'Precio e inventario', icon: BadgePercent },
+    { id: 'investigar', label: 'Investigar', icon: Search },
+    { id: 'precio', label: 'Precio + stock', icon: BadgePercent },
+    { id: 'contenido', label: 'Contenido', icon: Tag },
     { id: 'imagenes', label: 'Imágenes', icon: ImageIcon },
     { id: 'seo', label: 'SEO + IA', icon: Sparkles },
+    { id: 'publicacion', label: 'Publicación', icon: Eye },
   ];
 
   return (
@@ -546,6 +769,7 @@ export default function ProductStudioEditor({
             <div className="flex items-center gap-2"><span className="rounded-full bg-[#111214] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.16em] text-[#f5c75d]">Product Studio</span><span className="text-[10px] font-bold text-black/35">{mode === 'create' ? 'Nuevo producto' : `ID ${product?.id || ''}`}</span>{hasMarketIntel ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] text-emerald-800">Radar conectado</span> : null}</div>
             <h2 className="mt-1 truncate text-lg font-black tracking-[-.035em] sm:text-xl">{form.name || 'Producto sin nombre'}</h2>
           </div>
+          <button type="button" onClick={() => setPreviewOpen(true)} className="hidden items-center gap-2 rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-xs font-black text-black/60 sm:inline-flex"><Eye className="h-4 w-4" />Vista previa</button>
           <button type="button" onClick={() => void runAiSuite()} disabled={busy !== ''} className="hidden items-center gap-2 rounded-xl border border-[#d18b16]/25 bg-[#fff3cf] px-3.5 py-2.5 text-xs font-black text-[#83590f] transition hover:bg-[#ffe9a7] disabled:opacity-50 sm:inline-flex">{busy === 'ai' ? <Loader2 className="h-4 w-4 animate-spin" /> : <WandSparkles className="h-4 w-4" />}Analizar con IA</button>
           <button type="submit" disabled={busy !== ''} className="inline-flex items-center gap-2 rounded-xl bg-[#111214] px-4 py-2.5 text-xs font-black text-white shadow-lg disabled:opacity-50">{busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{busy === 'save' ? 'Guardando' : 'Guardar'}</button>
         </div>
@@ -567,16 +791,33 @@ export default function ProductStudioEditor({
               <Panel title="Información principal" description="Lo esencial para reconocer, vender y encontrar el producto.">
                 <Field label="Nombre del producto" required><input className={inputClass} value={form.name} onChange={(event) => setField('name', event.target.value)} placeholder="Ej. Aire acondicionado inverter 12.000 BTU" /></Field>
                 <div className="mt-4"><Field label="Frase comercial"><input className={inputClass} value={form.tagline} onChange={(event) => setField('tagline', event.target.value)} placeholder="Una frase breve y útil" /></Field></div>
-                <div className="mt-4"><Field label="Descripción"><textarea className={`${inputClass} min-h-36 py-3`} value={form.description} onChange={(event) => setField('description', event.target.value)} placeholder="Describe qué es, para quién sirve y qué debe saber el comprador." /></Field></div>
                 <div className="mt-4 grid gap-4 md:grid-cols-2"><Field label="Categoría"><select className={inputClass} value={form.category_id} onChange={(event) => setField('category_id', event.target.value)}><option value="">Sin categoría</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field><Field label="Stock"><input type="number" min="0" className={inputClass} value={form.stock} onChange={(event) => setField('stock', event.target.value)} /></Field></div>
                 <div className="mt-4 grid gap-4 md:grid-cols-3"><Field label="SKU"><input className={inputClass} value={form.sku} onChange={(event) => setField('sku', event.target.value)} placeholder="Código interno" /></Field><Field label="EAN"><input className={inputClass} value={form.ean} onChange={(event) => setField('ean', event.target.value)} placeholder="Código de barras" /></Field><Field label="Entrega estimada"><div className="relative"><input type="number" min="0" className={`${inputClass} pr-14`} value={form.delivery_days} onChange={(event) => setField('delivery_days', event.target.value)} /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-black/35">días</span></div></Field></div>
               </Panel>
 
               <Panel title="Estado y origen" description="Controla visibilidad sin mezclarla con la edición del contenido.">
-                <div className="grid gap-3 sm:grid-cols-2"><ToggleCard title="Producto activo" text="Visible y disponible en el catálogo." checked={form.activo} onChange={(value) => setField('activo', value)} /><ToggleCard title="Destacado" text="Puede aparecer en posiciones prioritarias." checked={form.featured} onChange={(value) => setField('featured', value)} /></div>
+                <div className="grid gap-3 sm:grid-cols-2"><ToggleCard title="Producto activo" text={canPublish ? "Visible en el catálogo mientras tenga stock." : "Oculto automáticamente: añade al menos 1 unidad de stock."} checked={form.activo && canPublish} onChange={setProductActive} /><ToggleCard title="Destacado" text="Puede aparecer en posiciones prioritarias." checked={form.featured} onChange={(value) => setField('featured', value)} /></div>
                 <details className="mt-4 rounded-xl border border-black/8 bg-black/[0.025] p-4"><summary className="cursor-pointer text-xs font-black uppercase tracking-[.12em] text-black/55">Datos de proveedor / importación</summary><div className="mt-4 grid gap-4 md:grid-cols-2"><Field label="Proveedor"><input className={inputClass} value={form.source} onChange={(event) => setField('source', event.target.value)} /></Field><Field label="URL de origen"><input className={inputClass} value={form.source_url} onChange={(event) => setField('source_url', event.target.value)} /></Field></div></details>
               </Panel>
+
+              {mode === 'edit' ? <Panel title="Opiniones y moderación" description="Aprueba, archiva o marca compras verificadas. Solo las opiniones publicadas aparecen en la tienda.">
+                {productReviews.length ? <div className="space-y-3">{productReviews.map((review) => <article key={review.id} className="rounded-xl border border-black/8 bg-white p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><b className="text-sm">{review.author_name}</b><span className={`rounded-full px-2 py-1 text-[9px] font-black ${review.status === 'published' ? 'bg-emerald-100 text-emerald-800' : review.status === 'archived' ? 'bg-black/8 text-black/45' : 'bg-amber-100 text-amber-800'}`}>{review.status === 'published' ? 'Publicada' : review.status === 'archived' ? 'Archivada' : 'Pendiente'}</span></div><div className="mt-1 flex gap-0.5">{[1,2,3,4,5].map((value) => <Star key={value} className={`h-3.5 w-3.5 ${value <= review.rating ? 'fill-[#d18b16] text-[#d18b16]' : 'text-black/15'}`} />)}</div></div><button type="button" disabled={reviewBusyId === review.id} onClick={() => void moderateReview(review, { verified_purchase: !review.verified_purchase })} className={`rounded-lg px-2.5 py-2 text-[9px] font-black ${review.verified_purchase ? 'bg-emerald-100 text-emerald-800' : 'bg-black/[0.05] text-black/45'}`}>{review.verified_purchase ? '✓ Compra verificada' : 'Marcar verificada'}</button></div><p className="mt-3 text-xs leading-5 text-black/60">{review.body}</p><div className="mt-3 grid grid-cols-2 gap-2 sm:flex">{review.status !== 'published' ? <button type="button" disabled={reviewBusyId === review.id} onClick={() => void moderateReview(review, { status: 'published' })} className="rounded-lg bg-emerald-700 px-3 py-2 text-[10px] font-black text-white">Publicar</button> : null}{review.status !== 'archived' ? <button type="button" disabled={reviewBusyId === review.id} onClick={() => void moderateReview(review, { status: 'archived' })} className="rounded-lg bg-black/[0.06] px-3 py-2 text-[10px] font-black text-black/55">Archivar</button> : null}{reviewBusyId === review.id ? <span className="inline-flex items-center gap-1 px-2 text-[10px] text-black/35"><Loader2 className="h-3 w-3 animate-spin" />Guardando</span> : null}</div></article>)}</div> : <div className="rounded-xl bg-black/[0.025] p-5 text-center text-xs text-black/40">Todavía no hay opiniones para moderar.</div>}
+              </Panel> : null}
             </div>
+          ) : null}
+
+          {section === 'investigar' ? (
+            <ProductResearchPanel
+              product={{ name: form.name, description: form.description, tagline: form.tagline, category: categoryName, price: basePrice }}
+              provider={aiProvider}
+              model={aiModel}
+              guide={contentGuide}
+              initialQuery={String(researchMemory.query || form.name)}
+              onApplyContent={applyResearchContent}
+              onUseReference={useResearchReference}
+              onAddReferenceImage={addReferenceImage}
+              onRememberResearch={(memory) => setResearchMemory((current) => ({ ...current, ...memory }))}
+            />
           ) : null}
 
           {section === 'precio' ? (
@@ -604,19 +845,47 @@ export default function ProductStudioEditor({
             </div>
           ) : null}
 
+          {section === 'contenido' ? (
+            <div className="space-y-4">
+              <Panel title="Descripción pública" description="Este contenido sí lo verá el cliente. Puedes escribirlo manualmente o rellenarlo desde Investigación.">
+                <Field label="Descripción completa"><textarea className={`${inputClass} min-h-44 py-3`} value={form.description} onChange={(event) => setField('description', event.target.value)} placeholder="Explica qué es el producto, para qué sirve, qué debe verificar el comprador y cómo encaja en su proyecto." /></Field>
+                <div className="mt-4"><Field label="Frase comercial"><input className={inputClass} value={form.tagline} onChange={(event) => setField('tagline', event.target.value)} placeholder="Resumen breve para la cabecera de la ficha" /></Field></div>
+              </Panel>
+
+              <Panel title="Características del producto" description="Solo estas características se publican. Los datos internos, notas e información de IA no se mezclan con la ficha del cliente.">
+                <div className="space-y-2">
+                  {publicFeatures.map((feature, index) => <div key={index} className="grid grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)_42px] gap-2"><input className={inputClass} value={feature.label} onChange={(event) => updatePublicFeature(index, { label: event.target.value })} placeholder="Ej. Potencia" /><input className={inputClass} value={feature.value} onChange={(event) => updatePublicFeature(index, { value: event.target.value })} placeholder="Ej. 12.000 BTU" /><button type="button" onClick={() => removePublicFeature(index)} className="grid h-11 place-items-center rounded-xl bg-red-50 text-red-700" aria-label="Quitar característica"><Trash2 className="h-4 w-4" /></button></div>)}
+                </div>
+                <button type="button" onClick={addPublicFeature} className="mt-3 min-h-10 rounded-xl border border-black/10 bg-white px-4 text-xs font-black">+ Añadir característica</button>
+                {!publicFeatures.length ? <p className="mt-3 rounded-xl bg-[#f6f1e8] p-4 text-xs leading-5 text-black/40">Aún no hay características públicas. Puedes buscarlas en <button type="button" onClick={() => setSection('investigar')} className="font-black text-[#9b6a12]">Investigar</button> y aplicar solo las que estén respaldadas por referencias.</p> : null}
+              </Panel>
+            </div>
+          ) : null}
+
           {section === 'imagenes' ? (
             <div className="space-y-4">
               <Panel title="Portada y galería" description="Sube, ordena y elige la portada sin salir del editor.">
                 <button type="button" disabled={busy !== ''} onClick={() => fileRef.current?.click()} className="flex min-h-28 w-full items-center justify-center gap-3 rounded-xl border border-dashed border-[#bb872c]/35 bg-[#fff6db] text-sm font-black text-[#7c5615] transition hover:bg-[#ffefbd] disabled:opacity-50">{busy === 'upload' ? <Loader2 className="h-5 w-5 animate-spin" /> : <CloudUpload className="h-5 w-5" />}{busy === 'upload' ? 'Subiendo imágenes…' : 'Subir imágenes del producto'}</button>
                 <input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={(event) => { const files = Array.from(event.target.files || []); if (files.length) void uploadFiles(files); event.target.value = ''; }} />
-                {gallery.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{gallery.map((image, index) => <article key={image.url} className={`overflow-hidden rounded-xl border bg-white ${form.image_url === image.url ? 'border-[#d18b16] ring-2 ring-[#d18b16]/15' : 'border-black/8'}`}><div className="relative aspect-[4/3] bg-[#f3eee4] p-2"><img src={image.url} alt="" className="h-full w-full rounded-lg object-contain" />{form.image_url === image.url ? <span className="absolute left-2 top-2 rounded-full bg-[#111214] px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#f5c75d]">Portada</span> : null}</div><div className="grid grid-cols-4 gap-1.5 p-2"><button type="button" onClick={() => setField('image_url', image.url)} className="col-span-2 rounded-lg bg-black/[0.05] px-2 py-2 text-[10px] font-black hover:bg-[#fff0bd]">Usar portada</button><button type="button" disabled={index === 0} onClick={() => moveImage(index, -1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronLeft className="h-4 w-4" /></button><button type="button" disabled={index === gallery.length - 1} onClick={() => moveImage(index, 1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronRight className="h-4 w-4" /></button><button type="button" onClick={() => removeImage(image)} className="col-span-4 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2 py-2 text-[10px] font-black text-red-700"><Trash2 className="h-3.5 w-3.5" />Quitar</button></div></article>)}</div> : <div className="mt-4 rounded-xl bg-black/[0.025] p-8 text-center text-sm text-black/40"><ImageIcon className="mx-auto mb-2 h-8 w-8 opacity-30" />Todavía no hay imágenes.</div>}
+                {gallery.length ? <div className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-3">{gallery.map((image, index) => <article key={image.url} className={`overflow-hidden rounded-xl border bg-white ${form.image_url === image.url ? 'border-[#d18b16] ring-2 ring-[#d18b16]/15' : 'border-black/8'}`}><div className="relative aspect-[4/3] bg-[#f3eee4] p-2"><img src={image.url} alt="" className="h-full w-full rounded-lg object-contain" />{form.image_url === image.url ? <span className="absolute left-2 top-2 rounded-full bg-[#111214] px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#f5c75d]">Portada</span> : null}{image.source?.startsWith('reference:') ? <span className="absolute bottom-2 left-2 rounded-full bg-violet-700 px-2 py-1 text-[8px] font-black uppercase text-white">Referencia</span> : null}</div><div className="grid grid-cols-4 gap-1.5 p-2"><button type="button" onClick={() => setField('image_url', image.url)} className="col-span-2 rounded-lg bg-black/[0.05] px-2 py-2 text-[10px] font-black hover:bg-[#fff0bd]">Usar portada</button><button type="button" disabled={index === 0} onClick={() => moveImage(index, -1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronLeft className="h-4 w-4" /></button><button type="button" disabled={index === gallery.length - 1} onClick={() => moveImage(index, 1)} className="grid place-items-center rounded-lg bg-black/[0.05] disabled:opacity-25"><ChevronRight className="h-4 w-4" /></button><button type="button" onClick={() => removeImage(image)} className="col-span-4 inline-flex items-center justify-center gap-1.5 rounded-lg bg-red-50 px-2 py-2 text-[10px] font-black text-red-700"><Trash2 className="h-3.5 w-3.5" />Quitar</button></div></article>)}</div> : <div className="mt-4 rounded-xl bg-black/[0.025] p-8 text-center text-sm text-black/40"><ImageIcon className="mx-auto mb-2 h-8 w-8 opacity-30" />Todavía no hay imágenes.</div>}
               </Panel>
             </div>
           ) : null}
 
           {section === 'seo' ? (
             <div className="space-y-4">
-              <Panel title="Análisis inteligente" description="Una sola acción revisa posicionamiento comercial, precio, imágenes, SEO y copy. Nada se aplica sin tu aprobación.">
+              <Panel title="Guía de contenido + IA" description="Define cómo quieres presentar este producto. La guía se guarda con la ficha y puede usarse con OpenRouter u Ollama.">
+                <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+                  <Field label="Guía para IA"><textarea className={`${inputClass} min-h-32 py-3`} value={contentGuide} onChange={(event) => setContentGuide(event.target.value.slice(0, 3000))} placeholder="Ej. tono técnico pero simple, destacar instalación, público en Chile, no inventar medidas, priorizar intención de compra y preguntas frecuentes…" /></Field>
+                  <div className="grid gap-3">
+                    <Field label="Proveedor IA"><select className={inputClass} value={aiProvider} onChange={(event) => setAiProvider(event.target.value as AiProviderChoice)}><option value="openrouter">OpenRouter</option><option value="ollama">Ollama</option></select></Field>
+                    <Field label="Modelo"><select className={inputClass} value={aiModel} onChange={(event) => setAiModel(event.target.value)}><option value="">Automático</option>{aiModels[aiProvider].map((model) => <option key={model.id} value={model.id}>{model.name}</option>)}</select></Field>
+                  </div>
+                </div>
+                <label className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-black/8 bg-white p-4"><span><b className="block text-sm">Autorrellenar desde la guía</b><small className="mt-1 block max-w-2xl text-xs leading-5 text-black/40">Al analizar, aplica automáticamente la primera propuesta a nombre, descripción y SEO. Puedes seguir editando antes de guardar.</small></span><Toggle checked={autoFillFromGuide} onChange={setAutoFillFromGuide} label="Autorrellenar desde la guía" /></label>
+              </Panel>
+
+              <Panel title="Análisis inteligente" description="Una sola acción revisa posicionamiento comercial, precio, imágenes, SEO y copy. Nada se guarda hasta que pulses Guardar.">
                 <div className="flex flex-col gap-3 rounded-xl bg-[#111214] p-4 text-white sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[#f5c75d]" /><p className="text-sm font-black">Fabrick Commerce AI</p></div><p className="mt-1 max-w-xl text-xs leading-5 text-white/50">Usa los datos del producto y hasta 8 imágenes para generar recomendaciones editables.</p></div><button type="button" onClick={() => void runAiSuite()} disabled={busy !== ''} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#f5c75d] px-4 text-xs font-black text-black disabled:opacity-50">{busy === 'ai' ? <Loader2 className="h-4 w-4 animate-spin" /> : <WandSparkles className="h-4 w-4" />}{busy === 'ai' ? 'Analizando…' : 'Analizar producto'}</button></div>
 
                 {commerce ? <div className="mt-4 rounded-xl border border-black/8 bg-[#f7efdc] p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#966917]">Diagnóstico comercial</p><h3 className="mt-1 text-lg font-black">Demanda {commerce.estimatedDemand}/100 · Compra {commerce.estimatedPurchasePopularity}/100</h3></div><span className="rounded-xl bg-white px-3 py-2 text-sm font-black">Precio IA {money(commerce.recommendedPrice)}</span></div><div className="mt-3 grid gap-2 sm:grid-cols-3"><MiniMetric label="Banda baja" value={money(commerce.priceLow)} /><MiniMetric label="Banda media" value={money(commerce.priceMid)} /><MiniMetric label="Banda alta" value={money(commerce.priceHigh)} /></div><p className="mt-3 text-xs leading-5 text-black/55">{commerce.positioning}</p><p className="mt-2 text-[11px] leading-5 text-black/40">{commerce.evidenceNote}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={applyCommerceCopy} className="rounded-lg bg-white px-3 py-2 text-xs font-black">Aplicar copy</button><button type="button" onClick={applyCommercePrice} className="rounded-lg bg-[#111214] px-3 py-2 text-xs font-black text-[#f5c75d]">Aplicar precio sugerido</button></div></div> : null}
@@ -633,15 +902,42 @@ export default function ProductStudioEditor({
                 <div className="mt-4 grid gap-4 md:grid-cols-2"><Field label="Slug"><input className={inputClass} value={seo.slug} onChange={(event) => setSeo((current) => ({ ...current, slug: slugify(event.target.value) }))} placeholder={slugify(form.name)} /></Field><Field label="Palabra clave principal"><input className={inputClass} value={seo.primaryKeyword} onChange={(event) => setSeo((current) => ({ ...current, primaryKeyword: event.target.value }))} /></Field></div>
                 <div className="mt-4"><Field label="Palabras secundarias"><input className={inputClass} value={seo.secondaryKeywords} onChange={(event) => setSeo((current) => ({ ...current, secondaryKeywords: event.target.value }))} placeholder="separadas por coma" /></Field></div>
               </Panel>
+              <Panel title="Comentarios internos" description="Notas privadas para compras, proveedor, publicación o próximas revisiones. No se muestran al cliente.">
+                <Field label="Notas del equipo"><textarea className={`${inputClass} min-h-28 py-3`} value={adminNotes} onChange={(event) => setAdminNotes(event.target.value.slice(0, 3000))} placeholder="Ej. confirmar ficha técnica con proveedor, revisar nueva foto, stock reservado, validar costo antes de campaña…" /></Field>
+              </Panel>
             </div>
           ) : null}
+          {section === 'publicacion' ? (
+            <div className="space-y-4">
+              <Panel title="Estado de publicación" description="La visibilidad pública queda separada de la edición. Stock 0 siempre mantiene el producto fuera del catálogo.">
+                <div className="grid gap-3 sm:grid-cols-2"><ToggleCard title="Visible en catálogo" text={canPublish ? 'Puedes publicar cuando la ficha esté revisada.' : 'Necesitas al menos 1 unidad de stock.'} checked={form.activo && canPublish} onChange={setProductActive} /><ToggleCard title="Producto destacado" text="Prioriza este producto en superficies que respeten el estado destacado." checked={form.featured} onChange={(value) => setField('featured', value)} /></div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-4"><MiniMetric label="Salud ficha" value={`${completeness}%`} /><MiniMetric label="Stock" value={String(stockAmount)} /><MiniMetric label="Características" value={String(publicFeatures.filter((item) => item.label && item.value).length)} /><MiniMetric label="Imágenes" value={String(gallery.length)} /></div>
+              </Panel>
+
+              <Panel title="Productos relacionados" description="Elige hasta 8 productos que quieras mostrar al final de esta ficha. Los de la misma categoría aparecen primero como sugerencia.">
+                <div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black">{relatedIds.length}/8 seleccionados</p><p className="mt-1 text-[10px] text-black/40">Si no eliges ninguno, la tienda usará productos de la misma categoría como respaldo.</p></div>{relatedIds.length ? <button type="button" onClick={() => setRelatedIds([])} className="rounded-lg bg-black/[0.05] px-3 py-2 text-[10px] font-black">Limpiar</button> : null}</div>
+                <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
+                  {relatedCandidates.slice(0, 18).map((item) => {
+                    const selected = relatedIds.includes(item.id);
+                    return <button type="button" key={item.id} onClick={() => toggleRelatedProduct(item.id)} className={`overflow-hidden rounded-xl border bg-white text-left transition ${selected ? 'border-[#d18b16] ring-2 ring-[#d18b16]/15' : 'border-black/8'}`}><div className="relative aspect-[4/3] bg-[#f4efe6] p-2">{item.image_url ? <img src={item.image_url} alt="" className="h-full w-full object-contain" /> : <div className="grid h-full place-items-center"><Package className="h-7 w-7 text-black/15" /></div>}<span className={`absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full ${selected ? 'bg-[#d18b16] text-white' : 'bg-white text-black/20'}`}>{selected ? <Check className="h-4 w-4" /> : null}</span></div><div className="p-3"><p className="line-clamp-2 min-h-8 text-[11px] font-black leading-4">{item.name}</p><p className="mt-2 text-sm font-black">{money(item.price)}</p>{item.category_id === form.category_id ? <span className="mt-1 inline-block text-[8px] font-black uppercase tracking-[.1em] text-[#9b6a12]">Misma categoría</span> : null}</div></button>;
+                  })}
+                </div>
+              </Panel>
+
+              <Panel title="Revisión antes de publicar" description="Comprueba la ficha con los datos que estás editando ahora; no necesitas guardarlos para ver esta preview.">
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center"><div><p className="text-sm font-black">Vista de cliente con borrador actual</p><p className="mt-1 text-xs leading-5 text-black/45">Incluye galería, precio, descripción, características, estado y productos relacionados.</p></div><button type="button" onClick={() => setPreviewOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#111214] px-5 text-xs font-black text-white"><Eye className="h-4 w-4 text-[#f5c75d]" />Abrir preview</button></div>
+                {mode === 'edit' && product?.id ? <a href={`/tienda/${product.id}`} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.12em] text-[#9b6a12]">Abrir versión actualmente publicada <ArrowRight className="h-3.5 w-3.5" /></a> : null}
+              </Panel>
+            </div>
+          ) : null}
+
         </main>
 
         <aside className="space-y-4 2xl:sticky 2xl:top-[118px] 2xl:self-start">
           <div className="overflow-hidden rounded-2xl border border-black/8 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-black/7 px-4 py-3"><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-black/35">Vista previa</p><p className="mt-0.5 text-xs font-black">Como ficha de catálogo</p></div><Eye className="h-4 w-4 text-black/30" /></div>
             <div className="aspect-[4/3] bg-[#f1ece2] p-4">{cover ? <img src={cover} alt={form.name} className="h-full w-full object-contain" /> : <div className="grid h-full place-items-center text-black/15"><Package className="h-12 w-12" /></div>}</div>
-            <div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-black">{form.name || 'Nombre del producto'}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-[.12em] text-[#9b6b19]">{categoryName}</p></div>{form.featured ? <Star className="h-4 w-4 fill-[#f5c75d] text-[#b67c15]" /> : null}</div><p className="mt-3 line-clamp-3 text-xs leading-5 text-black/45">{form.tagline || form.description || 'Añade una descripción para mejorar la ficha.'}</p><div className="mt-4 flex items-end justify-between"><div><p className="text-xl font-black">{money(salePrice)}</p>{discount > 0 ? <p className="text-[10px] text-black/35 line-through">{money(basePrice)}</p> : null}</div><span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${form.activo ? 'bg-emerald-100 text-emerald-800' : 'bg-black/8 text-black/45'}`}>{form.activo ? 'Activo' : 'Oculto'}</span></div></div>
+            <div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-black">{form.name || 'Nombre del producto'}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-[.12em] text-[#9b6b19]">{categoryName}</p></div>{form.featured ? <Star className="h-4 w-4 fill-[#f5c75d] text-[#b67c15]" /> : null}</div><p className="mt-3 line-clamp-3 text-xs leading-5 text-black/45">{form.tagline || form.description || 'Añade una descripción para mejorar la ficha.'}</p><div className="mt-4 flex items-end justify-between"><div><p className="text-xl font-black">{money(salePrice)}</p>{discount > 0 ? <p className="text-[10px] text-black/35 line-through">{money(basePrice)}</p> : null}</div><span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${form.activo && canPublish ? 'bg-emerald-100 text-emerald-800' : 'bg-black/8 text-black/45'}`}>{form.activo && canPublish ? 'Activo' : !canPublish ? 'Oculto · sin stock' : 'Oculto'}</span></div></div>
           </div>
 
           {hasMarketIntel ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"><div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-emerald-900/45">Radar de mercado</p><p className="mt-1 text-lg font-black">{cost > 0 ? money(currentNetProfit) : 'Costo pendiente'}</p></div><TrendingUp className="h-5 w-5 text-emerald-700" /></div><p className="mt-1 text-[11px] text-emerald-900/55">Utilidad estimada con reserva {marketReservePct || 0}% · margen {cost > 0 ? `${currentNetMargin.toFixed(1)}%` : '—'}.</p><div className="mt-3 flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-[11px]"><span className="text-emerald-900/50">Mediana mercado</span><b>{marketMedian ? money(marketMedian) : '—'}</b></div></div> : null}
@@ -652,7 +948,28 @@ export default function ProductStudioEditor({
         </aside>
       </div>
 
-      <footer className="sticky bottom-0 z-20 mt-auto border-t border-black/8 bg-[#fffaf0]/95 px-4 py-3 backdrop-blur-xl sm:px-6"><div className="flex items-center justify-between gap-3"><p className="hidden text-xs text-black/40 sm:block">{mode === 'create' ? 'Se creará un nuevo producto.' : hasMarketIntel ? 'Al guardar también se actualiza la referencia de margen del radar.' : 'Los cambios se guardan sobre esta ficha.'}</p><div className="ml-auto flex gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-black text-black/55">Cancelar</button><button type="submit" disabled={busy !== ''} className="inline-flex items-center gap-2 rounded-xl bg-[#111214] px-5 py-2.5 text-xs font-black text-white disabled:opacity-50">{busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{mode === 'create' ? 'Crear producto' : 'Guardar cambios'}</button></div></div></footer>
+      <footer className="sticky bottom-0 z-20 mt-auto border-t border-black/8 bg-[#fffaf0]/95 px-4 py-3 backdrop-blur-xl sm:px-6"><div className="flex items-center justify-between gap-3"><p className="hidden text-xs text-black/40 sm:block">{mode === 'create' ? 'Se creará un nuevo producto.' : hasMarketIntel ? 'Al guardar también se actualiza la referencia de margen del radar.' : 'Los cambios se guardan sobre esta ficha.'}</p><div className="ml-auto flex gap-2"><button type="button" onClick={() => setPreviewOpen(true)} className="rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-black text-black/55 sm:hidden"><Eye className="h-4 w-4" /></button><button type="button" onClick={onClose} className="rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-black text-black/55">Cancelar</button><button type="submit" disabled={busy !== ''} className="inline-flex items-center gap-2 rounded-xl bg-[#111214] px-5 py-2.5 text-xs font-black text-white disabled:opacity-50">{busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{mode === 'create' ? 'Crear producto' : 'Guardar cambios'}</button></div></div></footer>
+
+      <ProductPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        product={{
+          id: product?.id,
+          name: form.name,
+          tagline: form.tagline,
+          description: form.description,
+          category: categoryName,
+          price: salePrice,
+          comparePrice: discount > 0 ? basePrice : undefined,
+          stock: stockAmount,
+          active: form.activo,
+          featured: form.featured,
+          image: cover,
+        }}
+        gallery={gallery.map((image) => image.url)}
+        features={publicFeatures.filter((item) => item.label.trim() && item.value.trim())}
+        related={selectedRelatedProducts}
+      />
     </form>
   );
 }

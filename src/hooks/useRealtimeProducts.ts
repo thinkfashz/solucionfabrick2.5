@@ -102,7 +102,7 @@ function normalizeProducts(value: unknown): Product[] {
   const known = new Set<string>();
   return value.reduce<Product[]>((products, item) => {
     const product = normalizeProduct(item);
-    if (!product || product.activo === false || known.has(product.id)) return products;
+    if (!product || product.activo === false || (product.stock ?? 0) <= 0 || known.has(product.id)) return products;
     known.add(product.id);
     products.push(product);
     return products;

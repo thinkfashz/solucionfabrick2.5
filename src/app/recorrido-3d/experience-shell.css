@@ -250,3 +250,15 @@
  .sf-damage-toast,.sf-material-row,.sf-quick button,.sf-camera-sheet section nav button,.sf-lab-tabs button,.sf-segmented button,.sf-switches button,.sf-native-menu,.sf-play{transition-duration:0ms!important}
  .sf-hypocenter i{animation:none!important}
 }
+
+
+/* Seismic playback uses compositor transforms instead of layout-sized wave rings. */
+.sf-wave-front{
+ width:30px!important;height:30px!important;
+ transform:translate(-50%,-50%) scale(var(--sf-wave-scale,1))!important;
+ opacity:var(--sf-wave-opacity,1)!important;
+ transform-origin:center;
+ will-change:transform,opacity;
+ transition:none!important;
+}
+.sf-hypocenter{transition:none!important}

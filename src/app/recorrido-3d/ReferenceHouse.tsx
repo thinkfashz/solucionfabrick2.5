@@ -25,14 +25,14 @@ function Plan({dimensions,technical}:{dimensions:boolean;technical:string}){
     <rect x="-2.85" y="-5.7" width="6.355" height="1.7" fill="#e1d9c8"/>
     {rooms.map(r=><g key={r.id}><rect x={r.x} y={r.z} width={r.w} height={r.d} fill={fill(r.kind)} stroke="#b7ae9d" strokeWidth=".025"/><text x={r.x+r.w/2} y={r.z+r.d/2} textAnchor="middle" fill="#22323b" fontSize=".24">{r.name}<tspan x={r.x+r.w/2} dy=".36">{r.area} m² ref.</tspan></text></g>)}
     {walls.map((w,i)=><line key={i} x1={w.x-(w.axis==='x'?w.length/2:0)} y1={w.z-(w.axis==='z'?w.length/2:0)} x2={w.x+(w.axis==='x'?w.length/2:0)} y2={w.z+(w.axis==='z'?w.length/2:0)} stroke="#36444b" strokeWidth={w.outside?.15:.09}/>)}
-    {walls.flatMap((w,i)=>(w.open||[]).filter(o=>o[2]===0).map((o,j)=>{
+    {walls.flatMap((w,i)=>(w.open||[]).filter(o=>o[2]===0&&o[1]<=1.3).map((o,j)=>{
       const half=o[1]/2;
       if(w.axis==='x'){
         const x1=o[0]-half,y=w.z;return <g key={`${i}-d-${j}`} stroke="#8a6b3f" fill="none" strokeWidth=".045"><line x1={x1} y1={y} x2={x1} y2={y-o[1]}/><path d={`M ${x1} ${y-o[1]} A ${o[1]} ${o[1]} 0 0 1 ${o[0]+half} ${y}`}/></g>
       }
       const y1=o[0]-half,x=w.x;return <g key={`${i}-d-${j}`} stroke="#8a6b3f" fill="none" strokeWidth=".045"><line x1={x} y1={y1} x2={x+o[1]} y2={y1}/><path d={`M ${x+o[1]} ${y1} A ${o[1]} ${o[1]} 0 0 1 ${x} ${o[0]+half}`}/></g>
     }))}
-    {walls.flatMap((w,i)=>(w.open||[]).filter(o=>o[2]>0).map((o,j)=><line key={`${i}-w-${j}`} x1={w.axis==='x'?o[0]-o[1]/2:w.x} x2={w.axis==='x'?o[0]+o[1]/2:w.x} y1={w.axis==='z'?o[0]-o[1]/2:w.z} y2={w.axis==='z'?o[0]+o[1]/2:w.z} stroke="#6fa9bc" strokeWidth=".16"/>))}
+    {walls.flatMap((w,i)=>(w.open||[]).filter(o=>o[2]>0||o[1]>1.3).map((o,j)=><line key={`${i}-w-${j}`} x1={w.axis==='x'?o[0]-o[1]/2:w.x} x2={w.axis==='x'?o[0]+o[1]/2:w.x} y1={w.axis==='z'?o[0]-o[1]/2:w.z} y2={w.axis==='z'?o[0]+o[1]/2:w.z} stroke="#6fa9bc" strokeWidth=".16"/>))}
     {technical==='electric'&&<g fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M4.95 4.8 L4.95 -3.5 L0 -4.4 M4.95 -1 L0 -1 M4.95 1.9 L-5 -1.9 M4.95 3.9 L-4.8 4.1 M4.95 -.5 L6 -.5" stroke="#e2b900" strokeWidth=".09"/><circle cx="4.95" cy="4.8" r=".18" fill="#07182d" stroke="#e2b900" strokeWidth=".07"/>{[[0,-4.4],[0,-1],[-5,-1.9],[-4.8,4.1],[6,-.5]].map(([x,z],i)=><circle key={i} cx={x} cy={z} r=".11" fill="#ffe600" stroke="#07182d" strokeWidth=".04"/>)}</g>}
     {technicalWater&&<g fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M6.2 5.3 L6.2 -.7 L5.8 -.7 M6.2 2.5 L2.9 2.5 L2.9 1.7 M2.9 2.5 L2.9 4.2 M2.9 4.2 L-5.8 4.2 L-5.8 1.2 M-1 4.2 L-1 3.8" stroke="#2f8ed0" strokeWidth=".11"/><path d="M5.95 5.1 L5.95 -.55 M5.95 2.7 L2.65 2.7 L2.65 1.9 M2.65 2.7 L2.65 4.35 M2.65 4.35 L-5.55 4.35 L-5.55 1.35" stroke="#d98b67" strokeWidth=".075"/></g>}
     {technicalSanitary&&<g fill="none" stroke="#4dbbc8" strokeLinecap="round" strokeLinejoin="round"><path d="M-5.8 1.3 L-3.8 3.9 L2.8 4.2 L2.8 1.8 L6.8 5.8 M-1 4.1 L-3.8 3.9 M5.8 -.6 L6.8 5.8" strokeWidth=".16"/><circle cx="6.8" cy="5.8" r=".2" fill="#dff7f8" strokeWidth=".07"/></g>}

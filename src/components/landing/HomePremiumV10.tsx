@@ -100,7 +100,7 @@ export default function HomePremiumV10({
             <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent" />
             <span className="absolute bottom-5 left-5 grid gap-1">
               <b className="text-sm">Recorrido 3D</b>
-              <small className="text-[10px] text-white/65">Explora espacios, materiales y estructura</small>
+              <small className="text-[10px] text-white/[.65]">Explora espacios, materiales y estructura</small>
             </span>
             <span className="absolute bottom-5 right-5 grid h-10 w-10 place-items-center rounded-full border border-white/30 bg-black/45 transition-colors group-hover:border-[#FFE600] group-hover:bg-[#FFE600] group-hover:text-[#08090A]"><ArrowRight className="h-4 w-4" /></span>
           </Link>

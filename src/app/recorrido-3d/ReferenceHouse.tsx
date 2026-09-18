@@ -188,12 +188,12 @@ export default function ReferenceHouse(){
    for(const [x,z]of [[-5.6,1.8],[3.5,2.5]]){box([x+.85,1.7,z+.25],[.68,.7,.025],glass,groups[7]);beam([x+.85,1.15,z],[x+.85,1.4,z],.03,steel,groups[7]);}
    // Compact parked vehicle, scaled to metres, independent of construction layers.
    const car=new THREE.Group();car.position.set(5.9,.12,-10.4);car.rotation.y=-.18;scene.add(car);
-   const paint=mat('#61727c',.65);paint.roughness=.23;const rubber=mat('#202425');rubber.roughness=.95;
+   const paint=mat('#61727c',.65);paint.roughness=.23;const rubber=mat('#202425');rubber.roughness=.95;const tailLight=mat('#8f3030',.15);tailLight.roughness=.34;
    box([0,.65,0],[1.85,.65,4.15],paint,car);box([0,1.22,.15],[1.62,.62,2.15],paint,car);
    box([0,1.3,-.96],[1.47,.43,.04],glass,car);box([0,1.3,1.23],[1.47,.43,.04],glass,car);
    for(const x of [-.835,.835]){box([x,1.31,.13],[.035,.39,1.84],glass,car);box([x*1.14,1.07,-.85],[.22,.13,.3],paint,car);}
    for(const x of [-.94,.94])for(const z of [-1.32,1.33]){const wheel=mesh(new THREE.CylinderGeometry(.36,.36,.22,20),rubber,car);wheel.rotation.z=Math.PI/2;wheel.position.set(x,.35,z);const hub=mesh(new THREE.CylinderGeometry(.21,.21,.235,16),steel,car);hub.rotation.z=Math.PI/2;hub.position.copy(wheel.position);}
-   for(const x of [-.62,.62]){box([x,.75,-2.085],[.4,.16,.035],white,car);box([x,.75,2.085],[.4,.15,.035],red,car);}box([0,.5,-2.09],[.85,.18,.04],black,car);
+   for(const x of [-.62,.62]){box([x,.75,-2.085],[.4,.16,.035],white,car);box([x,.75,2.085],[.4,.15,.035],tailLight,car);}box([0,.5,-2.09],[.85,.18,.04],black,car);
    const applyLighting=(detail:LightingDetail={})=>{
     const mode=detail.mode||'day',exposure=(detail.exposure??100)/100,temp=detail.temperature??4200;
     renderer.toneMappingExposure=exposure*(mode==='night'?.82:mode==='sunset'?.96:1.08);

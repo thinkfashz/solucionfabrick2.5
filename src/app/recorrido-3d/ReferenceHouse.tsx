@@ -59,6 +59,8 @@ export default function ReferenceHouse(){
    const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.dampingFactor=.065;orbit.rotateSpeed=.55;orbit.panSpeed=.65;orbit.zoomSpeed=.65;orbit.minDistance=2;orbit.maxDistance=65;orbit.maxPolarAngle=Math.PI*.49;
    const groups=layers.map((_,i)=>{const g=new THREE.Group();g.userData.layer=i;scene.add(g);return g});
    const electricGroup=new THREE.Group();electricGroup.name='electrical-plan';electricGroup.visible=false;scene.add(electricGroup);
+   const waterGroup=new THREE.Group();waterGroup.name='water-plan';waterGroup.visible=false;scene.add(waterGroup);
+   const sanitaryGroup=new THREE.Group();sanitaryGroup.name='sanitary-plan';sanitaryGroup.visible=false;scene.add(sanitaryGroup);
    const geometry:T.BufferGeometry[]=[],materials:T.Material[]=[],textures:T.Texture[]=[];
    const mat=(color:string,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,metalness,roughness:metalness?.28:.55,side:THREE.DoubleSide});materials.push(m);return m};
    const steel=mat('#b8c5cf',.8),concrete=mat('#a8aaa3'),wood=mat('#b58c5e'),white=mat('#f5f3ec'),roof=mat('#38434b',.5),osb=mat('#c49b60'),wool=mat('#d8c695'),membrane=mat('#859f9c'),black=mat('#29373f',.4),glass=mat('#91acb3',.15);
@@ -141,7 +143,13 @@ export default function ReferenceHouse(){
    for(const x of [-7.55,7.55])beam([x,.06,-6.08],[x,2.8,-6.08],.09,roof,groups[9]);
    // Schematic pipes are below the slab, lowered separately in exploded mode.
    const blue=mat('#249fcd'),hot=mat('#e4b94b'),drain=mat('#9aafb9');
-   for(const [x,z]of [[-5.7,1.8],[3.4,2.4],[6.3,-.7],[-.6,4.5]]){beam([x,.7,z],[x,-.45,z],.085,blue,groups[1]);beam([x+.15,.7,z],[x+.15,-.36,z],.06,hot,groups[1]);beam([x,-.5,z],[8.6,-.5,z],.12,drain,groups[1]);}
+   for(const [x,z]of [[-5.7,1.8],[3.4,2.4],[6.3,-.7],[-.6,4.5]]){
+    beam([x,.7,z],[x,-.45,z],.085,blue,groups[1]);beam([x+.15,.7,z],[x+.15,-.36,z],.06,hot,groups[1]);beam([x,-.5,z],[8.6,-.5,z],.12,drain,groups[1]);
+    beam([x,.12,z],[x,-.42,z],.055,blue,waterGroup);beam([x+.13,.12,z],[x+.13,-.34,z],.042,hot,waterGroup);
+    beam([x,-.46,z],[8.6,-.46,z],.085,drain,sanitaryGroup);
+   }
+   beam([-6.3,-.4,4.6],[6.45,-.4,4.6],.045,blue,waterGroup);beam([-6.2,-.32,4.78],[6.35,-.32,4.78],.035,hot,waterGroup);
+   beam([8.6,-.46,-.7],[8.6,-.54,5],.1,drain,sanitaryGroup);
    beam([8.6,-.5,-.7],[8.6,-.6,5],.14,drain,groups[1]);box([8.6,-.38,5],[.8,.65,.8],concrete,groups[1]);beam([8.6,-.6,5],[10.4,-.6,5],.14,drain,groups[1]);
    const tank=mesh(new THREE.CylinderGeometry(.65,.65,2.3,16),mat('#4c646d'),groups[1]);tank.rotation.x=Math.PI/2;tank.position.set(10.4,-.5,5.8);box([10.4,.16,5.2],[.45,.12,.45],black,groups[1]);
    // Simple furniture for legible scale, attached to the finished layer.
@@ -248,7 +256,7 @@ export default function ReferenceHouse(){
      camera.updateProjectionMatrix();if(t===1){transition=null;orbit.enabled=true;if(cameraFade.current)cameraFade.current.style.opacity='0';}
     } else if(playing){tourElapsed+=dt;const target=presets[stops[tourIndex]].t;orbit.target.set(target[0]+Math.sin(tourElapsed*.35)*.25,target[1],target[2]);if(tourElapsed>7){tourIndex=(tourIndex+1)%stops.length;choose(stops[tourIndex]);tourElapsed=0}}
     if(zoomGoal!==null){const offset=camera.position.clone().sub(orbit.target);const length=THREE.MathUtils.damp(offset.length(),zoomGoal,7,dt);camera.position.copy(orbit.target).add(offset.setLength(length));if(Math.abs(length-zoomGoal)<.01)zoomGoal=null;}
-    const s=settings.current,e=s.explosion/100,alpha=reducedMotion?1:1-Math.exp(-6*dt);electricGroup.visible=s.technical==='electric';
+    const s=settings.current,e=s.explosion/100,alpha=reducedMotion?1:1-Math.exp(-6*dt);electricGroup.visible=s.technical==='electric';waterGroup.visible=s.technical==='water'||s.technical==='underfloor';sanitaryGroup.visible=s.technical==='sanitary'||s.technical==='underfloor';
     if(s.quality!==lastQuality){renderer.setPixelRatio(s.quality==='light'?1:Math.min(devicePixelRatio,1.25));renderer.shadowMap.enabled=s.quality!=='light';lastQuality=s.quality;size();renderer.shadowMap.needsUpdate=true;}
     let moving=false;
     for(let i=0;i<groups.length;i++){const g=groups[i];g.visible=s.visible[i];const y=i===1?-2*e:i>=8?(i===8?4:7)*e:i===6?2*e:0;moving ||= Math.abs(g.position.y-y)>.005;g.position.y=THREE.MathUtils.lerp(g.position.y,y,alpha);for(const child of g.children){if(child.userData.offset){const dest=(child.userData.offset as T.Vector3).clone().multiplyScalar(e);moving ||= child.position.distanceToSquared(dest)>.0001;child.position.lerp(dest,alpha)}}}

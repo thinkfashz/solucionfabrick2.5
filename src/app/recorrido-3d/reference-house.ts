@@ -16,18 +16,18 @@ export const layers = [
 export const width = 14.51;
 export const depth = 13.41;
 export const rooms = [
-  {name:'Dormitorio 1', area:'17,61', x:-7.05,z:-3.8,w:4.25,d:4.4},
-  {name:'Baño 1',area:'5,42',x:-7.05,z:.7,w:2.5,d:2},
-  {name:'Dormitorio 2',area:'19,27',x:-7.05,z:2.8,w:5.1,d:2.7},
-  {name:'Living · comedor',area:'43,23',x:-2.65,z:-5.5,w:6,d:5.9},
-  {name:'Cocina',area:'13,36',x:3.55,z:-1.7,w:3.45,d:3.15},
-  {name:'Logia',area:'6,41',x:-1.75,z:2.4,w:2.05,d:3.1},
-  {name:'Acceso',area:'7,09',x:.45,z:1.7,w:1.8,d:3.8},
-  {name:'Baño 2',area:'4,48',x:2.5,z:1.7,w:2.3,d:1.65},
-  {name:'Despensa',area:'2,79',x:5,z:1.7,w:2,d:1.65},
-  {name:'Vestidor',area:'3,33',x:2.5,z:3.55,w:2.3,d:1.95},
-  {name:'Sala técnica',area:'5,97',x:5,z:3.55,w:2,d:1.95},
-];
+  {id:'primary-bedroom',name:'Dormitorio principal',area:'17,61',x:-7.05,z:-3.8,w:4.25,d:4.4,kind:'bedroom'},
+  {id:'primary-bath',name:'Baño principal',area:'5,42',x:-7.05,z:.7,w:2.5,d:2,kind:'bathroom'},
+  {id:'bedroom-2',name:'Dormitorio 2',area:'19,27',x:-7.05,z:2.8,w:5.1,d:2.7,kind:'bedroom'},
+  {id:'social',name:'Living · comedor',area:'43,23',x:-2.65,z:-5.5,w:6,d:5.9,kind:'social'},
+  {id:'kitchen',name:'Cocina',area:'13,36',x:3.55,z:-1.7,w:3.45,d:3.15,kind:'kitchen'},
+  {id:'laundry',name:'Logia',area:'6,41',x:-1.75,z:2.4,w:2.05,d:3.1,kind:'service'},
+  {id:'entry',name:'Acceso',area:'7,09',x:.45,z:1.7,w:1.8,d:3.8,kind:'circulation'},
+  {id:'guest-bath',name:'Baño de visitas',area:'4,48',x:2.5,z:1.7,w:2.3,d:1.65,kind:'bathroom'},
+  {id:'pantry',name:'Despensa',area:'2,79',x:5,z:1.7,w:2,d:1.65,kind:'storage'},
+  {id:'bath-2',name:'Baño dormitorio 2',area:'3,33',x:2.5,z:3.55,w:2.3,d:1.95,kind:'bathroom'},
+  {id:'technical',name:'Sala técnica',area:'5,97',x:5,z:3.55,w:2,d:1.95,kind:'technical'},
+] as const;
 export type Wall = {x:number;z:number;length:number;axis:'x'|'z';outside?:boolean;open?:[number,number,number,number][]};
 // Openings: center along wall, width, sill, head (metres, illustrative).
 export const walls: Wall[] = [

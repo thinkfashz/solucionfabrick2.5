@@ -66,6 +66,8 @@ export default function VisualCmsCloudinaryBridge() {
   const [assets, setAssets] = useState<CloudinaryAsset[]>([]);
   const [folders, setFolders] = useState<CloudinaryFolder[]>([]);
   const [currentFolder, setCurrentFolder] = useState('');
+  const [assetsLoadedFor, setAssetsLoadedFor] = useState<string | null>(null);
+  const [foldersLoadedFor, setFoldersLoadedFor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [folderLoading, setFolderLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -87,7 +89,9 @@ export default function VisualCmsCloudinaryBridge() {
       const body = await response.json().catch(() => ({})) as CloudinaryResponse;
       if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
       setFolders(body.folders ?? []);
+      setFoldersLoadedFor(folder);
     } catch (cause) {
+      setFoldersLoadedFor(folder);
       setError(cause instanceof Error ? cause.message : 'No se pudieron cargar las carpetas de Cloudinary.');
       setFolders([]);
     } finally {
@@ -119,8 +123,10 @@ export default function VisualCmsCloudinaryBridge() {
       }
       setNotConfigured(false);
       setAssets((current) => cursor ? [...current, ...(body.assets ?? [])] : (body.assets ?? []));
+      setAssetsLoadedFor(activePrefix.trim());
       setNextCursor(body.next_cursor ?? null);
     } catch (cause) {
+      setAssetsLoadedFor(activePrefix.trim());
       setError(cause instanceof Error ? cause.message : 'No se pudo cargar Cloudinary.');
     } finally {
       setLoading(false);
@@ -174,10 +180,10 @@ export default function VisualCmsCloudinaryBridge() {
   }, []);
 
   useEffect(() => {
-    if (!open) return;
-    if (assets.length === 0 && !loading && !notConfigured) void loadAssets(null, currentFolder);
-    if (folders.length === 0 && !folderLoading && !notConfigured) void loadFolders(currentFolder);
-  }, [open, assets.length, folders.length, loading, folderLoading, loadAssets, loadFolders, notConfigured, currentFolder]);
+    if (!open || notConfigured) return;
+    if (assetsLoadedFor !== currentFolder && !loading) void loadAssets(null, currentFolder);
+    if (foldersLoadedFor !== currentFolder && !folderLoading) void loadFolders(currentFolder);
+  }, [open, assetsLoadedFor, foldersLoadedFor, loading, folderLoading, loadAssets, loadFolders, notConfigured, currentFolder]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -222,6 +228,8 @@ export default function VisualCmsCloudinaryBridge() {
     setPrefix(folder);
     setAssets([]);
     setFolders([]);
+    setAssetsLoadedFor(null);
+    setFoldersLoadedFor(null);
     setNextCursor(null);
     await Promise.all([loadAssets(null, folder), loadFolders(folder)]);
   }
@@ -278,9 +286,9 @@ export default function VisualCmsCloudinaryBridge() {
           </label>
           <label className="flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-black/35 px-2.5">
             <FolderOpen className="h-3.5 w-3.5 shrink-0 text-white/30" />
-            <input value={prefix} onChange={(event) => setPrefix(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void loadAssets(null, prefix); }} placeholder="Prefijo/carpeta" className="min-w-0 flex-1 bg-transparent text-[10px] text-white outline-none placeholder:text-white/25" />
+            <input value={prefix} onChange={(event) => setPrefix(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void openFolder(prefix.trim()); }} placeholder="Prefijo/carpeta" className="min-w-0 flex-1 bg-transparent text-[10px] text-white outline-none placeholder:text-white/25" />
           </label>
-          <button type="button" onClick={() => void loadAssets(null, prefix)} disabled={loading} className="h-9 rounded-lg border border-white/10 px-3 text-[9px] font-black text-white/60 disabled:opacity-40">{loading ? 'Cargando…' : 'Filtrar'}</button>
+          <button type="button" onClick={() => void openFolder(prefix.trim())} disabled={loading} className="h-9 rounded-lg border border-white/10 px-3 text-[9px] font-black text-white/60 disabled:opacity-40">{loading ? 'Cargando…' : 'Filtrar'}</button>
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-white/8 px-2.5 py-2 [scrollbar-width:none] sm:px-3">

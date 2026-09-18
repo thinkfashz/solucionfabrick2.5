@@ -226,6 +226,35 @@ def build_architecture(collections):
         collections["ARCH"].objects.link(marker)
 
 
+def polygon(name, points, coll, mat=None):
+    verts = [viewer_to_blender((x, plan_z, up_y)) for x, up_y, plan_z in points]
+    mesh = bpy.data.meshes.new(name + "_Mesh")
+    mesh.from_pydata(verts, [], [list(range(len(verts)))])
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    coll.objects.link(obj)
+    if mat:
+        obj.data.materials.append(mat)
+    return obj
+
+
+def build_roof(collections):
+    roof = material("MAT_Roof_Metal_Dark", (.17, .20, .23), .46, .58)
+    faces = [
+        [(-7.7,2.95,-6.2),(-2.6,4.95,1),(-7.7,2.95,6.15)],
+        [(7.7,2.95,-6.2),(7.7,2.95,6.15),(3.3,4.95,1)],
+        [(-7.7,2.95,6.15),(-2.6,4.95,1),(3.3,4.95,1),(7.7,2.95,6.15)],
+        [(-7.7,2.95,-6.2),(-3,2.95,-6.2),(.3275,4.95,1),(-2.6,4.95,1)],
+        [(3.65,2.95,-6.2),(7.7,2.95,-6.2),(3.3,4.95,1),(.3275,4.95,1)],
+        [(-3,2.95,-6.2),(.3275,4.95,-6.2),(.3275,4.95,1)],
+        [(.3275,4.95,-6.2),(3.65,2.95,-6.2),(.3275,4.95,1)],
+    ]
+    for index, points in enumerate(faces, 1):
+        face = polygon(f"ARCH_ROOF_{index:02d}", points, collections["ARCH"], roof)
+        face["materialId"] = "cubierta-metalica"
+        face["roofSystem"] = "multi-plane-concept"
+
+
 def build_kitchen(collections):
     body = material("MAT_Kitchen_Body", (.72, .69, .63), .72)
     front = material("MAT_Kitchen_Front", (.84, .82, .77), .66)
@@ -362,6 +391,7 @@ def main():
     collections = {name: ensure_collection(name) for name in COLLECTIONS}
 
     build_architecture(collections)
+    build_roof(collections)
     build_kitchen(collections)
     build_structure(collections)
     build_mep(collections)

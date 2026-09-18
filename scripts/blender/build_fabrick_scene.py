@@ -147,13 +147,16 @@ def build_architecture(collections):
     concrete = material("MAT_Concrete", (.45, .46, .44), .92)
     floor = material("MAT_Porcelain_Warm", (.73, .70, .64), .48)
 
-    cube("ARCH_FLOOR_Radier", (0, .85, -.08), (WIDTH, 9.7, .16), collections["ARCH"], concrete)
-    cube("ARCH_FLOOR_Finish", (0, .85, .025), (14.1, 9.3, .045), collections["ARCH"], floor)
+    radier = cube("ARCH_FLOOR_Radier", (0, .85, -.08), (WIDTH, 9.7, .16), collections["ARCH"], concrete)
+    radier["materialId"] = "hormigon"
+    finish = cube("ARCH_FLOOR_Finish", (0, .85, .025), (14.1, 9.3, .045), collections["ARCH"], floor)
+    finish["materialId"] = "porcelanato"
 
     for index, (x, z, length, axis) in enumerate(WALLS, 1):
         obj = wall(f"ARCH_WALL_{index:02d}", x, z, length, axis, collections["ARCH"], white)
         obj["roomSystem"] = "architecture"
         obj["finish"] = "white-matte"
+        obj["materialId"] = "volcanita-st"
 
     for room_id, label, x, z, w, d in ROOMS:
         marker = bpy.data.objects.new(f"ARCH_ROOM_{room_id.upper().replace('-', '_')}", None)
@@ -249,10 +252,12 @@ def build_structure(collections):
             offset = -length / 2 + length * stud / count
             sx = x + (offset if axis == "x" else 0)
             sz = z + (offset if axis == "z" else 0)
-            cube(f"STRUCT_METALCON_W{index:02d}_{stud:02d}", (sx, sz, WALL_H / 2), (.055, .055, WALL_H), collections["STRUCT"], steel)
+            stud_obj = cube(f"STRUCT_METALCON_W{index:02d}_{stud:02d}", (sx, sz, WALL_H / 2), (.055, .055, WALL_H), collections["STRUCT"], steel)
+            stud_obj["materialId"] = "metalcon"
 
         dims = (length, .018, WALL_H) if axis == "x" else (.018, length, WALL_H)
-        cube(f"STRUCT_OSB_W{index:02d}", (x, z, WALL_H / 2), dims, collections["STRUCT"], osb)
+        osb_obj = cube(f"STRUCT_OSB_W{index:02d}", (x, z, WALL_H / 2), dims, collections["STRUCT"], osb)
+        osb_obj["materialId"] = "osb-estructural"
 
 
 def build_mep(collections):

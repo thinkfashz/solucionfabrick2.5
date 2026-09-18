@@ -276,6 +276,7 @@ export default function ReferenceHouse(){
    // Cocina modular compacta: proporciones METOD verificadas en IKEA Chile.
    // Base ~0,60 m profundidad / 0,80 m cuerpo; superiores ~0,37 m profundidad / 0,80 m alto.
    const kitchenCabinet=mat('#d9d2c7'),kitchenFront=mat('#edeae2'),countertop=mat('#c8c7c2'),appliance=mat('#aeb5b8',.72),handleMat=mat('#2c343a',.7);
+   const ledMat=new THREE.MeshStandardMaterial({color:'#fff3c4',emissive:'#ffe5a3',emissiveIntensity:2,roughness:.55});materials.push(ledMat);
    const baseDepth=.60,baseHeight=.80,worktopY=.945,kitchenX=6.84;
    const modules=[{w:.60,z:-1.20,type:'sink'},{w:.80,z:-.50,type:'drawers'},{w:.60,z:.20,type:'cooktop'},{w:.40,z:.70,type:'storage'}] as const;
    for(const module of modules){
@@ -311,7 +312,6 @@ export default function ReferenceHouse(){
     beam([-.04,-.18,module.w*.28],[-.04,.18,module.w*.28],.012,handleMat,hinge);kitchenDoors.push(hinge);
    }
    // LED continuo bajo mueble superior.
-   const ledMat=new THREE.MeshStandardMaterial({color:'#fff3c4',emissive:'#ffe5a3',emissiveIntensity:2,roughness:.55});materials.push(ledMat);
    box([6.79,1.72,-.58],[.025,.025,1.88],ledMat,kitchenInteractive);
    if(!mobile){const taskLight=new THREE.PointLight('#ffe2ad',5.5,3.2,2);taskLight.position.set(6.4,1.7,-.55);indoorLights.push(taskLight);kitchenInteractive.add(taskLight)}
    let kitchenDoorTarget=0,kitchenDoorValue=0;

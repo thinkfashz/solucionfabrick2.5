@@ -437,6 +437,19 @@ export default function UniversalVisualEditorClient() {
     };
   }, [selection, targetSelector, targetRoute, styleScope, override]);
 
+  useEffect(() => {
+    if (!selection) return;
+    const resolvedComputed: VisualCmsStylePatch = {
+      ...selection.computed,
+      ...(override?.styles?.all || {}),
+      ...(styleScope !== 'all' ? (override?.styles?.[styleScope] || {}) : {}),
+    };
+    window.postMessage({
+      type: 'cms:visual-editor-selection-sync',
+      element: { ...selection, computed: resolvedComputed },
+    }, window.location.origin);
+  }, [selection, override, styleScope]);
+
   function resetSelected() {
     if (!selection || !targetSelector) return;
     if (override?.lock?.remove === true) {

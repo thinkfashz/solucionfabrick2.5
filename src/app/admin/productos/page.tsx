@@ -84,6 +84,17 @@ function margin(product: ProductStudioRecord) {
   return price > 0 && cost > 0 ? Math.round(((price - cost) / price) * 100) : null;
 }
 
+function attentionIssues(product: ProductStudioRecord) {
+  const issues: string[] = [];
+  if (!product.image_url) issues.push('imagen');
+  if (!hasSeo(product)) issues.push('SEO');
+  if (!product.description) issues.push('descripción');
+  if (numberValue(product.price) <= 0) issues.push('precio');
+  if (numberValue(product.stock) <= 0) issues.push('stock');
+  else if (numberValue(product.stock) <= 5) issues.push('stock bajo');
+  return issues;
+}
+
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
   return <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={(event) => { event.stopPropagation(); onChange(!checked); }} className={`relative inline-flex h-6 w-10 shrink-0 rounded-full transition ${checked ? 'bg-[#111214]' : 'bg-black/15'}`}><span className={`mt-0.5 h-5 w-5 rounded-full bg-white shadow transition ${checked ? 'translate-x-[18px]' : 'translate-x-0.5'}`} /></button>;
 }
@@ -187,12 +198,10 @@ export default function AdminProductosPage() {
     });
     return result.sort((a, b) => {
       if (sort === 'attention') {
-        const attentionScore = (product: ProductStudioRecord) =>
-          (!product.image_url ? 4 : 0) +
-          (!hasSeo(product) ? 3 : 0) +
-          (!product.description ? 2 : 0) +
-          (numberValue(product.stock) <= 0 ? 2 : numberValue(product.stock) <= 5 ? 1 : 0) +
-          (numberValue(product.price) <= 0 ? 3 : 0);
+        const attentionScore = (product: ProductStudioRecord) => {
+          const issues = attentionIssues(product);
+          return issues.reduce((score, issue) => score + (issue === 'imagen' ? 4 : issue === 'SEO' || issue === 'precio' ? 3 : issue === 'descripción' || issue === 'stock' ? 2 : 1), 0);
+        };
         const delta = attentionScore(b) - attentionScore(a);
         if (delta) return delta;
       }
@@ -332,6 +341,7 @@ export default function AdminProductosPage() {
           const stock = numberValue(product.stock);
           const outOfStock = stock <= 0;
           const inCatalog = product.activo !== false && stock > 0;
+          const issues = attentionIssues(product);
           return <article key={product.id} onDoubleClick={() => openEdit(product)} className={`relative grid gap-3 px-3 py-4 transition hover:bg-[#fff5df] sm:px-4 lg:grid-cols-[46px_minmax(280px,1fr)_150px_120px_92px_110px_116px] lg:items-center lg:py-3 ${selected ? 'bg-[#fff0bd]/45' : ''}`}>
             <button type="button" onClick={() => setSelectedIds((current) => current.includes(product.id) ? current.filter((id) => id !== product.id) : [...current, product.id])} className={`absolute right-3 top-4 grid h-9 w-9 place-items-center rounded-xl lg:static lg:right-auto lg:top-auto ${selected ? 'bg-[#f5c75d] text-black' : 'bg-black/[0.05] text-black/25'}`} aria-label="Seleccionar producto">{selected ? <Check className="h-4 w-4" /> : null}</button>
 
@@ -340,7 +350,7 @@ export default function AdminProductosPage() {
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2"><p className="truncate text-[15px] font-black tracking-[-.02em] lg:text-sm">{product.name}</p>{product.featured ? <Star className="h-3.5 w-3.5 shrink-0 fill-[#f5c75d] text-[#aa7416]" /> : null}{fromRadar ? <span className="hidden shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] text-emerald-800 sm:inline">Radar</span> : null}</div>
                 <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[.11em] text-[#986a18]">{category}</p>
-                <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-black/35">{product.sku ? <span>SKU {product.sku}</span> : null}<span>{galleryCount(product)} foto{galleryCount(product) === 1 ? '' : 's'}</span>{radarMargin != null ? <span className={radarMargin >= 0 ? 'text-emerald-700' : 'text-red-700'}>Margen {radarMargin.toFixed(1)}%</span> : productMargin != null ? <span>Margen {productMargin}%</span> : null}</div>
+                <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-black/35">{product.sku ? <span>SKU {product.sku}</span> : null}<span>{galleryCount(product)} foto{galleryCount(product) === 1 ? '' : 's'}</span>{radarMargin != null ? <span className={radarMargin >= 0 ? 'text-emerald-700' : 'text-red-700'}>Margen {radarMargin.toFixed(1)}%</span> : productMargin != null ? <span>Margen {productMargin}%</span> : null}</div>{issues.length ? <p className="mt-1.5 truncate text-[9px] font-black text-amber-700">Atención: {issues.join(' · ')}</p> : <p className="mt-1.5 text-[9px] font-black text-emerald-700">Ficha operativa</p>}
               </div>
             </div>
 

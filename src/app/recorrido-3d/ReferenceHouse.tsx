@@ -324,7 +324,11 @@ export default function ReferenceHouse(){
     if((mobile&&index===0)||(!mobile&&index<3)){const light=new THREE.PointLight('#ffe6c7',mobile?10:13,7.5,2);light.position.set(x,2.55,z);indoorLights.push(light);groups[7].add(light);}
     beam([x,2.8,z],[x,2.35,z],.025,black,groups[7]);box([x,2.32,z],[.38,.1,.38],white,groups[7]);
    }
-   for(const x of (mobile?[6.8]:[-6.8,6.8])){const lamp=new THREE.PointLight('#ffd9a8',mobile?6:9,5.5,2);lamp.position.set(x,2.35,-4.2);outdoorLights.push(lamp);scene.add(lamp);}
+   for(const x of (mobile?[6.8]:[-6.8,6.8])){
+    const fixture=new THREE.Group();fixture.position.set(x,2.35,-4.2);houseRoot.add(fixture);
+    box([0,0,0],[.16,.28,.14],black,fixture);box([0,-.02,-.085],[.095,.16,.025],ledMat,fixture);
+    const lamp=new THREE.PointLight('#ffd9a8',mobile?5.5:8.5,5.2,2);lamp.position.set(0,-.05,-.18);outdoorLights.push(lamp);fixture.add(lamp);
+   }
    for(const w of walls){const a:V=w.axis==='x'?[w.x-w.length/2,2.66,w.z]:[w.x,2.66,w.z-w.length/2];const b:V=w.axis==='x'?[w.x+w.length/2,2.66,w.z]:[w.x,2.66,w.z+w.length/2];beam(a,b,.055,white,groups[6]);}
    box([-.1,1.3,.78],[1.65,.95,.055],black,groups[7]);box([-.1,.43,.63],[2,.5,.4],wood,groups[7]);
    for(const x of [-2.5,3.1]){box([x,1.35,-5.6],[.28,2.45,.09],fabric,groups[7]);}

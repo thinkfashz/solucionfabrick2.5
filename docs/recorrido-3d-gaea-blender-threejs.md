@@ -147,3 +147,53 @@ El script:
 Usa `--strict` cuando la escena ya esté estabilizada para bloquear exportaciones con colecciones o nombres inválidos.
 
 No se habilita compresión agresiva de forma ciega: primero se valida el GLB base, después se activa Meshopt/gltfpack/KTX2 en una segunda etapa cuando el decoder/transcoder esté servido por la aplicación.
+
+
+## 8. Importación Gaea → Blender
+
+El repositorio incluye:
+
+`scripts/blender/import_gaea_terrain.py`
+
+Ejemplo:
+
+```bash
+blender fabrick-house.blend --background \
+  --python scripts/blender/import_gaea_terrain.py -- \
+  --height //assets/gaea/terrain_height.exr \
+  --color //assets/gaea/terrain_albedo.png \
+  --normal //assets/gaea/terrain_normal.png \
+  --ao //assets/gaea/terrain_ao.png \
+  --splat //assets/gaea/terrain_splat.png \
+  --size 80 \
+  --height-scale 4.5
+```
+
+El importador crea `TERRAIN_GAEA_01`, trabaja en metros, conserva el splat map como metadata y configura displacement + material PBR. El valor de altura sigue siendo conceptual hasta calibrarlo contra una topografía o levantamiento aprobado.
+
+## 9. Césped PBR del visor
+
+El fallback exterior usa `Grass001` de ambientCG, CC0, alojado en Cloudinary del proyecto.
+
+- escala de referencia del asset: ≈ 1,4 × 1,4 m;
+- móvil: BaseColor + Normal GL + Roughness a 512 px;
+- escritorio: añade AO y usa hasta 768 px en el visor;
+- el height/displacement queda disponible para Blender/Gaea, pero no se usa como displacement dinámico en móvil.
+
+Fuente: https://ambientcg.com/view?id=Grass001
+
+## 10. Cocina compacta de referencia Chile
+
+La modulación visual se recalibró con referencias METOD/UTRUSTA disponibles en IKEA Chile:
+
+- base de referencia: 60 cm de fondo × 80 cm de alto;
+- mural de referencia: 37 cm de fondo × 80 cm de alto;
+- módulos utilizados en el tramo del visor: 60 / 80 / 60 / 40 cm;
+- bisagra superior de referencia: apertura 110° con amortiguación.
+
+Referencias:
+- https://www.ikea.com/cl/es/p/metod-mueble-base-blanco-50205626/
+- https://www.ikea.com/cl/es/p/metod-mueble-mural-blanco-30205528/
+- https://www.ikea.com/cl/es/p/utrusta-bisagra-integrada-cierre-suave-80524882/
+
+Estas medidas ordenan la maqueta comercial; no convierten el modelo conceptual en plano de fabricación.

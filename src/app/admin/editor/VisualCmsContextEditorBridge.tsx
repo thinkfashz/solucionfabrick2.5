@@ -42,11 +42,14 @@ function normalizeText(value: string | null | undefined) {
 
 function cssColorToHex(value: string | undefined, fallback = '#171612') {
   const clean = (value || '').trim();
+  if (!clean || clean === 'transparent') return fallback;
   if (/^#[0-9a-f]{6}$/i.test(clean)) return clean;
   if (/^#[0-9a-f]{3}$/i.test(clean)) return `#${clean.slice(1).split('').map((char) => `${char}${char}`).join('')}`;
-  const rgb = clean.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  const rgb = clean.match(/rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)(?:\s*[,/]\s*(\d*\.?\d+)%?)?/i);
   if (!rgb) return fallback;
-  return `#${[rgb[1], rgb[2], rgb[3]].map((part) => Math.max(0, Math.min(255, Number(part))).toString(16).padStart(2, '0')).join('')}`;
+  const alpha = rgb[4] === undefined ? 1 : Number(rgb[4]);
+  if (Number.isFinite(alpha) && alpha <= 0.01) return fallback;
+  return `#${[rgb[1], rgb[2], rgb[3]].map((part) => Math.max(0, Math.min(255, Math.round(Number(part)))).toString(16).padStart(2, '0')).join('')}`;
 }
 
 function numberPart(value: string | undefined, fallback: string) {

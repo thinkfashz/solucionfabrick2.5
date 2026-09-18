@@ -449,6 +449,7 @@ export default function ExperienceShell() {
       {infoOpen ? (
         <aside className="sf-area-card">
           <header><div><small>MATERIALES DE ESTA ÁREA</small><strong>{area.title}</strong></div><button onClick={() => setInfoOpen(false)}>×</button></header>
+          <label className="sf-area-select"><span>Ambiente</span><select value={areaName} onChange={(event) => { const next = CAMERAS.findIndex(([,location]) => location === event.target.value); if (next >= 0) goCamera(next); }}>{CAMERAS.map(([label,location]) => <option key={location} value={location}>{label}</option>)}</select></label>
           <div className="sf-material-list">
             {area.materials.map((item, index) => <button type="button" className="sf-material-row" key={item.material} disabled={!item.id} onClick={() => item.id && setSelectedMaterialId(item.id)}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{item.material}</strong><small>{item.place}</small><p>{item.note}</p></div><i>{item.id ? "›" : ""}</i></button>)}
           </div>

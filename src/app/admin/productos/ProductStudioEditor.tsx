@@ -137,6 +137,17 @@ type SeoState = {
 
 type AiProviderChoice = 'openrouter' | 'ollama';
 type AiModelOption = { id: string; name: string };
+type AdminProductReview = {
+  id: string;
+  author_name: string;
+  author_email?: string | null;
+  rating: number;
+  body: string;
+  status: 'pending' | 'published' | 'archived';
+  verified_purchase?: boolean;
+  admin_reply?: string | null;
+  created_at: string;
+};
 
 const inputClass = 'min-h-11 w-full rounded-xl border border-black/10 bg-white px-3.5 text-sm font-semibold text-[#111214] outline-none transition focus:border-[#d18b16] focus:ring-2 focus:ring-[#d18b16]/10';
 
@@ -264,6 +275,8 @@ export default function ProductStudioEditor({
   const [aiModel, setAiModel] = useState(() => String(initialSpecs.ai_model || ''));
   const [aiModels, setAiModels] = useState<Record<AiProviderChoice, AiModelOption[]>>({ openrouter: [], ollama: [] });
   const [autoFillFromGuide, setAutoFillFromGuide] = useState(() => initialSpecs.ai_autofill_from_guide === true);
+  const [productReviews, setProductReviews] = useState<AdminProductReview[]>([]);
+  const [reviewBusyId, setReviewBusyId] = useState('');
   const [busy, setBusy] = useState<'save' | 'upload' | 'ai' | ''>('');
   const [notice, setNotice] = useState<{ type: 'ok' | 'error' | 'info'; text: string } | null>(null);
 
@@ -284,6 +297,7 @@ export default function ProductStudioEditor({
     setAiProvider(nextSpecs.ai_provider === 'ollama' ? 'ollama' : 'openrouter');
     setAiModel(String(nextSpecs.ai_model || ''));
     setAutoFillFromGuide(nextSpecs.ai_autofill_from_guide === true);
+    setProductReviews([]);
     setSection('ficha');
     setNotice(null);
   }, [mode, product?.id]);
@@ -315,6 +329,21 @@ export default function ProductStudioEditor({
     const available = aiModels[aiProvider];
     if (available.length && !available.some((model) => model.id === aiModel)) setAiModel(available[0].id);
   }, [aiProvider, aiModels, aiModel]);
+
+  useEffect(() => {
+    if (mode !== 'edit' || !product?.id) {
+      setProductReviews([]);
+      return;
+    }
+    let cancelled = false;
+    void fetch(`/api/product-reviews?scope=admin&product=${encodeURIComponent(product.id)}`, { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((json: { reviews?: AdminProductReview[] }) => {
+        if (!cancelled) setProductReviews(Array.isArray(json.reviews) ? json.reviews : []);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [mode, product?.id]);
 
   const categoryName = categories.find((item) => item.id === form.category_id)?.name || 'General';
   const cost = numberValue(form.supplier_price);
@@ -501,6 +530,30 @@ export default function ProductStudioEditor({
     setNotice({ type: 'ok', text: 'Propuesta SEO y comercial aplicada. Revisa antes de guardar.' });
   }
 
+  async function moderateReview(review: AdminProductReview, patch: Partial<Pick<AdminProductReview, 'status' | 'verified_purchase' | 'admin_reply'>>) {
+    setReviewBusyId(review.id);
+    try {
+      const response = await fetch('/api/product-reviews', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: review.id,
+          status: patch.status || review.status,
+          verifiedPurchase: patch.verified_purchase ?? review.verified_purchase ?? false,
+          adminReply: patch.admin_reply ?? review.admin_reply ?? '',
+        }),
+      });
+      const json = await response.json().catch(() => ({})) as { review?: AdminProductReview; error?: string };
+      if (!response.ok || !json.review) throw new Error(json.error || 'No se pudo moderar la opinión.');
+      setProductReviews((current) => current.map((item) => item.id === review.id ? json.review! : item));
+      setNotice({ type: 'ok', text: patch.status === 'published' ? 'Opinión publicada.' : patch.status === 'archived' ? 'Opinión archivada.' : 'Opinión actualizada.' });
+    } catch (error) {
+      setNotice({ type: 'error', text: error instanceof Error ? error.message : 'No se pudo moderar la opinión.' });
+    } finally {
+      setReviewBusyId('');
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!form.name.trim() || basePrice <= 0) {
@@ -638,6 +691,10 @@ export default function ProductStudioEditor({
                 <div className="grid gap-3 sm:grid-cols-2"><ToggleCard title="Producto activo" text={canPublish ? "Visible en el catálogo mientras tenga stock." : "Oculto automáticamente: añade al menos 1 unidad de stock."} checked={form.activo && canPublish} onChange={setProductActive} /><ToggleCard title="Destacado" text="Puede aparecer en posiciones prioritarias." checked={form.featured} onChange={(value) => setField('featured', value)} /></div>
                 <details className="mt-4 rounded-xl border border-black/8 bg-black/[0.025] p-4"><summary className="cursor-pointer text-xs font-black uppercase tracking-[.12em] text-black/55">Datos de proveedor / importación</summary><div className="mt-4 grid gap-4 md:grid-cols-2"><Field label="Proveedor"><input className={inputClass} value={form.source} onChange={(event) => setField('source', event.target.value)} /></Field><Field label="URL de origen"><input className={inputClass} value={form.source_url} onChange={(event) => setField('source_url', event.target.value)} /></Field></div></details>
               </Panel>
+
+              {mode === 'edit' ? <Panel title="Opiniones y moderación" description="Aprueba, archiva o marca compras verificadas. Solo las opiniones publicadas aparecen en la tienda.">
+                {productReviews.length ? <div className="space-y-3">{productReviews.map((review) => <article key={review.id} className="rounded-xl border border-black/8 bg-white p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><b className="text-sm">{review.author_name}</b><span className={`rounded-full px-2 py-1 text-[9px] font-black ${review.status === 'published' ? 'bg-emerald-100 text-emerald-800' : review.status === 'archived' ? 'bg-black/8 text-black/45' : 'bg-amber-100 text-amber-800'}`}>{review.status === 'published' ? 'Publicada' : review.status === 'archived' ? 'Archivada' : 'Pendiente'}</span></div><div className="mt-1 flex gap-0.5">{[1,2,3,4,5].map((value) => <Star key={value} className={`h-3.5 w-3.5 ${value <= review.rating ? 'fill-[#d18b16] text-[#d18b16]' : 'text-black/15'}`} />)}</div></div><button type="button" disabled={reviewBusyId === review.id} onClick={() => void moderateReview(review, { verified_purchase: !review.verified_purchase })} className={`rounded-lg px-2.5 py-2 text-[9px] font-black ${review.verified_purchase ? 'bg-emerald-100 text-emerald-800' : 'bg-black/[0.05] text-black/45'}`}>{review.verified_purchase ? '✓ Compra verificada' : 'Marcar verificada'}</button></div><p className="mt-3 text-xs leading-5 text-black/60">{review.body}</p><div className="mt-3 grid grid-cols-2 gap-2 sm:flex">{review.status !== 'published' ? <button type="button" disabled={reviewBusyId === review.id} onClick={() => void moderateReview(review, { status: 'published' })} className="rounded-lg bg-emerald-700 px-3 py-2 text-[10px] font-black text-white">Publicar</button> : null}{review.status !== 'archived' ? <button type="button" disabled={reviewBusyId === review.id} onClick={() => void moderateReview(review, { status: 'archived' })} className="rounded-lg bg-black/[0.06] px-3 py-2 text-[10px] font-black text-black/55">Archivar</button> : null}{reviewBusyId === review.id ? <span className="inline-flex items-center gap-1 px-2 text-[10px] text-black/35"><Loader2 className="h-3 w-3 animate-spin" />Guardando</span> : null}</div></article>)}</div> : <div className="rounded-xl bg-black/[0.025] p-5 text-center text-xs text-black/40">Todavía no hay opiniones para moderar.</div>}
+              </Panel> : null}
             </div>
           ) : null}
 

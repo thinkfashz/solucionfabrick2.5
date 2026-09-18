@@ -197,7 +197,7 @@ function clickByText(selector: string, text: string) {
 export default function ExperienceShell() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<LabTab>("quake");
-  const [infoOpen, setInfoOpen] = useState(true);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [light, setLight] = useState<LightMode>("day");
   const [exposure, setExposure] = useState(100);
   const [temperature, setTemperature] = useState(4200);
@@ -374,16 +374,12 @@ export default function ExperienceShell() {
   const goCamera = (index: number) => {
     const next = (index + CAMERAS.length) % CAMERAS.length;
     setCameraIndex(next);
-    const label = CAMERAS[next][0];
-    const audio=audioRef.current;if(audio&&soundOn){const tone=audio.ctx.createOscillator(),gain=audio.ctx.createGain();tone.type="sine";tone.frequency.value=520;gain.gain.setValueAtTime(.0001,audio.ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.018,audio.ctx.currentTime+.012);gain.gain.exponentialRampToValueAtTime(.0001,audio.ctx.currentTime+.09);tone.connect(gain).connect(audio.ctx.destination);tone.start();tone.stop(audio.ctx.currentTime+.1);}
-    if (clickByText(".rh-camera-grid button", label)) return;
-    const menu = Array.from(document.querySelectorAll<HTMLButtonElement>(".rh-top button")).find((button) => button.textContent?.includes("Menú"));
-    menu?.click();
-    window.setTimeout(() => clickByText(".rh-camera-grid button", label), 60);
+    const audio=audioRef.current;if(audio&&soundOn){const tone=audio.ctx.createOscillator(),gain=audio.ctx.createGain();tone.type="sine";tone.frequency.value=520;gain.gain.setValueAtTime(.0001,audio.ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.012,audio.ctx.currentTime+.01);gain.gain.exponentialRampToValueAtTime(.0001,audio.ctx.currentTime+.065);tone.connect(gain).connect(audio.ctx.destination);tone.start();tone.stop(audio.ctx.currentTime+.075);}
+    window.dispatchEvent(new CustomEvent("fabrick:camera",{detail:{view:CAMERAS[next][1] === "Casa de referencia" ? "exterior" : ["Living","Comedor","Cocina","Dormitorio principal","Baño principal","Dormitorio 2","Baño dormitorio 2","Baño de visitas","Logia","Hacia el jardín","Vista posterior","Vista aérea"].indexOf(CAMERAS[next][1])>=0 ? ["inside","dining","kitchen","primary-bedroom","primary-bath","bedroom2","bath2","guestbath","laundry","garden","rear","aerial"][["Living","Comedor","Cocina","Dormitorio principal","Baño principal","Dormitorio 2","Baño dormitorio 2","Baño de visitas","Logia","Hacia el jardín","Vista posterior","Vista aérea"].indexOf(CAMERAS[next][1])] : "exterior"}}));
   };
 
   const zoom = (direction: "in" | "out") => {
-    clickByText(".rh-dock button", direction === "in" ? "Acercar" : "Alejar");
+    window.dispatchEvent(new CustomEvent("fabrick:zoom",{detail:{factor:direction === "in" ? .86 : 1.16}}));
   };
 
   const cycleLight = () => setLight((value) => value === "day" ? "sunset" : value === "sunset" ? "night" : "day");
@@ -439,10 +435,10 @@ export default function ExperienceShell() {
       </div>
 
       <nav className="sf-quick" aria-label="Controles rápidos">
+        <button onClick={() => window.dispatchEvent(new Event("fabrick:menu"))}><span>☰</span><small>Modelo</small></button>
         <button aria-pressed={infoOpen} onClick={() => setInfoOpen((v) => !v)}><span>ⓘ</span><small>Info</small></button>
         <button onClick={cycleLight}><span>{light === "night" ? "☾" : "☀"}</span><small>Luz</small></button>
-        <button aria-pressed={soundOn} onClick={() => { const audio = ensureAudio(); const media = ensureAmbienceMedia(); void audio.ctx.resume(); if (!soundOn) { const active = light === "night" ? media.night : media.day; active.volume = light === "night" ? 0.11 : 0.16; void active.play().catch(() => {}); } else { media.day.pause(); media.night.pause(); } setSoundOn((v) => !v); }}><span>{soundOn ? "🔊" : "🔇"}</span><small>Ambiente</small></button>
-        <button onClick={() => void toggleFullscreen()}><span>⛶</span><small>Pantalla</small></button>
+        <button aria-pressed={soundOn} onClick={() => { const audio = ensureAudio(); const media = ensureAmbienceMedia(); void audio.ctx.resume(); if (!soundOn) { const active = light === "night" ? media.night : media.day; active.volume = light === "night" ? 0.11 : 0.16; void active.play().catch(() => {}); } else { media.day.pause(); media.night.pause(); } setSoundOn((v) => !v); }}><span>{soundOn ? "🔊" : "🔇"}</span><small>Audio</small></button>
         <button aria-pressed={open} onClick={() => setOpen((v) => !v)}><span>⌁</span><small>Lab</small></button>
       </nav>
 
@@ -477,7 +473,7 @@ export default function ExperienceShell() {
       </nav>
       {technicalMode==="stage" ? <div className="sf-stage-mini"><span>Etapa <b>{constructionStage}/12</b></span><input aria-label="Etapa constructiva" type="range" min="1" max="12" value={constructionStage} onChange={(e)=>setConstructionStage(Number(e.target.value))}/><small>{["Terreno","Fundación","Estructura","OSB","Instalaciones","Aislación","Membranas","Revestimientos","Cielos","Terminaciones","Muebles","Terminada"][constructionStage-1]}</small></div> : null}
 
-      <div className="sf-gamepad" aria-label="Controles tipo videojuego">
+      <div className="sf-gamepad sf-desktop-only" aria-label="Controles tipo videojuego">
         <button className="up" onClick={() => zoom("in")} aria-label="Acercar">W</button>
         <button className="left" onClick={() => goCamera(cameraIndex - 1)} aria-label="Cámara anterior">A</button>
         <button className="down" onClick={() => zoom("out")} aria-label="Alejar">S</button>
@@ -485,9 +481,10 @@ export default function ExperienceShell() {
       </div>
 
       <nav className="sf-camera-dock" aria-label="Cámaras del recorrido">
-        <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex - 1)}>‹</button>
-        <div>{CAMERAS.map(([label], index) => <button key={label} aria-pressed={cameraIndex === index} onClick={() => goCamera(index)}><span>{index + 1}</span>{label}</button>)}</div>
-        <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex + 1)}>›</button>
+        <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex - 1)} aria-label="Vista anterior">‹</button>
+        <button className="sf-camera-current" onClick={() => window.dispatchEvent(new Event("fabrick:menu"))}><span>{cameraIndex + 1}/{CAMERAS.length}</span><strong>{CAMERAS[cameraIndex][0]}</strong><small>Toca para elegir ambiente</small></button>
+        <div className="sf-camera-list">{CAMERAS.map(([label], index) => <button key={label} aria-pressed={cameraIndex === index} onClick={() => goCamera(index)}><span>{index + 1}</span>{label}</button>)}</div>
+        <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex + 1)} aria-label="Vista siguiente">›</button>
       </nav>
 
       {(phase === "hypocenter" || phase === "propagation") ? (

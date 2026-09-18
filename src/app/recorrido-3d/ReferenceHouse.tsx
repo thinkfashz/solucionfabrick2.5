@@ -4,7 +4,7 @@ import type * as T from 'three';
 import {layers,rooms,walls,width,depth} from './reference-house';
 import './reference-house.css';
 import {materialTexture} from './material-textures';
-import {loadOptionalArchitecturalAssets} from './architectural-assets';
+import {loadOptionalArchitecturalAssets,type LoadedArchitecturalAssets} from './architectural-assets';
 type V=[number,number,number];
 type Controls={view:(v:string)=>void;zoom:(d:number)=>void;tour:(on:boolean)=>void};
 type LightingDetail={mode?:'day'|'sunset'|'night';exposure?:number;temperature?:number;interiorLights?:boolean;exteriorLights?:boolean};
@@ -93,8 +93,8 @@ export default function ReferenceHouse(){
    const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=!mobile;orbit.dampingFactor=.12;orbit.rotateSpeed=mobile?.92:.68;orbit.panSpeed=mobile?.9:.72;orbit.zoomSpeed=mobile?1:.78;orbit.minDistance=2;orbit.maxDistance=65;orbit.maxPolarAngle=Math.PI*.49;orbit.screenSpacePanning=true;
    orbit.touches.ONE=THREE.TOUCH.ROTATE;orbit.touches.TWO=THREE.TOUCH.DOLLY_PAN;
    const houseRoot=new THREE.Group();houseRoot.name='house-root';scene.add(houseRoot);
-   let architecturalAssets:Awaited<ReturnType<typeof loadOptionalArchitecturalAssets>>=null;
-   let blenderHouse:T.Group|null=null,gaeaTerrain:T.Group|null=null,externalRoles:NonNullable<Awaited<ReturnType<typeof loadOptionalArchitecturalAssets>>>['byRole']|undefined;
+   let architecturalAssets:LoadedArchitecturalAssets|null=null;
+   let blenderHouse:T.Group|null=null,gaeaTerrain:T.Group|null=null,externalRoles:LoadedArchitecturalAssets['byRole']|undefined;
    let externalDoorMeta:{door:T.Object3D;closedY:number;sign:number;angle:number}[]=[];
    const roleHas=(role:'architecture'|'kitchen'|'bath'|'structure'|'electric'|'water'|'sanitary')=>Boolean(externalRoles?.get(role)?.some(o=>o instanceof THREE.Mesh));
    const setExternalRole=(role:'architecture'|'kitchen'|'bath'|'structure'|'electric'|'water'|'sanitary'|'unknown',visible:boolean)=>{

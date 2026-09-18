@@ -769,6 +769,7 @@ export default function ProductStudioEditor({
             <div className="flex items-center gap-2"><span className="rounded-full bg-[#111214] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.16em] text-[#f5c75d]">Product Studio</span><span className="text-[10px] font-bold text-black/35">{mode === 'create' ? 'Nuevo producto' : `ID ${product?.id || ''}`}</span>{hasMarketIntel ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] text-emerald-800">Radar conectado</span> : null}</div>
             <h2 className="mt-1 truncate text-lg font-black tracking-[-.035em] sm:text-xl">{form.name || 'Producto sin nombre'}</h2>
           </div>
+          <button type="button" onClick={() => setPreviewOpen(true)} className="hidden items-center gap-2 rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-xs font-black text-black/60 sm:inline-flex"><Eye className="h-4 w-4" />Vista previa</button>
           <button type="button" onClick={() => void runAiSuite()} disabled={busy !== ''} className="hidden items-center gap-2 rounded-xl border border-[#d18b16]/25 bg-[#fff3cf] px-3.5 py-2.5 text-xs font-black text-[#83590f] transition hover:bg-[#ffe9a7] disabled:opacity-50 sm:inline-flex">{busy === 'ai' ? <Loader2 className="h-4 w-4 animate-spin" /> : <WandSparkles className="h-4 w-4" />}Analizar con IA</button>
           <button type="submit" disabled={busy !== ''} className="inline-flex items-center gap-2 rounded-xl bg-[#111214] px-4 py-2.5 text-xs font-black text-white shadow-lg disabled:opacity-50">{busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{busy === 'save' ? 'Guardando' : 'Guardar'}</button>
         </div>
@@ -906,6 +907,30 @@ export default function ProductStudioEditor({
               </Panel>
             </div>
           ) : null}
+          {section === 'publicacion' ? (
+            <div className="space-y-4">
+              <Panel title="Estado de publicación" description="La visibilidad pública queda separada de la edición. Stock 0 siempre mantiene el producto fuera del catálogo.">
+                <div className="grid gap-3 sm:grid-cols-2"><ToggleCard title="Visible en catálogo" text={canPublish ? 'Puedes publicar cuando la ficha esté revisada.' : 'Necesitas al menos 1 unidad de stock.'} checked={form.activo && canPublish} onChange={setProductActive} /><ToggleCard title="Producto destacado" text="Prioriza este producto en superficies que respeten el estado destacado." checked={form.featured} onChange={(value) => setField('featured', value)} /></div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-4"><MiniMetric label="Salud ficha" value={`${completeness}%`} /><MiniMetric label="Stock" value={String(stockAmount)} /><MiniMetric label="Características" value={String(publicFeatures.filter((item) => item.label && item.value).length)} /><MiniMetric label="Imágenes" value={String(gallery.length)} /></div>
+              </Panel>
+
+              <Panel title="Productos relacionados" description="Elige hasta 8 productos que quieras mostrar al final de esta ficha. Los de la misma categoría aparecen primero como sugerencia.">
+                <div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-xs font-black">{relatedIds.length}/8 seleccionados</p><p className="mt-1 text-[10px] text-black/40">Si no eliges ninguno, la tienda usará productos de la misma categoría como respaldo.</p></div>{relatedIds.length ? <button type="button" onClick={() => setRelatedIds([])} className="rounded-lg bg-black/[0.05] px-3 py-2 text-[10px] font-black">Limpiar</button> : null}</div>
+                <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
+                  {relatedCandidates.slice(0, 18).map((item) => {
+                    const selected = relatedIds.includes(item.id);
+                    return <button type="button" key={item.id} onClick={() => toggleRelatedProduct(item.id)} className={`overflow-hidden rounded-xl border bg-white text-left transition ${selected ? 'border-[#d18b16] ring-2 ring-[#d18b16]/15' : 'border-black/8'}`}><div className="relative aspect-[4/3] bg-[#f4efe6] p-2">{item.image_url ? <img src={item.image_url} alt="" className="h-full w-full object-contain" /> : <div className="grid h-full place-items-center"><Package className="h-7 w-7 text-black/15" /></div>}<span className={`absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full ${selected ? 'bg-[#d18b16] text-white' : 'bg-white text-black/20'}`}>{selected ? <Check className="h-4 w-4" /> : null}</span></div><div className="p-3"><p className="line-clamp-2 min-h-8 text-[11px] font-black leading-4">{item.name}</p><p className="mt-2 text-sm font-black">{money(item.price)}</p>{item.category_id === form.category_id ? <span className="mt-1 inline-block text-[8px] font-black uppercase tracking-[.1em] text-[#9b6a12]">Misma categoría</span> : null}</div></button>;
+                  })}
+                </div>
+              </Panel>
+
+              <Panel title="Revisión antes de publicar" description="Comprueba la ficha con los datos que estás editando ahora; no necesitas guardarlos para ver esta preview.">
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center"><div><p className="text-sm font-black">Vista de cliente con borrador actual</p><p className="mt-1 text-xs leading-5 text-black/45">Incluye galería, precio, descripción, características, estado y productos relacionados.</p></div><button type="button" onClick={() => setPreviewOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#111214] px-5 text-xs font-black text-white"><Eye className="h-4 w-4 text-[#f5c75d]" />Abrir preview</button></div>
+                {mode === 'edit' && product?.id ? <a href={`/tienda/${product.id}`} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.12em] text-[#9b6a12]">Abrir versión actualmente publicada <ArrowRight className="h-3.5 w-3.5" /></a> : null}
+              </Panel>
+            </div>
+          ) : null}
+
         </main>
 
         <aside className="space-y-4 2xl:sticky 2xl:top-[118px] 2xl:self-start">
@@ -923,7 +948,28 @@ export default function ProductStudioEditor({
         </aside>
       </div>
 
-      <footer className="sticky bottom-0 z-20 mt-auto border-t border-black/8 bg-[#fffaf0]/95 px-4 py-3 backdrop-blur-xl sm:px-6"><div className="flex items-center justify-between gap-3"><p className="hidden text-xs text-black/40 sm:block">{mode === 'create' ? 'Se creará un nuevo producto.' : hasMarketIntel ? 'Al guardar también se actualiza la referencia de margen del radar.' : 'Los cambios se guardan sobre esta ficha.'}</p><div className="ml-auto flex gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-black text-black/55">Cancelar</button><button type="submit" disabled={busy !== ''} className="inline-flex items-center gap-2 rounded-xl bg-[#111214] px-5 py-2.5 text-xs font-black text-white disabled:opacity-50">{busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{mode === 'create' ? 'Crear producto' : 'Guardar cambios'}</button></div></div></footer>
+      <footer className="sticky bottom-0 z-20 mt-auto border-t border-black/8 bg-[#fffaf0]/95 px-4 py-3 backdrop-blur-xl sm:px-6"><div className="flex items-center justify-between gap-3"><p className="hidden text-xs text-black/40 sm:block">{mode === 'create' ? 'Se creará un nuevo producto.' : hasMarketIntel ? 'Al guardar también se actualiza la referencia de margen del radar.' : 'Los cambios se guardan sobre esta ficha.'}</p><div className="ml-auto flex gap-2"><button type="button" onClick={() => setPreviewOpen(true)} className="rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-black text-black/55 sm:hidden"><Eye className="h-4 w-4" /></button><button type="button" onClick={onClose} className="rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-black text-black/55">Cancelar</button><button type="submit" disabled={busy !== ''} className="inline-flex items-center gap-2 rounded-xl bg-[#111214] px-5 py-2.5 text-xs font-black text-white disabled:opacity-50">{busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{mode === 'create' ? 'Crear producto' : 'Guardar cambios'}</button></div></div></footer>
+
+      <ProductPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        product={{
+          id: product?.id,
+          name: form.name,
+          tagline: form.tagline,
+          description: form.description,
+          category: categoryName,
+          price: salePrice,
+          comparePrice: discount > 0 ? basePrice : undefined,
+          stock: stockAmount,
+          active: form.activo,
+          featured: form.featured,
+          image: cover,
+        }}
+        gallery={gallery.map((image) => image.url)}
+        features={publicFeatures.filter((item) => item.label.trim() && item.value.trim())}
+        related={selectedRelatedProducts}
+      />
     </form>
   );
 }

@@ -120,9 +120,9 @@ export default function VisualCmsCloudinaryBridge() {
   const loadAssets = useCallback(async (cursor?: string | null, requestedPrefix?: string) => {
     setLoading(true);
     setError(null);
+    const activePrefix = requestedPrefix ?? prefix;
     try {
       const params = new URLSearchParams({ max_results: '60' });
-      const activePrefix = requestedPrefix ?? prefix;
       if (activePrefix.trim()) params.set('folder', activePrefix.trim());
       if (cursor) params.set('next_cursor', cursor);
       const response = await fetch(`/api/admin/cloudinary?${params.toString()}`, {

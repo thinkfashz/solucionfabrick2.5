@@ -264,13 +264,13 @@ def build_kitchen(collections):
     steel = material("MAT_Stainless", (.62, .66, .68), .28, .78)
 
     x = 6.82
-    base_depth = .61
-    base_h = .762
+    base_depth = .60
+    base_h = .80
     modules = [
-        (.61, -1.22, "SINK"),
-        (.76, -.535, "DRAWERS"),
-        (.61, .15, "COOKTOP"),
-        (.46, .685, "STORAGE"),
+        (.60, -1.20, "SINK"),
+        (.80, -.50, "DRAWERS"),
+        (.60, .20, "COOKTOP"),
+        (.40, .70, "STORAGE"),
     ]
 
     for idx, (width, z, module_type) in enumerate(modules, 1):
@@ -294,8 +294,8 @@ def build_kitchen(collections):
     cube("KITCH_APPLIANCE_FRIDGE_01", (6.82, 1.34, 1.15), (.68, .62, 2.06), collections["KITCH"], steel)
     cube("KITCH_TALL_PANTRY_01", (6.82, -1.82, 1.15), (.61, .46, 2.06), collections["KITCH"], front)
 
-    upper_depth = .376
-    upper_h = .762
+    upper_depth = .37
+    upper_h = .80
     upper_y = 2.13
     for idx, (width, z, module_type) in enumerate(modules, 1):
         if module_type == "COOKTOP":

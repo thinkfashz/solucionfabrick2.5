@@ -81,11 +81,13 @@ type MobilePanel = 'pages' | 'inspector' | null;
 type InspectorTab = 'content' | 'appearance' | 'layout';
 type NativeInspectorControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
-const widthFor: Record<VisualCmsDevice, string> = {
-  desktop: '100%',
-  tablet: '768px',
-  mobile: '390px',
+const DEFAULT_CANVAS_WIDTH: Record<VisualCmsDevice, number> = {
+  desktop: 1440,
+  tablet: 768,
+  mobile: 390,
 };
+
+const CANVAS_WIDTH_PRESETS = [360, 390, 412, 430, 768, 1024, 1280, 1440, 1920] as const;
 
 function Field({ label, value, onChange, placeholder = '' }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
   return (
@@ -156,11 +158,16 @@ function normalizeCaption(value: string | null | undefined) {
 
 export default function UniversalVisualEditorClient() {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const [published, setPublished] = useState<VisualCmsOverridesContent>(DEFAULT_VISUAL_CMS_OVERRIDES);
   const [draft, setDraft] = useState<VisualCmsOverridesContent>(DEFAULT_VISUAL_CMS_OVERRIDES);
   const [route, setRoute] = useState('/');
   const [routeInput, setRouteInput] = useState('/');
   const [device, setDevice] = useState<VisualCmsDevice>('desktop');
+  const [canvasWidth, setCanvasWidth] = useState(DEFAULT_CANVAS_WIDTH.desktop);
+  const [zoomMode, setZoomMode] = useState<'fit' | 'custom'>('fit');
+  const [canvasZoom, setCanvasZoom] = useState(1);
+  const [canvasBounds, setCanvasBounds] = useState({ width: 0, height: 0 });
   const [styleScope, setStyleScope] = useState<StyleScope>('desktop');
   const [elementScope, setElementScope] = useState<ElementScope>('page');
   const [targetMode, setTargetMode] = useState<TargetMode>('single');
@@ -218,10 +225,25 @@ export default function UniversalVisualEditorClient() {
     if (window.innerWidth < 640) {
       setDevice('mobile');
       setStyleScope('mobile');
+      setCanvasWidth(DEFAULT_CANVAS_WIDTH.mobile);
     } else if (window.innerWidth < 1180) {
       setDevice('tablet');
       setStyleScope('tablet');
+      setCanvasWidth(DEFAULT_CANVAS_WIDTH.tablet);
     }
+  }, []);
+
+  useEffect(() => {
+    const host = canvasHostRef.current;
+    if (!host || typeof ResizeObserver === 'undefined') return;
+    const update = () => {
+      const rect = host.getBoundingClientRect();
+      setCanvasBounds({ width: Math.max(0, rect.width), height: Math.max(0, rect.height) });
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(host);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -443,6 +465,17 @@ export default function UniversalVisualEditorClient() {
   function chooseDevice(next: VisualCmsDevice) {
     setDevice(next);
     setStyleScope(next);
+    setCanvasWidth(DEFAULT_CANVAS_WIDTH[next]);
+    setZoomMode('fit');
+  }
+
+  function chooseCanvasWidth(nextWidth: number) {
+    const safe = Math.max(320, Math.min(2560, Math.round(nextWidth || DEFAULT_CANVAS_WIDTH.desktop)));
+    setCanvasWidth(safe);
+    const nextDevice: VisualCmsDevice = safe <= 640 ? 'mobile' : safe <= 1024 ? 'tablet' : 'desktop';
+    setDevice(nextDevice);
+    setStyleScope(nextDevice);
+    setZoomMode('fit');
   }
 
   async function publish() {
@@ -486,6 +519,10 @@ export default function UniversalVisualEditorClient() {
   }
 
   const previewSrc = `${route}${route.includes('?') ? '&' : '?'}cms=preview&cmsVisual=1`;
+  const fitZoom = canvasBounds.width > 0 ? Math.min(1, Math.max(0.12, (canvasBounds.width - 20) / canvasWidth)) : 1;
+  const effectiveZoom = zoomMode === 'fit' ? fitZoom : Math.min(1.5, Math.max(0.12, canvasZoom));
+  const scaledCanvasWidth = Math.max(1, Math.round(canvasWidth * effectiveZoom));
+  const canvasHeight = Math.max(720, Math.round((canvasBounds.height || 720) / effectiveZoom));
   const computed = selection?.computed || {};
   const valueFor = (key: keyof VisualCmsStylePatch) => String(activeStyle[key] ?? computed[key] ?? '');
   const backgroundUrl = extractBackgroundUrl(valueFor('backgroundImage'));
@@ -647,14 +684,26 @@ export default function UniversalVisualEditorClient() {
                 return <button key={item} type="button" onClick={() => chooseDevice(item)} className={`grid h-8 w-9 place-items-center rounded-lg transition ${device === item ? 'bg-[#FFB000] text-black shadow-sm' : 'text-white/38 hover:text-white/70'}`} title={item}><Icon className="h-3.5 w-3.5" /></button>;
               })}
             </div>
+            <select value={canvasWidth} onChange={(event) => chooseCanvasWidth(Number(event.target.value))} className="h-8 max-w-[92px] rounded-lg border border-white/10 bg-black/25 px-1.5 text-[8px] font-black text-white/65 outline-none" aria-label="Ancho del canvas">
+              {CANVAS_WIDTH_PRESETS.map((width) => <option key={width} value={width}>{width}px</option>)}
+            </select>
+            <div className="flex rounded-lg border border-white/10 bg-black/25 p-0.5">
+              <button type="button" onClick={() => setZoomMode('fit')} className={`h-8 rounded-md px-2 text-[8px] font-black ${zoomMode === 'fit' ? 'bg-[#FFB000] text-black' : 'text-white/40'}`}>Fit</button>
+              {[0.25, 0.5, 0.75, 1].map((zoom) => <button key={zoom} type="button" onClick={() => { setCanvasZoom(zoom); setZoomMode('custom'); }} className={`hidden h-8 rounded-md px-2 text-[8px] font-black sm:block ${zoomMode === 'custom' && Math.abs(canvasZoom - zoom) < 0.001 ? 'bg-white/10 text-white' : 'text-white/35'}`}>{Math.round(zoom * 100)}%</button>)}
+            </div>
             <span className="hidden max-w-[34vw] truncate text-[8px] font-bold text-white/30 sm:block">{status}</span>
             <span className={`ml-auto rounded-full px-2 py-1 text-[7px] font-black uppercase tracking-[.1em] ${dirty ? 'bg-[#FFB000]/12 text-[#FFB000]' : 'bg-emerald-500/10 text-emerald-300'}`}>{dirty ? 'Sin publicar' : 'Publicado'}</span>
             <button type="button" onClick={() => setMobilePanel('inspector')} className={`hidden h-9 items-center gap-1.5 rounded-xl border px-3 text-[8px] font-black sm:inline-flex xl:hidden ${selection ? 'border-[#FFB000]/35 bg-[#FFB000]/8 text-[#FFB000]' : 'border-white/10 text-white/45'}`}><SlidersHorizontal className="h-3.5 w-3.5" /> Inspector</button>
           </div>
 
-          <div className="flex min-h-0 flex-1 justify-center overflow-hidden bg-[radial-gradient(circle_at_top,rgba(255,176,0,.08),transparent_34%),#050506] p-0 sm:p-2.5">
-            <div className="h-full min-h-0 overflow-hidden bg-white shadow-2xl transition-[width] duration-300 sm:rounded-xl sm:ring-1 sm:ring-white/10" style={{ width: widthFor[device], maxWidth: '100%' }}>
-              <iframe ref={iframeRef} key={`${route}-${device}`} src={previewSrc} title={`Visual CMS ${route}`} className="h-full min-h-0 w-full border-0 bg-white" onLoad={() => setIframeReady(true)} />
+          <div ref={canvasHostRef} className="min-h-0 flex-1 overflow-auto bg-[radial-gradient(circle_at_top,rgba(255,176,0,.08),transparent_34%),#050506] p-2 sm:p-3">
+            <div className="mx-auto min-h-full" style={{ width: `${scaledCanvasWidth}px` }}>
+              <div
+                className="origin-top-left overflow-hidden bg-white shadow-2xl ring-1 ring-white/10"
+                style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, transform: `scale(${effectiveZoom})`, transformOrigin: 'top left' }}
+              >
+                <iframe ref={iframeRef} key={`${route}-${canvasWidth}`} src={previewSrc} title={`Visual CMS ${route}`} className="h-full w-full border-0 bg-white" onLoad={() => setIframeReady(true)} />
+              </div>
             </div>
           </div>
 

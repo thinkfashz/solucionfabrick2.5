@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   ArchiveRestore,
+  ChevronDown,
   Eye,
   Globe2,
   Image as ImageIcon,
@@ -79,7 +80,6 @@ type ElementScope = 'page' | 'global';
 type TargetMode = 'single' | 'similar';
 type MobilePanel = 'pages' | 'inspector' | null;
 type InspectorTab = 'content' | 'appearance' | 'layout';
-type NativeInspectorControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
 const DEFAULT_CANVAS_WIDTH: Record<VisualCmsDevice, number> = {
   desktop: 1440,
@@ -89,10 +89,61 @@ const DEFAULT_CANVAS_WIDTH: Record<VisualCmsDevice, number> = {
 
 const CANVAS_WIDTH_PRESETS = [360, 390, 412, 430, 768, 1024, 1280, 1440, 1920] as const;
 
+const CONTROL_HINTS: Record<string, string> = {
+  'Abrir cualquier ruta': 'Escribe la URL interna que quieres cargar dentro del editor.',
+  'Destino del enlace': 'Define a qué página o URL llevará este botón o enlace.',
+  'URL / Cloudinary': 'Reemplaza la imagen manteniendo el mismo bloque y su posición.',
+  'Texto alternativo': 'Describe la imagen para accesibilidad y SEO.',
+  'Ajuste': 'Controla cómo se recorta o contiene la imagen dentro de su caja.',
+  'Encuadre': 'Mueve el punto visible de la imagen sin cambiar el bloque.',
+  'Reemplazar por SVG / PNG': 'Sustituye únicamente el icono seleccionado.',
+  'Descripción accesible': 'Texto que lectores de pantalla usarán para este icono.',
+  'Texto / icono': 'Cambia el color visible de letras e iconos del elemento seleccionado.',
+  'Fondo': 'Cambia el color de fondo del elemento sin alterar su contenido.',
+  'Imagen de fondo': 'Aplica una imagen detrás del contenido del elemento.',
+  'Ajuste fondo': 'Define cómo la imagen de fondo ocupa el área disponible.',
+  'Posición': 'Mueve la imagen de fondo dentro del elemento.',
+  'Tipografía': 'Cambia la familia tipográfica de este elemento.',
+  'Tamaño': 'Cambia el tamaño del texto en la capa responsive activa.',
+  'Peso': 'Ajusta el grosor visual del texto.',
+  'Interlineado': 'Controla el espacio vertical entre líneas de texto.',
+  'Tracking': 'Controla la separación horizontal entre letras.',
+  'Alineación': 'Alinea el contenido textual a izquierda, centro, derecha o justificado.',
+  'Radio': 'Redondea las esquinas del elemento.',
+  'Grosor borde': 'Define el espesor del borde.',
+  'Color borde': 'Cambia únicamente el color del borde.',
+  'Sombra': 'Añade o modifica la sombra exterior del elemento.',
+  'Padding': 'Espacio interior entre el contenido y los bordes.',
+  'Margen': 'Espacio exterior que separa este elemento de los demás.',
+  'Ancho': 'Fija el ancho del elemento en la capa activa.',
+  'Ancho máx.': 'Limita cuánto puede crecer horizontalmente.',
+  'Altura': 'Fija la altura del elemento.',
+  'Altura mín.': 'Garantiza una altura mínima aunque cambie el contenido.',
+  'Gap': 'Separa los hijos internos de layouts flex o grid.',
+  'Opacidad': 'Controla la transparencia completa del elemento.',
+  'Escala': 'Amplía o reduce visualmente el elemento sin rehacer su layout.',
+  'Origen escala': 'Define desde qué punto se aplica la ampliación o reducción.',
+};
+
+function FieldHelp({ label }: { label: string }) {
+  const hint = CONTROL_HINTS[label];
+  return hint ? <small className="block text-[8px] leading-3 text-white/28">{hint}</small> : null;
+}
+
+function cssColorInputValue(value: string) {
+  const clean = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(clean)) return clean;
+  if (/^#[0-9a-f]{3}$/i.test(clean)) return '#' + clean.slice(1).split('').map((part) => part + part).join('');
+  const rgb = clean.match(/rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)/i);
+  if (!rgb) return '#000000';
+  return '#' + [rgb[1], rgb[2], rgb[3]].map((part) => Math.max(0, Math.min(255, Math.round(Number(part)))).toString(16).padStart(2, '0')).join('');
+}
+
 function Field({ label, value, onChange, placeholder = '' }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
   return (
     <label className="grid min-w-0 gap-1">
-      <span className="truncate text-[8px] font-black uppercase tracking-[.12em] text-white/38">{label}</span>
+      <span className="text-[8px] font-black uppercase tracking-[.12em] text-white/48">{label}</span>
+      <FieldHelp label={label} />
       <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="h-9 min-w-0 rounded-lg border border-white/10 bg-black/30 px-2.5 text-[11px] text-white outline-none transition focus:border-[#FFB000]/60" />
     </label>
   );
@@ -101,7 +152,8 @@ function Field({ label, value, onChange, placeholder = '' }: { label: string; va
 function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
   return (
     <label className="grid min-w-0 gap-1">
-      <span className="truncate text-[8px] font-black uppercase tracking-[.12em] text-white/38">{label}</span>
+      <span className="text-[8px] font-black uppercase tracking-[.12em] text-white/48">{label}</span>
+      <FieldHelp label={label} />
       <select value={value} onChange={(event) => onChange(event.target.value)} className="h-9 min-w-0 rounded-lg border border-white/10 bg-black/30 px-2.5 text-[11px] text-white outline-none transition focus:border-[#FFB000]/60">
         {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
       </select>
@@ -110,15 +162,31 @@ function SelectField({ label, value, onChange, options }: { label: string; value
 }
 
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  const color = /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
+  const color = cssColorInputValue(value);
   return (
     <label className="grid min-w-0 gap-1">
-      <span className="truncate text-[8px] font-black uppercase tracking-[.12em] text-white/38">{label}</span>
+      <span className="text-[8px] font-black uppercase tracking-[.12em] text-white/48">{label}</span>
+      <FieldHelp label={label} />
       <div className="flex h-9 min-w-0 items-center gap-1.5 rounded-lg border border-white/10 bg-black/30 px-1.5">
-        <input type="color" value={color} onChange={(event) => onChange(event.target.value)} className="h-6 w-7 shrink-0 cursor-pointer border-0 bg-transparent p-0" />
+        <input type="color" value={color} onInput={(event) => onChange(event.currentTarget.value)} onChange={(event) => onChange(event.currentTarget.value)} className="h-6 w-7 shrink-0 cursor-pointer border-0 bg-transparent p-0" />
         <input value={value} onChange={(event) => onChange(event.target.value)} className="min-w-0 flex-1 bg-transparent text-[10px] text-white outline-none" />
       </div>
     </label>
+  );
+}
+
+function InspectorSection({ title, description, open, onToggle, children }: { title: string; description: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <section className="overflow-hidden rounded-xl border border-white/9 bg-black/20">
+      <button type="button" onClick={onToggle} className="flex w-full items-center gap-2 px-3 py-2.5 text-left">
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] font-black uppercase tracking-[.12em] text-white/65">{title}</p>
+          <p className="mt-0.5 text-[8px] leading-3 text-white/30">{description}</p>
+        </div>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-[#FFB000] transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open ? <div className="grid gap-2 border-t border-white/8 p-2.5">{children}</div> : null}
+    </section>
   );
 }
 
@@ -150,10 +218,6 @@ function extractBackgroundUrl(value: string): string {
   if (!clean || clean === 'none') return '';
   const match = clean.match(/^url\(["']?(.*?)["']?\)$/i);
   return match?.[1] || clean;
-}
-
-function normalizeCaption(value: string | null | undefined) {
-  return (value || '').replace(/\s+/g, ' ').trim();
 }
 
 export default function UniversalVisualEditorClient() {
@@ -381,65 +445,6 @@ export default function UniversalVisualEditorClient() {
     };
     updateSelected({ styles: { [styleScope]: nextStyle } });
   }
-
-  // The contextual quick editor lives in a sibling component and updates the
-  // advanced inspector controls programmatically. React 19 can legitimately
-  // ignore those synthetic value changes in some cases. Listen to the native
-  // input/change events as a reliability bridge so the draft remains the one
-  // source of truth even when the contextual toolbar initiated the edit.
-  useEffect(() => {
-    const handler = (event: Event) => {
-      const control = event.target;
-      if (!(control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement || control instanceof HTMLSelectElement)) return;
-      if (!control.closest('[data-visual-cms-editor-root="1"]')) return;
-      const label = control.closest('label');
-      const caption = normalizeCaption(label?.querySelector<HTMLElement>(':scope > span')?.textContent);
-      if (!caption) return;
-      const value = control.value;
-
-      switch (caption) {
-        case 'Texto': updateSelected({ text: value }); break;
-        case 'Destino del enlace': updateSelected({ href: value }); break;
-        case 'URL / Cloudinary': updateSelected({ src: value }); break;
-        case 'Texto alternativo': updateSelected({ alt: value }); break;
-        case 'Reemplazar por SVG / PNG': updateSelected({ iconUrl: value }); break;
-        case 'Descripción accesible': updateSelected({ iconAlt: value }); break;
-        case 'Texto / icono': patchStyle('color', value); break;
-        case 'Fondo': patchStyle('backgroundColor', value); break;
-        case 'Imagen de fondo': patchBackgroundImage(value); break;
-        case 'Ajuste fondo': patchStyle('backgroundSize', value); break;
-        case 'Posición': patchStyle('backgroundPosition', value); break;
-        case 'Tipografía': patchStyle('fontFamily', value); break;
-        case 'Tamaño': patchStyle('fontSize', value); break;
-        case 'Peso': patchStyle('fontWeight', value); break;
-        case 'Interlineado': patchStyle('lineHeight', value); break;
-        case 'Tracking': patchStyle('letterSpacing', value); break;
-        case 'Alineación': patchStyle('textAlign', value); break;
-        case 'Radio': patchStyle('borderRadius', value); break;
-        case 'Grosor borde': patchStyle('borderWidth', value); break;
-        case 'Color borde': patchStyle('borderColor', value); break;
-        case 'Sombra': patchStyle('boxShadow', value); break;
-        case 'Ajuste': patchStyle('objectFit', value); break;
-        case 'Encuadre': patchStyle('objectPosition', value); break;
-        case 'Padding': patchStyle('padding', value); break;
-        case 'Margen': patchStyle('margin', value); break;
-        case 'Ancho': patchStyle('width', value); break;
-        case 'Ancho máx.': patchStyle('maxWidth', value); break;
-        case 'Altura': patchStyle('height', value); break;
-        case 'Altura mín.': patchStyle('minHeight', value); break;
-        case 'Gap': patchStyle('gap', value); break;
-        case 'Opacidad': patchStyle('opacity', value); break;
-        default: break;
-      }
-    };
-
-    document.addEventListener('input', handler, true);
-    document.addEventListener('change', handler, true);
-    return () => {
-      document.removeEventListener('input', handler, true);
-      document.removeEventListener('change', handler, true);
-    };
-  }, [selection, targetSelector, targetRoute, styleScope, override]);
 
   useEffect(() => {
     if (!selection) return;

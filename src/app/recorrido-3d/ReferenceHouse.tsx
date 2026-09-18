@@ -355,7 +355,9 @@ export default function ReferenceHouse(){
    type Transition={time:number;portal:boolean;fromP:T.Vector3;fromT:T.Vector3;toP:T.Vector3;toT:T.Vector3;fromFov:number;toFov:number;switched:boolean};
    let transition:Transition|null=null,currentView='exterior',zoomGoal:number|null=null;
    const cancelTour=()=>{playing=false;transition=null;zoomGoal=null;orbit.enabled=true;if(cameraFade.current)cameraFade.current.style.opacity='0';setTour(false)};
-   orbit.addEventListener('start',cancelTour);const visibility=()=>{if(document.hidden)cancelTour()};document.addEventListener('visibilitychange',visibility);
+   const orbitStart=()=>{cancelTour();window.dispatchEvent(new CustomEvent('fabrick:interaction',{detail:{active:true}}))};
+   const orbitEnd=()=>window.dispatchEvent(new CustomEvent('fabrick:interaction',{detail:{active:false}}));
+   orbit.addEventListener('start',orbitStart);orbit.addEventListener('end',orbitEnd);const visibility=()=>{if(document.hidden){cancelTour();orbitEnd()}};document.addEventListener('visibilitychange',visibility);
    const choose=(v:string,instant=false)=>{const p=presets[v]||presets.exterior;const toFov=p.fov??(stops.includes(v)?64:52);zoomGoal=null;
     orbit.minDistance=stops.includes(v)?.3:2;
     if(instant||reducedMotion){camera.position.set(...p.p);orbit.target.set(...p.t);camera.fov=toFov;camera.updateProjectionMatrix();orbit.update();}
@@ -363,9 +365,17 @@ export default function ReferenceHouse(){
     currentView=v;setView(v);
    };
    api.current={view(v){cancelTour();choose(v)},tour(on){cancelTour();playing=on;setTour(on);tourElapsed=0;tourIndex=0;if(on)choose(stops[0])},zoom(d){if(transition)return;const length=camera.position.distanceTo(orbit.target);zoomGoal=THREE.MathUtils.clamp((zoomGoal??length)*d,orbit.minDistance,orbit.maxDistance)}};
-   choose('exterior',true);size();let last=0,lastQuality='',lastShadowState='';
+   choose('exterior',true);size();let last=0,lastQuality='',lastShadowState='',perfFrames=0,perfTime=0,autoPixelRatio=mobile?Math.min(devicePixelRatio,1.04):Math.min(devicePixelRatio,1.28);
    setLoadStep(3);
    const render=(now:number)=>{if(disposed)return;frame=requestAnimationFrame(render);if(now-last<16)return;const dt=Math.min((now-last)/1000,.05);last=now;
+    if(mobile&&settings.current.quality!=='light'){
+     perfFrames++;perfTime+=dt;
+     if(perfFrames>=72){
+      const avg=perfTime/perfFrames,next=avg>.023?Math.max(.9,autoPixelRatio-.06):avg<.018?Math.min(Math.min(devicePixelRatio,1.04),autoPixelRatio+.04):autoPixelRatio;
+      if(Math.abs(next-autoPixelRatio)>.015){autoPixelRatio=next;renderer.setPixelRatio(autoPixelRatio);size()}
+      perfFrames=0;perfTime=0;
+     }
+    }
     if(transition){const tr=transition;tr.time+=dt;const duration=tr.portal?.38:(mobile?.24:.44);const t=Math.min(tr.time/duration,1),ease=t*t*(3-2*t);
      if(tr.portal){if(cameraFade.current)cameraFade.current.style.opacity=String(Math.sin(Math.PI*t)*.58);if(t>=.5&&!tr.switched){camera.position.copy(tr.toP);orbit.target.copy(tr.toT);camera.fov=tr.toFov;tr.switched=true;}}
      else {const start=new THREE.Spherical().setFromVector3(tr.fromP.clone().sub(tr.fromT)),end=new THREE.Spherical().setFromVector3(tr.toP.clone().sub(tr.toT));let angle=end.theta-start.theta;angle=Math.atan2(Math.sin(angle),Math.cos(angle));const pos=new THREE.Spherical(THREE.MathUtils.lerp(start.radius,end.radius,ease),THREE.MathUtils.lerp(start.phi,end.phi,ease),start.theta+angle*ease);orbit.target.lerpVectors(tr.fromT,tr.toT,ease);camera.position.setFromSpherical(pos).add(orbit.target);camera.fov=THREE.MathUtils.lerp(tr.fromFov,tr.toFov,ease);}
@@ -381,7 +391,7 @@ export default function ReferenceHouse(){
      houseRoot.position.x=Math.cos(theta)*horizontal;houseRoot.position.z=Math.sin(theta)*horizontal;houseRoot.position.y=vertical;houseRoot.rotation.z=Math.cos(theta)*horizontal*.013;houseRoot.rotation.x=Math.sin(theta)*horizontal*.01;
     } else {houseRoot.position.lerp(new THREE.Vector3(0,0,0),Math.min(1,dt*10));houseRoot.rotation.x*=Math.max(0,1-dt*10);houseRoot.rotation.z*=Math.max(0,1-dt*10)}
 
-    if(s.quality!==lastQuality){renderer.setPixelRatio(s.quality==='light'?(mobile?Math.min(devicePixelRatio,.96):1):(mobile?Math.min(devicePixelRatio,1.04):Math.min(devicePixelRatio,1.28)));renderer.shadowMap.enabled=!mobile&&s.quality!=='light';sun.castShadow=renderer.shadowMap.enabled;lastQuality=s.quality;size();renderer.shadowMap.needsUpdate=true;}
+    if(s.quality!==lastQuality){renderer.setPixelRatio(s.quality==='light'?(mobile?Math.min(devicePixelRatio,.96):1):(mobile?autoPixelRatio:Math.min(devicePixelRatio,1.28)));renderer.shadowMap.enabled=!mobile&&s.quality!=='light';sun.castShadow=renderer.shadowMap.enabled;lastQuality=s.quality;size();renderer.shadowMap.needsUpdate=true;}
     let moving=false;
     for(let i=0;i<groups.length;i++){const g=groups[i];g.visible=!externalArchitecture&&s.visible[i];const y=i===1?-2*e:i>=8?(i===8?4:7)*e:i===6?2*e:0;moving ||= Math.abs(g.position.y-y)>.005;g.position.y=THREE.MathUtils.lerp(g.position.y,y,alpha);for(const child of g.children){if(child.userData.offset){const dest=(child.userData.offset as T.Vector3).clone().multiplyScalar(e);moving ||= child.position.distanceToSquared(dest)>.0001;child.position.lerp(dest,alpha)}}}
     const shadowState=s.visible.join(',');renderer.shadowMap.autoUpdate=false;if(moving||shadowState!==lastShadowState){renderer.shadowMap.needsUpdate=true;lastShadowState=shadowState;}
@@ -389,7 +399,7 @@ export default function ReferenceHouse(){
     layerMaterials.forEach((list,i)=>list.forEach(m=>{m.emissive.set(highlighted===i?'#278ba3':'#000000');m.emissiveIntensity=highlighted===i?.3:0}));
     dims.visible=s.dimensions;orbit.update();renderer.render(scene,camera);
    };renderer.render(scene,camera);frame=requestAnimationFrame(render);setReady(true);
-   cleanup=()=>{cancelAnimationFrame(frame);observer.disconnect();orbit.removeEventListener('start',cancelTour);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('fabrick:lighting',lightingEvent);window.removeEventListener('fabrick:quake',quakeHandler);window.removeEventListener('fabrick:kitchen',kitchenHandler);orbit.dispose();renderer.domElement.removeEventListener('pointermove',move);renderer.domElement.removeEventListener('pointerdown',down);renderer.domElement.removeEventListener('pointerup',up);renderer.domElement.removeEventListener('pointerleave',leave);renderer.domElement.removeEventListener('webglcontextlost',lost);geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());architecturalAssets?.dispose();environment?.dispose();renderer.dispose();renderer.domElement.remove();api.current=null};
+   cleanup=()=>{cancelAnimationFrame(frame);observer.disconnect();orbit.removeEventListener('start',orbitStart);orbit.removeEventListener('end',orbitEnd);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('fabrick:lighting',lightingEvent);window.removeEventListener('fabrick:quake',quakeHandler);window.removeEventListener('fabrick:kitchen',kitchenHandler);orbit.dispose();renderer.domElement.removeEventListener('pointermove',move);renderer.domElement.removeEventListener('pointerdown',down);renderer.domElement.removeEventListener('pointerup',up);renderer.domElement.removeEventListener('pointerleave',leave);renderer.domElement.removeEventListener('webglcontextlost',lost);geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());architecturalAssets?.dispose();environment?.dispose();renderer.dispose();renderer.domElement.remove();api.current=null};
   }).catch(()=>{if(!disposed){setError('Este dispositivo no pudo iniciar WebGL. La planta con medidas sigue disponible.');setPlan(true)}});
   return()=>{disposed=true;cleanup()};
  },[retry]);

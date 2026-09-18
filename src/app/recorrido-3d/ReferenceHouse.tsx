@@ -160,7 +160,7 @@ export default function ReferenceHouse(){
       panel(a,b,lo,hi,4,0,.08,wool);panel(a,b,lo,hi,6,-.075,.015,white);
      }
     }
-    for(let t=start;t<=end+.001;t+=.4){const o=(w.open||[]).find(o=>Math.abs(t-o[0])<o[1]/2);for(const [lo,hi] of o?[[.12,o[2]],[o[3],2.85]]:[[.12,2.85]])panel(t-.02,t+.02,lo,hi,2,0,.09,steel)}
+    for(let t=start;t<=end+.001;t+=(mobile?.8:.4)){const o=(w.open||[]).find(o=>Math.abs(t-o[0])<o[1]/2);for(const [lo,hi] of o?[[.12,o[2]],[o[3],2.85]]:[[.12,2.85]])panel(t-.02,t+.02,lo,hi,2,0,.09,steel)}
     panel(start,end,.1,.15,2,0,.1,steel);panel(start,end,2.8,2.85,2,0,.1,steel);
     for(const o of w.open||[]){
      for(const t of [o[0]-o[1]/2,o[0]+o[1]/2])panel(t-.025,t+.025,.12,2.85,2,0,.1,steel);
@@ -189,10 +189,10 @@ export default function ReferenceHouse(){
     [[.3275,4.95,-6.2],[3.65,2.95,-6.2],[.3275,4.95,1]],
    ];
    for(const pts of roofFaces){surface(pts.map(p=>[p[0],p[1]-.08,p[2]] as V),osb,groups[9]);surface(pts,roof,groups[9]);for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];beam([a[0],a[1]-.14,a[2]],[b[0],b[1]-.14,b[2]],.08,steel,groups[8]);surface([a,b,[b[0],b[1]-.13,b[2]],[a[0],a[1]-.13,a[2]]],roof,groups[9]);beam(a,b,.045,roof,groups[9])};}
-   for(let z=-6;z<1;z+=.65){const a:V=[-3,2.91,z],b:V=[.3275,4.88,z],c:V=[3.65,2.91,z];beam(a,b,.08,steel,groups[8]);beam(b,c,.08,steel,groups[8]);beam(a,c,.08,steel,groups[8]);beam([.3275,2.91,z],b,.07,steel,groups[8]);beam(a,[.3275,4,z],.06,steel,groups[8]);beam(c,[.3275,4,z],.06,steel,groups[8]);}
+   for(let z=-6;z<1;z+=(mobile?1.3:.65)){const a:V=[-3,2.91,z],b:V=[.3275,4.88,z],c:V=[3.65,2.91,z];beam(a,b,.08,steel,groups[8]);beam(b,c,.08,steel,groups[8]);beam(a,c,.08,steel,groups[8]);beam([.3275,2.91,z],b,.07,steel,groups[8]);beam(a,[.3275,4,z],.06,steel,groups[8]);beam(c,[.3275,4,z],.06,steel,groups[8]);}
    for(const pts of roofFaces){
     const a=pts[0],b=pts[1],c=pts[pts.length-1];
-    for(let t=.08;t<1;t+=.08){const p=a.map((v,k)=>v+(b[k]-v)*t) as V;const q=c.map((v,k)=>v+(b[k]-v)*t) as V;p[1]-=.1;q[1]-=.1;beam(p,q,.055,steel,groups[8]);}
+    for(let t=.08;t<1;t+=(mobile?.16:.08)){const p=a.map((v,k)=>v+(b[k]-v)*t) as V;const q=c.map((v,k)=>v+(b[k]-v)*t) as V;p[1]-=.1;q[1]-=.1;beam(p,q,.055,steel,groups[8]);}
    }
    beam([-3,3,-6.2],[.3275,5,-6.2],.18,wood,groups[9]);beam([.3275,5,-6.2],[3.65,3,-6.2],.18,wood,groups[9]);
    for(const x of [-7.7,7.7]){beam([x,2.91,-6.2],[x,2.91,6.15],.13,roof,groups[9]);beam([x,2.91,6],[x,.1,6],.1,roof,groups[9]);}
@@ -315,7 +315,7 @@ export default function ReferenceHouse(){
    const quakeHandler=(event:Event)=>{Object.assign(quakeState,(event as CustomEvent<Partial<typeof quakeState>>).detail||{})};
    window.addEventListener('fabrick:quake',quakeHandler);
    setLoadStep(2);await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
-   if(disposed){geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment?.dispose();orbit.dispose();renderer.dispose();renderer.domElement.remove();return;}
+   if(disposed){geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());architecturalAssets?.dispose();environment?.dispose();orbit.dispose();renderer.dispose();renderer.domElement.remove();return;}
    // Merge static pieces by material and explosion direction to limit draw calls.
    // Structural layers also receive a lightweight edge pass for a cleaner CAD/SketchUp-style reading.
    const layerMaterials:T.MeshStandardMaterial[][]=[],structureEdges:T.LineSegments[]=[];

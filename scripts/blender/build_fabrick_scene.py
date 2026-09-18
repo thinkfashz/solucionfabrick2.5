@@ -103,8 +103,18 @@ def material(name: str, color, rough=.8, metallic=0.0):
     return mat
 
 
+def viewer_to_blender(location):
+    """Convert viewer (x, z-plan, y-up) to Blender (x, y-plan, z-up).
+
+    glTF export with export_yup=True maps Blender Y to -glTF Z, so the negative
+    plan-depth here preserves the current Three.js front/rear orientation.
+    """
+    x, plan_z, up_y = location
+    return (x, -plan_z, up_y)
+
+
 def cube(name, location, scale, coll, mat=None):
-    bpy.ops.mesh.primitive_cube_add(location=location)
+    bpy.ops.mesh.primitive_cube_add(location=viewer_to_blender(location))
     obj = bpy.context.object
     obj.name = name
     obj.dimensions = scale
@@ -149,7 +159,7 @@ def build_architecture(collections):
         marker = bpy.data.objects.new(f"ARCH_ROOM_{room_id.upper().replace('-', '_')}", None)
         marker.empty_display_type = "CUBE"
         marker.empty_display_size = .25
-        marker.location = (x + w / 2, z + d / 2, .05)
+        marker.location = viewer_to_blender((x + w / 2, z + d / 2, .05))
         marker["label"] = label
         marker["widthM"] = w
         marker["depthM"] = d
@@ -209,7 +219,7 @@ def build_kitchen(collections):
 
         # Door pivot sits on the hinge edge. Mesh is a child so Three.js can rotate the parent.
         hinge = bpy.data.objects.new(f"KITCH_DOOR_{idx:02d}", None)
-        hinge.location = (6.81, z - width / 2 + .02, upper_y)
+        hinge.location = viewer_to_blender((6.81, z - width / 2 + .02, upper_y))
         hinge["openAngleDeg"] = 110
         hinge["openSign"] = -1 if idx % 2 == 0 else 1
         collections["KITCH"].objects.link(hinge)
@@ -277,7 +287,7 @@ def build_lights(collections):
         data.color = (1.0, .76, .52)
         data.shadow_soft_size = .5
         light = bpy.data.objects.new(f"LIGHT_Interior_{idx:02d}", data)
-        light.location = location
+        light.location = viewer_to_blender(location)
         collections["LIGHTS"].objects.link(light)
 
 

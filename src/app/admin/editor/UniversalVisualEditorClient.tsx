@@ -261,7 +261,7 @@ export default function UniversalVisualEditorClient() {
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; route?: string; element?: Selection; action?: string; value?: string; selector?: string; x?: number; y?: number; kind?: 'Imagen' | 'Fondo' | 'Icono'; url?: string; publicId?: string; folder?: string } | null;
+      const data = event.data as { type?: string; route?: string; element?: Selection; action?: string; value?: string; selector?: string; x?: number; y?: number; kind?: 'Imagen' | 'Fondo' | 'Icono'; url?: string; publicId?: string; folder?: string; targetMode?: TargetMode; elementScope?: ElementScope } | null;
       if (data?.type === 'cms:preview-ready' || data?.type === 'cms:visual-ready') {
         setIframeReady(true);
         sendPreview(draft);
@@ -301,6 +301,10 @@ export default function UniversalVisualEditorClient() {
           default: break;
         }
         if (window.innerWidth < 1280) setMobilePanel('inspector');
+      }
+      if (data?.type === 'cms:visual-editor-target') {
+        if (data.targetMode === 'single' || data.targetMode === 'similar') setTargetMode(data.targetMode);
+        if (data.elementScope === 'page' || data.elementScope === 'global') setElementScope(data.elementScope);
       }
       if (data?.type === 'cms:visual-cloudinary-apply' && selection && typeof data.url === 'string') {
         if (data.kind === 'Imagen') {
@@ -446,7 +450,14 @@ export default function UniversalVisualEditorClient() {
     };
     window.postMessage({
       type: 'cms:visual-editor-selection-sync',
-      element: { ...selection, computed: resolvedComputed },
+      element: {
+        ...selection,
+        text: override?.text ?? selection.text,
+        href: override?.href ?? selection.href,
+        src: override?.src ?? selection.src,
+        alt: override?.alt ?? selection.alt,
+        computed: resolvedComputed,
+      },
     }, window.location.origin);
   }, [selection, override, styleScope]);
 

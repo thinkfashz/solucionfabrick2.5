@@ -53,12 +53,12 @@ type ResearchResult = {
 };
 
 function cleanText(value: unknown, max = 1000) {
-  return String(value ?? '').trim().replace(/[<>]/g, '').replace(/s+/g, ' ').slice(0, max);
+  return String(value ?? '').trim().replace(/[<>]/g, '').replace(/\s+/g, ' ').slice(0, max);
 }
 
 function cleanUrl(value: unknown) {
   const url = cleanText(value, 2000);
-  return /^https:///i.test(url) ? url : '';
+  return /^https:\/\//i.test(url) ? url : '';
 }
 
 function numberOrNull(value: unknown) {
@@ -103,7 +103,7 @@ type MlDetail = {
 };
 
 async function fetchMlDetail(sourceId: string): Promise<MlDetail | null> {
-  if (!/^ML[A-Z]d+$/i.test(sourceId)) return null;
+  if (!/^ML[A-Z]\d+$/i.test(sourceId)) return null;
   try {
     const response = await fetch(`https://api.mercadolibre.com/items/${encodeURIComponent(sourceId)}`, {
       headers: { Accept: 'application/json' },

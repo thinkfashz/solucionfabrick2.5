@@ -121,7 +121,7 @@ export default function ProductAiImageDock() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[180] inline-flex min-h-12 items-center gap-2 rounded-full border border-[#F6C64A]/45 bg-[#111214] px-4 text-xs font-black text-[#F6C64A] shadow-[0_18px_55px_rgba(0,0,0,.32)] transition hover:-translate-y-0.5 hover:border-[#F6C64A] sm:bottom-6 sm:right-6"
+        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-[180] inline-flex min-h-12 items-center gap-2 rounded-full border border-[#F6C64A]/45 bg-[#111214] px-4 text-xs font-black text-[#F6C64A] shadow-[0_18px_55px_rgba(0,0,0,.32)] transition hover:-translate-y-0.5 hover:border-[#F6C64A] sm:bottom-6 sm:right-6"
         aria-label="Abrir generador de imágenes de productos con IA"
       >
         <WandSparkles className="h-4 w-4" /> Imagen IA

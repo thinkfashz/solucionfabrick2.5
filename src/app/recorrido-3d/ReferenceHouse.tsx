@@ -35,6 +35,7 @@ export default function ReferenceHouse(){
   const handler=(event:Event)=>{
    const detail=(event as CustomEvent<{mode?:string;stage?:number}>).detail||{};
    const mode=detail.mode||'architecture';setTechnical(mode);setTour(false);api.current?.tour(false);setSelected(null);setExplosion(mode==='explode'?58:0);setPlan(mode==='plan');
+   if(['electric','water','sanitary','underfloor','stage'].includes(mode)){setPlan(false);api.current?.view('aerial');}
    if(mode==='architecture')setVisible(layers.map(()=>true));
    else if(mode==='structure')setVisible(layers.map((_,i)=>[0,2,3,8,9].includes(i)));
    else if(mode==='electric')setVisible(layers.map((_,i)=>[0,2,6,7].includes(i)));
@@ -68,7 +69,15 @@ export default function ReferenceHouse(){
    textured(wood,'wood','#b18a5d',.34,.025);textured(white,'plaster','#f5f3ec',.72,.006);textured(concrete,'plaster','#aaa79e',.82,.02);textured(roof,'metal','#495059',.36,.026);
    const porcelain=textured(mat('#d4cec3'),'tile','#d4cec3',.24,.01),fabric=textured(mat('#8e9a8d'),'fabric','#8e9a8d',.88,.012),gravel=textured(mat('#b8b5ab'),'gravel','#b8b5ab',.92,.09),grass=textured(mat('#77865b'),'grass','#77865b',1,.045);
    const skyGeo=new THREE.SphereGeometry(180,32,16);geometry.push(skyGeo);
-   const skyMat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,vertexShader:'varying vec3 v;void main(){v=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'varying vec3 v;void main(){vec3 d=normalize(v);float h=max(d.y,0.);vec3 c=mix(vec3(.84,.89,.91),vec3(.24,.51,.76),pow(h,.55));float cloud=sin(d.x*18.+sin(d.z*13.))*sin(d.z*21.+sin(d.x*8.));float mask=smoothstep(.2,.7,cloud)*smoothstep(.05,.22,h)*(1.-smoothstep(.5,.85,h));c=mix(c,vec3(.98,.96,.92),mask*.7);float sun=pow(max(dot(d,normalize(vec3(-.5,.75,-.4))),0.),400.);gl_FragColor=vec4(c+vec3(1.,.8,.5)*sun,1.);}'});materials.push(skyMat);
+   const skyMat=new THREE.ShaderMaterial({
+    side:THREE.BackSide,depthWrite:false,
+    uniforms:{
+     uBottom:{value:new THREE.Color('#d6e3e8')},uTop:{value:new THREE.Color('#3d82c2')},uCloud:{value:new THREE.Color('#f7f3ea')},
+     uSunColor:{value:new THREE.Color('#ffd796')},uSunStrength:{value:1},uCloudStrength:{value:.7}
+    },
+    vertexShader:'varying vec3 v;void main(){v=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+    fragmentShader:'uniform vec3 uBottom;uniform vec3 uTop;uniform vec3 uCloud;uniform vec3 uSunColor;uniform float uSunStrength;uniform float uCloudStrength;varying vec3 v;void main(){vec3 d=normalize(v);float h=max(d.y,0.);vec3 c=mix(uBottom,uTop,pow(h,.55));float cloud=sin(d.x*18.+sin(d.z*13.))*sin(d.z*21.+sin(d.x*8.));float mask=smoothstep(.2,.7,cloud)*smoothstep(.05,.22,h)*(1.-smoothstep(.5,.85,h));c=mix(c,uCloud,mask*uCloudStrength);float sun=pow(max(dot(d,normalize(vec3(-.5,.75,-.4))),0.),400.);gl_FragColor=vec4(c+uSunColor*sun*uSunStrength,1.);}'
+   });materials.push(skyMat);
    const sky=new THREE.Mesh(skyGeo,skyMat);scene.add(sky);scene.fog=new THREE.Fog('#c7d5d8',55,125);
    const skyScene=new THREE.Scene();skyScene.add(sky.clone());const pmrem=new THREE.PMREMGenerator(renderer);const environment=pmrem.fromScene(skyScene,.05,.1,300);scene.environment=environment.texture;pmrem.dispose();
    glass.transparent=true;glass.opacity=.3;glass.depthWrite=false;
@@ -198,9 +207,16 @@ export default function ReferenceHouse(){
     const mode=detail.mode||'day',exposure=(detail.exposure??100)/100,temp=detail.temperature??4200;
     renderer.toneMappingExposure=exposure*(mode==='night'?.82:mode==='sunset'?.96:1.08);
     const warm=THREE.MathUtils.clamp((6500-temp)/3800,0,1);
-    if(mode==='day'){hemi.intensity=.92;hemi.color.set('#f7fbff');hemi.groundColor.set('#52606a');sun.intensity=3.15;sun.color.set('#fff4dc');sun.position.set(-10,20,-12);scene.fog=new THREE.Fog('#c7d5d8',58,128);renderer.setClearColor('#c5d3da');}
-    else if(mode==='sunset'){hemi.intensity=.62;hemi.color.set('#ffd8a8');hemi.groundColor.set('#394654');sun.intensity=2.35;sun.color.set('#ffbd72');sun.position.set(-18,7,-10);scene.fog=new THREE.Fog('#d5aa86',50,118);renderer.setClearColor('#d6a77d');}
-    else {hemi.intensity=.22;hemi.color.set('#8ab8df');hemi.groundColor.set('#101927');sun.intensity=.38;sun.color.set('#a8c8ea');sun.position.set(12,16,8);scene.fog=new THREE.Fog('#142538',42,102);renderer.setClearColor('#0d1c2c');}
+    if(mode==='day'){
+     hemi.intensity=.92;hemi.color.set('#f7fbff');hemi.groundColor.set('#52606a');sun.intensity=3.15;sun.color.set('#fff4dc');sun.position.set(-10,20,-12);scene.fog=new THREE.Fog('#c7d5d8',58,128);renderer.setClearColor('#c5d3da');scene.environmentIntensity=.85;
+     skyMat.uniforms.uBottom.value.set('#d6e3e8');skyMat.uniforms.uTop.value.set('#3d82c2');skyMat.uniforms.uCloud.value.set('#f7f3ea');skyMat.uniforms.uSunColor.value.set('#ffd796');skyMat.uniforms.uSunStrength.value=1;skyMat.uniforms.uCloudStrength.value=.68;
+    } else if(mode==='sunset'){
+     hemi.intensity=.62;hemi.color.set('#ffd8a8');hemi.groundColor.set('#394654');sun.intensity=2.35;sun.color.set('#ffbd72');sun.position.set(-18,7,-10);scene.fog=new THREE.Fog('#d5aa86',50,118);renderer.setClearColor('#d6a77d');scene.environmentIntensity=.58;
+     skyMat.uniforms.uBottom.value.set('#d79a70');skyMat.uniforms.uTop.value.set('#324e76');skyMat.uniforms.uCloud.value.set('#ffd2a0');skyMat.uniforms.uSunColor.value.set('#ffab55');skyMat.uniforms.uSunStrength.value=1.4;skyMat.uniforms.uCloudStrength.value=.42;
+    } else {
+     hemi.intensity=.22;hemi.color.set('#8ab8df');hemi.groundColor.set('#101927');sun.intensity=.38;sun.color.set('#a8c8ea');sun.position.set(12,16,8);scene.fog=new THREE.Fog('#142538',42,102);renderer.setClearColor('#0d1c2c');scene.environmentIntensity=.2;
+     skyMat.uniforms.uBottom.value.set('#101d2d');skyMat.uniforms.uTop.value.set('#07111f');skyMat.uniforms.uCloud.value.set('#23364b');skyMat.uniforms.uSunColor.value.set('#b5d4f0');skyMat.uniforms.uSunStrength.value=.08;skyMat.uniforms.uCloudStrength.value=.14;
+    }
     indoorLights.forEach(l=>{l.visible=detail.interiorLights!==false;l.intensity=(mode==='day'?10:mode==='sunset'?18:25)*(1+warm*.12)});
     outdoorLights.forEach(l=>{l.visible=detail.exteriorLights!==false;l.intensity=mode==='day'?5:mode==='sunset'?13:20});
     renderer.shadowMap.needsUpdate=true;

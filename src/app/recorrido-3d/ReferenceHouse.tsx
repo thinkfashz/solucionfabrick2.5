@@ -246,13 +246,21 @@ export default function ReferenceHouse(){
    setLoadStep(2);await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
    if(disposed){geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment.dispose();orbit.dispose();renderer.dispose();renderer.domElement.remove();return;}
    // Merge static pieces by material and explosion direction to limit draw calls.
-   const layerMaterials:T.MeshStandardMaterial[][]=[];
+   // Structural layers also receive a lightweight edge pass for a cleaner CAD/SketchUp-style reading.
+   const layerMaterials:T.MeshStandardMaterial[][]=[],structureEdges:T.LineSegments[]=[];
+   const edgeMaterial=new THREE.LineBasicMaterial({color:'#273845',transparent:true,opacity:.58});materials.push(edgeMaterial);
    scene.updateMatrixWorld(true);
    for(const group of groups){
     const batches=new Map<string,{parts:T.BufferGeometry[];material:T.MeshStandardMaterial;offset:T.Vector3}>();
     group.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const m=o.material as T.MeshStandardMaterial;const offset=(o.parent?.userData.offset as T.Vector3|undefined)||new THREE.Vector3();const key=m.uuid+offset.toArray().join(',');if(!batches.has(key))batches.set(key,{parts:[],material:m,offset});const copy=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();batches.get(key)!.parts.push(copy.applyMatrix4(o.matrixWorld))});
     const lamps=group.children.filter(o=>o instanceof THREE.Light);group.clear();lamps.forEach(o=>group.add(o));const clones=new Map<string,T.MeshStandardMaterial>();
-    for(const {parts,material,offset}of batches.values()){const g=mergeGeometries(parts);parts.forEach(p=>p.dispose());if(!g)continue;if(!clones.has(material.uuid)){const clone=material.clone();materials.push(clone);clones.set(material.uuid,clone)}const sub=new THREE.Group();sub.userData.offset=offset;group.add(sub);mesh(g,clones.get(material.uuid)!,sub)}
+    for(const {parts,material,offset}of batches.values()){
+     const g=mergeGeometries(parts);parts.forEach(p=>p.dispose());if(!g)continue;
+     if(!clones.has(material.uuid)){const clone=material.clone();materials.push(clone);clones.set(material.uuid,clone)}
+     const sub=new THREE.Group();sub.userData.offset=offset;group.add(sub);mesh(g,clones.get(material.uuid)!,sub);
+     const layerIndex=Number(group.userData.layer);
+     if(layerIndex===2||layerIndex===3||layerIndex===8){const eg=new THREE.EdgesGeometry(g,28);geometry.push(eg);const lines=new THREE.LineSegments(eg,edgeMaterial);lines.visible=false;lines.renderOrder=3;sub.add(lines);structureEdges.push(lines);}
+    }
     layerMaterials.push([...clones.values()]);
    }
    const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let hoverLayer:number|null=null,downX=0,downY=0,downPointer='mouse',frame=0;
@@ -293,7 +301,7 @@ export default function ReferenceHouse(){
      camera.updateProjectionMatrix();if(t===1){transition=null;orbit.enabled=true;if(cameraFade.current)cameraFade.current.style.opacity='0';}
     } else if(playing){tourElapsed+=dt;const target=presets[stops[tourIndex]].t;orbit.target.set(target[0]+Math.sin(tourElapsed*.35)*.25,target[1],target[2]);if(tourElapsed>7){tourIndex=(tourIndex+1)%stops.length;choose(stops[tourIndex]);tourElapsed=0}}
     if(zoomGoal!==null){const offset=camera.position.clone().sub(orbit.target);const length=THREE.MathUtils.damp(offset.length(),zoomGoal,7,dt);camera.position.copy(orbit.target).add(offset.setLength(length));if(Math.abs(length-zoomGoal)<.01)zoomGoal=null;}
-    const s=settings.current,e=s.explosion/100,alpha=reducedMotion?1:1-Math.exp(-6*dt);electricGroup.visible=s.technical==='electric';waterGroup.visible=s.technical==='water'||s.technical==='underfloor';sanitaryGroup.visible=s.technical==='sanitary'||s.technical==='underfloor';
+    const s=settings.current,e=s.explosion/100,alpha=reducedMotion?1:1-Math.exp(-6*dt);electricGroup.visible=s.technical==='electric';waterGroup.visible=s.technical==='water'||s.technical==='underfloor';sanitaryGroup.visible=s.technical==='sanitary'||s.technical==='underfloor';structureEdges.forEach(line=>line.visible=s.technical==='structure');
     if(s.quality!==lastQuality){renderer.setPixelRatio(s.quality==='light'?(mobile?.72:.9):(mobile?.86:Math.min(devicePixelRatio,1.15)));renderer.shadowMap.enabled=!mobile&&s.quality!=='light';sun.castShadow=renderer.shadowMap.enabled;lastQuality=s.quality;size();renderer.shadowMap.needsUpdate=true;}
     let moving=false;
     for(let i=0;i<groups.length;i++){const g=groups[i];g.visible=s.visible[i];const y=i===1?-2*e:i>=8?(i===8?4:7)*e:i===6?2*e:0;moving ||= Math.abs(g.position.y-y)>.005;g.position.y=THREE.MathUtils.lerp(g.position.y,y,alpha);for(const child of g.children){if(child.userData.offset){const dest=(child.userData.offset as T.Vector3).clone().multiplyScalar(e);moving ||= child.position.distanceToSquared(dest)>.0001;child.position.lerp(dest,alpha)}}}

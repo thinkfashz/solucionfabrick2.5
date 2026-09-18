@@ -126,6 +126,22 @@ export default function ReferenceHouse(){
    const sky=new THREE.Mesh(skyGeo,skyMat);scene.add(sky);scene.fog=new THREE.Fog('#c7d5d8',55,125);
    let environment:T.WebGLRenderTarget|null=null;if(!mobile){const skyScene=new THREE.Scene();skyScene.add(sky.clone());const pmrem=new THREE.PMREMGenerator(renderer);environment=pmrem.fromScene(skyScene,.05,.1,220);scene.environment=environment.texture;scene.environmentIntensity=.72;pmrem.dispose();}
    glass.transparent=true;glass.opacity=.3;glass.depthWrite=false;
+   // Lightweight contact shadows keep the mobile model grounded without enabling expensive shadow maps.
+   const shadowCanvas=document.createElement('canvas');shadowCanvas.width=shadowCanvas.height=256;const shadowCtx=shadowCanvas.getContext('2d');
+   let contactShadowTexture:T.CanvasTexture|null=null,contactShadowMaterial:T.MeshBasicMaterial|null=null;
+   if(shadowCtx){
+    const gradient=shadowCtx.createRadialGradient(128,128,12,128,128,124);
+    gradient.addColorStop(0,'rgba(0,0,0,.42)');gradient.addColorStop(.48,'rgba(0,0,0,.2)');gradient.addColorStop(1,'rgba(0,0,0,0)');
+    shadowCtx.fillStyle=gradient;shadowCtx.fillRect(0,0,256,256);
+    contactShadowTexture=new THREE.CanvasTexture(shadowCanvas);contactShadowTexture.colorSpace=THREE.SRGBColorSpace;textures.push(contactShadowTexture);
+    contactShadowMaterial=new THREE.MeshBasicMaterial({map:contactShadowTexture,transparent:true,depthWrite:false,opacity:mobile?.34:.2,toneMapped:false});materials.push(contactShadowMaterial);
+    const addContactShadow=(x:number,z:number,w:number,d:number,opacity=1)=>{
+     if(!contactShadowMaterial)return;
+     const material=contactShadowMaterial.clone();material.opacity*=opacity;materials.push(material);
+     const plane=new THREE.Mesh(new THREE.PlaneGeometry(w,d),material);geometry.push(plane.geometry);plane.rotation.x=-Math.PI/2;plane.position.set(x,-.142,z);plane.renderOrder=1;proceduralTerrain.add(plane);
+    };
+    addContactShadow(0,.6,17.5,13.8,.95);addContactShadow(.2,-5.5,8.4,3.2,.58);addContactShadow(5.9,-10.4,3.1,5.5,.52);
+   }
    const cv=document.createElement('canvas');cv.width=cv.height=256;const cx=cv.getContext('2d');
    if(cx){cx.fillStyle='#c3a071';cx.fillRect(0,0,256,256);let seed=12;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};for(let i=0;i<1600;i++){cx.save();cx.translate(random()*256,random()*256);cx.rotate(random()*Math.PI);cx.fillStyle=['#8d6f47','#d9bb8b','#b18b54'][i%3];cx.fillRect(0,0,3+random()*18,1+random()*3);cx.restore()}const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(2,2);textures.push(tex);osb.map=tex;}
    function mesh(g:T.BufferGeometry,m:T.Material,parent:T.Object3D){geometry.push(g);const a=new THREE.Mesh(g,m);a.castShadow=!m.transparent;a.receiveShadow=true;parent.add(a);return a}

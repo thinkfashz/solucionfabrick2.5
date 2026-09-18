@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
+  ArchiveRestore,
   Eye,
   Globe2,
   Image as ImageIcon,
@@ -10,6 +11,7 @@ import {
   LayoutGrid,
   Link2,
   Loader2,
+  Lock,
   Monitor,
   Paintbrush,
   RotateCcw,
@@ -19,6 +21,7 @@ import {
   Tablet,
   Trash2,
   Type,
+  Unlock,
   X,
 } from 'lucide-react';
 import {
@@ -30,6 +33,7 @@ import {
   upsertVisualElement,
   type VisualCmsDevice,
   type VisualCmsElementOverride,
+  type VisualCmsLockState,
   type VisualCmsOverridesContent,
   type VisualCmsStylePatch,
 } from '@/lib/visualCmsOverrides';
@@ -54,6 +58,7 @@ const PAGE_PRESETS = [
 
 type Selection = {
   selector: string;
+  cmsId: string | null;
   similarSelector: string | null;
   similarCount: number;
   tag: string;
@@ -295,17 +300,31 @@ export default function UniversalVisualEditorClient() {
 
   function updateSelected(patch: Partial<VisualCmsElementOverride>) {
     if (!selection || !targetSelector) return;
-    setDraft((current) => upsertVisualElement(current, targetRoute, targetSelector, { label: selection.label, ...patch }));
+    const touchesContent = ['text', 'href', 'src', 'alt', 'iconUrl', 'iconAlt'].some((key) => key in patch);
+    if (touchesContent && override?.lock?.content === true) {
+      setStatus('El contenido de este elemento está bloqueado. Desbloquéalo para editarlo.');
+      return;
+    }
+    const identityPatch = targetMode === 'single' && selection.cmsId ? { cmsId: selection.cmsId } : {};
+    setDraft((current) => upsertVisualElement(current, targetRoute, targetSelector, { label: selection.label, ...identityPatch, ...patch }));
   }
 
   function patchStyle(field: keyof VisualCmsStylePatch, value: string) {
     if (!selection || !targetSelector) return;
+    if (override?.lock?.style === true) {
+      setStatus('El diseño de este elemento está bloqueado. Desbloquéalo para editar estilos.');
+      return;
+    }
     const nextStyle = { ...(override?.styles?.[styleScope] || {}), [field]: value };
     updateSelected({ styles: { [styleScope]: nextStyle } });
   }
 
   function patchBackgroundImage(value: string) {
     if (!selection || !targetSelector) return;
+    if (override?.lock?.style === true) {
+      setStatus('El diseño de este elemento está bloqueado. Desbloquéalo para cambiar el fondo.');
+      return;
+    }
     const clean = value.trim();
     const backgroundImage = clean ? `url("${clean.replace(/"/g, '\\"')}")` : 'none';
     const nextStyle = {
@@ -377,9 +396,36 @@ export default function UniversalVisualEditorClient() {
 
   function resetSelected() {
     if (!selection || !targetSelector) return;
+    if (override?.lock?.remove === true) {
+      setStatus('Este elemento está protegido contra eliminación/restauración.');
+      return;
+    }
     setDraft((current) => removeVisualElement(current, targetRoute, targetSelector));
     const targetLabel = targetMode === 'similar' ? `${selection.similarCount} elementos similares` : 'este elemento';
     setStatus(`Personalización de ${targetLabel} eliminada${elementScope === 'global' ? ' globalmente' : ' de esta página'}.`);
+  }
+
+  function toggleLock(field: keyof VisualCmsLockState) {
+    if (!selection || !targetSelector) return;
+    const next = override?.lock?.[field] !== true;
+    updateSelected({ lock: { [field]: next } });
+    setStatus(`${next ? 'Bloqueado' : 'Desbloqueado'}: ${field === 'content' ? 'contenido' : field === 'style' ? 'diseño' : field === 'remove' ? 'eliminación' : 'movimiento'}.`);
+  }
+
+  function trashSelected() {
+    if (!selection || !targetSelector) return;
+    if (override?.lock?.remove === true) {
+      setStatus('El elemento está protegido contra eliminación. Desbloquea “Eliminar” primero.');
+      return;
+    }
+    updateSelected({ trashed: true, trashedAt: new Date().toISOString() });
+    setStatus('Elemento enviado a la papelera del borrador. Puedes restaurarlo antes de publicar.');
+  }
+
+  function restoreTrashedSelected() {
+    if (!selection || !targetSelector) return;
+    updateSelected({ trashed: false, trashedAt: '' });
+    setStatus('Elemento restaurado desde la papelera.');
   }
 
   function navigate(nextRoute: string) {
@@ -506,6 +552,32 @@ export default function UniversalVisualEditorClient() {
             <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/8 bg-black/25 p-1">
               <button type="button" onClick={() => setElementScope('page')} className={`h-8 rounded-md text-[8px] font-black ${elementScope === 'page' ? 'bg-white/10 text-white' : 'text-white/35'}`}>Esta página</button>
               <button type="button" onClick={() => setElementScope('global')} className={`inline-flex h-8 items-center justify-center gap-1 rounded-md text-[8px] font-black ${elementScope === 'global' ? 'bg-[#FFB000] text-black' : 'text-white/35'}`}><Globe2 className="h-3 w-3" /> Todo el sitio</button>
+            </div>
+
+            <div className="grid gap-2 rounded-xl border border-white/8 bg-black/25 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[8px] font-black uppercase tracking-[.12em] text-white/32">Identidad persistente</p>
+                  <p className="truncate text-[9px] font-bold text-white/58">{selection.cmsId ? `data-cms-id · ${selection.cmsId}` : 'Selector heredado · se conservará compatibilidad'}</p>
+                </div>
+                {override?.lock?.content || override?.lock?.style || override?.lock?.remove || override?.lock?.move ? <Lock className="h-3.5 w-3.5 shrink-0 text-[#FFB000]" /> : <Unlock className="h-3.5 w-3.5 shrink-0 text-white/25" />}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  ['content', 'Contenido'],
+                  ['style', 'Diseño'],
+                  ['move', 'Mover'],
+                  ['remove', 'Eliminar'],
+                ] as Array<[keyof VisualCmsLockState, string]>).map(([key, label]) => {
+                  const active = override?.lock?.[key] === true;
+                  return <button key={key} type="button" onClick={() => toggleLock(key)} className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border text-[8px] font-black ${active ? 'border-[#FFB000]/35 bg-[#FFB000]/10 text-[#FFD879]' : 'border-white/8 bg-white/[.03] text-white/42'}`}>{active ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}{label}</button>;
+                })}
+              </div>
+              {override?.trashed === true ? (
+                <button type="button" onClick={restoreTrashedSelected} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-emerald-400/20 bg-emerald-400/8 text-[9px] font-black text-emerald-200"><ArchiveRestore className="h-3.5 w-3.5" /> Restaurar desde papelera</button>
+              ) : (
+                <button type="button" onClick={trashSelected} disabled={override?.lock?.remove === true} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-red-400/15 bg-red-400/5 text-[9px] font-black text-red-200/70 disabled:opacity-30"><Trash2 className="h-3 w-3" /> Enviar a papelera</button>
+              )}
             </div>
 
             {!editingSimilar && selection.textEditable ? <label className="grid gap-1"><span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-[.12em] text-white/38"><Type className="h-3 w-3" /> Texto</span><textarea value={override?.text ?? selection.text ?? ''} onChange={(event) => updateSelected({ text: event.target.value })} rows={3} className="min-h-20 resize-y rounded-lg border border-white/10 bg-black/30 p-2.5 text-[11px] leading-4 text-white outline-none focus:border-[#FFB000]/60" /></label> : null}

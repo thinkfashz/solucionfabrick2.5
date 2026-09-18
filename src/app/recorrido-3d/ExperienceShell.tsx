@@ -105,6 +105,7 @@ const AREA: Record<string, AreaInfo> = {
       { id:"cubierta-metalica", material:"Cubierta metálica", place:"Techumbre", note:"Terminación oscura con rugosidad y reflejo controlados." },
       { material:"Vidrio + perfilería", place:"Vanos", note:"Cristal y marcos oscuros para conectar interior y exterior." },
       { id:"hormigon", material:"Hormigón", place:"Radier / acceso", note:"Base exterior, terraza y peldaños." },
+      { id:"cesped-pbr", material:"Césped PBR", place:"Jardín / perímetro", note:"Grass001 CC0 con escala física aproximada de 1,4 m." },
     ],
   },
   Living: {
@@ -189,6 +190,7 @@ const AREA: Record<string, AreaInfo> = {
   "Hacia el jardín": {
     title:"Jardín · paisaje",subtitle:"Transición vivienda–terreno y acceso exterior.",
     materials:[
+      {id:"cesped-pbr",material:"Césped PBR",place:"Jardín",note:"Grass001 CC0 con normal y roughness reales."},
       {material:"Pasto",place:"Terreno",note:"Cobertura vegetal de roughness alto."},
       {material:"Gravilla",place:"Senderos",note:"Árido de lectura irregular."},
       {id:"hormigon",material:"Hormigón",place:"Peldaños",note:"Base mineral mate."},

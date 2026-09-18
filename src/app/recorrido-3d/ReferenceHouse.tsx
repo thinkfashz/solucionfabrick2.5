@@ -4,6 +4,7 @@ import type * as T from 'three';
 import {layers,rooms,walls,width,depth} from './reference-house';
 import './reference-house.css';
 import {materialTexture} from './material-textures';
+import {loadOptionalArchitecturalAssets} from './architectural-assets';
 type V=[number,number,number];
 type Controls={view:(v:string)=>void;zoom:(d:number)=>void;tour:(on:boolean)=>void};
 type LightingDetail={mode?:'day'|'sunset'|'night';exposure?:number;temperature?:number;interiorLights?:boolean;exteriorLights?:boolean};
@@ -70,12 +71,16 @@ export default function ReferenceHouse(){
    renderer.setPixelRatio(mobile?Math.min(devicePixelRatio,1):Math.min(devicePixelRatio,1.28));renderer.outputColorSpace=THREE.SRGBColorSpace;
    renderer.toneMapping=THREE.AgXToneMapping;renderer.toneMappingExposure=1;renderer.shadowMap.enabled=!mobile;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.setClearColor('#d4dde0');root.appendChild(renderer.domElement);
    const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(54,1,.08,500);
+   const proceduralTerrain=new THREE.Group();proceduralTerrain.name='procedural-terrain';scene.add(proceduralTerrain);
    const hemi=new THREE.HemisphereLight('#f5f8fa','#6e777a',.96);scene.add(hemi);
    const sun=new THREE.DirectionalLight('#fff6df',2.15);sun.position.set(-10,20,-12);sun.castShadow=!mobile;sun.shadow.mapSize.set(mobile?1024:2048,mobile?1024:2048);Object.assign(sun.shadow.camera,{left:-14,right:14,top:14,bottom:-14,near:.5,far:52});sun.shadow.bias=-.00045;sun.shadow.normalBias=.04;sun.shadow.radius=2;scene.add(sun);
    const indoorLights:T.PointLight[]=[],outdoorLights:T.PointLight[]=[];
    const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=!mobile;orbit.dampingFactor=.12;orbit.rotateSpeed=mobile?.92:.68;orbit.panSpeed=mobile?.9:.72;orbit.zoomSpeed=mobile?1:.78;orbit.minDistance=2;orbit.maxDistance=65;orbit.maxPolarAngle=Math.PI*.49;orbit.screenSpacePanning=true;
    orbit.touches.ONE=THREE.TOUCH.ROTATE;orbit.touches.TWO=THREE.TOUCH.DOLLY_PAN;
    const houseRoot=new THREE.Group();houseRoot.name='house-root';scene.add(houseRoot);
+   const architecturalAssets=await loadOptionalArchitecturalAssets(THREE,renderer);
+   const blenderHouse=architecturalAssets?.house??null,gaeaTerrain=architecturalAssets?.terrain??null;
+   if(blenderHouse)houseRoot.add(blenderHouse);if(gaeaTerrain)scene.add(gaeaTerrain);
    const groups=layers.map((_,i)=>{const g=new THREE.Group();g.userData.layer=i;houseRoot.add(g);return g});
    const electricGroup=new THREE.Group();electricGroup.name='electrical-plan';electricGroup.visible=false;houseRoot.add(electricGroup);
    const waterGroup=new THREE.Group();waterGroup.name='water-plan';waterGroup.visible=false;houseRoot.add(waterGroup);
@@ -116,12 +121,12 @@ export default function ReferenceHouse(){
    function box(p:V,size:V,m:T.Material,parent:T.Object3D){const geo=new THREE.BoxGeometry(...size);const pos=geo.attributes.position,norm=geo.attributes.normal,uv=geo.attributes.uv;for(let i=0;i<pos.count;i++){const nx=Math.abs(norm.getX(i)),ny=Math.abs(norm.getY(i));uv.setXY(i,nx>.5?pos.getZ(i):pos.getX(i),ny>.5?pos.getZ(i):pos.getY(i))}const b=mesh(geo,m,parent);b.position.set(...p);return b}
    function beam(a:V,b:V,r:number,m:T.Material,parent:T.Object3D){const av=new THREE.Vector3(...a),bv=new THREE.Vector3(...b);const o=box([0,0,0],[r,av.distanceTo(bv),r],m,parent);o.position.copy(av.add(bv).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...b).sub(new THREE.Vector3(...a)).normalize());return o}
    function surface(points:V[],m:T.Material,parent:T.Object3D){const a:number[]=[];for(let i=1;i<points.length-1;i++)a.push(...points[0],...points[i],...points[i+1]);const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(a,3));const uv:number[]=[];for(let i=0;i<a.length;i+=3)uv.push(a[i]*.2,a[i+2]*.2);g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.computeVertexNormals();return mesh(g,m,parent)}
-   box([0,-.32,0],[240,.3,240],grass,scene);box([0,-.155,-10],[19,.04,7],gravel,scene);
+   box([0,-.32,0],[240,.3,240],grass,proceduralTerrain);box([0,-.155,-10],[19,.04,7],gravel,proceduralTerrain);
    const patchMat=new THREE.MeshStandardMaterial({color:'#405a36',roughness:1,transparent:true,opacity:.14,depthWrite:false});materials.push(patchMat);
    const patchGeo=new THREE.CircleGeometry(1,16);geometry.push(patchGeo);
    const patches=new THREE.InstancedMesh(patchGeo,patchMat,mobile?10:22);patches.rotation.x=-Math.PI/2;const dummy=new THREE.Object3D();let patchSeed=29;
    const patchRandom=()=>{patchSeed=(patchSeed*1664525+1013904223)>>>0;return patchSeed/4294967296};
-   for(let i=0;i<patches.count;i++){const angle=patchRandom()*Math.PI*2,dist=10+patchRandom()*26;dummy.position.set(Math.cos(angle)*dist,-.155,Math.sin(angle)*dist);const s=1.8+patchRandom()*4.8;dummy.scale.set(s,s*(.65+patchRandom()*.6),1);dummy.rotation.z=patchRandom()*Math.PI;dummy.updateMatrix();patches.setMatrixAt(i,dummy.matrix)}patches.instanceMatrix.needsUpdate=true;scene.add(patches);
+   for(let i=0;i<patches.count;i++){const angle=patchRandom()*Math.PI*2,dist=10+patchRandom()*26;dummy.position.set(Math.cos(angle)*dist,-.155,Math.sin(angle)*dist);const s=1.8+patchRandom()*4.8;dummy.scale.set(s,s*(.65+patchRandom()*.6),1);dummy.rotation.z=patchRandom()*Math.PI;dummy.updateMatrix();patches.setMatrixAt(i,dummy.matrix)}patches.instanceMatrix.needsUpdate=true;proceduralTerrain.add(patches);
    // Sparse instanced blades break the flat texture silhouette without adding hundreds of draw calls.
    const bladeGeo=new THREE.PlaneGeometry(.12,.34);bladeGeo.translate(0,.17,0);geometry.push(bladeGeo);
    const bladeMat=new THREE.MeshStandardMaterial({color:'#536b40',roughness:1,side:THREE.DoubleSide,transparent:true,opacity:.78,depthWrite:false});materials.push(bladeMat);
@@ -131,11 +136,11 @@ export default function ReferenceHouse(){
     let x=0,z=0;for(let tries=0;tries<8;tries++){x=(bladeRandom()-.5)*48;z=(bladeRandom()-.5)*44;if(Math.abs(x)>8.2||Math.abs(z)>7.5)break}
     dummy.position.set(x,-.145,z);dummy.rotation.set(0,bladeRandom()*Math.PI,0);const h=.65+bladeRandom()*.9;dummy.scale.set(.75+bladeRandom()*.7,h,1);dummy.updateMatrix();blades.setMatrixAt(i,dummy.matrix)
    }
-   blades.instanceMatrix.needsUpdate=true;scene.add(blades);
+   blades.instanceMatrix.needsUpdate=true;proceduralTerrain.add(blades);
    box([0,-.06,.85],[width,.24,9.7],concrete,groups[0]);box([.3275,-.06,-4.85],[6.355,.24,1.7],concrete,groups[0]);
    box([0,-.08,-5.35],[width,.18,2.7],wood,groups[0]);box([1.3,-.05,6.15],[3.6,.18,1.11],concrete,groups[0]);
    for(let z=-6.6;z<-4;z+=.16)box([0,.017,z],[width,.015,.012],black,groups[0]);
-   for(let i=0;i<5;i++)box([0,-.13,-8-i*1.1],[2.3,.09,.65],concrete,scene);
+   for(let i=0;i<5;i++)box([0,-.13,-8-i*1.1],[2.3,.09,.65],concrete,proceduralTerrain);
    box([0,.07,.85],[14.1,.04,9.3],porcelain,groups[7]);box([.3275,.07,-4.8],[6,.04,1.7],porcelain,groups[7]);
    // Layers share openings; only pieces outside each opening are constructed.
    for(const w of walls){
@@ -367,7 +372,7 @@ export default function ReferenceHouse(){
      camera.updateProjectionMatrix();if(t===1){transition=null;orbit.enabled=true;if(cameraFade.current)cameraFade.current.style.opacity='0';}
     } else if(playing){tourElapsed+=dt;const target=presets[stops[tourIndex]].t;orbit.target.set(target[0]+Math.sin(tourElapsed*.35)*.25,target[1],target[2]);if(tourElapsed>7){tourIndex=(tourIndex+1)%stops.length;choose(stops[tourIndex]);tourElapsed=0}}
     if(zoomGoal!==null){const offset=camera.position.clone().sub(orbit.target);const length=THREE.MathUtils.damp(offset.length(),zoomGoal,7,dt);camera.position.copy(orbit.target).add(offset.setLength(length));if(Math.abs(length-zoomGoal)<.01)zoomGoal=null;}
-    const s=settings.current,e=s.explosion/100,alpha=reducedMotion?1:1-Math.exp(-6*dt);electricGroup.visible=s.technical==='electric';waterGroup.visible=s.technical==='water'||s.technical==='underfloor';sanitaryGroup.visible=s.technical==='sanitary'||s.technical==='underfloor';kitchenInteractive.visible=s.technical==='architecture'||s.technical==='stage';structureEdges.forEach(line=>line.visible=s.technical==='structure');
+    const s=settings.current,e=s.explosion/100,alpha=reducedMotion?1:1-Math.exp(-6*dt);const externalArchitecture=!!blenderHouse&&s.technical==='architecture';if(blenderHouse)blenderHouse.visible=externalArchitecture;if(gaeaTerrain)gaeaTerrain.visible=true;proceduralTerrain.visible=!gaeaTerrain;electricGroup.visible=s.technical==='electric';waterGroup.visible=s.technical==='water'||s.technical==='underfloor';sanitaryGroup.visible=s.technical==='sanitary'||s.technical==='underfloor';kitchenInteractive.visible=!externalArchitecture&&(s.technical==='architecture'||s.technical==='stage');structureEdges.forEach(line=>line.visible=s.technical==='structure');
     kitchenDoorValue=THREE.MathUtils.damp(kitchenDoorValue,kitchenDoorTarget,9,dt);kitchenDoors.forEach((door,index)=>{door.rotation.y=(index%2?1:-1)*kitchenDoorValue*THREE.MathUtils.degToRad(110)});
     if(quakeState.active&&quakeState.progress>=.34&&quakeState.progress<.94){
      const local=(quakeState.progress-.34)/.6,envelope=Math.sin(Math.PI*Math.min(1,local));const amp=.018+.095*quakeState.hazard*envelope;
@@ -378,13 +383,13 @@ export default function ReferenceHouse(){
 
     if(s.quality!==lastQuality){renderer.setPixelRatio(s.quality==='light'?(mobile?Math.min(devicePixelRatio,.96):1):(mobile?Math.min(devicePixelRatio,1.04):Math.min(devicePixelRatio,1.28)));renderer.shadowMap.enabled=!mobile&&s.quality!=='light';sun.castShadow=renderer.shadowMap.enabled;lastQuality=s.quality;size();renderer.shadowMap.needsUpdate=true;}
     let moving=false;
-    for(let i=0;i<groups.length;i++){const g=groups[i];g.visible=s.visible[i];const y=i===1?-2*e:i>=8?(i===8?4:7)*e:i===6?2*e:0;moving ||= Math.abs(g.position.y-y)>.005;g.position.y=THREE.MathUtils.lerp(g.position.y,y,alpha);for(const child of g.children){if(child.userData.offset){const dest=(child.userData.offset as T.Vector3).clone().multiplyScalar(e);moving ||= child.position.distanceToSquared(dest)>.0001;child.position.lerp(dest,alpha)}}}
+    for(let i=0;i<groups.length;i++){const g=groups[i];g.visible=!externalArchitecture&&s.visible[i];const y=i===1?-2*e:i>=8?(i===8?4:7)*e:i===6?2*e:0;moving ||= Math.abs(g.position.y-y)>.005;g.position.y=THREE.MathUtils.lerp(g.position.y,y,alpha);for(const child of g.children){if(child.userData.offset){const dest=(child.userData.offset as T.Vector3).clone().multiplyScalar(e);moving ||= child.position.distanceToSquared(dest)>.0001;child.position.lerp(dest,alpha)}}}
     const shadowState=s.visible.join(',');renderer.shadowMap.autoUpdate=false;if(moving||shadowState!==lastShadowState){renderer.shadowMap.needsUpdate=true;lastShadowState=shadowState;}
     const highlighted=s.selected??hoverLayer;
     layerMaterials.forEach((list,i)=>list.forEach(m=>{m.emissive.set(highlighted===i?'#278ba3':'#000000');m.emissiveIntensity=highlighted===i?.3:0}));
     dims.visible=s.dimensions;orbit.update();renderer.render(scene,camera);
    };renderer.render(scene,camera);frame=requestAnimationFrame(render);setReady(true);
-   cleanup=()=>{cancelAnimationFrame(frame);observer.disconnect();orbit.removeEventListener('start',cancelTour);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('fabrick:lighting',lightingEvent);window.removeEventListener('fabrick:quake',quakeHandler);window.removeEventListener('fabrick:kitchen',kitchenHandler);orbit.dispose();renderer.domElement.removeEventListener('pointermove',move);renderer.domElement.removeEventListener('pointerdown',down);renderer.domElement.removeEventListener('pointerup',up);renderer.domElement.removeEventListener('pointerleave',leave);renderer.domElement.removeEventListener('webglcontextlost',lost);geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());environment?.dispose();renderer.dispose();renderer.domElement.remove();api.current=null};
+   cleanup=()=>{cancelAnimationFrame(frame);observer.disconnect();orbit.removeEventListener('start',cancelTour);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('fabrick:lighting',lightingEvent);window.removeEventListener('fabrick:quake',quakeHandler);window.removeEventListener('fabrick:kitchen',kitchenHandler);orbit.dispose();renderer.domElement.removeEventListener('pointermove',move);renderer.domElement.removeEventListener('pointerdown',down);renderer.domElement.removeEventListener('pointerup',up);renderer.domElement.removeEventListener('pointerleave',leave);renderer.domElement.removeEventListener('webglcontextlost',lost);geometry.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());architecturalAssets?.dispose();environment?.dispose();renderer.dispose();renderer.domElement.remove();api.current=null};
   }).catch(()=>{if(!disposed){setError('Este dispositivo no pudo iniciar WebGL. La planta con medidas sigue disponible.');setPlan(true)}});
   return()=>{disposed=true;cleanup()};
  },[retry]);

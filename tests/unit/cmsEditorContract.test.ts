@@ -108,4 +108,38 @@ describe('Fabrick Studio v2 editor contract', () => {
     expect(homeEditor).toContain('delay: 220');
     expect(homeEditor).toContain('SortableContext');
   });
+  it('connects the contextual editor directly to the real CMS state and mounts all page tools', () => {
+    const universal = readFileSync('src/app/admin/editor/UniversalVisualEditorClient.tsx', 'utf8');
+    const contextual = readFileSync('src/app/admin/editor/VisualCmsContextEditorBridge.tsx', 'utf8');
+    const unified = readFileSync('src/app/admin/editor/UnifiedCmsEditorClient.tsx', 'utf8');
+
+    expect(universal).toContain("cms:visual-editor-direct");
+    expect(universal).toContain("cms:visual-editor-selection-sync");
+    expect(universal).toContain("cms:visual-editor-target");
+    expect(contextual).toContain("sendDirectEditorAction('color'");
+    expect(contextual).toContain("sendDirectEditorAction('background'");
+    expect(contextual).toContain("[data-visual-cms-editor-root=\"1\"]");
+    expect(unified).toContain('<VisualCmsContextEditorBridge />');
+    expect(unified).toContain('<VisualCmsCloudinaryBridge />');
+    expect(unified).toContain('<VisualCmsCloudinaryPolish />');
+  });
+
+  it('keeps the page editor full-screen and exposes real Cloudinary folders plus touch image scaling', () => {
+    const universal = readFileSync('src/app/admin/editor/UniversalVisualEditorClient.tsx', 'utf8');
+    const cloudinary = readFileSync('src/app/admin/editor/VisualCmsCloudinaryBridge.tsx', 'utf8');
+    const cloudinaryApi = readFileSync('src/app/api/admin/cloudinary/route.ts', 'utf8');
+    const visualRuntime = readFileSync('src/components/cms/VisualCmsRuntime.tsx', 'utf8');
+
+    expect(universal).toContain('fixed inset-0 z-[90]');
+    expect(universal).toContain('canvasBounds.width / canvasWidth');
+    expect(universal).toContain('bg-[#050506] p-0');
+    expect(cloudinaryApi).toContain("view === 'folders'");
+    expect(cloudinaryApi).toContain('foldersUrl');
+    expect(cloudinary).toContain('openFolder');
+    expect(cloudinary).toContain('asset.folder');
+    expect(cloudinary).toContain('cms:visual-cloudinary-apply');
+    expect(visualRuntime).toContain('selectedRef.current instanceof HTMLImageElement');
+    expect(visualRuntime).toContain("style.setProperty('transform'");
+  });
+
 });

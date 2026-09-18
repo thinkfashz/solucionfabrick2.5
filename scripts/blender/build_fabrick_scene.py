@@ -183,7 +183,7 @@ def build_architecture(collections):
             obj.select_set(False)
             bpy.data.objects.remove(cutter, do_unlink=True)
 
-            if sill <= .01:
+            if sill <= .01 and opening_w <= 1.30:
                 hinge = bpy.data.objects.new(f"ARCH_DOOR_W{index:02d}_{opening_index:02d}", None)
                 hinge_x = center - opening_w / 2 if axis == "x" else x
                 hinge_z = z if axis == "x" else center - opening_w / 2
@@ -204,8 +204,9 @@ def build_architecture(collections):
                 panel.matrix_parent_inverse.identity()
                 panel.location = (opening_w / 2, 0, head / 2) if axis == "x" else (0, -opening_w / 2, head / 2)
             else:
+                prefix = "ARCH_GLAZED_DOOR" if sill <= .01 else "ARCH_WINDOW"
                 window = cube(
-                    f"ARCH_WINDOW_W{index:02d}_{opening_index:02d}",
+                    f"{prefix}_W{index:02d}_{opening_index:02d}",
                     (ox, oz, sill + opening_h / 2),
                     (opening_w, .032, opening_h) if axis == "x" else (.032, opening_w, opening_h),
                     collections["ARCH"],
@@ -214,6 +215,7 @@ def build_architecture(collections):
                 window["openingWidthM"] = opening_w
                 window["sillM"] = sill
                 window["headM"] = head
+                window["openingType"] = "sliding-glazed" if sill <= .01 else "window"
 
     for room_id, label, x, z, w, d in ROOMS:
         marker = bpy.data.objects.new(f"ARCH_ROOM_{room_id.upper().replace('-', '_')}", None)

@@ -15,16 +15,30 @@ const LAYER_GROUPS=[
  {title:'Techumbre',indices:[8,9]},
 ] as const;
 
-function Plan({dimensions}:{dimensions:boolean}){
+function Plan({dimensions,technical}:{dimensions:boolean;technical:string}){
+  const fill=(kind:string)=>kind==='bathroom'?'#d9ecec':kind==='kitchen'?'#eee3d1':kind==='service'?'#e2e8dd':kind==='bedroom'?'#f3ece1':kind==='social'?'#f6f0e5':'#e9e6de';
+  const technicalWater=technical==='water'||technical==='underfloor';
+  const technicalSanitary=technical==='sanitary'||technical==='underfloor';
   return <svg viewBox="-9 -8.5 18 17" role="img" aria-label="Planta interpretada de la referencia, 14,51 por 13,41 metros">
     <rect x="-7.255" y="-6.705" width={width} height={depth} fill="#b49871" rx=".08"/>
     <rect x="-7.255" y="-4" width={width} height="9.7" fill="#e1d9c8"/>
     <rect x="-2.85" y="-5.7" width="6.355" height="1.7" fill="#e1d9c8"/>
-    {rooms.map(r=><g key={r.name}><rect x={r.x} y={r.z} width={r.w} height={r.d} fill={r.name.includes('Baño')?'#c0d8d8':'#f1eadc'} stroke="#b7ae9d" strokeWidth=".025"/><text x={r.x+r.w/2} y={r.z+r.d/2} textAnchor="middle" fill="#22323b" fontSize=".26">{r.name}<tspan x={r.x+r.w/2} dy=".4">{r.area} m² ref.</tspan></text></g>)}
+    {rooms.map(r=><g key={r.id}><rect x={r.x} y={r.z} width={r.w} height={r.d} fill={fill(r.kind)} stroke="#b7ae9d" strokeWidth=".025"/><text x={r.x+r.w/2} y={r.z+r.d/2} textAnchor="middle" fill="#22323b" fontSize=".24">{r.name}<tspan x={r.x+r.w/2} dy=".36">{r.area} m² ref.</tspan></text></g>)}
     {walls.map((w,i)=><line key={i} x1={w.x-(w.axis==='x'?w.length/2:0)} y1={w.z-(w.axis==='z'?w.length/2:0)} x2={w.x+(w.axis==='x'?w.length/2:0)} y2={w.z+(w.axis==='z'?w.length/2:0)} stroke="#36444b" strokeWidth={w.outside?.15:.09}/>)}
-    {walls.flatMap((w,i)=>(w.open||[]).filter(o=>o[2]===0).map((o,j)=><line key={`${i}-${j}`} x1={w.axis==='x'?o[0]-o[1]/2:w.x} x2={w.axis==='x'?o[0]+o[1]/2:w.x} y1={w.axis==='z'?o[0]-o[1]/2:w.z} y2={w.axis==='z'?o[0]+o[1]/2:w.z} stroke="#e1d9c8" strokeWidth=".19"/>))}
+    {walls.flatMap((w,i)=>(w.open||[]).filter(o=>o[2]===0).map((o,j)=>{
+      const half=o[1]/2;
+      if(w.axis==='x'){
+        const x1=o[0]-half,y=w.z;return <g key={`${i}-d-${j}`} stroke="#8a6b3f" fill="none" strokeWidth=".045"><line x1={x1} y1={y} x2={x1} y2={y-o[1]}/><path d={`M ${x1} ${y-o[1]} A ${o[1]} ${o[1]} 0 0 1 ${o[0]+half} ${y}`}/></g>
+      }
+      const y1=o[0]-half,x=w.x;return <g key={`${i}-d-${j}`} stroke="#8a6b3f" fill="none" strokeWidth=".045"><line x1={x} y1={y1} x2={x+o[1]} y2={y1}/><path d={`M ${x+o[1]} ${y1} A ${o[1]} ${o[1]} 0 0 1 ${x} ${o[0]+half}`}/></g>
+    }))}
+    {walls.flatMap((w,i)=>(w.open||[]).filter(o=>o[2]>0).map((o,j)=><line key={`${i}-w-${j}`} x1={w.axis==='x'?o[0]-o[1]/2:w.x} x2={w.axis==='x'?o[0]+o[1]/2:w.x} y1={w.axis==='z'?o[0]-o[1]/2:w.z} y2={w.axis==='z'?o[0]+o[1]/2:w.z} stroke="#6fa9bc" strokeWidth=".16"/>))}
+    {technical==='electric'&&<g fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M4.95 4.8 L4.95 -3.5 L0 -4.4 M4.95 -1 L0 -1 M4.95 1.9 L-5 -1.9 M4.95 3.9 L-4.8 4.1 M4.95 -.5 L6 -.5" stroke="#e2b900" strokeWidth=".09"/><circle cx="4.95" cy="4.8" r=".18" fill="#07182d" stroke="#e2b900" strokeWidth=".07"/>{[[0,-4.4],[0,-1],[-5,-1.9],[-4.8,4.1],[6,-.5]].map(([x,z],i)=><circle key={i} cx={x} cy={z} r=".11" fill="#ffe600" stroke="#07182d" strokeWidth=".04"/>)}</g>}
+    {technicalWater&&<g fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M6.2 5.3 L6.2 -.7 L5.8 -.7 M6.2 2.5 L2.9 2.5 L2.9 1.7 M2.9 2.5 L2.9 4.2 M2.9 4.2 L-5.8 4.2 L-5.8 1.2 M-1 4.2 L-1 3.8" stroke="#2f8ed0" strokeWidth=".11"/><path d="M5.95 5.1 L5.95 -.55 M5.95 2.7 L2.65 2.7 L2.65 1.9 M2.65 2.7 L2.65 4.35 M2.65 4.35 L-5.55 4.35 L-5.55 1.35" stroke="#d98b67" strokeWidth=".075"/></g>}
+    {technicalSanitary&&<g fill="none" stroke="#4dbbc8" strokeLinecap="round" strokeLinejoin="round"><path d="M-5.8 1.3 L-3.8 3.9 L2.8 4.2 L2.8 1.8 L6.8 5.8 M-1 4.1 L-3.8 3.9 M5.8 -.6 L6.8 5.8" strokeWidth=".16"/><circle cx="6.8" cy="5.8" r=".2" fill="#dff7f8" strokeWidth=".07"/></g>}
     <text x="0" y="-6.2" textAnchor="middle" fontSize=".3" fill="#26373a">TERRAZA · 30,71 m² ref.</text>
-    {dimensions&&<g stroke="#91dded" fill="#dbf7ff" strokeWidth=".035"><path d="M-7.255 7V7.6M7.255 7V7.6M-7.255 7.3H7.255M-8 -6.705H-7.6M-8 6.705H-7.6M-7.8 -6.705V6.705"/><text stroke="none" x="0" y="7.9" textAnchor="middle" fontSize=".4">14,51 m</text><text stroke="none" x="-8.1" y="0" textAnchor="middle" fontSize=".4" transform="rotate(-90 -8.1 0)">13,41 m</text></g>}
+    {technical!=='architecture'&&<g><rect x="-8.65" y="-8.1" width="5.4" height=".72" rx=".12" fill="#07182ddd"/><text x="-8.35" y="-7.65" fill="#f7fafc" fontSize=".24">{technical==='electric'?'PLANO ELÉCTRICO':technical==='water'?'AGUA POTABLE':technical==='sanitary'?'RED SANITARIA':technical==='underfloor'?'REDES BAJO PISO':technical.toUpperCase()}</text></g>}
+    {dimensions&&<g stroke="#2d7f91" fill="#193d46" strokeWidth=".035"><path d="M-7.255 7V7.6M7.255 7V7.6M-7.255 7.3H7.255M-8 -6.705H-7.6M-8 6.705H-7.6M-7.8 -6.705V6.705"/><text stroke="none" x="0" y="7.9" textAnchor="middle" fontSize=".4">14,51 m</text><text stroke="none" x="-8.1" y="0" textAnchor="middle" fontSize=".4" transform="rotate(-90 -8.1 0)">13,41 m</text></g>}
   </svg>;
 }
 export default function ReferenceHouse(){
@@ -461,7 +475,7 @@ export default function ReferenceHouse(){
  const reset=()=>{setExplosion(0);setVisible(layers.map(()=>true));setSelected(null);cameraView('exterior')};
  return <main className="rh">
   <div className="rh-canvas" ref={host}/><div ref={cameraFade} className="rh-camera-fade" aria-hidden="true"/>
-  {(plan||error)&&<div className="rh-plan"><Plan dimensions={dimensions}/></div>}
+  {(plan||error)&&<div className="rh-plan"><Plan dimensions={dimensions} technical={technical}/></div>}
   <header className="rh-top"><a href="/herramientas/metalcon">← Volver</a><strong>FABRICK <span>CASA REFERENCIA</span></strong><button onClick={()=>setMenu(!menu)} aria-expanded={menu}>☰ Menú</button></header>
   <div className="rh-location">{({exterior:'Casa de referencia',inside:'Living',dining:'Comedor',kitchen:'Cocina','primary-bedroom':'Dormitorio principal','primary-bath':'Baño principal',bedroom2:'Dormitorio 2',bath2:'Baño dormitorio 2',guestbath:'Baño de visitas',laundry:'Logia',garden:'Hacia el jardín',aerial:'Vista aérea',rear:'Vista posterior'} as Record<string,string>)[view]||'Casa de referencia'} <span>14,51 × 13,41 m</span></div>
   {menu&&<aside className="rh-menu"><div className="rh-menu-head"><h2>Explorar modelo</h2><button aria-label="Cerrar capas" onClick={()=>setMenu(false)}>✕</button></div>

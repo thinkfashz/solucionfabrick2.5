@@ -282,16 +282,20 @@ def build_kitchen(collections):
             body,
         )
         base["moduleType"] = module_type
-        cube(
+        base["materialId"] = "mueble-cocina-metod"
+        front_obj = cube(
             f"KITCH_FRONT_{idx:02d}",
             (x - base_depth / 2 - .012, z, .12 + base_h / 2),
             (.024, width - .045, base_h - .035),
             collections["KITCH"],
             front,
         )
+        front_obj["materialId"] = "mueble-cocina-metod"
 
-    cube("KITCH_COUNTERTOP_01", (x - .015, -.27, .93), (.66, 2.52, .055), collections["KITCH"], stone)
-    cube("KITCH_APPLIANCE_FRIDGE_01", (6.82, 1.34, 1.15), (.68, .62, 2.06), collections["KITCH"], steel)
+    countertop = cube("KITCH_COUNTERTOP_01", (x - .015, -.27, .945), (.66, 2.48, .055), collections["KITCH"], stone)
+    countertop["materialId"] = "cubierta-mineral-cocina"
+    fridge = cube("KITCH_APPLIANCE_FRIDGE_01", (6.82, 1.34, 1.15), (.68, .62, 2.06), collections["KITCH"], steel)
+    fridge["materialId"] = "acero-inox-cocina"
     cube("KITCH_TALL_PANTRY_01", (6.82, -1.82, 1.15), (.61, .46, 2.06), collections["KITCH"], front)
 
     upper_depth = .37
@@ -300,19 +304,21 @@ def build_kitchen(collections):
     for idx, (width, z, module_type) in enumerate(modules, 1):
         if module_type == "COOKTOP":
             continue
-        cube(
+        upper = cube(
             f"KITCH_WALL_{idx:02d}_{module_type}",
             (7.01, z, upper_y),
             (upper_depth, width - .022, upper_h),
             collections["KITCH"],
             body,
         )
+        upper["materialId"] = "mueble-cocina-metod"
 
         # Door pivot sits on the hinge edge. Mesh is a child so Three.js can rotate the parent.
         hinge = bpy.data.objects.new(f"KITCH_DOOR_{idx:02d}", None)
         hinge.location = viewer_to_blender((6.81, z - width / 2 + .02, upper_y))
         hinge["openAngleDeg"] = 110
         hinge["openSign"] = -1 if idx % 2 == 0 else 1
+        hinge["materialId"] = "herraje-utrusta-110"
         collections["KITCH"].objects.link(hinge)
 
         door = cube(
@@ -325,8 +331,16 @@ def build_kitchen(collections):
         door.parent = hinge
         door.matrix_parent_inverse.identity()
         door.location = (0, -(width - .05) / 2, 0)
+        door["materialId"] = "mueble-cocina-metod"
 
-    cube("KITCH_SINK_01", (6.48, -1.22, .96), (.42, .44, .08), collections["KITCH"], steel)
+    sink = cube("KITCH_SINK_01", (6.48, -1.20, .975), (.42, .44, .08), collections["KITCH"], steel)
+    sink["materialId"] = "acero-inox-cocina"
+    cooktop = cube("KITCH_APPLIANCE_COOKTOP_01", (6.48, .20, .982), (.44, .52, .025), collections["KITCH"], steel)
+    cooktop["materialId"] = "acero-inox-cocina"
+    oven = cube("KITCH_APPLIANCE_OVEN_01", (6.50, .20, .50), (.08, .54, .58), collections["KITCH"], steel)
+    oven["materialId"] = "acero-inox-cocina"
+    faucet = cube("KITCH_FAUCET_01", (6.43, -1.20, 1.20), (.035, .035, .42), collections["KITCH"], steel)
+    faucet["materialId"] = "acero-inox-cocina"
 
 
 def build_structure(collections):

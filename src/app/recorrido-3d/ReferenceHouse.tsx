@@ -72,8 +72,9 @@ export default function ReferenceHouse(){
   };
   const zoomHandler=(event:Event)=>{const detail=(event as CustomEvent<{factor?:number}>).detail||{};api.current?.zoom(detail.factor??1)};
   const menuHandler=()=>setMenu(true);
-  window.addEventListener('fabrick:camera',cameraHandler);window.addEventListener('fabrick:zoom',zoomHandler);window.addEventListener('fabrick:menu',menuHandler);
-  return()=>{window.removeEventListener('fabrick:camera',cameraHandler);window.removeEventListener('fabrick:zoom',zoomHandler);window.removeEventListener('fabrick:menu',menuHandler)};
+  const planHandler=(event:Event)=>{const detail=(event as CustomEvent<{show?:boolean}>).detail||{};setTour(false);api.current?.tour(false);setPlan(detail.show!==false)};
+  window.addEventListener('fabrick:camera',cameraHandler);window.addEventListener('fabrick:zoom',zoomHandler);window.addEventListener('fabrick:menu',menuHandler);window.addEventListener('fabrick:plan',planHandler);
+  return()=>{window.removeEventListener('fabrick:camera',cameraHandler);window.removeEventListener('fabrick:zoom',zoomHandler);window.removeEventListener('fabrick:menu',menuHandler);window.removeEventListener('fabrick:plan',planHandler)};
  },[]);
  useEffect(()=>{
   let disposed=false,cleanup=()=>{};setReady(false);setError('');setLoadStep(0);setTour(false);

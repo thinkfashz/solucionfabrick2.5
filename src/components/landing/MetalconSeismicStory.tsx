@@ -61,12 +61,12 @@ export default function MetalconSeismicStory({ section }: { section?: HomeVisual
             <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7 lg:p-9">
               <p data-cms-field="eyebrow" className="text-[9px] font-extrabold uppercase tracking-[.18em]" style={{ color: accent }}>{textContent(current, 'eyebrow')}</p>
               <h3 data-cms-field="title" className="mt-2 max-w-[13ch] text-3xl font-extrabold leading-[.98] tracking-[-.045em] sm:text-4xl">{textContent(current, 'title')}</h3>
-              <p data-cms-field="paragraph1" className="mt-4 max-w-xl text-xs leading-6 text-white/62 sm:text-sm sm:leading-7">{textContent(current, 'paragraph1')}</p>
+              <p data-cms-field="paragraph1" className="mt-4 max-w-xl text-xs leading-6 text-white/[.62] sm:text-sm sm:leading-7">{textContent(current, 'paragraph1')}</p>
             </div>
           </div>
 
           <div className="flex flex-col px-0 py-2 lg:pl-10">
-            <p data-cms-field="paragraph2" className="border-b border-white/[.1] py-7 text-sm leading-7 text-white/55 sm:text-base">{textContent(current, 'paragraph2')}</p>
+            <p data-cms-field="paragraph2" className="border-b border-white/[.1] py-7 text-sm leading-7 text-white/[.55] sm:text-base">{textContent(current, 'paragraph2')}</p>
 
             <div>
               {steps.map(({ title, text }, index) => (
@@ -74,7 +74,7 @@ export default function MetalconSeismicStory({ section }: { section?: HomeVisual
                   <span data-cms-field={'steps-' + index + '-number'} className="pt-1 text-[9px] font-extrabold text-[#FFE600]/70">{String(index + 1).padStart(2, '0')}</span>
                   <div>
                     <h4 data-cms-field={'steps-' + index + '-title'} className="text-[15px] font-extrabold tracking-[-.02em]">{title}</h4>
-                    <p data-cms-field={'steps-' + index + '-text'} className="mt-1.5 text-[11px] leading-5 text-white/44">{text}</p>
+                    <p data-cms-field={'steps-' + index + '-text'} className="mt-1.5 text-[11px] leading-5 text-white/[.44]">{text}</p>
                   </div>
                 </article>
               ))}
@@ -82,7 +82,7 @@ export default function MetalconSeismicStory({ section }: { section?: HomeVisual
 
             <div className="mt-auto pt-7">
               <p data-cms-field="supportTitle" className="text-[9px] font-extrabold uppercase tracking-[.16em]" style={{ color: accent }}>{textContent(current, 'supportTitle')}</p>
-              <p data-cms-field="supportText" className="mt-2 max-w-2xl text-[11px] leading-6 text-white/45">{textContent(current, 'supportText')}</p>
+              <p data-cms-field="supportText" className="mt-2 max-w-2xl text-[11px] leading-6 text-white/[.45]">{textContent(current, 'supportText')}</p>
               <p className="mt-2 text-[10px] leading-5 text-white/30">El simulador es una herramienta visual y referencial; no sustituye cálculo estructural, ingeniería ni evaluación técnica en terreno.</p>
 
               <div className="mt-6 grid gap-2 sm:grid-cols-2">

@@ -205,13 +205,13 @@ export default function ProductResearchPanel({
         {notice ? <p className="mt-3 rounded-xl bg-[#fff4d5] px-3 py-2 text-[11px] leading-5 text-[#745014]">{notice}</p> : null}
       </section>
 
-      {stats ? <section className="grid grid-cols-2 gap-2 lg:grid-cols-5">{[
+      {stats ? <section><div className="mb-2 flex items-end justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.14em] text-[#9b6a12]">Precio referencial</p><p className="mt-1 text-[10px] text-black/40">Rango observado en las fuentes activas; úsalo como contexto, no como costo automático.</p></div></div><div className="grid grid-cols-2 gap-2 lg:grid-cols-5">{[
         ['Referencias', String(snapshot?.refs.length || 0)],
         ['Mínimo', money(stats.min, stats.currency || 'CLP')],
         ['Mediana', money(stats.median, stats.currency || 'CLP')],
         ['Promedio', money(stats.avg, stats.currency || 'CLP')],
         ['Máximo', money(stats.max, stats.currency || 'CLP')],
-      ].map(([label, value]) => <div key={label} className="rounded-xl border border-black/8 bg-white p-3"><p className="text-[8px] font-black uppercase tracking-[.12em] text-black/30">{label}</p><p className="mt-1 truncate text-sm font-black">{value}</p></div>)}</section> : null}
+      ].map(([label, value]) => <div key={label} className="rounded-xl border border-black/8 bg-white p-3"><p className="text-[8px] font-black uppercase tracking-[.12em] text-black/30">{label}</p><p className="mt-1 truncate text-sm font-black">{value}</p></div>)}</div></section> : null}
 
       {snapshot?.refs.length ? <section>
         <div className="mb-3 flex items-end justify-between gap-3"><div><h3 className="text-sm font-black">Referencias encontradas</h3><p className="mt-1 text-[10px] text-black/40">Seleccionadas {selectedRefs.length}/8 · usa solo referencias compatibles.</p></div><button type="button" onClick={() => setSelected(selectedRefs.length === snapshot.refs.length ? [] : snapshot.refs.slice(0, 8).map(refKey))} className="rounded-xl bg-white px-3 py-2 text-[10px] font-black shadow-sm">{selectedRefs.length ? 'Limpiar selección' : 'Seleccionar primeras'}</button></div>

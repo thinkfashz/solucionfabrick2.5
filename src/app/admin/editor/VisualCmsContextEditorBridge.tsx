@@ -55,9 +55,11 @@ function numberPart(value: string | undefined, fallback: string) {
 }
 
 function findEditorRoot() {
-  const heading = Array.from(document.querySelectorAll<HTMLHeadingElement>('main[data-admin-content] h1'))
+  const stable = document.querySelector<HTMLElement>('[data-visual-cms-editor-root="1"]');
+  if (stable) return stable;
+  const heading = Array.from(document.querySelectorAll<HTMLHeadingElement>('h1'))
     .find((node) => normalizeText(node.textContent).startsWith('Editor universal'));
-  return heading?.closest<HTMLElement>('div.relative.flex') || null;
+  return heading?.closest<HTMLElement>('[data-visual-cms-editor-root]') || heading?.parentElement?.parentElement || null;
 }
 
 function findButton(root: HTMLElement, text: string) {

@@ -261,7 +261,7 @@ export default function UniversalVisualEditorClient() {
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; route?: string; element?: Selection; action?: string; value?: string; selector?: string; x?: number; y?: number } | null;
+      const data = event.data as { type?: string; route?: string; element?: Selection; action?: string; value?: string; selector?: string; x?: number; y?: number; kind?: 'Imagen' | 'Fondo' | 'Icono'; url?: string; publicId?: string; folder?: string } | null;
       if (data?.type === 'cms:preview-ready' || data?.type === 'cms:visual-ready') {
         setIframeReady(true);
         sendPreview(draft);
@@ -278,21 +278,42 @@ export default function UniversalVisualEditorClient() {
         setStatus(`Editando ${selected.tag}: ${selected.label || selected.selector}`);
         if (window.innerWidth < 1280) setMobilePanel('inspector');
       }
-      if (data?.type === 'cms:visual-inline-action' && selection) {
+      if ((data?.type === 'cms:visual-inline-action' || data?.type === 'cms:visual-editor-direct') && selection) {
         const value = typeof data.value === 'string' ? data.value : '';
         switch (data.action) {
-          case 'text': updateSelected({ text: value }); break;
-          case 'color': patchStyle('color', value); break;
-          case 'background': patchStyle('backgroundColor', value); break;
-          case 'font-size': patchStyle('fontSize', value); break;
-          case 'font-weight': patchStyle('fontWeight', value); break;
-          case 'text-align': patchStyle('textAlign', value); break;
-          case 'border-radius': patchStyle('borderRadius', value); break;
+          case 'text': updateSelected({ text: value }); setInspectorTab('content'); break;
+          case 'href': updateSelected({ href: value }); setInspectorTab('content'); break;
+          case 'image-url': updateSelected({ src: value }); setInspectorTab('content'); break;
+          case 'icon-url': updateSelected({ iconUrl: value }); setInspectorTab('content'); break;
+          case 'color': patchStyle('color', value); setInspectorTab('appearance'); break;
+          case 'background': patchStyle('backgroundColor', value); setInspectorTab('appearance'); break;
+          case 'background-image': patchBackgroundImage(value); setInspectorTab('appearance'); break;
+          case 'font-size': patchStyle('fontSize', value); setInspectorTab('appearance'); break;
+          case 'font-weight': patchStyle('fontWeight', value); setInspectorTab('appearance'); break;
+          case 'text-align': patchStyle('textAlign', value); setInspectorTab('appearance'); break;
+          case 'border-radius': patchStyle('borderRadius', value); setInspectorTab('appearance'); break;
+          case 'width': patchStyle('width', value); setInspectorTab('layout'); break;
+          case 'height': patchStyle('height', value); setInspectorTab('layout'); break;
+          case 'transform': patchStyle('transform', value); setInspectorTab('layout'); break;
           case 'image':
           case 'focus-text': setInspectorTab('content'); break;
           case 'advanced': setInspectorTab('appearance'); break;
           default: break;
         }
+        if (window.innerWidth < 1280) setMobilePanel('inspector');
+      }
+      if (data?.type === 'cms:visual-cloudinary-apply' && selection && typeof data.url === 'string') {
+        if (data.kind === 'Imagen') {
+          updateSelected({ src: data.url });
+          setInspectorTab('content');
+        } else if (data.kind === 'Fondo') {
+          patchBackgroundImage(data.url);
+          setInspectorTab('appearance');
+        } else if (data.kind === 'Icono') {
+          updateSelected({ iconUrl: data.url });
+          setInspectorTab('content');
+        }
+        setStatus(`Cloudinary aplicado${data.publicId ? ` · ${data.publicId}` : ''}.`);
         if (window.innerWidth < 1280) setMobilePanel('inspector');
       }
       if (data?.type === 'cms:visual-image-position' && selection?.isImage && typeof data.x === 'number' && typeof data.y === 'number') {
@@ -519,7 +540,7 @@ export default function UniversalVisualEditorClient() {
   }
 
   const previewSrc = `${route}${route.includes('?') ? '&' : '?'}cms=preview&cmsVisual=1`;
-  const fitZoom = canvasBounds.width > 0 ? Math.min(1, Math.max(0.12, (canvasBounds.width - 20) / canvasWidth)) : 1;
+  const fitZoom = canvasBounds.width > 0 ? Math.min(1, Math.max(0.12, canvasBounds.width / canvasWidth)) : 1;
   const effectiveZoom = zoomMode === 'fit' ? fitZoom : Math.min(1.5, Math.max(0.12, canvasZoom));
   const scaledCanvasWidth = Math.max(1, Math.round(canvasWidth * effectiveZoom));
   const canvasHeight = Math.max(720, Math.round((canvasBounds.height || 720) / effectiveZoom));
@@ -619,7 +640,7 @@ export default function UniversalVisualEditorClient() {
 
             {!editingSimilar && selection.textEditable ? <label className="grid gap-1"><span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-[.12em] text-white/38"><Type className="h-3 w-3" /> Texto</span><textarea value={override?.text ?? selection.text ?? ''} onChange={(event) => updateSelected({ text: event.target.value })} rows={3} className="min-h-20 resize-y rounded-lg border border-white/10 bg-black/30 p-2.5 text-[11px] leading-4 text-white outline-none focus:border-[#FFB000]/60" /></label> : null}
             {!editingSimilar && selection.isLink ? <Field label="Destino del enlace" value={override?.href ?? selection.href ?? ''} onChange={(value) => updateSelected({ href: value })} placeholder="/contacto" /> : null}
-            {!editingSimilar && selection.isImage ? <div className="grid gap-2 rounded-xl border border-[#FFB000]/15 bg-[#FFB000]/5 p-2.5"><div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[.12em] text-[#FFB000]"><ImageIcon className="h-3.5 w-3.5" /> Imagen seleccionada</div><Field label="URL / Cloudinary" value={override?.src ?? selection.src ?? ''} onChange={(value) => updateSelected({ src: value })} /><div className="grid grid-cols-2 gap-1.5"><Field label="Texto alternativo" value={override?.alt ?? selection.alt ?? ''} onChange={(value) => updateSelected({ alt: value })} /><SelectField label="Ajuste" value={valueFor('objectFit') || 'cover'} onChange={(value) => patchStyle('objectFit', value)} options={[["cover","Cubrir"],["contain","Contener"],["fill","Estirar"],["none","Original"],["scale-down","Reducir"]]} /></div><Field label="Encuadre" value={valueFor('objectPosition') || '50% 50%'} onChange={(value) => patchStyle('objectPosition', value)} placeholder="50% 50%" /><div className="grid grid-cols-3 gap-1">{[["0% 0%","↖"],["50% 0%","↑"],["100% 0%","↗"],["0% 50%","←"],["50% 50%","•"],["100% 50%","→"],["0% 100%","↙"],["50% 100%","↓"],["100% 100%","↘"]].map(([position, label]) => <button key={position} type="button" onClick={() => patchStyle('objectPosition', position)} className={`h-8 rounded-lg border text-xs ${valueFor('objectPosition') === position ? 'border-[#FFB000] bg-[#FFB000] text-black' : 'border-white/10 bg-black/20 text-white/55'}`} aria-label={`Encuadre ${position}`}>{label}</button>)}</div><p className="text-[8px] leading-4 text-white/42">Arrastra la imagen con mouse o un dedo para mover el encuadre. Ábrela o ciérrala con dos dedos para cambiar su escala sin alterar el espacio del texto.</p></div> : null}
+            {!editingSimilar && selection.isImage ? <div className="grid gap-2 rounded-xl border border-[#FFB000]/15 bg-[#FFB000]/5 p-2.5"><div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[.12em] text-[#FFB000]"><ImageIcon className="h-3.5 w-3.5" /> Imagen seleccionada</div><Field label="URL / Cloudinary" value={override?.src ?? selection.src ?? ''} onChange={(value) => updateSelected({ src: value })} /><div className="grid grid-cols-2 gap-1.5"><Field label="Texto alternativo" value={override?.alt ?? selection.alt ?? ''} onChange={(value) => updateSelected({ alt: value })} /><SelectField label="Ajuste" value={valueFor('objectFit') || 'cover'} onChange={(value) => patchStyle('objectFit', value)} options={[["cover","Cubrir"],["contain","Contener"],["fill","Estirar"],["none","Original"],["scale-down","Reducir"]]} /></div><Field label="Encuadre" value={valueFor('objectPosition') || '50% 50%'} onChange={(value) => patchStyle('objectPosition', value)} placeholder="50% 50%" /><div className="grid grid-cols-3 gap-1">{[["0% 0%","↖"],["50% 0%","↑"],["100% 0%","↗"],["0% 50%","←"],["50% 50%","•"],["100% 50%","→"],["0% 100%","↙"],["50% 100%","↓"],["100% 100%","↘"]].map(([position, label]) => <button key={position} type="button" onClick={() => patchStyle('objectPosition', position)} className={`h-8 rounded-lg border text-xs ${valueFor('objectPosition') === position ? 'border-[#FFB000] bg-[#FFB000] text-black' : 'border-white/10 bg-black/20 text-white/55'}`} aria-label={`Encuadre ${position}`}>{label}</button>)}</div><div className="grid grid-cols-4 gap-1">{[0.75, 1, 1.25, 1.5].map((scale) => <button key={scale} type="button" onClick={() => patchStyle('transform', `scale(${scale})`)} className="h-8 rounded-lg border border-white/10 bg-black/20 text-[8px] font-black text-white/55">{Math.round(scale * 100)}%</button>)}</div><p className="text-[8px] leading-4 text-white/42">Arrastra la imagen con mouse o un dedo para mover el encuadre. Ábrela o ciérrala con dos dedos para cambiar su escala con respuesta inmediata; también puedes usar 75/100/125/150%.</p></div> : null}
             {selection.isIcon ? <div className="grid gap-1.5 rounded-lg border border-[#FFB000]/12 bg-[#FFB000]/5 p-2"><div className="flex items-center gap-1 text-[8px] font-black uppercase text-[#FFB000]"><ImageIcon className="h-3 w-3" /> Icono</div><Field label="Reemplazar por SVG / PNG" value={override?.iconUrl ?? ''} onChange={(value) => updateSelected({ iconUrl: value })} placeholder="https://.../icono.svg" /><Field label="Descripción accesible" value={override?.iconAlt ?? ''} onChange={(value) => updateSelected({ iconAlt: value })} /></div> : null}
 
             <label className="flex items-center justify-between rounded-lg border border-white/8 bg-black/25 px-2.5 py-2"><span><b className="block text-[9px]">Ocultar {editingSimilar ? `${selection.similarCount} similares` : 'elemento'}</b><small className="text-[8px] text-white/30">No elimina lógica ni datos</small></span><input type="checkbox" checked={override?.hidden === true} onChange={(event) => updateSelected({ hidden: event.target.checked })} /></label>
@@ -661,7 +682,7 @@ export default function UniversalVisualEditorClient() {
   );
 
   return (
-    <div data-visual-cms-editor-root="1" className="relative flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden bg-[#08090A] text-white sm:rounded-xl xl:h-[calc(100dvh-6rem)] xl:min-h-[620px]">
+    <div data-visual-cms-editor-root="1" data-current-route={currentRoute} data-selected-selector={selection?.selector || ''} data-selected-cms-id={selection?.cmsId || ''} className="fixed inset-0 z-[90] flex h-[100dvh] w-screen min-h-0 flex-col overflow-hidden bg-[#08090A] text-white">
       <header className="flex min-h-12 shrink-0 items-center gap-2 border-b border-white/8 bg-[#08090A]/96 px-2.5 py-1.5 backdrop-blur-xl sm:min-h-14 sm:px-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#FFB000]" /><p className="text-[8px] font-black uppercase tracking-[.15em] text-[#FFB000]">Visual CMS</p></div>
@@ -696,10 +717,10 @@ export default function UniversalVisualEditorClient() {
             <button type="button" onClick={() => setMobilePanel('inspector')} className={`hidden h-9 items-center gap-1.5 rounded-xl border px-3 text-[8px] font-black sm:inline-flex xl:hidden ${selection ? 'border-[#FFB000]/35 bg-[#FFB000]/8 text-[#FFB000]' : 'border-white/10 text-white/45'}`}><SlidersHorizontal className="h-3.5 w-3.5" /> Inspector</button>
           </div>
 
-          <div ref={canvasHostRef} className="min-h-0 flex-1 overflow-auto bg-[radial-gradient(circle_at_top,rgba(255,176,0,.08),transparent_34%),#050506] p-2 sm:p-3">
+          <div ref={canvasHostRef} className="min-h-0 flex-1 overflow-auto bg-[#050506] p-0">
             <div className="mx-auto min-h-full" style={{ width: `${scaledCanvasWidth}px` }}>
               <div
-                className="origin-top-left overflow-hidden bg-white shadow-2xl ring-1 ring-white/10"
+                className="origin-top-left overflow-hidden bg-white"
                 style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, transform: `scale(${effectiveZoom})`, transformOrigin: 'top left' }}
               >
                 <iframe ref={iframeRef} key={`${route}-${canvasWidth}`} src={previewSrc} title={`Visual CMS ${route}`} className="h-full w-full border-0 bg-white" onLoad={() => setIframeReady(true)} />

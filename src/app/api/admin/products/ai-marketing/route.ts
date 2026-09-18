@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import { getOpenRouterCredentials } from '@/lib/openrouter';
+import { getAdminTenantId } from '@/lib/adminApi';
+import { resolveTenantProviderConfig } from '@/lib/tenantAiConfig';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -28,6 +30,9 @@ type RequestBody = {
   imageUrls?: string[];
   goal?: string;
   location?: string;
+  provider?: 'openrouter' | 'ollama';
+  model?: string;
+  guide?: string;
 };
 
 type ProductOption = {
@@ -165,10 +170,11 @@ export async function POST(request: NextRequest) {
 
   const imageUrls = Array.from(new Set((body.imageUrls || []).map((url) => String(url).trim()).filter((url) => /^https:\/\//i.test(url)))).slice(0, 8);
   const fallbacks = [fallbackOption(product, 0, imageUrls.length), fallbackOption(product, 1, imageUrls.length)];
-  const credentials = await getOpenRouterCredentials();
-  if (!credentials) return NextResponse.json({ ok: true, options: fallbacks, imageObservations: [], warnings: ['OpenRouter no está configurado. Se generaron dos propuestas locales editables.'], source: 'fallback' });
+  const guide = String(body.guide || '').trim().slice(0, 3000);
+  const provider = body.provider === 'ollama' ? 'ollama' : 'openrouter';
+  const requestedModel = String(body.model || '').trim().slice(0, 180);
 
-  const prompt = `Actúa como estratega de ecommerce, SEO técnico, copywriter de respuesta directa y analista visual para una tienda chilena de hogar y construcción.
+  const prompt = `Actúa como estratega de ecommerce, SEO técnico, copywriter de respuesta directa y analista de producto para una tienda chilena de hogar y construcción.
 Analiza el producto y las imágenes visibles. Devuelve SOLO JSON válido con exactamente dos opciones:
 {"options":[{"name":"...","tagline":"...","shortDescription":"...","longDescription":"...","niche":"...","targetAudience":"...","primaryKeyword":"...","secondaryKeywords":["..."],"longTailKeywords":["..."],"commercialKeywords":["..."],"hashtags":["..."],"seoTitle":"...","seoDescription":"...","slug":"...","imageAltTexts":["..."],"imageCaptions":["..."],"adPrimaryText":"...","adHeadline":"...","adDescription":"...","callToAction":"...","visualPrompts":["..."],"searchPotential":70,"salesPotential":70,"keywordRationale":"..."}],"imageObservations":["..."],"warnings":["..."]}
 Contexto del producto:
@@ -180,6 +186,7 @@ Contexto del producto:
 - Stock: ${product.stock || 'no indicado'}
 - Objetivo: ${body.goal || 'mejorar ficha, SEO y promoción'}
 - Mercado: ${body.location || 'Chile'}
+${guide ? `- Guía editorial obligatoria del administrador: ${guide}` : ''}
 Reglas:
 - Opción 1 debe preservar el nombre y mejorar precisión, confianza y búsqueda transaccional.
 - Opción 2 puede reescribir el nombre con enfoque comercial, sin cambiar la identidad real del producto.
@@ -194,7 +201,47 @@ Reglas:
 - El copy publicitario debe persuadir con claridad, prueba verificable y reducción de fricción, sin escasez falsa ni promesas engañosas.`;
 
   let lastError = '';
-  for (const model of MODELS) {
+
+  if (provider === 'ollama') {
+    try {
+      const tenantId = await getAdminTenantId(request);
+      const config = await resolveTenantProviderConfig('ollama', requestedModel, tenantId);
+      if (!config) {
+        return NextResponse.json({ ok: true, options: fallbacks, imageObservations: [], warnings: ['Ollama no está configurado. Se generaron dos propuestas locales editables.'], source: 'fallback', provider: 'ollama' });
+      }
+      const response = await fetch(`${(config.baseUrl || 'https://ollama.com/v1').replace(/\/+$/, '')}/chat/completions`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: requestedModel || config.modelo, temperature: 0.35, max_tokens: 3200, messages: [{ role: 'user', content: prompt }] }),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(90_000),
+      });
+      const json = await response.json().catch(() => ({})) as { choices?: Array<{ message?: { content?: string } }>; error?: { message?: string } };
+      if (!response.ok) throw new Error(json.error?.message || `Ollama HTTP ${response.status}`);
+      const text = json.choices?.[0]?.message?.content || '';
+      if (!text) throw new Error('Ollama respondió sin contenido.');
+      const parsed = cleanJson<AiResponse>(text);
+      const options = [0, 1].map((index) => normalize(parsed.options?.[index] || {}, fallbacks[index], imageUrls.length));
+      return NextResponse.json({
+        ok: true,
+        options,
+        imageObservations: [],
+        warnings: [...list(parsed.warnings, [], 8), ...(imageUrls.length ? ['Ollama se usó en modo texto; las imágenes no se enviaron al modelo.'] : [])],
+        source: 'ai',
+        provider: 'ollama',
+        model: requestedModel || config.modelo,
+      });
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : 'Error desconocido';
+      return NextResponse.json({ ok: true, options: fallbacks, imageObservations: [], warnings: [`Ollama no respondió. Se generaron propuestas locales: ${lastError}`], source: 'fallback', provider: 'ollama' });
+    }
+  }
+
+  const credentials = await getOpenRouterCredentials();
+  if (!credentials) return NextResponse.json({ ok: true, options: fallbacks, imageObservations: [], warnings: ['OpenRouter no está configurado. Se generaron dos propuestas locales editables.'], source: 'fallback' });
+
+  const models = Array.from(new Set([requestedModel, ...MODELS].filter(Boolean)));
+  for (const model of models) {
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -207,11 +254,11 @@ Reglas:
       const text = json.choices?.[0]?.message?.content || '';
       const parsed = cleanJson<AiResponse>(text);
       const options = [0, 1].map((index) => normalize(parsed.options?.[index] || {}, fallbacks[index], imageUrls.length));
-      return NextResponse.json({ ok: true, options, imageObservations: list(parsed.imageObservations, [], 12), warnings: list(parsed.warnings, [], 8), source: 'ai', model });
+      return NextResponse.json({ ok: true, options, imageObservations: list(parsed.imageObservations, [], 12), warnings: list(parsed.warnings, [], 8), source: 'ai', provider: 'openrouter', model });
     } catch (error) {
       lastError = error instanceof Error ? error.message : 'Error desconocido';
     }
   }
 
-  return NextResponse.json({ ok: true, options: fallbacks, imageObservations: [], warnings: [`La IA visual no respondió. Se generaron propuestas locales: ${lastError}`], source: 'fallback' });
+  return NextResponse.json({ ok: true, options: fallbacks, imageObservations: [], warnings: [`La IA no respondió. Se generaron propuestas locales: ${lastError}`], source: 'fallback', provider: 'openrouter' });
 }

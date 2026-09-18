@@ -53,9 +53,10 @@ export function materialTexture(T:typeof Three,kind:TextureKind,color:string){
  const normal=new T.CanvasTexture(normalCanvas);normal.wrapS=normal.wrapT=T.RepeatWrapping;normal.colorSpace=T.NoColorSpace;normal.anisotropy=lowDetail?2:8;
  const remote=POLYHAVEN[kind];
  if(remote){
-  asyncOverlay(canvas,remote.diffuse,()=>{map.needsUpdate=true},color);
+  const web=(url:string)=>lowDetail?url.replace('w_768','w_512'):url;
+  asyncOverlay(canvas,web(remote.diffuse),()=>{map.needsUpdate=true},color);
   // Normal GL is visually more stable than height-as-bump, especially on oblique mobile views.
-  asyncOverlay(normalCanvas,remote.normal,()=>{normal.needsUpdate=true});
+  asyncOverlay(normalCanvas,web(remote.normal),()=>{normal.needsUpdate=true});
   if(!lowDetail){
    asyncOverlay(bumpCanvas,remote.displacement,()=>{bump.needsUpdate=true});
    asyncOverlay(roughCanvas,remote.roughness,()=>{roughness.needsUpdate=true});

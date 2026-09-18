@@ -112,6 +112,7 @@ const AREA: Record<string, AreaInfo> = {
       {material:"Melamina / madera",place:"Muebles bajos y altos",note:"Frentes cálidos y modulares."},
       {material:"Piedra / cubierta mineral",place:"Mesón",note:"Plano de preparación de acabado claro."},
       {material:"Acero inoxidable",place:"Lavaplatos / grifería",note:"Superficie resistente y fácil de limpiar."},
+      {material:"Herraje amortiguado 110°",place:"Puertas superiores",note:"Bisagra ajustable con cierre suave; apertura animada en el visor."},
       {id:"volcanita-st",material:"Yeso cartón",place:"Muros",note:"Fondo blanco neutro para aumentar luminosidad."}
     ]
   },
@@ -239,6 +240,8 @@ export default function ExperienceShell() {
   const [areaName, setAreaName] = useState("Casa de referencia");
   const [cameraIndex, setCameraIndex] = useState(0);
   const [cameraSheet, setCameraSheet] = useState(false);
+  const [cameraDragY, setCameraDragY] = useState(0);
+  const cameraDragStart = useRef(0);
   const [dismissedDamage, setDismissedDamage] = useState<DamageId[]>([]);
   const [selectedDamage, setSelectedDamage] = useState<DamageId | null>(null);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
@@ -409,7 +412,7 @@ export default function ExperienceShell() {
 
   const goCamera = (index: number) => {
     const next = (index + CAMERAS.length) % CAMERAS.length;
-    setCameraIndex(next); setCameraSheet(false); setInfoOpen(false); setSelectedMaterialId(null);
+    setCameraIndex(next); setCameraSheet(false); setCameraDragY(0); setInfoOpen(false); setSelectedMaterialId(null);
     const audio=audioRef.current;if(audio&&soundOn){const tone=audio.ctx.createOscillator(),gain=audio.ctx.createGain();tone.type="sine";tone.frequency.value=520;gain.gain.setValueAtTime(.0001,audio.ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.012,audio.ctx.currentTime+.01);gain.gain.exponentialRampToValueAtTime(.0001,audio.ctx.currentTime+.065);tone.connect(gain).connect(audio.ctx.destination);tone.start();tone.stop(audio.ctx.currentTime+.075);}
     window.dispatchEvent(new CustomEvent("fabrick:camera",{detail:{view:CAMERAS[next][2]}}));
   };
@@ -524,8 +527,13 @@ export default function ExperienceShell() {
       </nav>
 
       {cameraSheet ? <div className="sf-sheet-backdrop" onPointerDown={(e)=>{if(e.target===e.currentTarget)setCameraSheet(false)}}>
-        <aside className="sf-camera-sheet" aria-label="Elegir cámara">
-          <div className="sf-sheet-handle"/><header><div><small>VISTAS</small><strong>Elige un ambiente</strong></div><button onClick={()=>setCameraSheet(false)}>×</button></header>
+        <aside className="sf-camera-sheet" aria-label="Elegir cámara" style={{transform:`translateY(${cameraDragY}px)`}}>
+          <div className="sf-sheet-handle"
+            onPointerDown={(e)=>{cameraDragStart.current=e.clientY;e.currentTarget.setPointerCapture?.(e.pointerId)}}
+            onPointerMove={(e)=>{if(e.currentTarget.hasPointerCapture?.(e.pointerId))setCameraDragY(Math.max(0,e.clientY-cameraDragStart.current))}}
+            onPointerUp={(e)=>{try{e.currentTarget.releasePointerCapture?.(e.pointerId)}catch{} if(cameraDragY>72){setCameraSheet(false)} setCameraDragY(0)}}
+            onPointerCancel={()=>setCameraDragY(0)}
+          /><header><div><small>VISTAS</small><strong>Elige un ambiente</strong></div><button onClick={()=>setCameraSheet(false)}>×</button></header>
           {CAMERA_GROUPS.map(group=><section key={group.title}><div><strong>{group.title}</strong><small>{group.note}</small></div><nav>{group.ids.map(index=><button key={CAMERAS[index][0]} aria-pressed={cameraIndex===index} onClick={()=>goCamera(index)}><span>{String(index+1).padStart(2,"0")}</span><b>{CAMERAS[index][0]}</b></button>)}</nav></section>)}
           {areaName==="Cocina" ? <button className="sf-kitchen-motion" onClick={()=>window.dispatchEvent(new CustomEvent("fabrick:kitchen",{detail:{toggle:true}}))}>Abrir / cerrar muebles superiores <span>110°</span></button> : null}
         </aside>

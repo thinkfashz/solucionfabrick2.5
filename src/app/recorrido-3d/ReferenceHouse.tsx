@@ -38,7 +38,7 @@ export default function ReferenceHouse(){
    if(mode==='architecture')setVisible(layers.map(()=>true));
    else if(mode==='structure')setVisible(layers.map((_,i)=>[0,2,3,8,9].includes(i)));
    else if(mode==='electric')setVisible(layers.map((_,i)=>[0,2,6,7].includes(i)));
-   else if(mode==='water'||mode==='sanitary'||mode==='underfloor')setVisible(layers.map((_,i)=>[0,1,2].includes(i)));
+   else if(mode==='water'||mode==='sanitary')setVisible(layers.map((_,i)=>[2,6].includes(i)));else if(mode==='underfloor')setVisible(layers.map((_,i)=>i===2));
    else if(mode==='stage'){const stage=Math.max(1,Math.min(12,detail.stage||12));const count=Math.ceil(stage/12*stageOrder.length);setVisible(layers.map((_,i)=>stageOrder.slice(0,count).includes(i)));}
   };
   window.addEventListener('fabrick:technical',handler);return()=>window.removeEventListener('fabrick:technical',handler);
@@ -250,7 +250,7 @@ export default function ReferenceHouse(){
    choose('exterior',true);size();let last=0,lastQuality='',lastShadowState='';
    setLoadStep(3);
    const render=(now:number)=>{if(disposed)return;frame=requestAnimationFrame(render);if(now-last<16)return;const dt=Math.min((now-last)/1000,.05);last=now;
-    if(transition){const tr=transition;tr.time+=dt;const duration=tr.portal?.85:1.35;const t=Math.min(tr.time/duration,1),ease=t*t*(3-2*t);
+    if(transition){const tr=transition;tr.time+=dt;const duration=tr.portal?.62:.82;const t=Math.min(tr.time/duration,1),ease=t*t*(3-2*t);
      if(tr.portal){if(cameraFade.current)cameraFade.current.style.opacity=String(Math.sin(Math.PI*t)*.98);if(t>=.5&&!tr.switched){camera.position.copy(tr.toP);orbit.target.copy(tr.toT);camera.fov=tr.toFov;tr.switched=true;}}
      else {const start=new THREE.Spherical().setFromVector3(tr.fromP.clone().sub(tr.fromT)),end=new THREE.Spherical().setFromVector3(tr.toP.clone().sub(tr.toT));let angle=end.theta-start.theta;angle=Math.atan2(Math.sin(angle),Math.cos(angle));const pos=new THREE.Spherical(THREE.MathUtils.lerp(start.radius,end.radius,ease),THREE.MathUtils.lerp(start.phi,end.phi,ease),start.theta+angle*ease);orbit.target.lerpVectors(tr.fromT,tr.toT,ease);camera.position.setFromSpherical(pos).add(orbit.target);camera.fov=THREE.MathUtils.lerp(tr.fromFov,tr.toFov,ease);}
      camera.updateProjectionMatrix();if(t===1){transition=null;orbit.enabled=true;if(cameraFade.current)cameraFade.current.style.opacity='0';}

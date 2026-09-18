@@ -267,6 +267,7 @@ export default function ExperienceShell() {
   const [selectedDamage, setSelectedDamage] = useState<DamageId | null>(null);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
   const [technicalMode, setTechnicalMode] = useState<TechnicalMode>("architecture");
+  const [technicalPlan2d, setTechnicalPlan2d] = useState(false);
   const [constructionStage, setConstructionStage] = useState(12);
   const [magnitude, setMagnitude] = useState(7.2);
   const [depthKm, setDepthKm] = useState(28);
@@ -360,6 +361,10 @@ export default function ExperienceShell() {
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("fabrick:technical", { detail: { mode: technicalMode, stage: constructionStage } }));
   }, [technicalMode, constructionStage]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("fabrick:plan", { detail: { show: technicalPlan2d } }));
+  }, [technicalPlan2d]);
 
   useEffect(() => {
     const handler=(event:Event)=>{
@@ -697,13 +702,17 @@ export default function ExperienceShell() {
             <h2>Planos y etapas</h2>
             <p>Alterna arquitectura, estructura, eléctrico, agua y sanitario. En Agua/Sanitario se reduce la envolvente para leer los recorridos bajo la vivienda; Eléctrico muestra tablero, troncal y derivaciones conceptuales.</p>
             <div className="sf-switches">
-              <button aria-pressed={technicalMode==="architecture"} onClick={()=>setTechnicalMode("architecture")}>Arquitectura <b>ARQ</b></button>
-              <button aria-pressed={technicalMode==="structure"} onClick={()=>setTechnicalMode("structure")}>Estructura <b>EST</b></button>
+              <button aria-pressed={technicalMode==="architecture"} onClick={()=>{setTechnicalMode("architecture");setTechnicalPlan2d(false)}}>Arquitectura <b>ARQ</b></button>
+              <button aria-pressed={technicalMode==="structure"} onClick={()=>{setTechnicalMode("structure");setTechnicalPlan2d(false)}}>Estructura <b>EST</b></button>
               <button aria-pressed={technicalMode==="electric"} onClick={()=>setTechnicalMode("electric")}>Plano eléctrico <b>ELEC</b></button>
               <button aria-pressed={technicalMode==="water"} onClick={()=>setTechnicalMode("water")}>Agua potable <b>AGUA</b></button>
               <button aria-pressed={technicalMode==="sanitary"} onClick={()=>setTechnicalMode("sanitary")}>Sanitario <b>SAN</b></button>
             </div>
-            <label>Progreso constructivo <b>{constructionStage}/12</b><input type="range" min="1" max="12" value={constructionStage} onChange={(e)=>{setTechnicalMode("stage");setConstructionStage(Number(e.target.value));}}/></label>
+            <div className="sf-plan-toggle" role="group" aria-label="Vista del plano técnico">
+              <button aria-pressed={!technicalPlan2d} onClick={()=>setTechnicalPlan2d(false)}>3D técnico</button>
+              <button aria-pressed={technicalPlan2d} onClick={()=>setTechnicalPlan2d(true)}>Planta 2D</button>
+            </div>
+            <label>Progreso constructivo <b>{constructionStage}/12</b><input type="range" min="1" max="12" value={constructionStage} onChange={(e)=>{setTechnicalPlan2d(false);setTechnicalMode("stage");setConstructionStage(Number(e.target.value));}}/></label>
             <p>Los recorridos son esquemáticos. El proyecto eléctrico, hidráulico y sanitario definitivo debe dimensionarse con normativa, cálculo y profesionales competentes.</p>
           </section> : null}
 

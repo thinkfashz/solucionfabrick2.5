@@ -27,6 +27,8 @@ import {
   X,
 } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
+import ProductResearchPanel, { type ProductPublicFeature } from '@/components/admin/products/ProductResearchPanel';
+import ProductPreviewModal from '@/components/admin/products/ProductPreviewModal';
 
 export type ProductStudioRecord = {
   id: string;
@@ -56,7 +58,7 @@ export type ProductStudioRecord = {
 };
 
 type GalleryImage = { url: string; public_id?: string; source?: string };
-type Section = 'ficha' | 'precio' | 'imagenes' | 'seo';
+type Section = 'ficha' | 'investigar' | 'precio' | 'contenido' | 'imagenes' | 'seo' | 'publicacion';
 
 type CommerceAnalysis = {
   title: string;
@@ -216,6 +218,29 @@ function initialForm(product?: ProductStudioRecord): FormState {
   };
 }
 
+function initialPublicFeatures(product?: ProductStudioRecord): ProductPublicFeature[] {
+  const specs = record(product?.specifications);
+  const raw = specs.public_features;
+  if (Array.isArray(raw)) {
+    return raw.map((item) => {
+      const row = record(item);
+      return { label: String(row.label || '').trim(), value: String(row.value || '').trim() };
+    }).filter((item) => item.label && item.value).slice(0, 30);
+  }
+  if (raw && typeof raw === 'object') {
+    return Object.entries(raw as Record<string, unknown>)
+      .map(([label, value]) => ({ label: label.trim(), value: String(value ?? '').trim() }))
+      .filter((item) => item.label && item.value)
+      .slice(0, 30);
+  }
+  return [];
+}
+
+function initialRelatedIds(product?: ProductStudioRecord) {
+  const specs = record(product?.specifications);
+  return Array.isArray(specs.related_product_ids) ? specs.related_product_ids.map(String).filter(Boolean).slice(0, 12) : [];
+}
+
 function initialSeo(product?: ProductStudioRecord): SeoState {
   const specs = record(product?.specifications);
   const seo = record(specs.seo);
@@ -275,6 +300,11 @@ export default function ProductStudioEditor({
   const [aiModel, setAiModel] = useState(() => String(initialSpecs.ai_model || ''));
   const [aiModels, setAiModels] = useState<Record<AiProviderChoice, AiModelOption[]>>({ openrouter: [], ollama: [] });
   const [autoFillFromGuide, setAutoFillFromGuide] = useState(() => initialSpecs.ai_autofill_from_guide === true);
+  const [publicFeatures, setPublicFeatures] = useState<ProductPublicFeature[]>(() => initialPublicFeatures(product));
+  const [relatedIds, setRelatedIds] = useState<string[]>(() => initialRelatedIds(product));
+  const [catalogProducts, setCatalogProducts] = useState<ProductStudioRecord[]>([]);
+  const [researchMemory, setResearchMemory] = useState<Record<string, unknown>>(() => record(initialSpecs.product_research));
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [productReviews, setProductReviews] = useState<AdminProductReview[]>([]);
   const [reviewBusyId, setReviewBusyId] = useState('');
   const [busy, setBusy] = useState<'save' | 'upload' | 'ai' | ''>('');
@@ -297,6 +327,10 @@ export default function ProductStudioEditor({
     setAiProvider(nextSpecs.ai_provider === 'ollama' ? 'ollama' : 'openrouter');
     setAiModel(String(nextSpecs.ai_model || ''));
     setAutoFillFromGuide(nextSpecs.ai_autofill_from_guide === true);
+    setPublicFeatures(initialPublicFeatures(product));
+    setRelatedIds(initialRelatedIds(product));
+    setResearchMemory(record(nextSpecs.product_research));
+    setPreviewOpen(false);
     setProductReviews([]);
     setSection('ficha');
     setNotice(null);
@@ -329,6 +363,17 @@ export default function ProductStudioEditor({
     const available = aiModels[aiProvider];
     if (available.length && !available.some((model) => model.id === aiModel)) setAiModel(available[0].id);
   }, [aiProvider, aiModels, aiModel]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/admin/products', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((json: { products?: ProductStudioRecord[] }) => {
+        if (!cancelled) setCatalogProducts(Array.isArray(json.products) ? json.products : []);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [product?.id]);
 
   useEffect(() => {
     if (mode !== 'edit' || !product?.id) {

@@ -704,9 +704,9 @@ export default function ExperienceShell() {
             <div className="sf-switches">
               <button aria-pressed={technicalMode==="architecture"} onClick={()=>{setTechnicalMode("architecture");setTechnicalPlan2d(false)}}>Arquitectura <b>ARQ</b></button>
               <button aria-pressed={technicalMode==="structure"} onClick={()=>{setTechnicalMode("structure");setTechnicalPlan2d(false)}}>Estructura <b>EST</b></button>
-              <button aria-pressed={technicalMode==="electric"} onClick={()=>setTechnicalMode("electric")}>Plano eléctrico <b>ELEC</b></button>
-              <button aria-pressed={technicalMode==="water"} onClick={()=>setTechnicalMode("water")}>Agua potable <b>AGUA</b></button>
-              <button aria-pressed={technicalMode==="sanitary"} onClick={()=>setTechnicalMode("sanitary")}>Sanitario <b>SAN</b></button>
+              <button aria-pressed={technicalMode==="electric"} onClick={()=>{setTechnicalMode("electric");setTechnicalPlan2d(true)}}>Plano eléctrico <b>ELEC</b></button>
+              <button aria-pressed={technicalMode==="water"} onClick={()=>{setTechnicalMode("water");setTechnicalPlan2d(true)}}>Agua potable <b>AGUA</b></button>
+              <button aria-pressed={technicalMode==="sanitary"} onClick={()=>{setTechnicalMode("sanitary");setTechnicalPlan2d(true)}}>Sanitario <b>SAN</b></button>
             </div>
             <div className="sf-plan-toggle" role="group" aria-label="Vista del plano técnico">
               <button aria-pressed={!technicalPlan2d} onClick={()=>setTechnicalPlan2d(false)}>3D técnico</button>

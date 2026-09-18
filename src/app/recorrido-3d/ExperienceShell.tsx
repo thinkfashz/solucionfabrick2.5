@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import ReferenceHouse from "./ReferenceHouse";
 import { materialById } from "./material-catalog";
+import { Activity, ChevronLeft, ChevronRight, Info, Menu, Moon, Sun, X } from "lucide-react";
 import "./experience-shell.css";
 
 type LightMode = "day" | "sunset" | "night";
@@ -493,17 +494,17 @@ export default function ExperienceShell() {
       </div>
 
       <nav className="sf-quick" aria-label="Controles rápidos">
-        <button onClick={() => window.dispatchEvent(new Event("fabrick:menu"))}><span>☰</span><small>Modelo</small></button>
-        <button onClick={() => {setTab("quake");setOpen(true)}}><span>⌁</span><small>Sismo</small></button>
-        <button onClick={cycleLight}><span>{light === "night" ? "☾" : "☀"}</span><small>Luz</small></button>
-        <button aria-pressed={infoOpen} onClick={() => setInfoOpen((v) => !v)}><span>ⓘ</span><small>Info</small></button>
+        <button onClick={() => window.dispatchEvent(new Event("fabrick:menu"))}><span><Menu size={16} strokeWidth={1.8}/></span><small>Modelo</small></button>
+        <button onClick={() => {setTab("quake");setOpen(true)}}><span><Activity size={16} strokeWidth={1.8}/></span><small>Sismo</small></button>
+        <button onClick={cycleLight}><span>{light === "night" ? <Moon size={16} strokeWidth={1.8}/> : <Sun size={16} strokeWidth={1.8}/>}</span><small>Luz</small></button>
+        <button aria-pressed={infoOpen} onClick={() => setInfoOpen((v) => !v)}><span><Info size={16} strokeWidth={1.8}/></span><small>Info</small></button>
       </nav>
 
       {playing ? <div className="sf-quake-hud" aria-live="polite"><span>{phase==="hypocenter"?"01":phase==="propagation"?"02":phase==="surface"?"03":"04"}/04</span><div><strong>{phase==="hypocenter"?"Hipocentro":phase==="propagation"?"Propagación":phase==="surface"?"Respuesta de la vivienda":"Inspección"}</strong><small>{phase==="surface"?"Movimiento "+motion+" · "+directionDeg+"°":phase==="propagation"?"Onda ascendiendo hacia superficie":phase==="hypocenter"?depthKm+" km de profundidad":"Evaluando zonas afectadas"}</small></div><i style={{"--sf-quake-progress":progress} as CSSProperties}/></div> : null}
 
       {infoOpen ? (
         <aside className="sf-area-card">
-          <header><div><small>MATERIALES DE ESTA ÁREA</small><strong>{area.title}</strong></div><button onClick={() => setInfoOpen(false)}>×</button></header>
+          <header><div><small>MATERIALES DE ESTA ÁREA</small><strong>{area.title}</strong></div><button aria-label="Cerrar información" onClick={() => setInfoOpen(false)}><X size={14} strokeWidth={1.8}/></button></header>
           <label className="sf-area-select"><span>Ambiente</span><select value={areaName} onChange={(event) => { const next = CAMERAS.findIndex(([,location]) => location === event.target.value); if (next >= 0) goCamera(next); }}>{CAMERAS.map(([label,location]) => <option key={location} value={location}>{label}</option>)}</select></label>
           <div className="sf-material-list">
             {area.materials.map((item, index) => <button type="button" className="sf-material-row" key={item.material} disabled={!item.id} onClick={() => item.id && setSelectedMaterialId(item.id)}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{item.material}</strong><small>{item.place}</small><p>{item.note}</p></div><i>{item.id ? "›" : ""}</i></button>)}
@@ -513,7 +514,7 @@ export default function ExperienceShell() {
       ) : null}
 
       {selectedMaterial ? <aside className="sf-material-detail" aria-live="polite">
-        <header><div><small>FICHA DE MATERIAL</small><strong>{selectedMaterial.name}</strong></div><button onClick={() => setSelectedMaterialId(null)}>×</button></header>
+        <header><div><small>FICHA DE MATERIAL</small><strong>{selectedMaterial.name}</strong></div><button aria-label="Cerrar material" onClick={() => setSelectedMaterialId(null)}><X size={14} strokeWidth={1.8}/></button></header>
         <dl>
           <div><dt>Lugar</dt><dd>{selectedMaterial.locations.join(" · ")}</dd></div>
           {selectedMaterial.dimensions ? <div><dt>Dimensiones</dt><dd>{selectedMaterial.dimensions}</dd></div> : null}
@@ -540,9 +541,9 @@ export default function ExperienceShell() {
       </div>
 
       <nav className="sf-camera-dock" aria-label="Cámaras del recorrido">
-        <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex - 1)} aria-label="Vista anterior">‹</button>
+        <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex - 1)} aria-label="Vista anterior"><ChevronLeft size={18} strokeWidth={1.8}/></button>
         <button className="sf-camera-current" onClick={() => setCameraSheet(true)}><span>{cameraIndex + 1}/{CAMERAS.length}</span><strong>{CAMERAS[cameraIndex][0]}</strong><small>Elegir ambiente</small></button>
-        <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex + 1)} aria-label="Vista siguiente">›</button>
+        <button className="sf-dock-arrow" onClick={() => goCamera(cameraIndex + 1)} aria-label="Vista siguiente"><ChevronRight size={18} strokeWidth={1.8}/></button>
       </nav>
 
       {cameraSheet ? <div className="sf-sheet-backdrop" onPointerDown={(e)=>{if(e.target===e.currentTarget)setCameraSheet(false)}}>
@@ -552,7 +553,7 @@ export default function ExperienceShell() {
             onPointerMove={(e)=>{if(!e.currentTarget.hasPointerCapture?.(e.pointerId)||!cameraSheetRef.current)return;cameraDragY.current=Math.max(0,e.clientY-cameraDragStart.current);const resistance=cameraDragY.current>180?180+(cameraDragY.current-180)*.22:cameraDragY.current;cameraSheetRef.current.style.transform=`translateY(${resistance}px)`;cameraSheetRef.current.style.opacity=String(Math.max(.55,1-resistance/520))}}
             onPointerUp={(e)=>{try{e.currentTarget.releasePointerCapture?.(e.pointerId)}catch{}const node=cameraSheetRef.current;if(cameraDragY.current>72){if(node&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches){node.animate([{transform:node.style.transform||"translateY(0)",opacity:node.style.opacity||"1"},{transform:"translateY(100%)",opacity:.25}],{duration:180,easing:"cubic-bezier(0.23, 1, 0.32, 1)",fill:"forwards"}).finished.then(()=>setCameraSheet(false)).catch(()=>setCameraSheet(false))}else setCameraSheet(false)}else if(node){node.animate([{transform:node.style.transform||"translateY(0)"},{transform:"translateY(0)"}],{duration:180,easing:"cubic-bezier(0.23, 1, 0.32, 1)"});node.style.transform="";node.style.opacity=""}cameraDragY.current=0}}
             onPointerCancel={()=>{const node=cameraSheetRef.current;if(node){node.style.transform="";node.style.opacity=""}cameraDragY.current=0}}
-          /><header><div><small>VISTAS</small><strong>Elige un ambiente</strong></div><button onClick={()=>setCameraSheet(false)}>×</button></header>
+          /><header><div><small>VISTAS</small><strong>Elige un ambiente</strong></div><button aria-label="Cerrar selector" onClick={()=>setCameraSheet(false)}><X size={14} strokeWidth={1.8}/></button></header>
           {CAMERA_GROUPS.map(group=><section key={group.title}><div><strong>{group.title}</strong><small>{group.note}</small></div><nav>{group.ids.map(index=><button key={CAMERAS[index][0]} aria-pressed={cameraIndex===index} onClick={()=>goCamera(index)}><span>{String(index+1).padStart(2,"0")}</span><b>{CAMERAS[index][0]}</b></button>)}</nav></section>)}
           {areaName==="Cocina" ? <button className="sf-kitchen-motion" onClick={()=>window.dispatchEvent(new CustomEvent("fabrick:kitchen",{detail:{toggle:true}}))}>Abrir / cerrar muebles superiores <span>110°</span></button> : null}
         </aside>
@@ -586,7 +587,7 @@ export default function ExperienceShell() {
             <SwipeDamage key={id} id={id} label={DAMAGE_META[id].label} score={score} onOpen={setSelectedDamage} onDismiss={(damageId)=>setDismissedDamage(v=>[...v,damageId])}/>)}
         </div>
         {selectedDamage ? <aside className="sf-damage-detail">
-          <header><div><small>INSPECCIÓN VISUAL</small><strong>{DAMAGE_META[selectedDamage].label}</strong></div><button onClick={()=>setSelectedDamage(null)}>×</button></header>
+          <header><div><small>INSPECCIÓN VISUAL</small><strong>{DAMAGE_META[selectedDamage].label}</strong></div><button aria-label="Cerrar daño" onClick={()=>setSelectedDamage(null)}><X size={14} strokeWidth={1.8}/></button></header>
           <p><b>Zona</b>{DAMAGE_META[selectedDamage].location}</p>
           <p><b>Nivel relativo</b>{level(analysis.zones[selectedDamage])}</p>
           <p><b>Qué revisar</b>{DAMAGE_META[selectedDamage].check}</p>
@@ -600,7 +601,7 @@ export default function ExperienceShell() {
           <header>
             <img src="/brand/soluciones-fabrick-mobile.svg" alt="Soluciones Fabrick" />
             <div><small>FABRICK LAB</small><strong>Visor técnico interactivo</strong></div>
-            <button aria-label="Cerrar laboratorio" onClick={() => setOpen(false)}>×</button>
+            <button aria-label="Cerrar laboratorio" onClick={() => setOpen(false)}><X size={15} strokeWidth={1.8}/></button>
           </header>
           <nav className="sf-lab-tabs">
             <button aria-pressed={tab === "quake"} onClick={() => setTab("quake")}>Sismo</button>

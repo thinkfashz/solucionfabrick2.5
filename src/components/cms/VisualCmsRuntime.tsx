@@ -411,6 +411,7 @@ function elementsForOverride(override: VisualCmsElementOverride): HTMLElement[] 
 
 export default function VisualCmsRuntime() {
   const pathname = usePathname() || '/';
+  const blockedRoute = pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/auth' || pathname.startsWith('/auth/');
   const stored = useSiteContent('visual-overrides');
   const content = useMemo(() => normalizeVisualCmsOverrides(stored), [stored]);
   const snapshotsRef = useRef<Map<HTMLElement, Snapshot>>(new Map());
@@ -418,6 +419,7 @@ export default function VisualCmsRuntime() {
   const [domEpoch, setDomEpoch] = useState(0);
 
   useEffect(() => {
+    if (blockedRoute) return;
     let frame = 0;
     const invalidate = () => {
       window.cancelAnimationFrame(frame);
@@ -435,10 +437,15 @@ export default function VisualCmsRuntime() {
       window.removeEventListener('orientationchange', invalidate);
       window.cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [blockedRoute]);
 
   useEffect(() => {
     const snapshots = snapshotsRef.current;
+    if (blockedRoute) {
+      for (const snapshot of snapshots.values()) restoreSnapshot(snapshot);
+      snapshots.clear();
+      return;
+    }
     for (const snapshot of snapshots.values()) restoreSnapshot(snapshot);
     snapshots.clear();
 
@@ -466,9 +473,10 @@ export default function VisualCmsRuntime() {
       for (const snapshot of snapshots.values()) restoreSnapshot(snapshot);
       snapshots.clear();
     };
-  }, [content, pathname, domEpoch]);
+  }, [content, pathname, domEpoch, blockedRoute]);
 
   useEffect(() => {
+    if (blockedRoute) return;
     let preview = false;
     try { preview = new URLSearchParams(window.location.search).get(EDITOR_PARAM) === '1'; } catch { /* noop */ }
     if (!preview || window.parent === window) return;

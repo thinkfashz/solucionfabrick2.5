@@ -162,7 +162,7 @@ export default function AdminProductosPage() {
   }, [searchParams, products]);
 
   const metrics = useMemo(() => {
-    const active = products.filter((product) => product.activo !== false).length;
+    const active = products.filter((product) => product.activo !== false && numberValue(product.stock) > 0).length;
     const lowStock = products.filter((product) => numberValue(product.stock) > 0 && numberValue(product.stock) <= 5).length;
     const ready = products.filter((product) => product.image_url && hasSeo(product) && product.description && numberValue(product.price) > 0).length;
     const market = products.filter((product) => Boolean(marketIntel(product))).length;
@@ -175,8 +175,8 @@ export default function AdminProductosPage() {
     const result = products.filter((product) => {
       const category = resolveCategoryName(product.category_id || undefined, categoryMap);
       if (needle && ![product.name, product.description, product.sku, product.ean, product.source, category].some((value) => String(value || '').toLowerCase().includes(needle))) return false;
-      if (filter === 'active') return product.activo !== false;
-      if (filter === 'hidden') return product.activo === false;
+      if (filter === 'active') return product.activo !== false && numberValue(product.stock) > 0;
+      if (filter === 'hidden') return product.activo === false || numberValue(product.stock) <= 0;
       if (filter === 'featured') return Boolean(product.featured);
       if (filter === 'low-stock') return numberValue(product.stock) > 0 && numberValue(product.stock) <= 5;
       if (filter === 'without-image') return !product.image_url;
@@ -242,6 +242,10 @@ export default function AdminProductosPage() {
   }
 
   async function patchProduct(product: ProductStudioRecord, patch: Record<string, unknown>) {
+    if (patch.activo === true && numberValue(product.stock) <= 0) {
+      showToast('Añade al menos 1 unidad de stock antes de activar el producto.', 'error');
+      return false;
+    }
     const previous = products;
     setProducts((current) => current.map((item) => item.id === product.id ? { ...item, ...patch } : item));
     const response = await fetch(`/api/admin/products?id=${encodeURIComponent(product.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
@@ -309,14 +313,35 @@ export default function AdminProductosPage() {
           const radarMargin = marketMargin(product);
           const fromRadar = Boolean(marketIntel(product));
           const low = numberValue(product.stock) > 0 && numberValue(product.stock) <= 5;
-          return <article key={product.id} onDoubleClick={() => openEdit(product)} className={`grid gap-3 px-3 py-3 transition hover:bg-[#fff5df] sm:px-4 lg:grid-cols-[46px_minmax(280px,1fr)_150px_120px_92px_110px_116px] lg:items-center ${selected ? 'bg-[#fff0bd]/45' : ''}`}>
-            <button type="button" onClick={() => setSelectedIds((current) => current.includes(product.id) ? current.filter((id) => id !== product.id) : [...current, product.id])} className={`absolute right-3 mt-1 grid h-9 w-9 place-items-center rounded-xl lg:static lg:right-auto lg:mt-0 ${selected ? 'bg-[#f5c75d] text-black' : 'bg-black/[0.05] text-black/25'}`} aria-label="Seleccionar producto">{selected ? <Check className="h-4 w-4" /> : null}</button>
-            <div className="flex min-w-0 items-center gap-3 pr-12 lg:pr-0">{product.image_url ? <img src={product.image_url} alt={product.name} className="h-14 w-14 shrink-0 rounded-xl border border-black/7 bg-white object-contain p-1" /> : <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-black/[0.04] text-black/15"><Package className="h-5 w-5" /></div>}<div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate text-sm font-black">{product.name}</p>{product.featured ? <Star className="h-3.5 w-3.5 shrink-0 fill-[#f5c75d] text-[#aa7416]" /> : null}{fromRadar ? <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] text-emerald-800">Radar</span> : null}</div><p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[.11em] text-[#986a18]">{category}</p><div className="mt-1.5 flex flex-wrap gap-2 text-[10px] text-black/35">{product.sku ? <span>SKU {product.sku}</span> : null}<span>{galleryCount(product)} foto{galleryCount(product) === 1 ? '' : 's'}</span>{radarMargin != null ? <span className={radarMargin >= 0 ? 'text-emerald-700' : 'text-red-700'}>Margen radar {radarMargin.toFixed(1)}%</span> : productMargin != null ? <span>Margen {productMargin}%</span> : null}</div></div></div>
-            <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">Precio</span><div><p className="text-sm font-black">{money(product.price)}</p>{numberValue(product.discount_percentage) > 0 ? <p className="text-[10px] font-bold text-[#a76c0a]">-{numberValue(product.discount_percentage)}%</p> : null}</div></div>
-            <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">Stock</span><span className={`inline-flex rounded-lg px-2.5 py-1.5 text-xs font-black ${low ? 'bg-red-100 text-red-700' : 'bg-black/[0.04] text-black/55'}`}>{numberValue(product.stock)}</span></div>
-            <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">SEO</span><span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-black ${hasSeo(product) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{hasSeo(product) ? <CheckCircle2 className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}{hasSeo(product) ? 'Listo' : 'Pendiente'}</span></div>
-            <div className="flex items-center justify-between gap-2 lg:justify-start"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">Activo</span><Toggle checked={product.activo !== false} onChange={(value) => void patchProduct(product, { activo: value })} label={`Activo: ${product.name}`} /></div>
-            <div className="flex justify-end gap-1.5"><button type="button" onClick={() => openEdit(product)} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#111214] px-3 text-[10px] font-black text-white lg:flex-none"><Pencil className="h-3.5 w-3.5" />Editar</button><button type="button" onClick={() => setDeleteTarget(product)} className="grid h-9 w-9 place-items-center rounded-lg bg-red-50 text-red-700"><Trash2 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => openEdit(product)} className="hidden h-9 w-9 place-items-center rounded-lg bg-black/[0.04] text-black/40 xl:grid"><ChevronRight className="h-4 w-4" /></button></div>
+          const stock = numberValue(product.stock);
+          const outOfStock = stock <= 0;
+          const inCatalog = product.activo !== false && stock > 0;
+          return <article key={product.id} onDoubleClick={() => openEdit(product)} className={`relative grid gap-3 px-3 py-4 transition hover:bg-[#fff5df] sm:px-4 lg:grid-cols-[46px_minmax(280px,1fr)_150px_120px_92px_110px_116px] lg:items-center lg:py-3 ${selected ? 'bg-[#fff0bd]/45' : ''}`}>
+            <button type="button" onClick={() => setSelectedIds((current) => current.includes(product.id) ? current.filter((id) => id !== product.id) : [...current, product.id])} className={`absolute right-3 top-4 grid h-9 w-9 place-items-center rounded-xl lg:static lg:right-auto lg:top-auto ${selected ? 'bg-[#f5c75d] text-black' : 'bg-black/[0.05] text-black/25'}`} aria-label="Seleccionar producto">{selected ? <Check className="h-4 w-4" /> : null}</button>
+
+            <div className="flex min-w-0 items-center gap-3 pr-12 lg:pr-0">
+              {product.image_url ? <img src={product.image_url} alt={product.name} className="h-16 w-16 shrink-0 rounded-2xl border border-black/7 bg-white object-contain p-1.5 lg:h-14 lg:w-14 lg:rounded-xl" /> : <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-dashed border-black/10 bg-black/[0.025] text-black/18 lg:h-14 lg:w-14 lg:rounded-xl"><Package className="h-5 w-5" /></div>}
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2"><p className="truncate text-[15px] font-black tracking-[-.02em] lg:text-sm">{product.name}</p>{product.featured ? <Star className="h-3.5 w-3.5 shrink-0 fill-[#f5c75d] text-[#aa7416]" /> : null}{fromRadar ? <span className="hidden shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] text-emerald-800 sm:inline">Radar</span> : null}</div>
+                <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[.11em] text-[#986a18]">{category}</p>
+                <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-black/35">{product.sku ? <span>SKU {product.sku}</span> : null}<span>{galleryCount(product)} foto{galleryCount(product) === 1 ? '' : 's'}</span>{radarMargin != null ? <span className={radarMargin >= 0 ? 'text-emerald-700' : 'text-red-700'}>Margen {radarMargin.toFixed(1)}%</span> : productMargin != null ? <span>Margen {productMargin}%</span> : null}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 lg:contents">
+              <div className="rounded-xl border border-black/[0.06] bg-white/70 p-3 lg:block lg:border-0 lg:bg-transparent lg:p-0"><span className="text-[8px] font-black uppercase tracking-[.14em] text-black/30 lg:hidden">Precio</span><div className="mt-1 lg:mt-0"><p className="text-base font-black tracking-[-.02em] lg:text-sm">{money(product.price)}</p>{numberValue(product.discount_percentage) > 0 ? <p className="text-[10px] font-bold text-[#a76c0a]">-{numberValue(product.discount_percentage)}%</p> : null}</div></div>
+              <div className="rounded-xl border border-black/[0.06] bg-white/70 p-3 lg:block lg:border-0 lg:bg-transparent lg:p-0"><span className="text-[8px] font-black uppercase tracking-[.14em] text-black/30 lg:hidden">Stock</span><div className="mt-1 lg:mt-0"><span className={`inline-flex rounded-lg px-2.5 py-1.5 text-xs font-black ${outOfStock ? 'bg-zinc-200 text-zinc-700' : low ? 'bg-red-100 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>{outOfStock ? 'Sin stock' : stock}</span></div></div>
+              <div className="rounded-xl border border-black/[0.06] bg-white/70 p-3 lg:block lg:border-0 lg:bg-transparent lg:p-0"><span className="text-[8px] font-black uppercase tracking-[.14em] text-black/30 lg:hidden">SEO</span><div className="mt-1 lg:mt-0"><span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-black ${hasSeo(product) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{hasSeo(product) ? <CheckCircle2 className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}{hasSeo(product) ? 'Listo' : 'Pendiente'}</span></div></div>
+              <div className="rounded-xl border border-black/[0.06] bg-white/70 p-3 lg:flex lg:items-center lg:justify-start lg:border-0 lg:bg-transparent lg:p-0">
+                <div className="flex items-center justify-between gap-3 lg:justify-start"><div className="lg:hidden"><span className="block text-[8px] font-black uppercase tracking-[.14em] text-black/30">Catálogo</span><span className={`mt-1 block text-[10px] font-black ${inCatalog ? 'text-emerald-700' : 'text-black/35'}`}>{inCatalog ? 'Visible' : outOfStock ? 'Oculto · sin stock' : 'Oculto'}</span></div><Toggle checked={inCatalog} onChange={(value) => void patchProduct(product, { activo: value })} label={`Catálogo: ${product.name}`} /></div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-[1fr_44px] gap-2 lg:flex lg:justify-end lg:gap-1.5">
+              <button type="button" onClick={() => openEdit(product)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#d79b2b]/35 bg-[#fff0bd] px-4 text-xs font-black !text-[#5f430d] shadow-sm transition hover:bg-[#ffe28b] lg:min-h-9 lg:rounded-lg lg:px-3 lg:text-[10px]"><Pencil className="h-3.5 w-3.5" />Editar producto</button>
+              <button type="button" onClick={() => setDeleteTarget(product)} className="grid h-11 w-11 place-items-center rounded-xl bg-red-50 text-red-700 lg:h-9 lg:w-9 lg:rounded-lg" aria-label={`Eliminar ${product.name}`}><Trash2 className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => openEdit(product)} className="hidden h-9 w-9 place-items-center rounded-lg bg-black/[0.04] text-black/40 xl:grid"><ChevronRight className="h-4 w-4" /></button>
+            </div>
           </article>;
         })}</div>}
       </section>

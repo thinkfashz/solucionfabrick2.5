@@ -67,11 +67,11 @@ export default function ReferenceHouse(){
    THREE.Cache.enabled=true;
    const mobile=window.matchMedia('(max-width: 700px), (pointer: coarse)').matches;
    const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance',alpha:false,stencil:false});
-   renderer.setPixelRatio(mobile?Math.min(devicePixelRatio,.98):Math.min(devicePixelRatio,1.24));renderer.outputColorSpace=THREE.SRGBColorSpace;
-   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.04;renderer.shadowMap.enabled=!mobile;renderer.shadowMap.type=THREE.PCFShadowMap;renderer.setClearColor('#cbd8dc');root.appendChild(renderer.domElement);
+   renderer.setPixelRatio(mobile?Math.min(devicePixelRatio,1):Math.min(devicePixelRatio,1.28));renderer.outputColorSpace=THREE.SRGBColorSpace;
+   renderer.toneMapping=THREE.AgXToneMapping;renderer.toneMappingExposure=1;renderer.shadowMap.enabled=!mobile;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.setClearColor('#d4dde0');root.appendChild(renderer.domElement);
    const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(54,1,.08,500);
-   const hemi=new THREE.HemisphereLight('#f8fbff','#68737a',1.08);scene.add(hemi);
-   const sun=new THREE.DirectionalLight('#fff8e8',2.55);sun.position.set(-10,20,-12);sun.castShadow=!mobile;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-14,right:14,top:14,bottom:-14,near:.5,far:52});sun.shadow.bias=-.00065;sun.shadow.normalBias=.028;scene.add(sun);
+   const hemi=new THREE.HemisphereLight('#f5f8fa','#6e777a',.96);scene.add(hemi);
+   const sun=new THREE.DirectionalLight('#fff6df',2.15);sun.position.set(-10,20,-12);sun.castShadow=!mobile;sun.shadow.mapSize.set(mobile?1024:2048,mobile?1024:2048);Object.assign(sun.shadow.camera,{left:-14,right:14,top:14,bottom:-14,near:.5,far:52});sun.shadow.bias=-.00045;sun.shadow.normalBias=.04;sun.shadow.radius=2;scene.add(sun);
    const indoorLights:T.PointLight[]=[],outdoorLights:T.PointLight[]=[];
    const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=!mobile;orbit.dampingFactor=.12;orbit.rotateSpeed=mobile?.92:.68;orbit.panSpeed=mobile?.9:.72;orbit.zoomSpeed=mobile?1:.78;orbit.minDistance=2;orbit.maxDistance=65;orbit.maxPolarAngle=Math.PI*.49;orbit.screenSpacePanning=true;
    orbit.touches.ONE=THREE.TOUCH.ROTATE;orbit.touches.TWO=THREE.TOUCH.DOLLY_PAN;
@@ -84,16 +84,19 @@ export default function ReferenceHouse(){
    const geometry:T.BufferGeometry[]=[],materials:T.Material[]=[],textures:T.Texture[]=[];
    const mat=(color:string,metalness=0)=>{const m=new THREE.MeshStandardMaterial({color,metalness,roughness:metalness?.28:.55,side:THREE.DoubleSide});materials.push(m);return m};
    const steel=mat('#b8c5cf',.8),concrete=mat('#a8aaa3'),wood=mat('#b58c5e'),white=mat('#f5f3ec'),roof=mat('#38434b',.5),osb=mat('#c49b60'),wool=mat('#d8c695'),membrane=mat('#859f9c'),black=mat('#29373f',.4),glass=mat('#91acb3',.15);
-   const textured=(m:T.MeshStandardMaterial,kind:Parameters<typeof materialTexture>[1],color:string,roughness:number,scale:number)=>{
+   const textured=(m:T.MeshStandardMaterial,kind:Parameters<typeof materialTexture>[1],color:string,roughness:number,normalStrength:number)=>{
     const t=materialTexture(THREE,kind,color);
-    if(t){m.color.set('#ffffff');m.map=t.map;m.bumpMap=t.bump;m.roughnessMap=t.roughness;m.bumpScale=scale;
+    if(t){
+     m.color.set('#ffffff');m.map=t.map;m.normalMap=t.normal;m.roughnessMap=t.roughness;
      const repeat=kind==='grass'?.58:kind==='gravel'?.72:kind==='wood'?.85:kind==='tile'?.72:kind==='metal'?.9:1;
-     for(const tx of [t.map,t.bump,t.roughness]){tx.repeat.set(repeat,repeat);tx.anisotropy=mobile?2:8}
-     textures.push(t.map,t.bump,t.roughness)
-    }m.roughness=roughness;return m
+     for(const tx of [t.map,t.bump,t.roughness,t.normal]){tx.repeat.set(repeat,repeat);tx.anisotropy=mobile?2:8}
+     m.normalScale.set(normalStrength,normalStrength);
+     textures.push(t.map,t.bump,t.roughness,t.normal)
+    }
+    m.roughness=roughness;return m
    };
-   textured(wood,'wood','#b18a5d',.34,.025);textured(white,'plaster','#f5f3ec',.72,.006);textured(concrete,'plaster','#aaa79e',.82,.02);textured(roof,'metal','#495059',.36,.026);
-   const porcelain=textured(mat('#d4cec3'),'tile','#d4cec3',.24,.01),fabric=textured(mat('#8e9a8d'),'fabric','#8e9a8d',.88,.012),gravel=textured(mat('#b8b5ab'),'gravel','#b8b5ab',.92,.09),grass=textured(mat('#687a50'),'grass','#687a50',.92,.022);
+   textured(wood,'wood','#b18a5d',.46,.32);textured(white,'plaster','#f7f7f4',.86,.14);textured(concrete,'plaster','#aaa79e',.88,.22);textured(roof,'metal','#495059',.48,.34);
+   const porcelain=textured(mat('#d4cec3'),'tile','#d4cec3',.46,.2),fabric=textured(mat('#8e9a8d'),'fabric','#8e9a8d',.9,.08),gravel=textured(mat('#b8b5ab'),'gravel','#b8b5ab',.96,.42),grass=textured(mat('#687a50'),'grass','#687a50',1,.5);
    const skyGeo=new THREE.SphereGeometry(180,32,16);geometry.push(skyGeo);
    const skyMat=new THREE.ShaderMaterial({
     side:THREE.BackSide,depthWrite:false,
@@ -105,7 +108,7 @@ export default function ReferenceHouse(){
     fragmentShader:'uniform vec3 uBottom;uniform vec3 uTop;uniform vec3 uCloud;uniform vec3 uSunColor;uniform float uSunStrength;uniform float uCloudStrength;varying vec3 v;void main(){vec3 d=normalize(v);float h=max(d.y,0.);vec3 c=mix(uBottom,uTop,pow(h,.55));float cloud=sin(d.x*18.+sin(d.z*13.))*sin(d.z*21.+sin(d.x*8.));float mask=smoothstep(.2,.7,cloud)*smoothstep(.05,.22,h)*(1.-smoothstep(.5,.85,h));c=mix(c,uCloud,mask*uCloudStrength);float sun=pow(max(dot(d,normalize(vec3(-.5,.75,-.4))),0.),400.);gl_FragColor=vec4(c+uSunColor*sun*uSunStrength,1.);}'
    });materials.push(skyMat);
    const sky=new THREE.Mesh(skyGeo,skyMat);scene.add(sky);scene.fog=new THREE.Fog('#c7d5d8',55,125);
-   let environment:T.WebGLRenderTarget|null=null;if(!mobile){const skyScene=new THREE.Scene();skyScene.add(sky.clone());const pmrem=new THREE.PMREMGenerator(renderer);environment=pmrem.fromScene(skyScene,.05,.1,220);scene.environment=environment.texture;pmrem.dispose();}
+   let environment:T.WebGLRenderTarget|null=null;if(!mobile){const skyScene=new THREE.Scene();skyScene.add(sky.clone());const pmrem=new THREE.PMREMGenerator(renderer);environment=pmrem.fromScene(skyScene,.05,.1,220);scene.environment=environment.texture;scene.environmentIntensity=.72;pmrem.dispose();}
    glass.transparent=true;glass.opacity=.3;glass.depthWrite=false;
    const cv=document.createElement('canvas');cv.width=cv.height=256;const cx=cv.getContext('2d');
    if(cx){cx.fillStyle='#c3a071';cx.fillRect(0,0,256,256);let seed=12;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};for(let i=0;i<1600;i++){cx.save();cx.translate(random()*256,random()*256);cx.rotate(random()*Math.PI);cx.fillStyle=['#8d6f47','#d9bb8b','#b18b54'][i%3];cx.fillRect(0,0,3+random()*18,1+random()*3);cx.restore()}const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(2,2);textures.push(tex);osb.map=tex;}
@@ -363,7 +366,7 @@ export default function ReferenceHouse(){
      houseRoot.position.x=Math.cos(theta)*horizontal;houseRoot.position.z=Math.sin(theta)*horizontal;houseRoot.position.y=vertical;houseRoot.rotation.z=Math.cos(theta)*horizontal*.013;houseRoot.rotation.x=Math.sin(theta)*horizontal*.01;
     } else {houseRoot.position.lerp(new THREE.Vector3(0,0,0),Math.min(1,dt*10));houseRoot.rotation.x*=Math.max(0,1-dt*10);houseRoot.rotation.z*=Math.max(0,1-dt*10)}
 
-    if(s.quality!==lastQuality){renderer.setPixelRatio(s.quality==='light'?(mobile?Math.min(devicePixelRatio,.96):1):(mobile?Math.min(devicePixelRatio,1.05):Math.min(devicePixelRatio,1.24)));renderer.shadowMap.enabled=!mobile&&s.quality!=='light';sun.castShadow=renderer.shadowMap.enabled;lastQuality=s.quality;size();renderer.shadowMap.needsUpdate=true;}
+    if(s.quality!==lastQuality){renderer.setPixelRatio(s.quality==='light'?(mobile?Math.min(devicePixelRatio,.96):1):(mobile?Math.min(devicePixelRatio,1.04):Math.min(devicePixelRatio,1.28)));renderer.shadowMap.enabled=!mobile&&s.quality!=='light';sun.castShadow=renderer.shadowMap.enabled;lastQuality=s.quality;size();renderer.shadowMap.needsUpdate=true;}
     let moving=false;
     for(let i=0;i<groups.length;i++){const g=groups[i];g.visible=s.visible[i];const y=i===1?-2*e:i>=8?(i===8?4:7)*e:i===6?2*e:0;moving ||= Math.abs(g.position.y-y)>.005;g.position.y=THREE.MathUtils.lerp(g.position.y,y,alpha);for(const child of g.children){if(child.userData.offset){const dest=(child.userData.offset as T.Vector3).clone().multiplyScalar(e);moving ||= child.position.distanceToSquared(dest)>.0001;child.position.lerp(dest,alpha)}}}
     const shadowState=s.visible.join(',');renderer.shadowMap.autoUpdate=false;if(moving||shadowState!==lastShadowState){renderer.shadowMap.needsUpdate=true;lastShadowState=shadowState;}

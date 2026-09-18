@@ -24,6 +24,11 @@ const BRAND = {
   white: "#F7FAFC",
 };
 
+const AMBIENCE = {
+  day: "https://res.cloudinary.com/disghf6xc/video/upload/v1789745214/fabrick/recorrido-3d/audio/forest-day-public-domain.ogg",
+  night: "https://res.cloudinary.com/disghf6xc/video/upload/v1789745295/fabrick/recorrido-3d/audio/night-cicadas-cc0.ogg",
+} as const;
+
 const CAMERAS = [
   ["Exterior", "Casa de referencia"],
   ["Living", "Living"],
@@ -215,6 +220,7 @@ export default function ExperienceShell() {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const audioRef = useRef<{ ctx: AudioContext; ambient: GainNode; rumble: GainNode; oscillator: OscillatorNode; source: AudioBufferSourceNode; filter: BiquadFilterNode } | null>(null);
+  const ambienceMediaRef = useRef<{ day: HTMLAudioElement; night: HTMLAudioElement } | null>(null);
 
   const analysis = useMemo(() => {
     const estimatedMmi = estimateMmi(magnitude, depthKm, distanceKm, soil);
@@ -300,9 +306,32 @@ export default function ExperienceShell() {
     const quakeGain = soundOn && phase === "surface" ? 0.035 + analysis.hazard * 0.12 : 0.0001;
     audio.rumble.gain.setTargetAtTime(quakeGain, audio.ctx.currentTime, 0.12);
     audio.oscillator.frequency.setTargetAtTime(26 + frequencyHz * 12, audio.ctx.currentTime, 0.18);
-    audio.ambient.gain.setTargetAtTime(soundOn ? (light === "night" ? 0.011 : light === "sunset" ? 0.018 : 0.022) : 0.0001, audio.ctx.currentTime, 0.2);
+    audio.ambient.gain.setTargetAtTime(soundOn ? 0.004 : 0.0001, audio.ctx.currentTime, 0.2);
     audio.filter.frequency.setTargetAtTime(light === "night" ? 650 : light === "sunset" ? 950 : 1450, audio.ctx.currentTime, 0.35);
+    const media = ambienceMediaRef.current;
+    if (media) {
+      const active = light === "night" ? media.night : media.day;
+      const inactive = light === "night" ? media.day : media.night;
+      inactive.pause();
+      if (soundOn) {
+        active.volume = light === "sunset" ? 0.13 : light === "night" ? 0.11 : 0.16;
+        void active.play().catch(() => {});
+      } else active.pause();
+    }
   }, [soundOn, phase, analysis.hazard, frequencyHz, light]);
+
+  const ensureAmbienceMedia = () => {
+    if (ambienceMediaRef.current) return ambienceMediaRef.current;
+    const create = (src: string) => {
+      const audio = new Audio(src);
+      audio.loop = true;
+      audio.preload = "none";
+      audio.volume = 0;
+      return audio;
+    };
+    ambienceMediaRef.current = { day: create(AMBIENCE.day), night: create(AMBIENCE.night) };
+    return ambienceMediaRef.current;
+  };
 
   const ensureAudio = () => {
     if (audioRef.current) return audioRef.current;
@@ -337,6 +366,8 @@ export default function ExperienceShell() {
     if (!audio) return;
     audio.source.stop();
     audio.oscillator.stop();
+    const media = ambienceMediaRef.current;
+    if (media) { media.day.pause(); media.night.pause(); media.day.src = ""; media.night.src = ""; }
     void audio.ctx.close();
   }, []);
 
@@ -410,7 +441,7 @@ export default function ExperienceShell() {
       <nav className="sf-quick" aria-label="Controles rápidos">
         <button aria-pressed={infoOpen} onClick={() => setInfoOpen((v) => !v)}><span>ⓘ</span><small>Info</small></button>
         <button onClick={cycleLight}><span>{light === "night" ? "☾" : "☀"}</span><small>Luz</small></button>
-        <button aria-pressed={soundOn} onClick={() => { const audio = ensureAudio(); void audio.ctx.resume(); setSoundOn((v) => !v); }}><span>{soundOn ? "🔊" : "🔇"}</span><small>Ambiente</small></button>
+        <button aria-pressed={soundOn} onClick={() => { const audio = ensureAudio(); const media = ensureAmbienceMedia(); void audio.ctx.resume(); if (!soundOn) { const active = light === "night" ? media.night : media.day; active.volume = light === "night" ? 0.11 : 0.16; void active.play().catch(() => {}); } else { media.day.pause(); media.night.pause(); } setSoundOn((v) => !v); }}><span>{soundOn ? "🔊" : "🔇"}</span><small>Ambiente</small></button>
         <button onClick={() => void toggleFullscreen()}><span>⛶</span><small>Pantalla</small></button>
         <button aria-pressed={open} onClick={() => setOpen((v) => !v)}><span>⌁</span><small>Lab</small></button>
       </nav>

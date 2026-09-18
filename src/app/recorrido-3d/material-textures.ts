@@ -1,18 +1,18 @@
 import type * as Three from 'three';
 
 type TextureKind='wood'|'plaster'|'tile'|'gravel'|'grass'|'fabric'|'metal';
-type RemoteAsset={id:string;diffuse:string;displacement:string;roughness:string};
+type RemoteAsset={id:string;diffuse:string;displacement:string;roughness:string;normal:string};
 
 // Web-sized CC0 sources from Poly Haven, mirrored to the project's Cloudinary CDN.
 // The procedural maps remain the immediate fallback, so first paint does not wait for network assets.
 // License: https://polyhaven.com/license (CC0).
 const POLYHAVEN:Partial<Record<TextureKind,RemoteAsset>>={
- wood:{id:'wooden_planks',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745510/fabrick/recorrido-3d/pbr/wood/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745516/fabrick/recorrido-3d/pbr/wood/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745521/fabrick/recorrido-3d/pbr/wood/rough.jpg'},
- plaster:{id:'white_plaster_02',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745526/fabrick/recorrido-3d/pbr/plaster/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745532/fabrick/recorrido-3d/pbr/plaster/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745536/fabrick/recorrido-3d/pbr/plaster/rough.jpg'},
- tile:{id:'floor_tiles_08',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745542/fabrick/recorrido-3d/pbr/tile/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745547/fabrick/recorrido-3d/pbr/tile/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745553/fabrick/recorrido-3d/pbr/tile/rough.jpg'},
- gravel:{id:'gravel',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745557/fabrick/recorrido-3d/pbr/gravel/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745562/fabrick/recorrido-3d/pbr/gravel/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745567/fabrick/recorrido-3d/pbr/gravel/rough.jpg'},
- grass:{id:'sparse_grass',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745572/fabrick/recorrido-3d/pbr/grass/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745578/fabrick/recorrido-3d/pbr/grass/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745583/fabrick/recorrido-3d/pbr/grass/rough.jpg'},
- metal:{id:'corrugated_iron',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745588/fabrick/recorrido-3d/pbr/metal/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745592/fabrick/recorrido-3d/pbr/metal/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745597/fabrick/recorrido-3d/pbr/metal/rough.jpg'},
+ wood:{id:'wooden_planks',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745510/fabrick/recorrido-3d/pbr/wood/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745516/fabrick/recorrido-3d/pbr/wood/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745521/fabrick/recorrido-3d/pbr/wood/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789759477/fabrick/recorrido-3d/pbr/wood/normal.jpg'},
+ plaster:{id:'white_plaster_02',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745526/fabrick/recorrido-3d/pbr/plaster/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745532/fabrick/recorrido-3d/pbr/plaster/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745536/fabrick/recorrido-3d/pbr/plaster/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789759483/fabrick/recorrido-3d/pbr/plaster/normal.jpg'},
+ tile:{id:'floor_tiles_08',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745542/fabrick/recorrido-3d/pbr/tile/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745547/fabrick/recorrido-3d/pbr/tile/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745553/fabrick/recorrido-3d/pbr/tile/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789759492/fabrick/recorrido-3d/pbr/tile/normal.jpg'},
+ gravel:{id:'gravel',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745557/fabrick/recorrido-3d/pbr/gravel/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745562/fabrick/recorrido-3d/pbr/gravel/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745567/fabrick/recorrido-3d/pbr/gravel/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789759505/fabrick/recorrido-3d/pbr/gravel/normal.jpg'},
+ grass:{id:'sparse_grass',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745572/fabrick/recorrido-3d/pbr/grass/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745578/fabrick/recorrido-3d/pbr/grass/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745583/fabrick/recorrido-3d/pbr/grass/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789759497/fabrick/recorrido-3d/pbr/grass/normal.jpg'},
+ metal:{id:'corrugated_iron',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745588/fabrick/recorrido-3d/pbr/metal/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745592/fabrick/recorrido-3d/pbr/metal/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745597/fabrick/recorrido-3d/pbr/metal/rough.jpg',normal:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789759510/fabrick/recorrido-3d/pbr/metal/normal.jpg'},
 };
 
 function cover(ctx:CanvasRenderingContext2D,img:HTMLImageElement,size:number){
@@ -36,7 +36,8 @@ export function materialTexture(T:typeof Three,kind:TextureKind,color:string){
  const lowDetail=window.matchMedia('(max-width: 700px), (pointer: coarse)').matches;const size=lowDetail?384:512,canvas=document.createElement('canvas');canvas.width=canvas.height=size;const c=canvas.getContext('2d');
  const bumpCanvas=document.createElement('canvas');bumpCanvas.width=bumpCanvas.height=size;const bc=bumpCanvas.getContext('2d');
  const roughCanvas=document.createElement('canvas');roughCanvas.width=roughCanvas.height=size;const rc=roughCanvas.getContext('2d');
- if(!c||!bc||!rc)return null;c.fillStyle=color;c.fillRect(0,0,size,size);bc.fillStyle='#808080';bc.fillRect(0,0,size,size);
+ const normalCanvas=document.createElement('canvas');normalCanvas.width=normalCanvas.height=size;const nc=normalCanvas.getContext('2d');
+ if(!c||!bc||!rc||!nc)return null;c.fillStyle=color;c.fillRect(0,0,size,size);bc.fillStyle='#808080';bc.fillRect(0,0,size,size);nc.fillStyle='#8080ff';nc.fillRect(0,0,size,size);
  const roughBase=kind==='metal'?92:kind==='tile'?86:kind==='wood'?112:kind==='fabric'?225:kind==='grass'||kind==='gravel'?238:190;rc.fillStyle=`rgb(${roughBase},${roughBase},${roughBase})`;rc.fillRect(0,0,size,size);
  let seed=731;const random=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296};
  for(let i=0;i<(lowDetail?7500:15000);i++){const x=random()*size,y=random()*size,a=random()>.5?'rgba(255,255,255,.08)':'rgba(0,0,0,.07)';c.fillStyle=a;c.fillRect(x,y,1+random()*3,1+random()*3);bc.fillStyle=random()>.5?'#999':'#666';bc.fillRect(x,y,1+random()*3,1+random()*3);const rv=Math.max(30,Math.min(250,roughBase+(random()-.5)*28));rc.fillStyle=`rgb(${rv},${rv},${rv})`;rc.fillRect(x,y,2+random()*5,2+random()*5)}
@@ -49,6 +50,16 @@ export function materialTexture(T:typeof Three,kind:TextureKind,color:string){
  const map=new T.CanvasTexture(canvas);map.wrapS=map.wrapT=T.RepeatWrapping;map.colorSpace=T.SRGBColorSpace;map.anisotropy=8;
  const bump=new T.CanvasTexture(bumpCanvas);bump.wrapS=bump.wrapT=T.RepeatWrapping;bump.colorSpace=T.NoColorSpace;bump.anisotropy=4;
  const roughness=new T.CanvasTexture(roughCanvas);roughness.wrapS=roughness.wrapT=T.RepeatWrapping;roughness.colorSpace=T.NoColorSpace;roughness.anisotropy=4;
- const remote=POLYHAVEN[kind];if(remote){asyncOverlay(canvas,remote.diffuse,()=>{map.needsUpdate=true},color);if(!lowDetail){asyncOverlay(bumpCanvas,remote.displacement,()=>{bump.needsUpdate=true});asyncOverlay(roughCanvas,remote.roughness,()=>{roughness.needsUpdate=true})}}
- return {map,bump,roughness,source:remote?.id??'procedural'};
+ const normal=new T.CanvasTexture(normalCanvas);normal.wrapS=normal.wrapT=T.RepeatWrapping;normal.colorSpace=T.NoColorSpace;normal.anisotropy=lowDetail?2:8;
+ const remote=POLYHAVEN[kind];
+ if(remote){
+  asyncOverlay(canvas,remote.diffuse,()=>{map.needsUpdate=true},color);
+  // Normal GL is visually more stable than height-as-bump, especially on oblique mobile views.
+  asyncOverlay(normalCanvas,remote.normal,()=>{normal.needsUpdate=true});
+  if(!lowDetail){
+   asyncOverlay(bumpCanvas,remote.displacement,()=>{bump.needsUpdate=true});
+   asyncOverlay(roughCanvas,remote.roughness,()=>{roughness.needsUpdate=true});
+  }
+ }
+ return {map,bump,roughness,normal,source:remote?.id??'procedural'};
 }

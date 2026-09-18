@@ -63,13 +63,31 @@ const DAMAGE_META: Record<DamageId,{label:string;location:string;check:string}> 
 };
 
 function SwipeDamage({id,label,score,onDismiss,onOpen}:{id:DamageId;label:string;score:number;onDismiss:(id:DamageId)=>void;onOpen:(id:DamageId)=>void}) {
-  const start=useRef(0); const [dx,setDx]=useState(0); const [dragging,setDragging]=useState(false);
-  const end=()=>{ if(Math.abs(dx)>64) onDismiss(id); setDx(0); setDragging(false); };
-  return <article className="sf-damage-toast" data-level={level(score).toLowerCase()} style={{transform:`translateX(${dx}px)`,opacity:Math.max(.25,1-Math.abs(dx)/180)}}>
-    <button className="sf-damage-toast-main" onClick={()=>onOpen(id)}
-      onPointerDown={(e)=>{start.current=e.clientX;setDragging(true);e.currentTarget.setPointerCapture?.(e.pointerId)}}
-      onPointerMove={(e)=>{if(dragging)setDx(e.clientX-start.current)}}
-      onPointerUp={end} onPointerCancel={end}>
+  const root=useRef<HTMLElement>(null),start=useRef(0),distance=useRef(0),dragging=useRef(false);
+  const reset=(dismiss=false)=>{
+    const node=root.current;if(!node)return;
+    const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if(dismiss){
+      const dir=distance.current>=0?1:-1;
+      if(reduce){onDismiss(id);return}
+      node.animate(
+        [{transform:`translateX(${distance.current}px)`,opacity:Math.max(.3,1-Math.abs(distance.current)/180)},{transform:`translateX(${dir*118}%)`,opacity:0}],
+        {duration:160,easing:"cubic-bezier(0.23, 1, 0.32, 1)",fill:"forwards"}
+      ).finished.then(()=>onDismiss(id)).catch(()=>onDismiss(id));
+    }else{
+      node.animate(
+        [{transform:`translateX(${distance.current}px)`,opacity:Math.max(.3,1-Math.abs(distance.current)/180)},{transform:"translateX(0)",opacity:1}],
+        {duration:160,easing:"cubic-bezier(0.23, 1, 0.32, 1)"}
+      );
+      node.style.transform="";node.style.opacity="";
+    }
+    distance.current=0;dragging.current=false;
+  };
+  return <article ref={root} className="sf-damage-toast" data-level={level(score).toLowerCase()}>
+    <button className="sf-damage-toast-main" onClick={()=>{if(Math.abs(distance.current)<5)onOpen(id)}}
+      onPointerDown={(e)=>{start.current=e.clientX;distance.current=0;dragging.current=true;e.currentTarget.setPointerCapture?.(e.pointerId)}}
+      onPointerMove={(e)=>{if(!dragging.current||!root.current)return;distance.current=e.clientX-start.current;root.current.style.transform=`translateX(${distance.current}px)`;root.current.style.opacity=String(Math.max(.3,1-Math.abs(distance.current)/180))}}
+      onPointerUp={()=>reset(Math.abs(distance.current)>64)} onPointerCancel={()=>reset(false)}>
       <span className="sf-damage-dot"/><div><strong>{label}</strong><small>{DAMAGE_META[id].location}</small></div><b>{level(score)}</b>
     </button>
     <button className="sf-damage-dismiss" aria-label={"Descartar "+label} onClick={()=>onDismiss(id)}>×</button>
@@ -240,8 +258,9 @@ export default function ExperienceShell() {
   const [areaName, setAreaName] = useState("Casa de referencia");
   const [cameraIndex, setCameraIndex] = useState(0);
   const [cameraSheet, setCameraSheet] = useState(false);
-  const [cameraDragY, setCameraDragY] = useState(0);
+  const cameraSheetRef = useRef<HTMLElement>(null);
   const cameraDragStart = useRef(0);
+  const cameraDragY = useRef(0);
   const [dismissedDamage, setDismissedDamage] = useState<DamageId[]>([]);
   const [selectedDamage, setSelectedDamage] = useState<DamageId | null>(null);
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
@@ -412,7 +431,7 @@ export default function ExperienceShell() {
 
   const goCamera = (index: number) => {
     const next = (index + CAMERAS.length) % CAMERAS.length;
-    setCameraIndex(next); setCameraSheet(false); setCameraDragY(0); setInfoOpen(false); setSelectedMaterialId(null);
+    setCameraIndex(next); setCameraSheet(false); cameraDragY.current=0; setInfoOpen(false); setSelectedMaterialId(null);
     const audio=audioRef.current;if(audio&&soundOn){const tone=audio.ctx.createOscillator(),gain=audio.ctx.createGain();tone.type="sine";tone.frequency.value=520;gain.gain.setValueAtTime(.0001,audio.ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.012,audio.ctx.currentTime+.01);gain.gain.exponentialRampToValueAtTime(.0001,audio.ctx.currentTime+.065);tone.connect(gain).connect(audio.ctx.destination);tone.start();tone.stop(audio.ctx.currentTime+.075);}
     window.dispatchEvent(new CustomEvent("fabrick:camera",{detail:{view:CAMERAS[next][2]}}));
   };
@@ -527,12 +546,12 @@ export default function ExperienceShell() {
       </nav>
 
       {cameraSheet ? <div className="sf-sheet-backdrop" onPointerDown={(e)=>{if(e.target===e.currentTarget)setCameraSheet(false)}}>
-        <aside className="sf-camera-sheet" aria-label="Elegir cámara" style={{transform:`translateY(${cameraDragY}px)`}}>
+        <aside ref={cameraSheetRef} className="sf-camera-sheet" aria-label="Elegir cámara">
           <div className="sf-sheet-handle"
-            onPointerDown={(e)=>{cameraDragStart.current=e.clientY;e.currentTarget.setPointerCapture?.(e.pointerId)}}
-            onPointerMove={(e)=>{if(e.currentTarget.hasPointerCapture?.(e.pointerId))setCameraDragY(Math.max(0,e.clientY-cameraDragStart.current))}}
-            onPointerUp={(e)=>{try{e.currentTarget.releasePointerCapture?.(e.pointerId)}catch{} if(cameraDragY>72){setCameraSheet(false)} setCameraDragY(0)}}
-            onPointerCancel={()=>setCameraDragY(0)}
+            onPointerDown={(e)=>{cameraDragStart.current=e.clientY;cameraDragY.current=0;e.currentTarget.setPointerCapture?.(e.pointerId)}}
+            onPointerMove={(e)=>{if(!e.currentTarget.hasPointerCapture?.(e.pointerId)||!cameraSheetRef.current)return;cameraDragY.current=Math.max(0,e.clientY-cameraDragStart.current);const resistance=cameraDragY.current>180?180+(cameraDragY.current-180)*.22:cameraDragY.current;cameraSheetRef.current.style.transform=`translateY(${resistance}px)`;cameraSheetRef.current.style.opacity=String(Math.max(.55,1-resistance/520))}}
+            onPointerUp={(e)=>{try{e.currentTarget.releasePointerCapture?.(e.pointerId)}catch{}const node=cameraSheetRef.current;if(cameraDragY.current>72){if(node&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches){node.animate([{transform:node.style.transform||"translateY(0)",opacity:node.style.opacity||"1"},{transform:"translateY(100%)",opacity:.25}],{duration:180,easing:"cubic-bezier(0.23, 1, 0.32, 1)",fill:"forwards"}).finished.then(()=>setCameraSheet(false)).catch(()=>setCameraSheet(false))}else setCameraSheet(false)}else if(node){node.animate([{transform:node.style.transform||"translateY(0)"},{transform:"translateY(0)"}],{duration:180,easing:"cubic-bezier(0.23, 1, 0.32, 1)"});node.style.transform="";node.style.opacity=""}cameraDragY.current=0}}
+            onPointerCancel={()=>{const node=cameraSheetRef.current;if(node){node.style.transform="";node.style.opacity=""}cameraDragY.current=0}}
           /><header><div><small>VISTAS</small><strong>Elige un ambiente</strong></div><button onClick={()=>setCameraSheet(false)}>×</button></header>
           {CAMERA_GROUPS.map(group=><section key={group.title}><div><strong>{group.title}</strong><small>{group.note}</small></div><nav>{group.ids.map(index=><button key={CAMERAS[index][0]} aria-pressed={cameraIndex===index} onClick={()=>goCamera(index)}><span>{String(index+1).padStart(2,"0")}</span><b>{CAMERAS[index][0]}</b></button>)}</nav></section>)}
           {areaName==="Cocina" ? <button className="sf-kitchen-motion" onClick={()=>window.dispatchEvent(new CustomEvent("fabrick:kitchen",{detail:{toggle:true}}))}>Abrir / cerrar muebles superiores <span>110°</span></button> : null}

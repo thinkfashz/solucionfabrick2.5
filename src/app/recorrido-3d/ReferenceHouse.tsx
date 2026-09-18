@@ -80,6 +80,17 @@ export default function ReferenceHouse(){
    const houseRoot=new THREE.Group();houseRoot.name='house-root';scene.add(houseRoot);
    const architecturalAssets=await loadOptionalArchitecturalAssets(THREE,renderer);
    const blenderHouse=architecturalAssets?.house??null,gaeaTerrain=architecturalAssets?.terrain??null;
+   const externalRoles=architecturalAssets?.byRole;
+   const externalKitchenDoors=architecturalAssets?.kitchenDoors??[];
+   const externalDoorMeta=externalKitchenDoors.map((door,index)=>({
+    door,closedY:door.rotation.y,
+    sign:Number(door.userData.openSign)||((door.name.includes('_R')||index%2)?-1:1),
+    angle:THREE.MathUtils.degToRad(Number(door.userData.openAngleDeg)||110)
+   }));
+   const roleHas=(role:'architecture'|'kitchen'|'bath'|'structure'|'electric'|'water'|'sanitary')=>Boolean(externalRoles?.get(role)?.some(o=>o instanceof THREE.Mesh));
+   const setExternalRole=(role:'architecture'|'kitchen'|'bath'|'structure'|'electric'|'water'|'sanitary'|'unknown',visible:boolean)=>{
+    for(const object of externalRoles?.get(role)??[])if(object instanceof THREE.Mesh||object instanceof THREE.Light)object.visible=visible;
+   };
    if(blenderHouse)houseRoot.add(blenderHouse);if(gaeaTerrain)scene.add(gaeaTerrain);
    const groups=layers.map((_,i)=>{const g=new THREE.Group();g.userData.layer=i;houseRoot.add(g);return g});
    const electricGroup=new THREE.Group();electricGroup.name='electrical-plan';electricGroup.visible=false;houseRoot.add(electricGroup);
@@ -382,8 +393,32 @@ export default function ReferenceHouse(){
      camera.updateProjectionMatrix();if(t===1){transition=null;orbit.enabled=true;if(cameraFade.current)cameraFade.current.style.opacity='0';}
     } else if(playing){tourElapsed+=dt;const target=presets[stops[tourIndex]].t;orbit.target.set(target[0]+Math.sin(tourElapsed*.35)*.25,target[1],target[2]);if(tourElapsed>7){tourIndex=(tourIndex+1)%stops.length;choose(stops[tourIndex]);tourElapsed=0}}
     if(zoomGoal!==null){const offset=camera.position.clone().sub(orbit.target);const length=THREE.MathUtils.damp(offset.length(),zoomGoal,7,dt);camera.position.copy(orbit.target).add(offset.setLength(length));if(Math.abs(length-zoomGoal)<.01)zoomGoal=null;}
-    const s=settings.current,e=s.explosion/100,alpha=reducedMotion?1:1-Math.exp(-6*dt);const externalArchitecture=!!blenderHouse&&s.technical==='architecture';if(blenderHouse)blenderHouse.visible=externalArchitecture;if(gaeaTerrain)gaeaTerrain.visible=true;proceduralTerrain.visible=!gaeaTerrain;electricGroup.visible=s.technical==='electric';waterGroup.visible=s.technical==='water'||s.technical==='underfloor';sanitaryGroup.visible=s.technical==='sanitary'||s.technical==='underfloor';kitchenInteractive.visible=!externalArchitecture&&(s.technical==='architecture'||s.technical==='stage');structureEdges.forEach(line=>line.visible=s.technical==='structure');
-    kitchenDoorValue=THREE.MathUtils.damp(kitchenDoorValue,kitchenDoorTarget,9,dt);kitchenDoors.forEach((door,index)=>{door.rotation.y=(index%2?1:-1)*kitchenDoorValue*THREE.MathUtils.degToRad(110)});
+    const s=settings.current,e=s.explosion/100,alpha=reducedMotion?1:1-Math.exp(-6*dt);
+    const mode=s.technical;
+    const externalModeAvailable=!!blenderHouse&&(
+     (mode==='architecture'&&(roleHas('architecture')||roleHas('kitchen')||roleHas('bath')))||
+     (mode==='structure'&&roleHas('structure'))||
+     (mode==='electric'&&roleHas('electric'))||
+     (mode==='water'&&roleHas('water'))||
+     (mode==='sanitary'&&roleHas('sanitary'))||
+     (mode==='underfloor'&&(roleHas('water')||roleHas('sanitary')))
+    );
+    if(blenderHouse){
+     blenderHouse.visible=true;
+     setExternalRole('architecture',mode==='architecture');setExternalRole('kitchen',mode==='architecture');setExternalRole('bath',mode==='architecture');
+     setExternalRole('structure',mode==='structure');setExternalRole('electric',mode==='electric');
+     setExternalRole('water',mode==='water'||mode==='underfloor');setExternalRole('sanitary',mode==='sanitary'||mode==='underfloor');
+     setExternalRole('unknown',mode==='architecture');
+    }
+    if(gaeaTerrain)gaeaTerrain.visible=true;proceduralTerrain.visible=!gaeaTerrain;
+    electricGroup.visible=!externalModeAvailable&&mode==='electric';
+    waterGroup.visible=!externalModeAvailable&&(mode==='water'||mode==='underfloor');
+    sanitaryGroup.visible=!externalModeAvailable&&(mode==='sanitary'||mode==='underfloor');
+    kitchenInteractive.visible=!externalModeAvailable&&(mode==='architecture'||mode==='stage');
+    structureEdges.forEach(line=>line.visible=!externalModeAvailable&&mode==='structure');
+    kitchenDoorValue=THREE.MathUtils.damp(kitchenDoorValue,kitchenDoorTarget,9,dt);
+    kitchenDoors.forEach((door,index)=>{door.rotation.y=(index%2?1:-1)*kitchenDoorValue*THREE.MathUtils.degToRad(110)});
+    externalDoorMeta.forEach(({door,closedY,sign,angle})=>{door.rotation.y=closedY+sign*kitchenDoorValue*angle});
     if(quakeState.active&&quakeState.progress>=.34&&quakeState.progress<.94){
      const local=(quakeState.progress-.34)/.6,envelope=Math.sin(Math.PI*Math.min(1,local));const amp=.018+.095*quakeState.hazard*envelope;
      const theta=THREE.MathUtils.degToRad(quakeState.directionDeg),pulse=Math.sin(now*.001*quakeState.frequencyHz*Math.PI*2);
@@ -393,7 +428,7 @@ export default function ReferenceHouse(){
 
     if(s.quality!==lastQuality){renderer.setPixelRatio(s.quality==='light'?(mobile?Math.min(devicePixelRatio,.96):1):(mobile?autoPixelRatio:Math.min(devicePixelRatio,1.28)));renderer.shadowMap.enabled=!mobile&&s.quality!=='light';sun.castShadow=renderer.shadowMap.enabled;lastQuality=s.quality;size();renderer.shadowMap.needsUpdate=true;}
     let moving=false;
-    for(let i=0;i<groups.length;i++){const g=groups[i];g.visible=!externalArchitecture&&s.visible[i];const y=i===1?-2*e:i>=8?(i===8?4:7)*e:i===6?2*e:0;moving ||= Math.abs(g.position.y-y)>.005;g.position.y=THREE.MathUtils.lerp(g.position.y,y,alpha);for(const child of g.children){if(child.userData.offset){const dest=(child.userData.offset as T.Vector3).clone().multiplyScalar(e);moving ||= child.position.distanceToSquared(dest)>.0001;child.position.lerp(dest,alpha)}}}
+    for(let i=0;i<groups.length;i++){const g=groups[i];g.visible=!externalModeAvailable&&s.visible[i];const y=i===1?-2*e:i>=8?(i===8?4:7)*e:i===6?2*e:0;moving ||= Math.abs(g.position.y-y)>.005;g.position.y=THREE.MathUtils.lerp(g.position.y,y,alpha);for(const child of g.children){if(child.userData.offset){const dest=(child.userData.offset as T.Vector3).clone().multiplyScalar(e);moving ||= child.position.distanceToSquared(dest)>.0001;child.position.lerp(dest,alpha)}}}
     const shadowState=s.visible.join(',');renderer.shadowMap.autoUpdate=false;if(moving||shadowState!==lastShadowState){renderer.shadowMap.needsUpdate=true;lastShadowState=shadowState;}
     const highlighted=s.selected??hoverLayer;
     layerMaterials.forEach((list,i)=>list.forEach(m=>{m.emissive.set(highlighted===i?'#278ba3':'#000000');m.emissiveIntensity=highlighted===i?.3:0}));

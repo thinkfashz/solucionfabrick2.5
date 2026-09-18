@@ -23,6 +23,7 @@ type Snapshot = {
   alt: string | null;
   iconSvg: SVGElement | null;
   iconSvgStyle: string | null;
+  colorDescendants: Array<{ element: HTMLElement; style: string | null }>;
 };
 
 const EDITOR_PARAM = 'cmsVisual';
@@ -52,6 +53,15 @@ function cleanCssValue(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const clean = value.trim();
   return clean || undefined;
+}
+
+const COLOR_DESCENDANT_SELECTOR = 'span, strong, small, b, em, i, p, label';
+
+function applyVisualColor(element: HTMLElement, value: string) {
+  element.style.setProperty('color', value, 'important');
+  element.querySelectorAll<HTMLElement>(COLOR_DESCENDANT_SELECTOR).forEach((child) => {
+    child.style.setProperty('color', value, 'important');
+  });
 }
 
 function applyStylePatch(element: HTMLElement, patch: VisualCmsStylePatch | undefined) {
@@ -88,7 +98,9 @@ function applyStylePatch(element: HTMLElement, patch: VisualCmsStylePatch | unde
   ];
   for (const [source, cssProperty] of entries) {
     const value = cleanCssValue(patch[source]);
-    if (value !== undefined) element.style.setProperty(cssProperty, value);
+    if (value === undefined) continue;
+    if (source === 'color') applyVisualColor(element, value);
+    else element.style.setProperty(cssProperty, value);
   }
 }
 
@@ -105,6 +117,7 @@ function snapshotElement(element: HTMLElement): Snapshot {
     alt: element instanceof HTMLImageElement ? element.getAttribute('alt') : null,
     iconSvg,
     iconSvgStyle: iconSvg?.getAttribute('style') ?? null,
+    colorDescendants: Array.from(element.querySelectorAll<HTMLElement>(COLOR_DESCENDANT_SELECTOR)).map((child) => ({ element: child, style: child.getAttribute('style') })),
   };
 }
 
@@ -129,6 +142,9 @@ function restoreSnapshot(snapshot: Snapshot) {
     restoreAttribute(element, 'alt', snapshot.alt);
   }
   element.querySelectorAll(`[${RUNTIME_ICON_ATTR}]`).forEach((node) => node.remove());
+  for (const child of snapshot.colorDescendants) {
+    if (child.element.isConnected) restoreAttribute(child.element, 'style', child.style);
+  }
   if (snapshot.iconSvg?.isConnected) restoreAttribute(snapshot.iconSvg, 'style', snapshot.iconSvgStyle);
 }
 
@@ -317,6 +333,8 @@ function similarSelectorFor(element: HTMLElement): { selector: string; count: nu
 
 function selectionPayload(element: HTMLElement) {
   const computed = window.getComputedStyle(element);
+  const visibleTextChild = Array.from(element.querySelectorAll<HTMLElement>(COLOR_DESCENDANT_SELECTOR)).find((child) => child.textContent?.trim() && child.getClientRects().length > 0);
+  const visibleColor = window.getComputedStyle(visibleTextChild || element).color;
   const rect = element.getBoundingClientRect();
   const textEditable = element.childElementCount === 0 && !['IMG', 'INPUT', 'TEXTAREA', 'SELECT', 'VIDEO', 'CANVAS', 'SVG'].includes(element.tagName);
   const similar = similarSelectorFor(element);
@@ -336,7 +354,7 @@ function selectionPayload(element: HTMLElement) {
     isLink: element instanceof HTMLAnchorElement,
     isIcon: Boolean(element.querySelector('svg')) || Boolean(element.closest('svg')),
     computed: {
-      color: computed.color,
+      color: visibleColor,
       backgroundColor: computed.backgroundColor,
       backgroundImage: computed.backgroundImage,
       backgroundSize: computed.backgroundSize,

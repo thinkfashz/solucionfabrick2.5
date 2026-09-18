@@ -9,7 +9,6 @@ import Navbar from '@/components/Navbar';
 import { useRealtimeProducts, type Product } from '@/hooks/useRealtimeProducts';
 import { useCartContext } from '@/context/CartContext';
 import { navigateWithTransition } from '@/lib/routeTransition';
-import { FALLBACK_CATALOG_PRODUCTS } from '@/hooks/useCatalogProducts';
 
 const BG = '#F4EFE6';
 const ORANGE = '#F5871F';
@@ -22,6 +21,19 @@ function buildGallery(product: Product) { const gallery: string[] = []; pushUrl(
 function readable(value: unknown) { return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : ''; }
 function specText(product: Product, keys: string[], fallback: string) { const specs = product.specifications ?? {}; for (const key of keys) { const value = readable(specs[key]); if (value) return value; } return fallback; }
 function finalPrice(product: Product) { return Math.round(product.price * (1 - Number(product.discount_percentage || 0) / 100)); }
+function publicFeatures(product: Product) {
+  const raw = product.specifications?.public_features;
+  if (Array.isArray(raw)) {
+    return raw.map((item) => {
+      const row = item && typeof item === 'object' ? item as Record<string, unknown> : {};
+      return [String(row.label || '').trim(), readable(row.value)] as [string, string];
+    }).filter(([label, value]) => label && value);
+  }
+  if (raw && typeof raw === 'object') {
+    return Object.entries(raw as Record<string, unknown>).map(([label, value]) => [label, readable(value)] as [string, string]).filter(([, value]) => value);
+  }
+  return [] as Array<[string, string]>;
+}
 
 type PublicReview = {
   id: string;
@@ -29,6 +41,7 @@ type PublicReview = {
   rating: number;
   body: string;
   verified_purchase?: boolean;
+  featured?: boolean;
   admin_reply?: string | null;
   created_at: string;
 };
@@ -40,7 +53,7 @@ export default function ProductoClient({ id }: { id: string }) {
   const [activeImg, setActiveImg] = useState(0);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(true);
   const [reviewName, setReviewName] = useState('');
   const [reviewEmail, setReviewEmail] = useState('');
   const [reviewText, setReviewText] = useState('');
@@ -64,8 +77,21 @@ export default function ProductoClient({ id }: { id: string }) {
   }, [id]);
 
   const gallery = useMemo(() => product ? buildGallery(product) : [], [product]);
-  const related = useMemo(() => FALLBACK_CATALOG_PRODUCTS.filter((p) => p.id !== id).slice(0, 6), [id]);
-  const specs = product?.specifications ? Object.entries(product.specifications).filter(([key, value]) => !GALLERY_KEYS.has(key) && readable(value)) : [];
+  const features = useMemo(() => product ? publicFeatures(product) : [], [product]);
+  const related = useMemo(() => {
+    if (!product) return [] as Product[];
+    const manualIds = Array.isArray(product.specifications?.related_product_ids)
+      ? product.specifications!.related_product_ids!.map(String).filter(Boolean)
+      : [];
+    const manual = manualIds.map((relatedId) => products.find((item) => item.id === relatedId)).filter((item): item is Product => Boolean(item && item.id !== id));
+    const sameCategory = products
+      .filter((item) => item.id !== id && !manualIds.includes(item.id) && item.category_id === product.category_id)
+      .sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)));
+    const others = products
+      .filter((item) => item.id !== id && !manualIds.includes(item.id) && item.category_id !== product.category_id)
+      .sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)));
+    return [...manual, ...sameCategory, ...others].slice(0, 8);
+  }, [id, product, products]);
 
   if (loading && !product) return <div className="min-h-screen animate-pulse bg-[#F4EFE6]"><Navbar /><div className="mx-auto max-w-6xl px-4 py-10"><div className="h-[75vh] bg-black/5" /></div></div>;
   if (!product) return <div className="min-h-screen bg-[#F4EFE6] text-[#111214]"><Navbar /><div className="mx-auto grid min-h-[70vh] max-w-xl place-items-center px-6 text-center"><div><p className="text-7xl font-black text-black/10">404</p><h1 className="mt-3 text-3xl font-black">Producto no encontrado</h1><Link href="/tienda" className="mt-6 inline-flex rounded-full bg-black px-6 py-3 text-sm font-black text-white">Volver a tienda</Link></div></div></div>;
@@ -77,8 +103,10 @@ export default function ProductoClient({ id }: { id: string }) {
   const maxQty = product.stock !== undefined ? Math.max(1, stock) : 99;
   const mainImg = gallery[activeImg] || gallery[0] || FALLBACK;
   const provider = specText(product, ['provider', 'proveedor', 'brand', 'marca'], 'Soluciones Fabrick');
+  const orderedReviews = [...publicReviews].sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)) || Number(b.rating) - Number(a.rating));
   const reviewAverage = publicReviews.length ? publicReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / publicReviews.length : 0;
   const rating = reviewAverage || Number(product.rating || 0);
+  const ratingBreakdown = [5, 4, 3, 2, 1].map((value) => ({ value, count: publicReviews.filter((review) => Number(review.rating) === value).length }));
   const purchaseCount = Math.max(0, Number(product.specifications?.purchases || product.specifications?.ventas || 0));
   const delivery = product.delivery_days || 'Despacho coordinado después de la compra';
 

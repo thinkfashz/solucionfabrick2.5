@@ -24,7 +24,9 @@ CREATE TABLE IF NOT EXISTS public.product_reviews (
   body text NOT NULL,
   status text NOT NULL DEFAULT 'pending',
   verified_purchase boolean NOT NULL DEFAULT false,
+  featured boolean NOT NULL DEFAULT false,
   admin_reply text,
+  analysis jsonb NOT NULL DEFAULT '{}'::jsonb,
   ip_hash text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
@@ -41,7 +43,9 @@ ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS rating integer DEFAU
 ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS body text;
 ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending';
 ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS verified_purchase boolean DEFAULT false;
+ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS featured boolean DEFAULT false;
 ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS admin_reply text;
+ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS analysis jsonb DEFAULT '{}'::jsonb;
 ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS ip_hash text;
 ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 ALTER TABLE public.product_reviews ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
@@ -54,6 +58,7 @@ ALTER TABLE public.product_reviews ADD CONSTRAINT product_reviews_status_check C
 
 CREATE INDEX IF NOT EXISTS product_reviews_product_status_idx ON public.product_reviews(tenant_id, product_id, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS product_reviews_status_created_idx ON public.product_reviews(tenant_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS product_reviews_featured_idx ON public.product_reviews(tenant_id, featured, published_at DESC) WHERE featured = true;
 CREATE INDEX IF NOT EXISTS product_reviews_ip_created_idx ON public.product_reviews(ip_hash, created_at DESC) WHERE ip_hash IS NOT NULL;
 
 CREATE OR REPLACE FUNCTION public.touch_product_reviews_updated_at()

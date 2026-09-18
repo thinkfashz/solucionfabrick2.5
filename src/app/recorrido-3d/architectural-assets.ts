@@ -129,9 +129,19 @@ export async function loadOptionalArchitecturalAssets(
   }
 
   const mobile = window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
+  const safeLoad = async (url: string | null, label: string) => {
+    if (!url) return null;
+    try {
+      return await loader.loadAsync(url);
+    } catch (error) {
+      console.warn(`[Fabrick 3D] No se pudo cargar ${label}; se conserva el fallback procedural.`, error);
+      return null;
+    }
+  };
+
   const [houseGltf, terrainGltf] = await Promise.all([
-    manifest.houseUrl ? loader.loadAsync(manifest.houseUrl) : Promise.resolve(null),
-    manifest.terrainUrl ? loader.loadAsync(manifest.terrainUrl) : Promise.resolve(null),
+    safeLoad(manifest.houseUrl, "GLB de vivienda"),
+    safeLoad(manifest.terrainUrl, "terreno Gaea"),
   ]);
 
   const house = houseGltf?.scene ?? null;

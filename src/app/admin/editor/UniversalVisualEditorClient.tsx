@@ -175,21 +175,6 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
   );
 }
 
-function InspectorSection({ title, description, open, onToggle, children }: { title: string; description: string; open: boolean; onToggle: () => void; children: React.ReactNode }) {
-  return (
-    <section className="overflow-hidden rounded-xl border border-white/9 bg-black/20">
-      <button type="button" onClick={onToggle} className="flex w-full items-center gap-2 px-3 py-2.5 text-left">
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] font-black uppercase tracking-[.12em] text-white/65">{title}</p>
-          <p className="mt-0.5 text-[8px] leading-3 text-white/30">{description}</p>
-        </div>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-[#FFB000] transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open ? <div className="grid gap-2 border-t border-white/8 p-2.5">{children}</div> : null}
-    </section>
-  );
-}
-
 function gradientParts(value: string): { first: string; second: string; angle: number } {
   const match = value.match(/linear-gradient\(\s*([\d.]+)deg\s*,\s*(#[0-9a-f]{6})[^,]*,\s*(#[0-9a-f]{6})/i);
   return match
@@ -620,11 +605,17 @@ export default function UniversalVisualEditorClient() {
         <div className="min-w-0 flex-1"><p className="text-[8px] font-black uppercase tracking-[.12em] text-white/30">{selection.tag}{selection.isIcon ? ' · icono' : ''}</p><h2 className="truncate text-xs font-black">{selection.label}</h2></div>
       </div>
 
-      <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg bg-black/30 p-1">
-        {([['content', 'Contenido'], ['appearance', 'Apariencia'], ['layout', 'Medidas']] as Array<[InspectorTab, string]>).map(([key, label]) => (
-          <button key={key} type="button" onClick={() => setInspectorTab(key)} className={`h-8 rounded-md text-[8px] font-black ${inspectorTab === key ? 'bg-white/10 text-white' : 'text-white/35'}`}>{label}</button>
-        ))}
-      </div>
+      <label className="mt-2 grid gap-1.5 rounded-xl border border-white/9 bg-black/25 p-2.5">
+        <span className="text-[8px] font-black uppercase tracking-[.12em] text-[#FFB000]">Menú de edición</span>
+        <select value={inspectorTab} onChange={(event) => setInspectorTab(event.target.value as InspectorTab)} className="h-10 w-full rounded-lg border border-white/10 bg-[#111214] px-3 text-[10px] font-black text-white outline-none focus:border-[#FFB000]/60">
+          <option value="content">Contenido · texto, enlaces, imágenes y visibilidad</option>
+          <option value="appearance">Diseño · colores, tipografía, fondo y bordes</option>
+          <option value="layout">Medidas · tamaños, espacios, escala y responsive</option>
+        </select>
+        <p className="text-[8px] leading-3 text-white/32">
+          {inspectorTab === 'content' ? 'Modifica lo que contiene el elemento sin tocar su lógica funcional.' : inspectorTab === 'appearance' ? 'Cambia su apariencia visual; cada control explica exactamente qué modifica.' : 'Ajusta dimensiones y espaciados en PC, tablet, móvil o todos los dispositivos.'}
+        </p>
+      </label>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-2 [scrollbar-width:thin]">
         {inspectorTab === 'content' ? (

@@ -1,18 +1,18 @@
 import type * as Three from 'three';
 
 type TextureKind='wood'|'plaster'|'tile'|'gravel'|'grass'|'fabric'|'metal';
-type RemoteAsset={id:string;diffuse:string;displacement:string};
+type RemoteAsset={id:string;diffuse:string;displacement:string;roughness:string};
 
-// Web-sized CC0 sources from Poly Haven. The procedural maps below remain the
-// immediate/fallback texture, so the scene still works offline or if a CDN request fails.
+// Web-sized CC0 sources from Poly Haven, mirrored to the project's Cloudinary CDN.
+// The procedural maps remain the immediate fallback, so first paint does not wait for network assets.
 // License: https://polyhaven.com/license (CC0).
 const POLYHAVEN:Partial<Record<TextureKind,RemoteAsset>>={
- wood:{id:'wooden_planks',diffuse:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wooden_planks/wooden_planks_diff_1k.jpg',displacement:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wooden_planks/wooden_planks_disp_1k.jpg'},
- plaster:{id:'white_plaster_02',diffuse:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/white_plaster_02/white_plaster_02_diff_1k.jpg',displacement:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/white_plaster_02/white_plaster_02_disp_1k.jpg'},
- tile:{id:'floor_tiles_08',diffuse:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/floor_tiles_08/floor_tiles_08_diff_1k.jpg',displacement:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/floor_tiles_08/floor_tiles_08_disp_1k.jpg'},
- gravel:{id:'gravel',diffuse:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/gravel/gravel_diff_1k.jpg',displacement:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/gravel/gravel_disp_1k.jpg'},
- grass:{id:'sparse_grass',diffuse:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sparse_grass/sparse_grass_diff_1k.jpg',displacement:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sparse_grass/sparse_grass_disp_1k.jpg'},
- metal:{id:'corrugated_iron',diffuse:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/corrugated_iron/corrugated_iron_diff_1k.jpg',displacement:'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/corrugated_iron/corrugated_iron_disp_1k.jpg'},
+ wood:{id:'wooden_planks',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745510/fabrick/recorrido-3d/pbr/wood/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745516/fabrick/recorrido-3d/pbr/wood/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745521/fabrick/recorrido-3d/pbr/wood/rough.jpg'},
+ plaster:{id:'white_plaster_02',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745526/fabrick/recorrido-3d/pbr/plaster/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745532/fabrick/recorrido-3d/pbr/plaster/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745536/fabrick/recorrido-3d/pbr/plaster/rough.jpg'},
+ tile:{id:'floor_tiles_08',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745542/fabrick/recorrido-3d/pbr/tile/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745547/fabrick/recorrido-3d/pbr/tile/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745553/fabrick/recorrido-3d/pbr/tile/rough.jpg'},
+ gravel:{id:'gravel',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745557/fabrick/recorrido-3d/pbr/gravel/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745562/fabrick/recorrido-3d/pbr/gravel/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745567/fabrick/recorrido-3d/pbr/gravel/rough.jpg'},
+ grass:{id:'sparse_grass',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745572/fabrick/recorrido-3d/pbr/grass/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745578/fabrick/recorrido-3d/pbr/grass/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745583/fabrick/recorrido-3d/pbr/grass/rough.jpg'},
+ metal:{id:'corrugated_iron',diffuse:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745588/fabrick/recorrido-3d/pbr/metal/diff.jpg',displacement:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745592/fabrick/recorrido-3d/pbr/metal/disp.jpg',roughness:'https://res.cloudinary.com/disghf6xc/image/upload/c_limit,w_768/f_auto,q_auto:eco/v1789745597/fabrick/recorrido-3d/pbr/metal/rough.jpg'},
 };
 
 function cover(ctx:CanvasRenderingContext2D,img:HTMLImageElement,size:number){
@@ -49,6 +49,6 @@ export function materialTexture(T:typeof Three,kind:TextureKind,color:string){
  const map=new T.CanvasTexture(canvas);map.wrapS=map.wrapT=T.RepeatWrapping;map.colorSpace=T.SRGBColorSpace;map.anisotropy=8;
  const bump=new T.CanvasTexture(bumpCanvas);bump.wrapS=bump.wrapT=T.RepeatWrapping;bump.colorSpace=T.NoColorSpace;bump.anisotropy=4;
  const roughness=new T.CanvasTexture(roughCanvas);roughness.wrapS=roughness.wrapT=T.RepeatWrapping;roughness.colorSpace=T.NoColorSpace;roughness.anisotropy=4;
- const remote=POLYHAVEN[kind];if(remote){asyncOverlay(canvas,remote.diffuse,()=>{map.needsUpdate=true},color);asyncOverlay(bumpCanvas,remote.displacement,()=>{bump.needsUpdate=true})}
+ const remote=POLYHAVEN[kind];if(remote){asyncOverlay(canvas,remote.diffuse,()=>{map.needsUpdate=true},color);asyncOverlay(bumpCanvas,remote.displacement,()=>{bump.needsUpdate=true});asyncOverlay(roughCanvas,remote.roughness,()=>{roughness.needsUpdate=true})}
  return {map,bump,roughness,source:remote?.id??'procedural'};
 }

@@ -375,6 +375,16 @@ export default function ExperienceShell() {
     return()=>window.removeEventListener("fabrick:interaction",handler);
   }, []);
 
+  useEffect(() => {
+    const handler=(event:Event)=>{
+      const materialId=(event as CustomEvent<{materialId?:string}>).detail?.materialId;
+      if(!materialId||!materialById[materialId])return;
+      setInfoOpen(false);setSelectedMaterialId(materialId);
+    };
+    window.addEventListener("fabrick:material-inspect",handler);
+    return()=>window.removeEventListener("fabrick:material-inspect",handler);
+  }, []);
+
 
   useEffect(() => {
     const audio = audioRef.current;

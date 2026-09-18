@@ -67,7 +67,7 @@ DROP TRIGGER IF EXISTS product_reviews_touch_updated_at ON public.product_review
 CREATE TRIGGER product_reviews_touch_updated_at BEFORE UPDATE ON public.product_reviews FOR EACH ROW EXECUTE FUNCTION public.touch_product_reviews_updated_at();
 `;
 
-const endpoint = `${baseUrl.replace(/\/$/, '')}/api/database/advance/rawsql/unrestricted`;
+const endpoint = `${baseUrl.replace(/\/$/, '')}/api/database/advance/rawsql`;
 
 try {
   const response = await fetch(endpoint, {

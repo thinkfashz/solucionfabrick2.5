@@ -489,7 +489,7 @@ export default function ProductStudioEditor({
         ...(Array.isArray(marketingJson.warnings) ? marketingJson.warnings : []),
       ]);
       setSection('seo');
-      setNotice({ type: 'ok', text: 'Análisis listo. Nada se aplica automáticamente: tú eliges qué recomendación usar.' });
+      setNotice({ type: 'ok', text: autoFillFromGuide && nextOptions[0] ? 'Análisis listo. La primera propuesta se aplicó al borrador según tu guía; revísala antes de guardar.' : 'Análisis listo. Tú eliges qué recomendación aplicar antes de guardar.' });
     } catch (error) {
       setNotice({ type: 'error', text: error instanceof Error ? error.message : 'Error analizando el producto.' });
     } finally {

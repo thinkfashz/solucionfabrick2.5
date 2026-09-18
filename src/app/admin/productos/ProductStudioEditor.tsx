@@ -451,6 +451,51 @@ export default function ProductStudioEditor({
     setField('activo', value);
   }
 
+  function applyResearchContent(value: { tagline: string; description: string; features: ProductPublicFeature[] }) {
+    setForm((current) => ({
+      ...current,
+      tagline: value.tagline || current.tagline,
+      description: value.description || current.description,
+    }));
+    if (value.features.length) setPublicFeatures(value.features.slice(0, 30));
+    setSection('contenido');
+    setNotice({ type: 'ok', text: 'Información contrastada aplicada al borrador. Revisa cada característica antes de guardar.' });
+  }
+
+  function useResearchReference(ref: { source: string; sourceId: string | null; url: string; price: number | null; currency: string | null }) {
+    setForm((current) => ({
+      ...current,
+      source: ref.source || current.source,
+      source_id: ref.sourceId || current.source_id,
+      source_url: ref.url || current.source_url,
+      supplier_price: ref.price ? String(Math.round(ref.price)) : current.supplier_price,
+      supplier_currency: ref.currency || current.supplier_currency,
+    }));
+    setNotice({ type: 'info', text: 'Referencia aplicada como origen/costo provisional. Confirma que corresponda a tu proveedor real antes de guardar.' });
+  }
+
+  function addReferenceImage(url: string, source: string) {
+    if (!/^https:\/\//i.test(url)) return;
+    setGallery((current) => uniqueImages([...current, { url, source: `reference:${source}` }]).slice(0, 20));
+    setNotice({ type: 'info', text: 'Imagen añadida como referencia. Revisa derechos, calidad y correspondencia antes de usarla como portada pública.' });
+  }
+
+  function addPublicFeature() {
+    setPublicFeatures((current) => [...current, { label: '', value: '' }].slice(0, 30));
+  }
+
+  function updatePublicFeature(index: number, patch: Partial<ProductPublicFeature>) {
+    setPublicFeatures((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+  }
+
+  function removePublicFeature(index: number) {
+    setPublicFeatures((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function toggleRelatedProduct(id: string) {
+    setRelatedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id].slice(0, 8));
+  }
+
   async function uploadFiles(files: File[]) {
     if (!files.length) return;
     setBusy('upload');
@@ -647,6 +692,9 @@ export default function ProductStudioEditor({
         ai_provider: aiProvider,
         ai_model: aiModel || null,
         ai_autofill_from_guide: autoFillFromGuide,
+        public_features: Object.fromEntries(publicFeatures.filter((item) => item.label.trim() && item.value.trim()).map((item) => [item.label.trim(), item.value.trim()])),
+        related_product_ids: relatedIds.filter((id) => id && id !== product?.id).slice(0, 8),
+        product_research: researchMemory,
         seo: seoPayload,
         ...(refreshedMarketIntel ? { market_intel: refreshedMarketIntel } : {}),
         ...(commerce ? { commerce_ai: commerce } : {}),
@@ -692,9 +740,12 @@ export default function ProductStudioEditor({
 
   const sections: Array<{ id: Section; label: string; icon: typeof Package }> = [
     { id: 'ficha', label: 'Ficha', icon: Package },
-    { id: 'precio', label: 'Precio e inventario', icon: BadgePercent },
+    { id: 'investigar', label: 'Investigar', icon: Search },
+    { id: 'precio', label: 'Precio + stock', icon: BadgePercent },
+    { id: 'contenido', label: 'Contenido', icon: Tag },
     { id: 'imagenes', label: 'Imágenes', icon: ImageIcon },
     { id: 'seo', label: 'SEO + IA', icon: Sparkles },
+    { id: 'publicacion', label: 'Publicación', icon: Eye },
   ];
 
   return (

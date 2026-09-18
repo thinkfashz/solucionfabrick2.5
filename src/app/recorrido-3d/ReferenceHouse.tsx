@@ -87,7 +87,7 @@ export default function ReferenceHouse(){
    const textured=(m:T.MeshStandardMaterial,kind:Parameters<typeof materialTexture>[1],color:string,roughness:number,scale:number)=>{
     const t=materialTexture(THREE,kind,color);
     if(t){m.color.set('#ffffff');m.map=t.map;m.bumpMap=t.bump;m.roughnessMap=t.roughness;m.bumpScale=scale;
-     const repeat=kind==='grass'?7:kind==='gravel'?4:kind==='wood'?1.6:kind==='tile'?1.15:kind==='metal'?1.35:1;
+     const repeat=kind==='grass'?.58:kind==='gravel'?.72:kind==='wood'?.85:kind==='tile'?.72:kind==='metal'?.9:1;
      for(const tx of [t.map,t.bump,t.roughness]){tx.repeat.set(repeat,repeat);tx.anisotropy=mobile?2:8}
      textures.push(t.map,t.bump,t.roughness)
     }m.roughness=roughness;return m

@@ -219,13 +219,16 @@ export async function POST(request: NextRequest) {
       };
     };
 
-    const firstRun = await callImages(candidateCount);
-    const generated = [...firstRun.images];
-    let reportedCost = firstRun.cost;
-    if (generated.length < candidateCount) {
-      const secondRun = await callImages(candidateCount - generated.length, 'Genera una alternativa visual distinta en encuadre o iluminación, manteniendo exactamente la identidad del mismo producto.');
-      generated.push(...secondRun.images);
-      reportedCost += secondRun.cost;
+    const generated: Array<{ b64_json?: string; media_type?: string }> = [];
+    let reportedCost = 0;
+    for (let index = 0; index < candidateCount; index += 1) {
+      const run = await callImages(
+        1,
+        index === 0 ? '' : `Alternativa ${index + 1}: cambia el encuadre o la iluminación de forma visible, manteniendo exactamente la identidad del mismo producto.`,
+      );
+      reportedCost += run.cost;
+      const image = run.images[0];
+      if (image?.b64_json) generated.push(image);
     }
     if (!generated.length) throw new Error('El modelo respondió sin una imagen utilizable.');
 

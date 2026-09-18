@@ -51,7 +51,7 @@ function supports(model: ImageModel, key: string) {
   return Boolean(params && typeof params === 'object' && key in params);
 }
 
-async function chooseImageModel(apiKey: string, appName: string, siteUrl: string | null, mode: Mode) {
+async function chooseImageModel(apiKey: string, appName: string, siteUrl: string | null, mode: Mode, requireReferences = mode === 'improve') {
   const configured = clean(process.env.OPENROUTER_IMAGE_MODEL, 160);
   const response = await fetch('https://openrouter.ai/api/v1/images/models', {
     headers: {
@@ -65,7 +65,7 @@ async function chooseImageModel(apiKey: string, appName: string, siteUrl: string
   if (!response.ok) throw new Error(`No se pudo consultar los modelos de imagen (HTTP ${response.status}).`);
   const json = await response.json().catch(() => ({})) as { data?: ImageModel[] };
   const models = Array.isArray(json.data) ? json.data.filter((item) => clean(item.id, 160)) : [];
-  const compatible = (model: ImageModel) => mode === 'generate' || supports(model, 'input_references');
+  const compatible = (model: ImageModel) => !requireReferences || supports(model, 'input_references');
 
   if (configured) {
     const exact = models.find((item) => item.id === configured);
@@ -76,7 +76,7 @@ async function chooseImageModel(apiKey: string, appName: string, siteUrl: string
     if (model && compatible(model)) return model;
   }
   const fallback = models.find(compatible);
-  if (!fallback?.id) throw new Error(mode === 'improve' ? 'No hay un modelo de imagen configurado que acepte una imagen de referencia.' : 'No hay modelos de imagen disponibles en OpenRouter.');
+  if (!fallback?.id) throw new Error(requireReferences ? 'No hay un modelo de imagen configurado que acepte referencias visuales.' : 'No hay modelos de imagen disponibles en OpenRouter.');
   return fallback;
 }
 
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
 
     const openRouter = await getOpenRouterCredentials();
     if (!openRouter) return NextResponse.json({ error: 'OpenRouter no está configurado. Añade la API en Administrador > Integraciones para habilitar generación de imágenes.' }, { status: 503 });
-    const model = await chooseImageModel(openRouter.apiKey, openRouter.appName, openRouter.siteUrl, mode);
+    const model = await chooseImageModel(openRouter.apiKey, openRouter.appName, openRouter.siteUrl, mode, mode === 'improve' || referenceUrls.length > 0);
     const prompt = `${buildPrompt(product, mode, instructions)}${referenceUrls.length ? '\n\nSe adjuntan referencias visuales elegidas por el administrador. Úsalas solo para comprender identidad, forma, proporción y presentación del producto. No copies logos, marcas de agua, textos ni fondos de terceros.' : ''}`;
     const callImages = async (count: number, suffix = '') => {
       const payload: Record<string, unknown> = { model: model.id, prompt: suffix ? `${prompt}\n\n${suffix}` : prompt, n: count };

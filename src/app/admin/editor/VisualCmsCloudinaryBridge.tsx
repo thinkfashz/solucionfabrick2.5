@@ -60,6 +60,24 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function cloudinaryFolderFromUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (!url.hostname.includes('cloudinary.com')) return '';
+    const parts = url.pathname.split('/').filter(Boolean);
+    const uploadIndex = parts.indexOf('upload');
+    if (uploadIndex < 0) return '';
+    let resource = parts.slice(uploadIndex + 1);
+    const versionIndex = resource.findIndex((part) => /^v\d+$/.test(part));
+    if (versionIndex >= 0) resource = resource.slice(versionIndex + 1);
+    if (resource.length <= 1) return '';
+    resource.pop();
+    return decodeURIComponent(resource.join('/'));
+  } catch {
+    return '';
+  }
+}
+
 export default function VisualCmsCloudinaryBridge() {
   const [target, setTarget] = useState<ActiveTarget | null>(null);
   const [open, setOpen] = useState(false);
@@ -162,6 +180,14 @@ export default function VisualCmsCloudinaryBridge() {
             selector: root?.dataset.selectedSelector || '',
             cmsId: root?.dataset.selectedCmsId || '',
           });
+          const detectedFolder = cloudinaryFolderFromUrl(input.value);
+          setCurrentFolder(detectedFolder);
+          setPrefix(detectedFolder);
+          setAssets([]);
+          setFolders([]);
+          setAssetsLoadedFor(null);
+          setFoldersLoadedFor(null);
+          setNextCursor(null);
           setLastApplied(null);
           setOpen(true);
         });

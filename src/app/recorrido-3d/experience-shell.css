@@ -285,3 +285,8 @@
 @media(prefers-reduced-motion:reduce){
  .sf-brand-hud,.sf-quick,.sf-camera-dock,.sf-area-card,.sf-material-detail,.sf-tech-dock,.sf-stage-mini{transition:none!important}
 }
+
+
+.sf-plan-toggle{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:8px 0 2px;padding:3px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:rgba(255,255,255,.025)}
+.sf-plan-toggle button{min-height:32px;border:0;border-radius:7px;background:transparent;color:#94a8b7;font-size:8px;font-weight:700;transition:background-color 160ms var(--ease-out),color 160ms var(--ease-out)}
+.sf-plan-toggle button[aria-pressed=true]{background:rgba(255,230,0,.09);color:#ffe600}

@@ -296,7 +296,8 @@ def build_kitchen(collections):
     countertop["materialId"] = "cubierta-mineral-cocina"
     fridge = cube("KITCH_APPLIANCE_FRIDGE_01", (6.82, 1.34, 1.15), (.68, .62, 2.06), collections["KITCH"], steel)
     fridge["materialId"] = "acero-inox-cocina"
-    cube("KITCH_TALL_PANTRY_01", (6.82, -1.82, 1.15), (.61, .46, 2.06), collections["KITCH"], front)
+    pantry = cube("KITCH_TALL_PANTRY_01", (6.82, -1.82, 1.15), (.60, .40, 2.06), collections["KITCH"], front)
+    pantry["materialId"] = "mueble-cocina-metod"
 
     upper_depth = .37
     upper_h = .80

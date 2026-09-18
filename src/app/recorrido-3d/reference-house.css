@@ -61,3 +61,36 @@
 @media(max-width:650px){
  .rh-view-presets{grid-template-columns:1fr 1fr}.rh-layer-groups{gap:4px}.rh-layer-groups>section{padding:5px}
 }
+
+
+/* Viewer v4 native menu — architectural drawer / mobile bottom-sheet. */
+.rh-menu{right:12px;top:58px;bottom:12px;width:360px;max-width:calc(100vw - 24px);padding:10px;border-radius:14px;background:#071525f2;border:1px solid rgba(255,255,255,.08);box-shadow:0 18px 50px rgba(0,0,0,.28);backdrop-filter:blur(10px)}
+.rh-menu-head{top:-10px;margin:-10px -10px 3px;padding:10px;background:#071525fa}
+.rh-menu summary{color:#f7fafc}.rh-menu summary>span{background:rgba(255,230,0,.08);color:#ffe600}.rh-menu summary>small{color:#7e95a7}
+.rh-menu-category{padding-bottom:7px}.rh-menu-category h3{color:#ffe600}.rh-menu-category p{color:#8298aa!important}
+.rh-camera-choice,.rh-view-presets button,.rh-menu-tools button{border:1px solid rgba(255,255,255,.065)!important;background:rgba(255,255,255,.025)!important;color:#eef3f6!important;box-shadow:none!important}
+.rh-camera-choice:hover,.rh-view-presets button:hover,.rh-menu-tools button:hover{border-color:rgba(255,230,0,.2)!important;background:rgba(255,230,0,.035)!important}
+.rh-camera-choice[aria-pressed=true],.rh-menu-tools button[aria-pressed=true]{border-color:rgba(255,230,0,.4)!important;background:rgba(255,230,0,.08)!important;color:#fff!important}
+.rh-layer-groups>section{background:rgba(255,255,255,.018);border-color:rgba(255,255,255,.05)}
+.rh-layer{background:transparent!important}.rh-layer[data-selected=true]{background:rgba(255,230,0,.045)!important}
+.rh-quality select{background:#0b2238;border-color:rgba(255,255,255,.09);color:#f7fafc}
+.rh-camera-fade{background:#071525}
+
+@media(max-width:700px){
+ .rh-top{left:7px;right:auto;top:max(7px,env(safe-area-inset-top));gap:4px}
+ .rh-top>a{display:none}
+ .rh-top>strong{display:none}
+ .rh-top>button{width:34px;height:34px;min-height:34px;padding:0;border-radius:9px;background:rgba(5,16,29,.72)!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:none!important;backdrop-filter:none!important;font-size:0}
+ .rh-top>button:before{content:"☰";font-size:13px}
+ .rh-menu{position:fixed;left:0;right:0;top:auto;bottom:0;width:100%;max-width:none;max-height:82vh;padding:8px 10px calc(10px + env(safe-area-inset-bottom));border:0;border-top:1px solid rgba(255,255,255,.09);border-radius:20px 20px 0 0;background:#071525fa;box-shadow:0 -18px 50px rgba(0,0,0,.32);backdrop-filter:none}
+ .rh-menu:before{content:"";display:block;width:38px;height:4px;margin:0 auto 7px;border-radius:4px;background:rgba(255,255,255,.2)}
+ .rh-menu-head{position:sticky;top:-8px;margin:-8px -10px 2px;padding:8px 10px;background:#071525}
+ .rh-menu-head h2{font-size:12px}
+ .rh-menu details{padding-bottom:3px}
+ .rh-menu summary{padding:7px 1px}
+ .rh-camera-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:3px}
+ .rh-camera-choice{min-height:36px!important;padding:5px 6px!important}.rh-camera-choice strong{font-size:8px}.rh-camera-choice small{font-size:5px}
+ .rh-view-presets button{min-height:38px}.rh-menu-tools button{min-height:39px}
+ .rh-location{display:none!important}
+ .rh-plan{padding:72px 6px 14px}
+}

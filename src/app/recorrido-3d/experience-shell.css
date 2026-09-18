@@ -262,3 +262,26 @@
  transition:none!important;
 }
 .sf-hypocenter{transition:none!important}
+
+
+/* Interaction focus — when the user orbits the model, chrome gets out of the way. */
+.sf-brand-hud,.sf-quick,.sf-camera-dock,.sf-area-card,.sf-material-detail,.sf-tech-dock,.sf-stage-mini{
+ transition:opacity 140ms var(--ease-out),transform 140ms var(--ease-out);
+}
+.sf-is-interacting .sf-brand-hud,
+.sf-is-interacting .sf-area-card,
+.sf-is-interacting .sf-material-detail,
+.sf-is-interacting .sf-tech-dock,
+.sf-is-interacting .sf-stage-mini{
+ opacity:0;
+ pointer-events:none;
+}
+.sf-is-interacting .sf-quick{opacity:.18;transform:translateY(-2px)}
+.sf-is-interacting .sf-camera-dock{opacity:.34;transform:translateX(-50%) translateY(3px)}
+@media(max-width:900px){
+ .sf-is-interacting .sf-quick{opacity:.14}
+ .sf-is-interacting .sf-camera-dock{opacity:.24}
+}
+@media(prefers-reduced-motion:reduce){
+ .sf-brand-hud,.sf-quick,.sf-camera-dock,.sf-area-card,.sf-material-detail,.sf-tech-dock,.sf-stage-mini{transition:none!important}
+}

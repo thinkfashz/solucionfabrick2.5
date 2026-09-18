@@ -122,6 +122,16 @@ export default function ReferenceHouse(){
    const patches=new THREE.InstancedMesh(patchGeo,patchMat,mobile?10:22);patches.rotation.x=-Math.PI/2;const dummy=new THREE.Object3D();let patchSeed=29;
    const patchRandom=()=>{patchSeed=(patchSeed*1664525+1013904223)>>>0;return patchSeed/4294967296};
    for(let i=0;i<patches.count;i++){const angle=patchRandom()*Math.PI*2,dist=10+patchRandom()*26;dummy.position.set(Math.cos(angle)*dist,-.155,Math.sin(angle)*dist);const s=1.8+patchRandom()*4.8;dummy.scale.set(s,s*(.65+patchRandom()*.6),1);dummy.rotation.z=patchRandom()*Math.PI;dummy.updateMatrix();patches.setMatrixAt(i,dummy.matrix)}patches.instanceMatrix.needsUpdate=true;scene.add(patches);
+   // Sparse instanced blades break the flat texture silhouette without adding hundreds of draw calls.
+   const bladeGeo=new THREE.PlaneGeometry(.12,.34);bladeGeo.translate(0,.17,0);geometry.push(bladeGeo);
+   const bladeMat=new THREE.MeshStandardMaterial({color:'#536b40',roughness:1,side:THREE.DoubleSide,transparent:true,opacity:.78,depthWrite:false});materials.push(bladeMat);
+   const bladeCount=mobile?54:180,blades=new THREE.InstancedMesh(bladeGeo,bladeMat,bladeCount);blades.castShadow=false;blades.receiveShadow=false;
+   let bladeSeed=97;const bladeRandom=()=>{bladeSeed=(bladeSeed*1664525+1013904223)>>>0;return bladeSeed/4294967296};
+   for(let i=0;i<bladeCount;i++){
+    let x=0,z=0;for(let tries=0;tries<8;tries++){x=(bladeRandom()-.5)*48;z=(bladeRandom()-.5)*44;if(Math.abs(x)>8.2||Math.abs(z)>7.5)break}
+    dummy.position.set(x,-.145,z);dummy.rotation.set(0,bladeRandom()*Math.PI,0);const h=.65+bladeRandom()*.9;dummy.scale.set(.75+bladeRandom()*.7,h,1);dummy.updateMatrix();blades.setMatrixAt(i,dummy.matrix)
+   }
+   blades.instanceMatrix.needsUpdate=true;scene.add(blades);
    box([0,-.06,.85],[width,.24,9.7],concrete,groups[0]);box([.3275,-.06,-4.85],[6.355,.24,1.7],concrete,groups[0]);
    box([0,-.08,-5.35],[width,.18,2.7],wood,groups[0]);box([1.3,-.05,6.15],[3.6,.18,1.11],concrete,groups[0]);
    for(let z=-6.6;z<-4;z+=.16)box([0,.017,z],[width,.015,.012],black,groups[0]);

@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const DEFAULT_TENANT = '00000000-0000-0000-0000-000000000001';
-const PUBLIC_FIELDS = 'id,product_id,author_name,rating,body,verified_purchase,admin_reply,created_at,published_at';
-const ADMIN_FIELDS = 'id,tenant_id,product_id,author_name,author_email,rating,body,status,verified_purchase,admin_reply,created_at,updated_at,published_at';
+const PUBLIC_FIELDS = 'id,product_id,author_name,rating,body,verified_purchase,featured,admin_reply,created_at,published_at';
+const ADMIN_FIELDS = 'id,tenant_id,product_id,author_name,author_email,rating,body,status,verified_purchase,featured,admin_reply,analysis,created_at,updated_at,published_at';
 
 type ReviewStatus = 'pending' | 'published' | 'archived';
 
@@ -50,24 +50,58 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const scope = url.searchParams.get('scope');
   const productId = cleanText(url.searchParams.get('product'), 80);
-  if (!validUuid(productId)) return NextResponse.json({ reviews: [] }, { headers: { 'Cache-Control': 'no-store' } });
+  const isAdmin = scope === 'admin';
 
-  const session = scope === 'admin' ? await adminSession(request) : null;
-  if (scope === 'admin' && !session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  const tenantId = scope === 'admin' ? await getAdminTenantId(request) : tenantFromPublicRequest(request);
+  const session = isAdmin ? await adminSession(request) : null;
+  if (isAdmin && !session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  if (!isAdmin && !validUuid(productId)) return NextResponse.json({ reviews: [] }, { headers: { 'Cache-Control': 'no-store' } });
+
+  const tenantId = isAdmin ? await getAdminTenantId(request) : tenantFromPublicRequest(request);
 
   try {
     let query = insforgeAdmin.database
       .from('product_reviews')
-      .select(scope === 'admin' ? ADMIN_FIELDS : PUBLIC_FIELDS)
+      .select(isAdmin ? ADMIN_FIELDS : PUBLIC_FIELDS)
       .eq('tenant_id', tenantId)
-      .eq('product_id', productId)
       .order('created_at', { ascending: false })
-      .limit(scope === 'admin' ? 100 : 40);
-    if (scope !== 'admin') query = query.eq('status', 'published');
+      .limit(isAdmin ? 250 : 40);
+
+    if (validUuid(productId)) query = query.eq('product_id', productId);
+    if (!isAdmin) query = query.eq('status', 'published');
+
     const { data, error } = await query;
     if (error) return dbFailure(error, 'Las opiniones no están disponibles por el momento.');
-    return NextResponse.json({ reviews: Array.isArray(data) ? data : [] }, { headers: { 'Cache-Control': 'no-store' } });
+    const reviews = Array.isArray(data) ? data : [];
+
+    if (!isAdmin || reviews.length === 0) {
+      return NextResponse.json({ reviews }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    const productIds = Array.from(new Set(reviews.map((review) => String((review as { product_id?: unknown }).product_id || '')).filter(validUuid)));
+    const productMap = new Map<string, { name: string; image_url: string | null }>();
+    if (productIds.length) {
+      const { data: products } = await insforgeAdmin.database
+        .from('products')
+        .select('id,name,image_url')
+        .eq('tenant_id', tenantId)
+        .in('id', productIds);
+      for (const product of Array.isArray(products) ? products : []) {
+        const row = product as { id?: unknown; name?: unknown; image_url?: unknown };
+        const id = String(row.id || '');
+        if (id) productMap.set(id, { name: String(row.name || 'Producto'), image_url: typeof row.image_url === 'string' ? row.image_url : null });
+      }
+    }
+
+    return NextResponse.json({
+      reviews: reviews.map((review) => {
+        const product = productMap.get(String((review as { product_id?: unknown }).product_id || ''));
+        return {
+          ...review,
+          product_name: product?.name || 'Producto',
+          product_image_url: product?.image_url || null,
+        };
+      }),
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return dbFailure(error, 'Las opiniones no están disponibles por el momento.');
   }
@@ -140,18 +174,19 @@ export async function PATCH(request: NextRequest) {
     const id = cleanText(payload.id, 80);
     const status = cleanText(payload.status, 20) as ReviewStatus;
     const adminReply = cleanText(payload.adminReply, 1200);
-    const verifiedPurchase = payload.verifiedPurchase === true;
     if (!validUuid(id)) return NextResponse.json({ error: 'Opinión inválida.' }, { status: 400 });
-    if (!['pending', 'published', 'archived'].includes(status)) return NextResponse.json({ error: 'Estado inválido.' }, { status: 400 });
+    if (status && !['pending', 'published', 'archived'].includes(status)) return NextResponse.json({ error: 'Estado inválido.' }, { status: 400 });
 
     const now = new Date().toISOString();
-    const update: Record<string, unknown> = {
-      status,
-      verified_purchase: verifiedPurchase,
-      admin_reply: adminReply || null,
-      updated_at: now,
-      published_at: status === 'published' ? now : null,
-    };
+    const update: Record<string, unknown> = { updated_at: now };
+    if (status) {
+      update.status = status;
+      update.published_at = status === 'published' ? now : null;
+    }
+    if (typeof payload.verifiedPurchase === 'boolean') update.verified_purchase = payload.verifiedPurchase;
+    if (typeof payload.featured === 'boolean') update.featured = payload.featured;
+    if ('adminReply' in payload) update.admin_reply = adminReply || null;
+    if (payload.analysis && typeof payload.analysis === 'object' && !Array.isArray(payload.analysis)) update.analysis = payload.analysis;
     const { data, error } = await insforgeAdmin.database
       .from('product_reviews')
       .update(update)

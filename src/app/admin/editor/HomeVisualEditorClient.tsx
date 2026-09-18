@@ -1,6 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DndContext, KeyboardSensor, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   ArchiveRestore,
   ChevronDown,
@@ -71,10 +74,14 @@ export default function HomeVisualEditorClient() {
   const [publishing, setPublishing] = useState(false);
   const [status, setStatus] = useState('Cargando configuración…');
   const [iframeReady, setIframeReady] = useState(false);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const draftRef = useRef<HomePageContent>(DEFAULT_HOME_PAGE);
   const lastHistoryAtRef = useRef(0);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   function replaceDraft(next: HomePageContent, clearHistory = false) {
     draftRef.current = next;
@@ -382,6 +389,13 @@ export default function HomeVisualEditorClient() {
     }, false);
   }
 
+  function handleStructureDragEnd(event: DragEndEvent) {
+    const sourceId = String(event.active.id);
+    const targetId = event.over ? String(event.over.id) : '';
+    if (!targetId || sourceId === targetId) return;
+    moveSection(sourceId, targetId);
+  }
+
   function moveSection(sourceId: string, targetId: string) {
     if (!sourceId || sourceId === targetId) return;
     const source = draftRef.current.sections.find((section) => section.id === sourceId);
@@ -550,13 +564,15 @@ export default function HomeVisualEditorClient() {
       <div className="grid min-h-[calc(100dvh-4rem)] lg:grid-cols-[270px_minmax(0,1fr)_380px]">
         <aside className="border-b border-white/8 bg-[#0B0C0E] p-3 lg:border-b-0 lg:border-r lg:p-4">
           <div className="mb-3 flex items-center justify-between"><span className="text-[9px] font-black uppercase tracking-[.18em] text-white/35">Estructura</span><span className="text-[9px] text-white/25">{ordered.filter((section) => section.enabled && section.editor?.trashed !== true).length}/{ordered.length}</span></div>
-          <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible">
-            {ordered.map((section, index) => (
-              <button key={section.id} type="button" draggable={section.editor?.lock?.move !== true && section.editor?.trashed !== true} onDragStart={() => setDraggedId(section.id)} onDragEnd={() => setDraggedId(null)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (draggedId) moveSection(draggedId, section.id); setDraggedId(null); }} onClick={() => selectSection(section.id)} className={`min-w-[185px] rounded-xl border p-3 text-left transition lg:min-w-0 ${draggedId === section.id ? 'opacity-45' : ''} ${section.editor?.trashed === true ? 'border-red-400/20 bg-red-400/[.04] opacity-65' : section.id === selected?.id ? 'border-[#FFB000]/55 bg-[#FFB000]/8' : 'border-white/8 bg-black/25 hover:border-white/20'}`}>
-                <div className="flex items-center gap-2"><GripVertical className={`h-3.5 w-3.5 shrink-0 ${section.editor?.lock?.move === true ? 'text-[#FFB000]/60' : 'text-white/20'}`} /><span className="grid h-6 w-6 place-items-center rounded-md bg-white/5 text-[9px] font-black text-white/30">{String(index + 1).padStart(2, '0')}</span><span className="min-w-0 flex-1 truncate text-xs font-black">{section.label}</span>{section.editor?.lock?.move === true ? <Lock className="h-3.5 w-3.5 text-[#FFB000]/70" /> : null}{section.editor?.trashed === true ? <Trash2 className="h-3.5 w-3.5 text-red-300/70" /> : section.enabled ? <Eye className="h-3.5 w-3.5 text-emerald-300/70" /> : <EyeOff className="h-3.5 w-3.5 text-white/25" />}</div>
-              </button>
-            ))}
-          </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleStructureDragEnd}>
+            <SortableContext items={ordered.map((section) => section.id)} strategy={rectSortingStrategy}>
+              <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible">
+                {ordered.map((section, index) => (
+                  <SortableSectionCard key={section.id} section={section} index={index} selected={section.id === selected?.id} onSelect={selectSection} />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
           <div className="mt-4 hidden rounded-xl border border-white/8 bg-black/30 p-3 text-[10px] leading-5 text-white/32 lg:block">Arrastra bloques para reordenar. Toca un elemento dentro de la vista previa para mostrar herramientas rápidas. Haz doble clic sobre un texto editable para cambiar su contenido directamente.</div>
         </aside>
 
@@ -603,6 +619,37 @@ export default function HomeVisualEditorClient() {
         </aside>
       </div>
     </div>
+  );
+}
+
+function SortableSectionCard({ section, index, selected, onSelect }: { section: HomeVisualSection; index: number; selected: boolean; onSelect: (id: string) => void }) {
+  const disabled = section.editor?.lock?.move === true || section.editor?.trashed === true;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id, disabled });
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      onClick={() => onSelect(section.id)}
+      className={`min-w-[185px] rounded-xl border p-3 text-left transition lg:min-w-0 ${isDragging ? 'z-20 opacity-45' : ''} ${section.editor?.trashed === true ? 'border-red-400/20 bg-red-400/[.04] opacity-65' : selected ? 'border-[#FFB000]/55 bg-[#FFB000]/8' : 'border-white/8 bg-black/25 hover:border-white/20'}`}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          {...attributes}
+          {...listeners}
+          onClick={(event) => event.stopPropagation()}
+          className={`grid h-7 w-7 shrink-0 touch-none place-items-center rounded-md ${disabled ? 'cursor-not-allowed bg-white/[.02] text-[#FFB000]/45' : 'cursor-grab bg-white/[.04] text-white/28 active:cursor-grabbing'}`}
+          aria-label={disabled ? 'Movimiento bloqueado' : `Arrastrar ${section.label}`}
+          title={disabled ? 'Movimiento bloqueado' : 'Mantén pulsado y arrastra para reordenar'}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </span>
+        <span className="grid h-6 w-6 place-items-center rounded-md bg-white/5 text-[9px] font-black text-white/30">{String(index + 1).padStart(2, '0')}</span>
+        <span className="min-w-0 flex-1 truncate text-xs font-black">{section.label}</span>
+        {section.editor?.lock?.move === true ? <Lock className="h-3.5 w-3.5 text-[#FFB000]/70" /> : null}
+        {section.editor?.trashed === true ? <Trash2 className="h-3.5 w-3.5 text-red-300/70" /> : section.enabled ? <Eye className="h-3.5 w-3.5 text-emerald-300/70" /> : <EyeOff className="h-3.5 w-3.5 text-white/25" />}
+      </div>
+    </button>
   );
 }
 

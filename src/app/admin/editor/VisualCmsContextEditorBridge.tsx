@@ -225,7 +225,7 @@ export default function VisualCmsContextEditorBridge() {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: string; element?: Selection } | null;
-      if (data?.type !== 'cms:visual-select' || !data.element) return;
+      if ((data?.type !== 'cms:visual-select' && data?.type !== 'cms:visual-editor-selection-sync') || !data.element) return;
       const selected = data.element;
       setSelection(selected);
       setQuick({
@@ -238,16 +238,15 @@ export default function VisualCmsContextEditorBridge() {
         textAlign: String(selected.computed?.textAlign || 'left'),
         borderRadius: numberPart(selected.computed?.borderRadius, '0'),
       });
-      setSimilar(false);
-      setSiteWide(false);
-      setExpanded(true);
-      setAdvanced(false);
 
-      window.setTimeout(() => {
-        clickInspectorAction('Contenido', 'Solo este');
-        clickInspectorAction('Contenido', 'Esta página');
-      }, 35);
-      closeAutoInspectorPanel();
+      if (data.type === 'cms:visual-select') {
+        setSimilar(false);
+        setSiteWide(false);
+        setExpanded(true);
+        setAdvanced(false);
+        window.postMessage({ type: 'cms:visual-editor-target', targetMode: 'single', elementScope: 'page' }, window.location.origin);
+        closeAutoInspectorPanel();
+      }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
@@ -274,12 +273,12 @@ export default function VisualCmsContextEditorBridge() {
     const currentSelection = selection;
     if (!currentSelection) return;
     setSimilar(next);
-    clickInspectorAction('Contenido', next ? `${currentSelection.similarCount} similares` : 'Solo este');
+    window.postMessage({ type: 'cms:visual-editor-target', targetMode: next ? 'similar' : 'single' }, window.location.origin);
   }
 
   function toggleSiteWide(next: boolean) {
     setSiteWide(next);
-    clickInspectorAction('Contenido', next ? 'Todo el sitio' : 'Esta página');
+    window.postMessage({ type: 'cms:visual-editor-target', elementScope: next ? 'global' : 'page' }, window.location.origin);
   }
 
   return (

@@ -96,6 +96,7 @@ describe('Fabrick Studio v2 editor contract', () => {
     const visualRuntime = readFileSync('src/components/cms/VisualCmsRuntime.tsx', 'utf8');
     const homeRuntime = readFileSync('src/components/cms/HomeVisualRuntime.tsx', 'utf8');
     const bridge = readFileSync('src/app/admin/editor/VisualCmsHomeStructureBridge.tsx', 'utf8');
+    const homeEditor = readFileSync('src/app/admin/editor/HomeVisualEditorClient.tsx', 'utf8');
 
     expect(visualRuntime).toContain('elementsForOverride');
     expect(visualRuntime).toContain('override.cmsId');
@@ -103,5 +104,8 @@ describe('Fabrick Studio v2 editor contract', () => {
     expect(homeRuntime).toContain('section.editor?.trashed !== true');
     expect(bridge).toContain('section.editor?.lock?.remove === true');
     expect(bridge).toContain('trashedAt: new Date().toISOString()');
+    expect(homeEditor).toContain('TouchSensor');
+    expect(homeEditor).toContain('delay: 220');
+    expect(homeEditor).toContain('SortableContext');
   });
 });

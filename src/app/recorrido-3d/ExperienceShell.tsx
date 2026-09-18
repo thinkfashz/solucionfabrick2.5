@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import ReferenceHouse from "./ReferenceHouse";
 import { materialById } from "./material-catalog";
-import { Activity, ChevronLeft, ChevronRight, Info, Menu, Moon, Sun, X } from "lucide-react";
+import { Activity, ChevronLeft, ChevronRight, Info, Menu, Moon, Sun, Volume2, VolumeX, X } from "lucide-react";
 import "./experience-shell.css";
 
 type LightMode = "day" | "sunset" | "night";
@@ -277,8 +277,9 @@ export default function ExperienceShell() {
   const [directionDeg, setDirectionDeg] = useState(35);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const audioRef = useRef<{ ctx: AudioContext; ambient: GainNode; rumble: GainNode; oscillator: OscillatorNode; source: AudioBufferSourceNode; filter: BiquadFilterNode } | null>(null);
+  const audioRef = useRef<{ ctx: AudioContext; ambient: GainNode; rumble: GainNode; quakeNoise: GainNode; oscillator: OscillatorNode; oscillator2: OscillatorNode; source: AudioBufferSourceNode; filter: BiquadFilterNode; quakeFilter: BiquadFilterNode; master: GainNode } | null>(null);
   const ambienceMediaRef = useRef<{ day: HTMLAudioElement; night: HTMLAudioElement } | null>(null);
+  const ambienceFadeRef = useRef(0);
 
   const analysis = useMemo(() => {
     const estimatedMmi = estimateMmi(magnitude, depthKm, distanceKm, soil);
@@ -362,21 +363,40 @@ export default function ExperienceShell() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const quakeGain = soundOn && phase === "surface" ? 0.035 + analysis.hazard * 0.12 : 0.0001;
-    audio.rumble.gain.setTargetAtTime(quakeGain, audio.ctx.currentTime, 0.12);
-    audio.oscillator.frequency.setTargetAtTime(26 + frequencyHz * 12, audio.ctx.currentTime, 0.18);
-    audio.ambient.gain.setTargetAtTime(soundOn ? 0.004 : 0.0001, audio.ctx.currentTime, 0.2);
+    const quakeActive = soundOn && phase === "surface";
+    const quakeGain = quakeActive ? 0.014 + analysis.hazard * 0.055 : 0.0001;
+    const noiseGain = quakeActive ? 0.008 + analysis.hazard * 0.032 : 0.0001;
+    audio.rumble.gain.setTargetAtTime(quakeGain, audio.ctx.currentTime, 0.1);
+    audio.quakeNoise.gain.setTargetAtTime(noiseGain, audio.ctx.currentTime, 0.09);
+    audio.oscillator.frequency.setTargetAtTime(24 + frequencyHz * 8, audio.ctx.currentTime, 0.16);
+    audio.oscillator2.frequency.setTargetAtTime(39 + frequencyHz * 10, audio.ctx.currentTime, 0.16);
+    audio.quakeFilter.frequency.setTargetAtTime(70 + analysis.hazard * 45, audio.ctx.currentTime, 0.12);
+    audio.ambient.gain.setTargetAtTime(soundOn ? 0.003 : 0.0001, audio.ctx.currentTime, 0.22);
     audio.filter.frequency.setTargetAtTime(light === "night" ? 650 : light === "sunset" ? 950 : 1450, audio.ctx.currentTime, 0.35);
+
     const media = ambienceMediaRef.current;
-    if (media) {
-      const active = light === "night" ? media.night : media.day;
-      const inactive = light === "night" ? media.day : media.night;
-      inactive.pause();
-      if (soundOn) {
-        active.volume = light === "sunset" ? 0.13 : light === "night" ? 0.11 : 0.16;
-        void active.play().catch(() => {});
-      } else active.pause();
+    if (!media) return;
+    cancelAnimationFrame(ambienceFadeRef.current);
+    const dayTarget = soundOn && light !== "night" ? (light === "sunset" ? 0.09 : 0.13) : 0;
+    const nightTarget = soundOn && light === "night" ? 0.1 : 0;
+    if (soundOn) {
+      if (dayTarget > 0) void media.day.play().catch(() => {});
+      if (nightTarget > 0) void media.night.play().catch(() => {});
     }
+    const dayStart=media.day.volume,nightStart=media.night.volume,started=performance.now(),durationMs=320;
+    const fade=(now:number)=>{
+      const t=Math.min(1,(now-started)/durationMs);
+      const eased=1-Math.pow(1-t,3);
+      media.day.volume=dayStart+(dayTarget-dayStart)*eased;
+      media.night.volume=nightStart+(nightTarget-nightStart)*eased;
+      if(t<1) ambienceFadeRef.current=requestAnimationFrame(fade);
+      else {
+        if(dayTarget===0) media.day.pause();
+        if(nightTarget===0) media.night.pause();
+      }
+    };
+    ambienceFadeRef.current=requestAnimationFrame(fade);
+    return()=>cancelAnimationFrame(ambienceFadeRef.current);
   }, [soundOn, phase, analysis.hazard, frequencyHz, light]);
 
   const ensureAmbienceMedia = () => {
@@ -395,40 +415,55 @@ export default function ExperienceShell() {
   const ensureAudio = () => {
     if (audioRef.current) return audioRef.current;
     const ctx = new AudioContext();
+    const master=ctx.createGain();master.gain.value=.78;
+    const compressor=ctx.createDynamicsCompressor();compressor.threshold.value=-18;compressor.knee.value=18;compressor.ratio.value=3;compressor.attack.value=.01;compressor.release.value=.22;
+    master.connect(compressor).connect(ctx.destination);
+
     const seconds = 3;
     const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (0.45 + 0.55 * Math.sin((i / data.length) * Math.PI));
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 1100;
-    const ambient = ctx.createGain();
-    ambient.gain.value = 0.0001;
-    source.connect(filter).connect(ambient).connect(ctx.destination);
-    source.start();
-    const oscillator = ctx.createOscillator();
-    oscillator.type = "sine";
-    oscillator.frequency.value = 42;
-    const rumble = ctx.createGain();
-    rumble.gain.value = 0.0001;
-    oscillator.connect(rumble).connect(ctx.destination);
-    oscillator.start();
-    audioRef.current = { ctx, ambient, rumble, oscillator, source, filter };
+    const source = ctx.createBufferSource();source.buffer = buffer;source.loop = true;
+
+    const filter = ctx.createBiquadFilter();filter.type = "lowpass";filter.frequency.value = 1100;
+    const ambient = ctx.createGain();ambient.gain.value = 0.0001;
+    source.connect(filter).connect(ambient).connect(master);
+
+    const quakeFilter=ctx.createBiquadFilter();quakeFilter.type="lowpass";quakeFilter.frequency.value=85;quakeFilter.Q.value=.8;
+    const quakeNoise=ctx.createGain();quakeNoise.gain.value=.0001;
+    source.connect(quakeFilter).connect(quakeNoise).connect(master);
+
+    const oscillator = ctx.createOscillator();oscillator.type = "sine";oscillator.frequency.value = 38;
+    const oscillator2 = ctx.createOscillator();oscillator2.type = "triangle";oscillator2.frequency.value = 54;oscillator2.detune.value=-7;
+    const rumble = ctx.createGain();rumble.gain.value = 0.0001;
+    oscillator.connect(rumble);oscillator2.connect(rumble);rumble.connect(master);
+    source.start();oscillator.start();oscillator2.start();
+
+    audioRef.current = { ctx, ambient, rumble, quakeNoise, oscillator, oscillator2, source, filter, quakeFilter, master };
     return audioRef.current;
   };
 
   useEffect(() => () => {
     const audio = audioRef.current;
     if (!audio) return;
+    cancelAnimationFrame(ambienceFadeRef.current);
     audio.source.stop();
     audio.oscillator.stop();
+    audio.oscillator2.stop();
     const media = ambienceMediaRef.current;
     if (media) { media.day.pause(); media.night.pause(); media.day.src = ""; media.night.src = ""; }
     void audio.ctx.close();
   }, []);
+
+  const toggleSound = async () => {
+    const next=!soundOn;
+    if(next){
+      ensureAmbienceMedia();
+      const audio=ensureAudio();
+      await audio.ctx.resume();
+    }
+    setSoundOn(next);
+  };
 
   const goCamera = (index: number) => {
     const next = (index + CAMERAS.length) % CAMERAS.length;
@@ -642,9 +677,9 @@ export default function ExperienceShell() {
               <div className="sf-segmented">{(["day", "sunset", "night"] as LightMode[]).map((mode) => <button key={mode} aria-pressed={light === mode} onClick={() => setLight(mode)}>{mode === "day" ? "Día" : mode === "sunset" ? "Atardecer" : "Noche"}</button>)}</div>
               <label>Exposición <b>{exposure}%</b><input type="range" min="45" max="145" step="1" value={exposure} onChange={(e) => setExposure(Number(e.target.value))} /></label>
               <label>Temperatura <b>{temperature} K</b><input type="range" min="2700" max="6500" step="100" value={temperature} onChange={(e) => setTemperature(Number(e.target.value))} /></label>
-              <div className="sf-switches"><button aria-pressed={interiorLights} onClick={() => setInteriorLights((v) => !v)}>Lámparas interiores <b>{interiorLights ? "ON" : "OFF"}</b></button><button aria-pressed={exteriorLights} onClick={() => setExteriorLights((v) => !v)}>Luces exteriores <b>{exteriorLights ? "ON" : "OFF"}</b></button></div>
+              <div className="sf-switches"><button aria-pressed={interiorLights} onClick={() => setInteriorLights((v) => !v)}>Lámparas interiores <b>{interiorLights ? "ON" : "OFF"}</b></button><button aria-pressed={exteriorLights} onClick={() => setExteriorLights((v) => !v)}>Luces exteriores <b>{exteriorLights ? "ON" : "OFF"}</b></button><button aria-pressed={soundOn} onClick={()=>void toggleSound()}>Ambiente sonoro <b>{soundOn ? <Volume2 size={14} strokeWidth={1.8}/> : <VolumeX size={14} strokeWidth={1.8}/>}</b></button></div>
             </section>
-            <section className="sf-light-map"><h2>Mapa de iluminación del modelo</h2><div><article><b>5</b><span>Puntos interiores</span><small>Living, comedor, dormitorios y cocina representados con PointLight.</small></article><article><b>2</b><span>Puntos exteriores</span><small>Fachada frontal / terraza.</small></article></div><p>ACES Filmic, sol direccional, luz hemisférica y luminarias Three.js cambian físicamente entre día, atardecer y noche. Las sombras se adaptan a móvil/escritorio.</p></section>
+            <section className="sf-light-map"><h2>Mapa de iluminación del modelo</h2><div><article><b>5</b><span>Puntos interiores</span><small>Living, comedor, dormitorios y cocina representados con PointLight.</small></article><article><b>2</b><span>Puntos exteriores</span><small>Fachada frontal / terraza.</small></article></div><p>AgX tone mapping, sol direccional, luz hemisférica y luminarias Three.js cambian físicamente entre día, atardecer y noche. Las sombras se adaptan a móvil/escritorio.</p></section>
           </> : null}
 
           {tab === "technical" ? <section className="sf-control-help">

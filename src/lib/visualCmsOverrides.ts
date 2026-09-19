@@ -32,8 +32,16 @@ export interface VisualCmsStylePatch {
   transformOrigin?: string;
 }
 
+export interface VisualCmsLockState {
+  move?: boolean;
+  remove?: boolean;
+  content?: boolean;
+  style?: boolean;
+}
+
 export interface VisualCmsElementOverride {
   selector: string;
+  cmsId?: string;
   label?: string;
   text?: string;
   href?: string;
@@ -42,6 +50,9 @@ export interface VisualCmsElementOverride {
   iconUrl?: string;
   iconAlt?: string;
   hidden?: boolean;
+  lock?: VisualCmsLockState;
+  trashed?: boolean;
+  trashedAt?: string;
   styles?: Partial<Record<VisualCmsDevice | 'all', VisualCmsStylePatch>>;
 }
 
@@ -52,12 +63,12 @@ export interface VisualCmsPageOverride {
 }
 
 export interface VisualCmsOverridesContent {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   pages: Record<string, VisualCmsPageOverride>;
 }
 
 export const DEFAULT_VISUAL_CMS_OVERRIDES: VisualCmsOverridesContent = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   pages: {},
 };
 
@@ -81,6 +92,7 @@ export function normalizeVisualCmsOverrides(value: unknown): VisualCmsOverridesC
       if (!selector) continue;
       elements[selector] = {
         selector,
+        ...(typeof element.cmsId === 'string' && element.cmsId.trim() ? { cmsId: element.cmsId.trim() } : {}),
         ...(typeof element.label === 'string' ? { label: element.label } : {}),
         ...(typeof element.text === 'string' ? { text: element.text } : {}),
         ...(typeof element.href === 'string' ? { href: element.href } : {}),
@@ -89,6 +101,9 @@ export function normalizeVisualCmsOverrides(value: unknown): VisualCmsOverridesC
         ...(typeof element.iconUrl === 'string' ? { iconUrl: element.iconUrl } : {}),
         ...(typeof element.iconAlt === 'string' ? { iconAlt: element.iconAlt } : {}),
         ...(typeof element.hidden === 'boolean' ? { hidden: element.hidden } : {}),
+        ...(element.lock && typeof element.lock === 'object' && !Array.isArray(element.lock) ? { lock: element.lock } : {}),
+        ...(typeof element.trashed === 'boolean' ? { trashed: element.trashed } : {}),
+        ...(typeof element.trashedAt === 'string' ? { trashedAt: element.trashedAt } : {}),
         ...(element.styles && typeof element.styles === 'object' && !Array.isArray(element.styles) ? { styles: element.styles } : {}),
       };
     }
@@ -100,7 +115,7 @@ export function normalizeVisualCmsOverrides(value: unknown): VisualCmsOverridesC
     };
   }
 
-  return { schemaVersion: 1, pages };
+  return { schemaVersion: 2, pages };
 }
 
 export function routeKey(pathname: string): string {
@@ -134,6 +149,7 @@ export function upsertVisualElement(
             ...patch,
             selector,
             styles: patch.styles ? { ...(current.styles || {}), ...patch.styles } : current.styles,
+            lock: patch.lock ? { ...(current.lock || {}), ...patch.lock } : current.lock,
           },
         },
       },

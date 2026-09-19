@@ -23,6 +23,7 @@ type Snapshot = {
   alt: string | null;
   iconSvg: SVGElement | null;
   iconSvgStyle: string | null;
+  colorDescendants: Array<{ element: HTMLElement; style: string | null }>;
 };
 
 const EDITOR_PARAM = 'cmsVisual';
@@ -52,6 +53,15 @@ function cleanCssValue(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const clean = value.trim();
   return clean || undefined;
+}
+
+const COLOR_DESCENDANT_SELECTOR = 'span, strong, small, b, em, i, p, label';
+
+function applyVisualColor(element: HTMLElement, value: string) {
+  element.style.setProperty('color', value, 'important');
+  element.querySelectorAll<HTMLElement>(COLOR_DESCENDANT_SELECTOR).forEach((child) => {
+    child.style.setProperty('color', value, 'important');
+  });
 }
 
 function applyStylePatch(element: HTMLElement, patch: VisualCmsStylePatch | undefined) {
@@ -88,7 +98,9 @@ function applyStylePatch(element: HTMLElement, patch: VisualCmsStylePatch | unde
   ];
   for (const [source, cssProperty] of entries) {
     const value = cleanCssValue(patch[source]);
-    if (value !== undefined) element.style.setProperty(cssProperty, value);
+    if (value === undefined) continue;
+    if (source === 'color') applyVisualColor(element, value);
+    else element.style.setProperty(cssProperty, value);
   }
 }
 
@@ -105,6 +117,7 @@ function snapshotElement(element: HTMLElement): Snapshot {
     alt: element instanceof HTMLImageElement ? element.getAttribute('alt') : null,
     iconSvg,
     iconSvgStyle: iconSvg?.getAttribute('style') ?? null,
+    colorDescendants: Array.from(element.querySelectorAll<HTMLElement>(COLOR_DESCENDANT_SELECTOR)).map((child) => ({ element: child, style: child.getAttribute('style') })),
   };
 }
 
@@ -129,6 +142,9 @@ function restoreSnapshot(snapshot: Snapshot) {
     restoreAttribute(element, 'alt', snapshot.alt);
   }
   element.querySelectorAll(`[${RUNTIME_ICON_ATTR}]`).forEach((node) => node.remove());
+  for (const child of snapshot.colorDescendants) {
+    if (child.element.isConnected) restoreAttribute(child.element, 'style', child.style);
+  }
   if (snapshot.iconSvg?.isConnected) restoreAttribute(snapshot.iconSvg, 'style', snapshot.iconSvgStyle);
 }
 
@@ -175,7 +191,7 @@ function applyOverride(element: HTMLElement, override: VisualCmsElementOverride,
     }
     if (typeof override.alt === 'string') element.setAttribute('alt', override.alt);
   }
-  if (override.hidden === true) element.style.display = 'none';
+  if (override.hidden === true || override.trashed === true) element.style.display = 'none';
   applyStylePatch(element, override.styles?.all);
   applyStylePatch(element, override.styles?.[device]);
   applyIconOverride(element, override);
@@ -317,11 +333,14 @@ function similarSelectorFor(element: HTMLElement): { selector: string; count: nu
 
 function selectionPayload(element: HTMLElement) {
   const computed = window.getComputedStyle(element);
+  const visibleTextChild = Array.from(element.querySelectorAll<HTMLElement>(COLOR_DESCENDANT_SELECTOR)).find((child) => child.textContent?.trim() && child.getClientRects().length > 0);
+  const visibleColor = window.getComputedStyle(visibleTextChild || element).color;
   const rect = element.getBoundingClientRect();
   const textEditable = element.childElementCount === 0 && !['IMG', 'INPUT', 'TEXTAREA', 'SELECT', 'VIDEO', 'CANVAS', 'SVG'].includes(element.tagName);
   const similar = similarSelectorFor(element);
   return {
     selector: uniqueSelector(element),
+    cmsId: element.dataset.cmsId || null,
     similarSelector: similar?.selector || null,
     similarCount: similar?.count || 0,
     tag: element.tagName.toLowerCase(),
@@ -335,7 +354,7 @@ function selectionPayload(element: HTMLElement) {
     isLink: element instanceof HTMLAnchorElement,
     isIcon: Boolean(element.querySelector('svg')) || Boolean(element.closest('svg')),
     computed: {
-      color: computed.color,
+      color: visibleColor,
       backgroundColor: computed.backgroundColor,
       backgroundImage: computed.backgroundImage,
       backgroundSize: computed.backgroundSize,
@@ -381,8 +400,18 @@ function elementsForSelector(selector: string): HTMLElement[] {
   }
 }
 
+function elementsForOverride(override: VisualCmsElementOverride): HTMLElement[] {
+  const cmsId = override.cmsId?.trim();
+  if (cmsId) {
+    const byId = elementsForSelector(`[data-cms-id="${escapeAttributeValue(cmsId)}"]`);
+    if (byId.length) return byId;
+  }
+  return elementsForSelector(override.selector);
+}
+
 export default function VisualCmsRuntime() {
   const pathname = usePathname() || '/';
+  const blockedRoute = pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/auth' || pathname.startsWith('/auth/');
   const stored = useSiteContent('visual-overrides');
   const content = useMemo(() => normalizeVisualCmsOverrides(stored), [stored]);
   const snapshotsRef = useRef<Map<HTMLElement, Snapshot>>(new Map());
@@ -390,6 +419,7 @@ export default function VisualCmsRuntime() {
   const [domEpoch, setDomEpoch] = useState(0);
 
   useEffect(() => {
+    if (blockedRoute) return;
     let frame = 0;
     const invalidate = () => {
       window.cancelAnimationFrame(frame);
@@ -407,10 +437,15 @@ export default function VisualCmsRuntime() {
       window.removeEventListener('orientationchange', invalidate);
       window.cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [blockedRoute]);
 
   useEffect(() => {
     const snapshots = snapshotsRef.current;
+    if (blockedRoute) {
+      for (const snapshot of snapshots.values()) restoreSnapshot(snapshot);
+      snapshots.clear();
+      return;
+    }
     for (const snapshot of snapshots.values()) restoreSnapshot(snapshot);
     snapshots.clear();
 
@@ -422,7 +457,7 @@ export default function VisualCmsRuntime() {
 
     for (const layer of layers) {
       const resolved = Object.values(layer!.elements)
-        .map((override) => ({ override, elements: elementsForSelector(override.selector) }))
+        .map((override) => ({ override, elements: elementsForOverride(override) }))
         .filter((entry) => entry.elements.length > 0)
         .sort((a, b) => b.elements.length - a.elements.length);
 
@@ -438,9 +473,10 @@ export default function VisualCmsRuntime() {
       for (const snapshot of snapshots.values()) restoreSnapshot(snapshot);
       snapshots.clear();
     };
-  }, [content, pathname, domEpoch]);
+  }, [content, pathname, domEpoch, blockedRoute]);
 
   useEffect(() => {
+    if (blockedRoute) return;
     let preview = false;
     try { preview = new URLSearchParams(window.location.search).get(EDITOR_PARAM) === '1'; } catch { /* noop */ }
     if (!preview || window.parent === window) return;
@@ -541,15 +577,19 @@ export default function VisualCmsRuntime() {
       return match ? Number.parseFloat(match[1]) || 1 : 1;
     };
     const touchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 2 || !selectedRef.current) return;
+      if (event.touches.length !== 2 || !(selectedRef.current instanceof HTMLImageElement)) return;
+      event.preventDefault();
       imageDrag = null;
       pinchStartDistance = Math.max(1, distance(event.touches));
       pinchStartScale = scaleFrom(window.getComputedStyle(selectedRef.current).transform);
+      selectedRef.current.style.setProperty('touch-action', 'none', 'important');
     };
     const touchMove = (event: TouchEvent) => {
-      if (event.touches.length !== 2 || !selectedRef.current || !pinchStartDistance) return;
+      if (event.touches.length !== 2 || !(selectedRef.current instanceof HTMLImageElement) || !pinchStartDistance) return;
       event.preventDefault();
-      const scale = Math.min(3, Math.max(0.35, pinchStartScale * distance(event.touches) / pinchStartDistance));
+      const scale = Math.min(4, Math.max(0.25, pinchStartScale * distance(event.touches) / pinchStartDistance));
+      selectedRef.current.style.setProperty('transform', `scale(${scale})`, 'important');
+      selectedRef.current.style.setProperty('transform-origin', 'center center', 'important');
       window.parent.postMessage({ type: 'cms:visual-pinch', selector: uniqueSelector(selectedRef.current), scale: Number(scale.toFixed(3)) }, window.location.origin);
     };
     const touchEnd = () => { pinchStartDistance = 0; };
@@ -560,7 +600,7 @@ export default function VisualCmsRuntime() {
     document.addEventListener('pointermove', pointerMove, { capture: true, passive: false });
     document.addEventListener('pointerup', pointerUp, true);
     document.addEventListener('pointercancel', pointerUp, true);
-    document.addEventListener('touchstart', touchStart, { capture: true, passive: true });
+    document.addEventListener('touchstart', touchStart, { capture: true, passive: false });
     document.addEventListener('touchmove', touchMove, { capture: true, passive: false });
     document.addEventListener('touchend', touchEnd, true);
     window.parent.postMessage({ type: 'cms:visual-ready', route: routeKey(pathname) }, window.location.origin);

@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
   Link2,
   Loader2,
+  MessagesSquare,
   Package,
   Pencil,
   Plus,
@@ -35,7 +36,7 @@ import ProductCategoryManager from './ProductCategoryManager';
 import ProductStudioEditor, { type ProductStudioRecord } from './ProductStudioEditor';
 
 type Filter = 'all' | 'active' | 'hidden' | 'featured' | 'low-stock' | 'without-image' | 'without-seo' | 'market';
-type Sort = 'newest' | 'name' | 'price-desc' | 'price-asc' | 'stock-asc';
+type Sort = 'attention' | 'newest' | 'name' | 'featured-first' | 'price-desc' | 'price-asc' | 'stock-asc' | 'stock-desc';
 
 function numberValue(value: unknown) {
   const parsed = Number(String(value ?? '').replace(/[^0-9.-]/g, ''));
@@ -83,6 +84,17 @@ function margin(product: ProductStudioRecord) {
   return price > 0 && cost > 0 ? Math.round(((price - cost) / price) * 100) : null;
 }
 
+function attentionIssues(product: ProductStudioRecord) {
+  const issues: string[] = [];
+  if (!product.image_url) issues.push('imagen');
+  if (!hasSeo(product)) issues.push('SEO');
+  if (!product.description) issues.push('descripción');
+  if (numberValue(product.price) <= 0) issues.push('precio');
+  if (numberValue(product.stock) <= 0) issues.push('stock');
+  else if (numberValue(product.stock) <= 5) issues.push('stock bajo');
+  return issues;
+}
+
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
   return <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={(event) => { event.stopPropagation(); onChange(!checked); }} className={`relative inline-flex h-6 w-10 shrink-0 rounded-full transition ${checked ? 'bg-[#111214]' : 'bg-black/15'}`}><span className={`mt-0.5 h-5 w-5 rounded-full bg-white shadow transition ${checked ? 'translate-x-[18px]' : 'translate-x-0.5'}`} /></button>;
 }
@@ -110,7 +122,7 @@ export default function AdminProductosPage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
-  const [sort, setSort] = useState<Sort>('newest');
+  const [sort, setSort] = useState<Sort>('attention');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [studio, setStudio] = useState<{ mode: 'create' | 'edit'; product?: ProductStudioRecord } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -162,7 +174,7 @@ export default function AdminProductosPage() {
   }, [searchParams, products]);
 
   const metrics = useMemo(() => {
-    const active = products.filter((product) => product.activo !== false).length;
+    const active = products.filter((product) => product.activo !== false && numberValue(product.stock) > 0).length;
     const lowStock = products.filter((product) => numberValue(product.stock) > 0 && numberValue(product.stock) <= 5).length;
     const ready = products.filter((product) => product.image_url && hasSeo(product) && product.description && numberValue(product.price) > 0).length;
     const market = products.filter((product) => Boolean(marketIntel(product))).length;
@@ -175,8 +187,8 @@ export default function AdminProductosPage() {
     const result = products.filter((product) => {
       const category = resolveCategoryName(product.category_id || undefined, categoryMap);
       if (needle && ![product.name, product.description, product.sku, product.ean, product.source, category].some((value) => String(value || '').toLowerCase().includes(needle))) return false;
-      if (filter === 'active') return product.activo !== false;
-      if (filter === 'hidden') return product.activo === false;
+      if (filter === 'active') return product.activo !== false && numberValue(product.stock) > 0;
+      if (filter === 'hidden') return product.activo === false || numberValue(product.stock) <= 0;
       if (filter === 'featured') return Boolean(product.featured);
       if (filter === 'low-stock') return numberValue(product.stock) > 0 && numberValue(product.stock) <= 5;
       if (filter === 'without-image') return !product.image_url;
@@ -185,10 +197,23 @@ export default function AdminProductosPage() {
       return true;
     });
     return result.sort((a, b) => {
+      if (sort === 'attention') {
+        const attentionScore = (product: ProductStudioRecord) => {
+          const issues = attentionIssues(product);
+          return issues.reduce((score, issue) => score + (issue === 'imagen' ? 4 : issue === 'SEO' || issue === 'precio' ? 3 : issue === 'descripción' || issue === 'stock' ? 2 : 1), 0);
+        };
+        const delta = attentionScore(b) - attentionScore(a);
+        if (delta) return delta;
+      }
+      if (sort === 'featured-first') {
+        const delta = Number(Boolean(b.featured)) - Number(Boolean(a.featured));
+        if (delta) return delta;
+      }
       if (sort === 'name') return a.name.localeCompare(b.name, 'es');
       if (sort === 'price-desc') return numberValue(b.price) - numberValue(a.price);
       if (sort === 'price-asc') return numberValue(a.price) - numberValue(b.price);
       if (sort === 'stock-asc') return numberValue(a.stock) - numberValue(b.stock);
+      if (sort === 'stock-desc') return numberValue(b.stock) - numberValue(a.stock);
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
     });
   }, [products, query, filter, sort, categoryMap]);
@@ -242,6 +267,10 @@ export default function AdminProductosPage() {
   }
 
   async function patchProduct(product: ProductStudioRecord, patch: Record<string, unknown>) {
+    if (patch.activo === true && numberValue(product.stock) <= 0) {
+      showToast('Añade al menos 1 unidad de stock antes de activar el producto.', 'error');
+      return false;
+    }
     const previous = products;
     setProducts((current) => current.map((item) => item.id === product.id ? { ...item, ...patch } : item));
     const response = await fetch(`/api/admin/products?id=${encodeURIComponent(product.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
@@ -288,7 +317,7 @@ export default function AdminProductosPage() {
       <section className="rounded-[1.8rem] border border-black/7 bg-[#fffaf0] p-4 shadow-sm sm:p-6">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-[#111214] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.18em] text-[#f5c75d]">Catálogo</span><span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff0bd] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.14em] text-[#7e5814]"><Sparkles className="h-3 w-3" />IA integrada</span><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.14em] text-emerald-800"><TrendingUp className="h-3 w-3" />Radar conectado</span></div><h1 className="mt-3 text-3xl font-black tracking-[-.055em] sm:text-4xl">Productos</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-black/45">Un solo lugar para crear, editar, analizar con IA, organizar imágenes, precio, inventario y SEO. Los candidatos del radar conservan su guía de precio y margen.</p></div>
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end"><button type="button" onClick={openCreate} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#111214] px-4 text-xs font-black text-white sm:col-span-1"><Plus className="h-4 w-4 text-[#f5c75d]" />Nuevo producto</button><button type="button" onClick={() => router.push('/admin/inteligencia-mercado')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3.5 text-xs font-black text-white"><BarChart3 className="h-4 w-4" />Mercado</button><button type="button" onClick={() => setImportOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-[#fff0bd] px-3.5 text-xs font-black text-[#76500f]"><Upload className="h-4 w-4" />Importar</button><button type="button" onClick={openUrlImport} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><Link2 className="h-4 w-4" />Desde URL</button><button type="button" onClick={() => setCategoriesOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><FolderOpen className="h-4 w-4" />Categorías</button><button type="button" onClick={() => { setLoading(true); void loadProducts(); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</button></div>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end"><button type="button" onClick={openCreate} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#111214] px-4 text-xs font-black text-white sm:col-span-1"><Plus className="h-4 w-4 text-[#f5c75d]" />Nuevo producto</button><button type="button" onClick={() => router.push('/admin/inteligencia-mercado')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3.5 text-xs font-black text-white"><BarChart3 className="h-4 w-4" />Mercado</button><button type="button" onClick={() => router.push('/admin/opiniones-productos')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><MessagesSquare className="h-4 w-4 text-[#b47a15]" />Opiniones</button><button type="button" onClick={() => setImportOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-[#fff0bd] px-3.5 text-xs font-black text-[#76500f]"><Upload className="h-4 w-4" />Importar</button><button type="button" onClick={openUrlImport} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><Link2 className="h-4 w-4" />Desde URL</button><button type="button" onClick={() => setCategoriesOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><FolderOpen className="h-4 w-4" />Categorías</button><button type="button" onClick={() => { setLoading(true); void loadProducts(); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</button></div>
         </div>
       </section>
 
@@ -298,7 +327,7 @@ export default function AdminProductosPage() {
 
       {selectedIds.length ? <section className="sticky top-20 z-30 flex flex-col gap-3 rounded-2xl bg-[#111214]/96 p-3 text-white shadow-xl backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-black">{selectedIds.length} seleccionado{selectedIds.length === 1 ? '' : 's'}</p><p className="text-[11px] text-white/40">Acciones rápidas sin abrir cada ficha.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => void bulkPatch({ activo: true })} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black">Activar</button><button type="button" onClick={() => void bulkPatch({ activo: false })} className="rounded-lg bg-white/10 px-3 py-2 text-xs font-black">Ocultar</button><button type="button" onClick={() => void bulkPatch({ featured: true })} className="rounded-lg bg-[#f5c75d] px-3 py-2 text-xs font-black text-black">Destacar</button><button type="button" onClick={() => void bulkPatch({ featured: false })} className="rounded-lg bg-white/10 px-3 py-2 text-xs font-black">Quitar destacado</button><button type="button" onClick={() => setSelectedIds([])} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-black">Cancelar</button></div></section> : null}
 
-      <section className="rounded-2xl border border-black/7 bg-[#efe6d6] p-3 shadow-sm sm:p-4"><div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_180px_190px]"><label className="relative"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar producto, SKU, EAN, categoría o proveedor" className="min-h-11 w-full rounded-xl border border-black/8 bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#d18b16]" /></label><select value={filter} onChange={(event) => setFilter(event.target.value as Filter)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="all">Todos</option><option value="market">Desde radar</option><option value="active">Activos</option><option value="hidden">Ocultos</option><option value="featured">Destacados</option><option value="low-stock">Stock crítico</option><option value="without-image">Sin imagen</option><option value="without-seo">SEO pendiente</option></select><select value={sort} onChange={(event) => setSort(event.target.value as Sort)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="newest">Más recientes</option><option value="name">Nombre A-Z</option><option value="price-desc">Precio mayor</option><option value="price-asc">Precio menor</option><option value="stock-asc">Stock menor</option></select></div></section>
+      <section className="rounded-2xl border border-black/7 bg-[#efe6d6] p-3 shadow-sm sm:p-4"><div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_180px_190px]"><label className="relative"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar producto, SKU, EAN, categoría o proveedor" className="min-h-11 w-full rounded-xl border border-black/8 bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#d18b16]" /></label><select value={filter} onChange={(event) => setFilter(event.target.value as Filter)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="all">Todos</option><option value="market">Desde radar</option><option value="active">Activos</option><option value="hidden">Ocultos</option><option value="featured">Destacados</option><option value="low-stock">Stock crítico</option><option value="without-image">Sin imagen</option><option value="without-seo">SEO pendiente</option></select><select value={sort} onChange={(event) => setSort(event.target.value as Sort)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="attention">Necesita atención primero</option><option value="featured-first">Destacados primero</option><option value="newest">Más recientes</option><option value="name">Nombre A-Z</option><option value="price-desc">Precio mayor</option><option value="price-asc">Precio menor</option><option value="stock-asc">Stock menor</option><option value="stock-desc">Stock mayor</option></select></div></section>
 
       <section className="overflow-hidden rounded-[1.6rem] border border-black/7 bg-[#fffaf0] shadow-sm">
         <div className="hidden grid-cols-[46px_minmax(280px,1fr)_150px_120px_92px_110px_116px] items-center gap-3 border-b border-black/7 bg-[#f1e8d8] px-4 py-3 text-[9px] font-black uppercase tracking-[.14em] text-black/35 lg:grid"><span></span><span>Producto</span><span>Precio</span><span>Stock</span><span>SEO</span><span>Estado</span><span>Acciones</span></div>
@@ -309,14 +338,36 @@ export default function AdminProductosPage() {
           const radarMargin = marketMargin(product);
           const fromRadar = Boolean(marketIntel(product));
           const low = numberValue(product.stock) > 0 && numberValue(product.stock) <= 5;
-          return <article key={product.id} onDoubleClick={() => openEdit(product)} className={`grid gap-3 px-3 py-3 transition hover:bg-[#fff5df] sm:px-4 lg:grid-cols-[46px_minmax(280px,1fr)_150px_120px_92px_110px_116px] lg:items-center ${selected ? 'bg-[#fff0bd]/45' : ''}`}>
-            <button type="button" onClick={() => setSelectedIds((current) => current.includes(product.id) ? current.filter((id) => id !== product.id) : [...current, product.id])} className={`absolute right-3 mt-1 grid h-9 w-9 place-items-center rounded-xl lg:static lg:right-auto lg:mt-0 ${selected ? 'bg-[#f5c75d] text-black' : 'bg-black/[0.05] text-black/25'}`} aria-label="Seleccionar producto">{selected ? <Check className="h-4 w-4" /> : null}</button>
-            <div className="flex min-w-0 items-center gap-3 pr-12 lg:pr-0">{product.image_url ? <img src={product.image_url} alt={product.name} className="h-14 w-14 shrink-0 rounded-xl border border-black/7 bg-white object-contain p-1" /> : <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-black/[0.04] text-black/15"><Package className="h-5 w-5" /></div>}<div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate text-sm font-black">{product.name}</p>{product.featured ? <Star className="h-3.5 w-3.5 shrink-0 fill-[#f5c75d] text-[#aa7416]" /> : null}{fromRadar ? <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] text-emerald-800">Radar</span> : null}</div><p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[.11em] text-[#986a18]">{category}</p><div className="mt-1.5 flex flex-wrap gap-2 text-[10px] text-black/35">{product.sku ? <span>SKU {product.sku}</span> : null}<span>{galleryCount(product)} foto{galleryCount(product) === 1 ? '' : 's'}</span>{radarMargin != null ? <span className={radarMargin >= 0 ? 'text-emerald-700' : 'text-red-700'}>Margen radar {radarMargin.toFixed(1)}%</span> : productMargin != null ? <span>Margen {productMargin}%</span> : null}</div></div></div>
-            <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">Precio</span><div><p className="text-sm font-black">{money(product.price)}</p>{numberValue(product.discount_percentage) > 0 ? <p className="text-[10px] font-bold text-[#a76c0a]">-{numberValue(product.discount_percentage)}%</p> : null}</div></div>
-            <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">Stock</span><span className={`inline-flex rounded-lg px-2.5 py-1.5 text-xs font-black ${low ? 'bg-red-100 text-red-700' : 'bg-black/[0.04] text-black/55'}`}>{numberValue(product.stock)}</span></div>
-            <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">SEO</span><span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-black ${hasSeo(product) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{hasSeo(product) ? <CheckCircle2 className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}{hasSeo(product) ? 'Listo' : 'Pendiente'}</span></div>
-            <div className="flex items-center justify-between gap-2 lg:justify-start"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">Activo</span><Toggle checked={product.activo !== false} onChange={(value) => void patchProduct(product, { activo: value })} label={`Activo: ${product.name}`} /></div>
-            <div className="flex justify-end gap-1.5"><button type="button" onClick={() => openEdit(product)} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#111214] px-3 text-[10px] font-black text-white lg:flex-none"><Pencil className="h-3.5 w-3.5" />Editar</button><button type="button" onClick={() => setDeleteTarget(product)} className="grid h-9 w-9 place-items-center rounded-lg bg-red-50 text-red-700"><Trash2 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => openEdit(product)} className="hidden h-9 w-9 place-items-center rounded-lg bg-black/[0.04] text-black/40 xl:grid"><ChevronRight className="h-4 w-4" /></button></div>
+          const stock = numberValue(product.stock);
+          const outOfStock = stock <= 0;
+          const inCatalog = product.activo !== false && stock > 0;
+          const issues = attentionIssues(product);
+          return <article key={product.id} onDoubleClick={() => openEdit(product)} className={`relative grid gap-3 px-3 py-4 transition hover:bg-[#fff5df] sm:px-4 lg:grid-cols-[46px_minmax(280px,1fr)_150px_120px_92px_110px_116px] lg:items-center lg:py-3 ${selected ? 'bg-[#fff0bd]/45' : ''}`}>
+            <button type="button" onClick={() => setSelectedIds((current) => current.includes(product.id) ? current.filter((id) => id !== product.id) : [...current, product.id])} className={`absolute right-3 top-4 grid h-9 w-9 place-items-center rounded-xl lg:static lg:right-auto lg:top-auto ${selected ? 'bg-[#f5c75d] text-black' : 'bg-black/[0.05] text-black/25'}`} aria-label="Seleccionar producto">{selected ? <Check className="h-4 w-4" /> : null}</button>
+
+            <div className="flex min-w-0 items-center gap-3 pr-12 lg:pr-0">
+              {product.image_url ? <img src={product.image_url} alt={product.name} className="h-16 w-16 shrink-0 rounded-2xl border border-black/7 bg-white object-contain p-1.5 lg:h-14 lg:w-14 lg:rounded-xl" /> : <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-dashed border-black/10 bg-black/[0.025] text-black/18 lg:h-14 lg:w-14 lg:rounded-xl"><Package className="h-5 w-5" /></div>}
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2"><p className="truncate text-[15px] font-black tracking-[-.02em] lg:text-sm">{product.name}</p>{product.featured ? <Star className="h-3.5 w-3.5 shrink-0 fill-[#f5c75d] text-[#aa7416]" /> : null}{fromRadar ? <span className="hidden shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] text-emerald-800 sm:inline">Radar</span> : null}</div>
+                <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[.11em] text-[#986a18]">{category}</p>
+                <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-black/35">{product.sku ? <span>SKU {product.sku}</span> : null}<span>{galleryCount(product)} foto{galleryCount(product) === 1 ? '' : 's'}</span>{radarMargin != null ? <span className={radarMargin >= 0 ? 'text-emerald-700' : 'text-red-700'}>Margen {radarMargin.toFixed(1)}%</span> : productMargin != null ? <span>Margen {productMargin}%</span> : null}</div>{issues.length ? <p className="mt-1.5 truncate text-[9px] font-black text-amber-700">Atención: {issues.join(' · ')}</p> : <p className="mt-1.5 text-[9px] font-black text-emerald-700">Ficha operativa</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 lg:contents">
+              <div className="rounded-xl border border-black/[0.06] bg-white/70 p-3 lg:block lg:border-0 lg:bg-transparent lg:p-0"><span className="text-[8px] font-black uppercase tracking-[.14em] text-black/30 lg:hidden">Precio</span><div className="mt-1 lg:mt-0"><p className="text-base font-black tracking-[-.02em] lg:text-sm">{money(product.price)}</p>{numberValue(product.discount_percentage) > 0 ? <p className="text-[10px] font-bold text-[#a76c0a]">-{numberValue(product.discount_percentage)}%</p> : null}</div></div>
+              <div className="rounded-xl border border-black/[0.06] bg-white/70 p-3 lg:block lg:border-0 lg:bg-transparent lg:p-0"><span className="text-[8px] font-black uppercase tracking-[.14em] text-black/30 lg:hidden">Stock</span><div className="mt-1 lg:mt-0"><span className={`inline-flex rounded-lg px-2.5 py-1.5 text-xs font-black ${outOfStock ? 'bg-zinc-200 text-zinc-700' : low ? 'bg-red-100 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>{outOfStock ? 'Sin stock' : stock}</span></div></div>
+              <div className="rounded-xl border border-black/[0.06] bg-white/70 p-3 lg:block lg:border-0 lg:bg-transparent lg:p-0"><span className="text-[8px] font-black uppercase tracking-[.14em] text-black/30 lg:hidden">SEO</span><div className="mt-1 lg:mt-0"><span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-black ${hasSeo(product) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{hasSeo(product) ? <CheckCircle2 className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}{hasSeo(product) ? 'Listo' : 'Pendiente'}</span></div></div>
+              <div className="rounded-xl border border-black/[0.06] bg-white/70 p-3 lg:flex lg:items-center lg:justify-start lg:border-0 lg:bg-transparent lg:p-0">
+                <div className="flex items-center justify-between gap-3 lg:justify-start"><div className="lg:hidden"><span className="block text-[8px] font-black uppercase tracking-[.14em] text-black/30">Catálogo</span><span className={`mt-1 block text-[10px] font-black ${inCatalog ? 'text-emerald-700' : 'text-black/35'}`}>{inCatalog ? 'Visible' : outOfStock ? 'Oculto · sin stock' : 'Oculto'}</span></div><Toggle checked={inCatalog} onChange={(value) => void patchProduct(product, { activo: value })} label={`Catálogo: ${product.name}`} /></div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-[1fr_44px] gap-2 lg:flex lg:justify-end lg:gap-1.5">
+              <button type="button" onClick={() => openEdit(product)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#d79b2b]/35 bg-[#fff0bd] px-4 text-xs font-black !text-[#5f430d] shadow-sm transition hover:bg-[#ffe28b] lg:min-h-9 lg:rounded-lg lg:px-3 lg:text-[10px]"><Pencil className="h-3.5 w-3.5" />Editar producto</button>
+              <button type="button" onClick={() => setDeleteTarget(product)} className="grid h-11 w-11 place-items-center rounded-xl bg-red-50 text-red-700 lg:h-9 lg:w-9 lg:rounded-lg" aria-label={`Eliminar ${product.name}`}><Trash2 className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => openEdit(product)} className="hidden h-9 w-9 place-items-center rounded-lg bg-black/[0.04] text-black/40 xl:grid"><ChevronRight className="h-4 w-4" /></button>
+            </div>
           </article>;
         })}</div>}
       </section>

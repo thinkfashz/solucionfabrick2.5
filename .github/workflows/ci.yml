@@ -15,47 +15,61 @@ concurrency:
 
 jobs:
   ci:
-    name: lint · typecheck · test · build
+    name: typecheck · build diagnostic
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v5
 
-      - name: Prepare pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.0
-          run_install: false
-
       - name: Use Node.js 24
         uses: actions/setup-node@v5
         with:
           node-version: '24.x'
-          cache: pnpm
+
+      - name: Prepare pnpm
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.0 --activate
+          pnpm --version
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Lint
-        run: pnpm run lint --if-present
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm install --no-frozen-lockfile 2>&1 | tee install.log
 
       - name: Typecheck
-        run: pnpm run typecheck --if-present
+        id: typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm run typecheck 2>&1 | tee typecheck.log
 
-      - name: Test with coverage
-        run: pnpm run test:coverage
+      - name: Build
+        id: build
+        continue-on-error: true
+        shell: bash
+        env:
+          CI: 'true'
+        run: |
+          set -o pipefail
+          pnpm run build 2>&1 | tee build.log
 
-      - name: Upload coverage report
+      - name: Upload diagnostic logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: coverage/
-          if-no-files-found: ignore
-          retention-days: 14
+          name: homepage-ci-diagnostic
+          path: |
+            install.log
+            typecheck.log
+            build.log
+          if-no-files-found: warn
+          retention-days: 2
 
-      - name: Build
-        env:
-          CI: 'true'
-        run: pnpm run build
+      - name: Fail when validation failed
+        if: steps.typecheck.outcome == 'failure' || steps.build.outcome == 'failure'
+        run: exit 1

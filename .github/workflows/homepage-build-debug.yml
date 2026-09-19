@@ -1,0 +1,50 @@
+name: Homepage build diagnostic
+
+on:
+  push:
+    branches: [feat/homepage-editorial-craft]
+
+permissions:
+  contents: read
+
+jobs:
+  build-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24.x'
+
+      - name: Prepare pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.0 --activate
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm install --no-frozen-lockfile 2>&1 | tee install.log
+
+      - name: Build and capture output
+        shell: bash
+        env:
+          CI: 'true'
+        run: |
+          set -o pipefail
+          pnpm run build 2>&1 | tee build.log
+
+      - name: Upload diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homepage-build-diagnostic
+          path: |
+            install.log
+            build.log
+          if-no-files-found: warn
+          retention-days: 2

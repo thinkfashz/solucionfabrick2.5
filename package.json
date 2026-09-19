@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.33.0",
-  "engines": {
-    "node": "24.x"
-  },
+  "engines": { "node": "24.x" },
   "scripts": {
     "dev": "next dev",
     "test:commerce-p0": "vitest run tests/unit/checkout.test.ts tests/unit/shipping.test.ts tests/unit/checkoutStatus.test.ts tests/unit/mercadopago.test.ts tests/unit/mercadopagoStatus.test.ts tests/unit/paymentValidation.test.ts tests/unit/insforgeFailClosed.test.ts tests/unit/orderTrackingFailClosed.test.ts tests/unit/commerceP0Schema.test.ts",
@@ -32,8 +30,7 @@
     "admin:set-password": "tsx scripts/set-admin-password.ts",
     "admin:enable-totp": "tsx scripts/enable-admin-totp.ts",
     "admin:disable-totp": "tsx scripts/disable-admin-totp.ts",
-    "admin:generate-backup-codes": "tsx scripts/generate-backup-codes.ts",
-    "migration:customer-data": "node scripts/apply-customer-data-migration.mjs"
+    "admin:generate-backup-codes": "tsx scripts/generate-backup-codes.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

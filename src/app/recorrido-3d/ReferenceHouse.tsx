@@ -312,7 +312,7 @@ export default function ReferenceHouse(){
      hemi.intensity=.42;hemi.color.set('#9cc6e8');hemi.groundColor.set('#1b2733');sun.intensity=.18;sun.color.set('#a8c8ea');sun.position.set(12,16,8);scene.fog=new THREE.Fog('#142538',42,102);renderer.setClearColor('#0d1c2c');scene.environmentIntensity=.24;
      skyMat.uniforms.uBottom.value.set('#101d2d');skyMat.uniforms.uTop.value.set('#07111f');skyMat.uniforms.uCloud.value.set('#23364b');skyMat.uniforms.uSunColor.value.set('#b5d4f0');skyMat.uniforms.uSunStrength.value=.08;skyMat.uniforms.uCloudStrength.value=.14;
     }
-    indoorLights.forEach(l=>{l.visible=detail.interiorLights!==false;const base=mode==='day'?1:mode==='sunset'?1.32:1.72;l.intensity*=base*(1+warm*.12)});
+    indoorLights.forEach(l=>{l.visible=detail.interiorLights!==false;const base=mode==='day'?1:mode==='sunset'?1.32:1.72;const seed=(l.userData.fabrickBaseIntensity as number|undefined)??l.intensity;l.userData.fabrickBaseIntensity=seed;l.intensity=seed*base*(1+warm*.12)});
     outdoorLights.forEach(l=>{l.visible=detail.exteriorLights!==false;l.intensity=mode==='day'?5:mode==='sunset'?13:20});
     renderer.shadowMap.needsUpdate=true;
    };

@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useRef, Suspense } from 'react';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { MapPin, Phone, Mail, Clock, MessageCircle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
+import ContactForm from '@/components/ContactForm';
 import ContactMap from '@/components/ContactMap';
 import SectionPageShell from '@/components/SectionPageShell';
-import TurnstileWidget from '@/components/TurnstileWidget';
 import { buildWhatsAppLink, WHATSAPP_DISPLAY } from '@/lib/whatsapp';
 
 const CONTACT_INFO = [
@@ -13,7 +13,7 @@ const CONTACT_INFO = [
     icon: Phone,
     label: 'WhatsApp directo',
     value: WHATSAPP_DISPLAY,
-    sub: 'Coordinamos su visita en terreno por aquí',
+    sub: 'Coordinamos tu visita en terreno por aquí',
   },
   {
     icon: Mail,
@@ -25,7 +25,7 @@ const CONTACT_INFO = [
     icon: MapPin,
     label: 'Visitas en terreno',
     value: 'Linares, Región del Maule',
-    sub: 'Vamos a su propiedad sin costo y armamos el presupuesto in-situ',
+    sub: 'Vamos a tu propiedad sin costo y armamos el presupuesto in-situ',
   },
   {
     icon: Clock,
@@ -35,50 +35,20 @@ const CONTACT_INFO = [
   },
 ];
 
-const PROJECT_TYPES = [
-  'Selecciona el tipo de proyecto',
-  'Remodelación integral',
-  'Ampliación residencial',
-  'Construcción nueva',
-  'Gasfitería y eléctrico',
-  'Seguridad y domótica',
-  'Pintura y terminaciones',
-  'Paisajismo exterior',
-  'Inspección técnica',
-  'Diseño de interiores',
-  'Otro',
-];
+const LEGACY_ERRORS: Record<string, string> = {
+  campaign: 'El formulario está pausado temporalmente. Escríbenos por WhatsApp y te respondemos igual.',
+  'rate-limit': 'Demasiadas solicitudes seguidas. Espera unos minutos o escríbenos por WhatsApp.',
+  payload: 'No pudimos leer el formulario. Recarga la página e inténtalo de nuevo.',
+  captcha: 'No pudimos verificar que eres una persona. Recarga la página e inténtalo de nuevo.',
+};
 
-function ContactoForm() {
+function ContactoBody() {
   const searchParams = useSearchParams();
-  const alreadySent = searchParams.get('enviado') === '1';
-
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(
-    alreadySent ? 'success' : 'idle',
-  );
-  const formRef = useRef<HTMLFormElement>(null);
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setStatus('loading');
-    const formData = new FormData(e.currentTarget);
-    const body = Object.fromEntries(formData.entries());
-    try {
-      const res = await fetch('/api/presupuesto', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        setStatus('success');
-        formRef.current?.reset();
-      } else {
-        setStatus('error');
-      }
-    } catch {
-      setStatus('error');
-    }
-  }
+  const legacySent = searchParams.get('enviado') === '1';
+  const legacyErrorKey = searchParams.get('error');
+  const legacyError = legacyErrorKey === '1'
+    ? 'No pudimos enviar tu consulta. Inténtalo de nuevo o escríbenos por WhatsApp.'
+    : legacyErrorKey ? LEGACY_ERRORS[legacyErrorKey] : undefined;
 
   return (
     <SectionPageShell
@@ -86,22 +56,20 @@ function ContactoForm() {
       title="Conversemos tu proyecto"
       description="Escríbenos y revisa nuestra ubicación en el mapa. Respondemos en menos de 24 horas hábiles desde el primer mensaje."
       primaryAction={{ href: '/servicios', label: 'Ver servicios' }}
-      secondaryAction={{ href: '/contacto', label: 'Agendar visita' }}
+      secondaryAction={{ href: '/presupuesto', label: 'Armar un presupuesto' }}
     >
-      {/* Response time banner */}
-      <div className="mb-8 flex items-center justify-center gap-3 rounded-2xl border border-yellow-400/20 bg-yellow-400/5 px-6 py-4">
-        <Clock className="h-4 w-4 shrink-0 text-yellow-400" />
-        <p className="text-sm font-bold text-yellow-400">
+      <div className="mb-8 flex items-center justify-center gap-3 rounded-2xl border border-[#FFE600]/20 bg-[#FFE600]/5 px-6 py-4">
+        <Clock className="h-4 w-4 shrink-0 text-[#FFE600]" />
+        <p className="text-sm font-bold text-[#FFE600]">
           Respondemos en menos de 24 horas hábiles · Evaluación inicial sin costo
         </p>
       </div>
 
-      {/* Contact info cards */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {CONTACT_INFO.map(({ icon: Icon, label, value, sub }) => (
           <div key={label} className="rounded-[1.5rem] border border-white/5 bg-zinc-950/85 p-6">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-yellow-400/20 bg-black">
-              <Icon className="h-4 w-4 text-yellow-400" />
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-[#FFE600]/20 bg-black">
+              <Icon className="h-4 w-4 text-[#FFE600]" />
             </div>
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-500">{label}</p>
             <p className="mt-1 text-sm font-bold text-white">{value}</p>
@@ -110,16 +78,14 @@ function ContactoForm() {
         ))}
       </div>
 
-      {/* Map + Form */}
       <div className="grid items-start gap-8 lg:grid-cols-2">
         <div className="flex flex-col gap-6">
           <ContactMap className="min-h-[26rem]" />
-          {/* WhatsApp CTA */}
           <a
             href={buildWhatsAppLink('Hola Soluciones Fabrick, quiero agendar una visita en Linares (Región del Maule) para que pasen a evaluar mi proyecto.')}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-3 rounded-2xl bg-green-500 px-6 py-5 text-[11px] font-black uppercase tracking-[0.2em] text-white transition hover:bg-green-400"
+            className="flex min-h-14 items-center justify-center gap-3 rounded-full bg-[#FFE600] px-6 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-black transition-[background-color] duration-200 hover:bg-[#FFF45C]"
           >
             <MessageCircle className="h-5 w-5" />
             Agendar visita por WhatsApp
@@ -132,75 +98,23 @@ function ContactoForm() {
             Cuanto más detalle compartas, mejor podremos orientarte desde el primer contacto.
           </p>
 
-          {status === 'success' && (
-            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-green-500/30 bg-green-500/10 px-5 py-4">
-              <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-green-400" />
-              <p className="text-sm font-semibold text-green-400">
-                ¡Mensaje enviado! Nos pondremos en contacto en menos de 24 horas.
-              </p>
+          {legacySent ? (
+            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-[#FFE600]/30 bg-[#FFE600]/10 px-5 py-4">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#FFE600]" />
+              <p className="text-sm font-semibold text-[#FFE600]">Mensaje enviado. Nos pondremos en contacto en menos de 24 horas.</p>
             </div>
-          )}
+          ) : null}
 
-          {status === 'error' && (
-            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4">
-              <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
-              <p className="text-sm font-semibold text-red-400">
-                Ocurrió un error al enviar. Inténtalo nuevamente o escríbenos por WhatsApp.
-              </p>
+          {legacyError ? (
+            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-white/15 bg-white/[.04] px-5 py-4">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#FFE600]" />
+              <p className="text-sm font-semibold text-zinc-200">{legacyError}</p>
             </div>
-          )}
+          ) : null}
 
-          <form ref={formRef} onSubmit={handleSubmit} className="mt-8 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <input
-                name="nombre"
-                placeholder="Nombre completo"
-                required
-                className="w-full rounded-2xl border border-white/10 bg-black px-5 py-4 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400 focus:outline-none"
-              />
-              <input
-                name="telefono"
-                type="tel"
-                placeholder="Teléfono"
-                className="w-full rounded-2xl border border-white/10 bg-black px-5 py-4 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400 focus:outline-none"
-              />
-            </div>
-            <input
-              name="email"
-              type="email"
-              placeholder="Correo de contacto"
-              required
-              className="w-full rounded-2xl border border-white/10 bg-black px-5 py-4 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400 focus:outline-none"
-            />
-            <select
-              name="tipo_proyecto"
-              className="w-full rounded-2xl border border-white/10 bg-black px-5 py-4 text-sm text-zinc-400 focus:border-yellow-400 focus:outline-none"
-            >
-              {PROJECT_TYPES.map((t) => (
-                <option key={t} value={t === PROJECT_TYPES[0] ? '' : t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <textarea
-              name="descripcion"
-              rows={5}
-              placeholder="Cuéntanos sobre tu proyecto: qué necesitas, superficie estimada, plazo deseado..."
-              className="w-full rounded-2xl border border-white/10 bg-black px-5 py-4 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400 focus:outline-none"
-            />
-            <TurnstileWidget action="contact" />
-            <button
-              type="submit"
-              disabled={status === 'loading'}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-black transition hover:bg-white disabled:opacity-60"
-            >
-              {status === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
-              {status === 'loading' ? 'Enviando…' : 'Enviar solicitud'}
-            </button>
-          </form>
-          <p className="mt-4 text-center text-[10px] text-zinc-600">
-            Al enviar aceptas que Fabrick te contacte para coordinar la evaluación.
-          </p>
+          <div className="mt-8">
+            <ContactForm tone="dark" />
+          </div>
         </div>
       </div>
     </SectionPageShell>
@@ -210,7 +124,7 @@ function ContactoForm() {
 export default function ContactoClient() {
   return (
     <Suspense fallback={null}>
-      <ContactoForm />
+      <ContactoBody />
     </Suspense>
   );
 }

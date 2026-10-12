@@ -80,7 +80,8 @@ describe('inspiration visual and comments contract', () => {
     expect(home).toContain("href: '/herramientas/radier'");
     expect(home).toContain("href: '/herramientas/metalcon'");
     expect(home).toContain("href: '/herramientas/metalcon/monitoreo'");
-    expect(home).toContain('HOME_PREMIUM_VISUALS.metalcon');
+    expect(home).toContain('HOME_FLOW_VISUALS.metalcon');
+    expect(home).toContain('HOME_FLOW_VISUALS.hero');
     expect(home).toContain('Simulador sísmico 4D');
     expect(home).toContain('Simular sismo');
     expect(seismicStory).toContain("'/herramientas/metalcon/monitoreo'");

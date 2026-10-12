@@ -365,25 +365,25 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#06080c] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-[#0a0a09] text-white" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
       <div className="pointer-events-none fixed inset-0" aria-hidden="true">
-        <img src={BG} alt="" className="h-full w-full scale-[1.03] object-cover opacity-[.32]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,6,9,.7),rgba(4,6,9,.9)_55%,#06080c_92%),linear-gradient(90deg,rgba(4,6,9,.88),rgba(4,6,9,.48)_50%,rgba(4,6,9,.84))]" />
+        <img src={BG} alt="" className="h-full w-full scale-[1.02] object-cover opacity-[.22] saturate-[.8]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,9,.72),rgba(10,10,9,.88)_55%,#0a0a09_92%),linear-gradient(90deg,rgba(10,10,9,.85),rgba(10,10,9,.42)_50%,rgba(10,10,9,.82))]" />
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-[980px] px-3 pb-16 pt-3 sm:px-5 sm:pt-5 lg:px-6">
-        <header className="flex items-center justify-between border-b border-white/[.08] pb-3">
-          <button type="button" onClick={() => router.push('/')} className="inline-flex h-11 items-center gap-2 rounded-full border border-white/20 bg-black/30 px-4 text-[11px] font-black uppercase tracking-[.11em] backdrop-blur-md transition hover:border-white/35" aria-label="Volver al inicio">
+        <header className="flex items-center justify-between border-b border-white/[.06] pb-3">
+          <button type="button" onClick={() => router.push('/')} className="inline-flex h-11 items-center gap-2 rounded-lg border border-white/12 bg-white/[.03] px-4 text-[11px] font-semibold uppercase tracking-[.08em] backdrop-blur-md transition hover:border-white/20 hover:bg-white/[.06]" aria-label="Volver al inicio">
             <ArrowLeft size={17} /> <span className="hidden xs:inline">Volver</span>
           </button>
           <img src="/brand/soluciones-fabrick-web.svg" alt="Soluciones Fabrick" className="h-11 w-auto max-w-[190px] object-contain sm:h-12" />
-          <span className="rounded-full border border-[#F6C64A]/55 bg-[#F6C64A]/[.07] px-3 py-2 text-[10px] font-black tracking-[.08em] text-[#F6C64A]">{targetCapacityLabel} BTU</span>
+          <span className="rounded-lg border border-[#F6C64A]/40 bg-[#F6C64A]/[.06] px-3 py-2 text-[10px] font-semibold tracking-[.06em] text-[#F6C64A]">{targetCapacityLabel} BTU</span>
         </header>
 
         <section className="pt-7 text-center sm:pt-9">
-          <p className="text-[9px] font-black uppercase tracking-[.42em] text-[#F6C64A]">Confort todo el año</p>
-          <h1 className="mx-auto mt-3 max-w-3xl text-[clamp(2.35rem,8vw,5.1rem)] font-black leading-[.94] tracking-[-.065em]">Calcula tu clima <span className="text-[#F6C64A]">ideal</span></h1>
-          <p className="mx-auto mt-4 max-w-xl text-[13px] leading-6 text-white/58 sm:text-base">Ingresa las medidas de tu espacio y conoce la capacidad recomendada sin perder los ajustes avanzados de la calculadora.</p>
+          <p className="text-[9px] font-semibold uppercase tracking-[.35em] text-[#F6C64A]/70">Confort todo el año</p>
+          <h1 className="mx-auto mt-3 max-w-3xl text-[clamp(2.35rem,8vw,5.1rem)] font-bold leading-[.94] tracking-[-.06em]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Calcula tu clima <span className="text-[#F6C64A]">ideal</span></h1>
+          <p className="mx-auto mt-4 max-w-xl text-[13px] leading-6 text-white/48 sm:text-base">Ingresa las medidas de tu espacio y conoce la capacidad recomendada sin perder los ajustes avanzados de la calculadora.</p>
         </section>
 
         <section className="mt-5">
@@ -490,10 +490,10 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
             />
           </MiniAccordion>
 
-          <div className="mt-3 rounded-[1.4rem] border border-white/10 bg-black/25 p-4">
+          <div className="mt-3 rounded-xl border border-white/[.06] bg-white/[.025] p-4">
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <div><p className="text-[9px] font-black uppercase tracking-[.14em] text-white/35">Consumo energético estimado</p><h3 className="mt-1 text-lg font-black">Cuánto usaría con tu configuración</h3></div>
-              <span className="rounded-full border border-white/10 bg-white/[.04] px-3 py-1.5 text-[8px] font-black text-white/45">{hoursPerDay} h/día · {hoursPerDay * 30} h/mes</span>
+              <div><p className="text-[9px] font-semibold uppercase tracking-[.12em] text-white/30">Consumo energético estimado</p><h3 className="mt-1 text-lg font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Cuánto usaría con tu configuración</h3></div>
+              <span className="rounded-md border border-white/8 bg-white/[.03] px-3 py-1.5 text-[8px] font-semibold text-white/40">{hoursPerDay} h/día · {hoursPerDay * 30} h/mes</span>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -514,9 +514,9 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
             </div>
           </div>
 
-          <div className="mt-3 rounded-[1.4rem] border border-[#F6C64A]/18 bg-[linear-gradient(145deg,rgba(246,198,74,.08),rgba(8,10,13,.55))] p-4">
-            <p className="text-[9px] font-black uppercase tracking-[.16em] text-[#F6C64A]">¿Por qué inverter?</p>
-            <h3 className="mt-1 text-base font-black">Modula el compresor para sostener la temperatura con menos ciclos bruscos.</h3>
+          <div className="mt-3 rounded-xl border border-[#F6C64A]/12 bg-[#F6C64A]/[.03] p-4">
+            <p className="text-[9px] font-semibold uppercase tracking-[.14em] text-[#F6C64A]/70">¿Por qué inverter?</p>
+            <h3 className="mt-1 text-base font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Modula el compresor para sostener la temperatura con menos ciclos bruscos.</h3>
             <p className="mt-2 text-xs leading-5 text-white/55">En el escenario base, la diferencia estimada frente a un equipo tradicional equivalente es de <b className="text-white">{baseEnergy.estimatedSavingsPercent}%</b>, equivalente a cerca de <b className="text-emerald-200">{CLP.format(baseEnergy.estimatedMonthlySavingsClp)}/mes</b>.</p>
             <p className="mt-2 text-[8px] leading-4 text-white/30">El resultado cambia con el modelo, clima, aislación, tarifa, instalación, modo seleccionado y horas de uso.</p>
           </div>
@@ -530,7 +530,7 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
           open={catalogOpen}
           onToggle={() => setCatalogOpen((value) => !value)}
         >
-          <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#F6C64A]">Opciones del catálogo</p><h2 className="mt-1 text-xl font-black sm:text-2xl">Elige por relación precio, capacidad y ficha técnica.</h2></div><span className="inline-flex items-center gap-2 text-[9px] font-bold text-white/38">{catalogRefreshing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Actualizando catálogo</> : <><CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />Stock sincronizado</>}</span></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-[9px] font-semibold uppercase tracking-[.18em] text-[#F6C64A]/70">Opciones del catálogo</p><h2 className="mt-1 text-xl font-bold sm:text-2xl" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Elige por relación precio, capacidad y ficha técnica.</h2></div><span className="inline-flex items-center gap-2 text-[9px] font-semibold text-white/32">{catalogRefreshing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Actualizando catálogo</> : <><CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />Stock sincronizado</>}</span></div>
 
           {catalogError ? <div className="mt-4 rounded-xl border border-[#F6C64A]/20 bg-[#F6C64A]/8 p-3 text-xs text-[#F6C64A]">{catalogError}</div> : null}
           {sizing.requiresMultiUnit ? <div className="mt-4 rounded-xl border border-[#F6C64A]/25 bg-[#F6C64A]/8 p-4 text-xs leading-5 text-white/60">La referencia de productos se mantiene visible, pero bloqueamos compra directa porque el espacio requiere dos o más unidades y debe revisarse la distribución.</div> : null}
@@ -562,15 +562,15 @@ export default function AirSimulatorFunnelV9({ initialProducts }: { initialProdu
 function CapabilityRail({ entries, currentPeople, requiredBtu, primaryCapacity }: { entries: CapabilityEntry[]; currentPeople: number; requiredBtu: number; primaryCapacity?: AirCapacity }) {
   if (!entries.length) return null;
   return (
-    <section className="mt-3 rounded-[1.4rem] border border-white/10 bg-black/30 p-3 backdrop-blur-md">
-      <div className="flex items-center justify-between gap-3"><div><p className="text-[8px] font-black uppercase tracking-[.16em] text-[#F6C64A]">Capacidades del catálogo</p><p className="mt-1 text-[9px] text-white/35">Ficha técnica cuando existe; cobertura base Fabrick solo cuando la ficha no declara m².</p></div><Ruler size={16} className="shrink-0 text-white/28" /></div>
+    <section className="mt-3 rounded-xl border border-white/[.06] bg-white/[.025] p-3 backdrop-blur-sm">
+      <div className="flex items-center justify-between gap-3"><div><p className="text-[8px] font-semibold uppercase tracking-[.14em] text-[#F6C64A]/70">Capacidades del catálogo</p><p className="mt-1 text-[9px] text-white/30">Ficha técnica cuando existe; cobertura base Fabrick solo cuando la ficha no declara m².</p></div><Ruler size={16} className="shrink-0 text-white/22" /></div>
       <div className="mt-3 flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
         {entries.map(({ product, capacity }) => {
           const coverage = coverageLabel(product, capacity);
           const compatible = capacity >= requiredBtu;
           return (
-            <article key={product.id} className={`min-w-[210px] snap-start rounded-2xl border p-3 ${capacity === primaryCapacity ? 'border-[#F6C64A]/45 bg-[#F6C64A]/[.06]' : 'border-white/8 bg-white/[.025]'}`}>
-              <div className="flex items-center justify-between gap-2"><b className="text-sm text-white">{Math.round(capacity / 1000)}K BTU</b>{capacity === primaryCapacity ? <span className="rounded-full bg-[#F6C64A] px-2 py-1 text-[7px] font-black text-black">RECOMENDADO</span> : null}</div>
+            <article key={product.id} className={`min-w-[210px] snap-start rounded-xl border p-3 ${capacity === primaryCapacity ? 'border-[#F6C64A]/35 bg-[#F6C64A]/[.05]' : 'border-white/[.06] bg-white/[.02]'}`}>
+              <div className="flex items-center justify-between gap-2"><b className="text-sm text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{Math.round(capacity / 1000)}K BTU</b>{capacity === primaryCapacity ? <span className="rounded-md bg-[#F6C64A] px-2 py-1 text-[7px] font-semibold text-black">RECOMENDADO</span> : null}</div>
               <p className="mt-1 line-clamp-1 text-[8px] text-white/35">{product.name}</p>
               <div className="mt-3 grid grid-cols-2 gap-1.5">
                 <MiniSpec label="Espacio" value={coverage.value} detail={coverage.source} />
@@ -621,11 +621,11 @@ function AirVisual({ roomType, targetTempC, powerOn, capacityLabel, resolvedMode
 }
 
 function AccordionSection({ step, icon, title, summary, open, onToggle, children }: { step: string; icon: ReactNode; title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
-  return <section className="mt-3 overflow-hidden rounded-[1.65rem] border border-white/10 bg-[#0b1016]/80 shadow-[0_20px_70px_rgba(0,0,0,.16)] backdrop-blur-xl"><button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-center gap-3 p-4 text-left sm:p-5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#F6C64A]/18 bg-[#F6C64A]/[.07] text-[#F6C64A] [&>svg]:h-4 [&>svg]:w-4">{icon}</span><span className="min-w-0 flex-1"><span className="block text-[8px] font-black uppercase tracking-[.16em] text-white/30">Paso {step}</span><b className="mt-0.5 block text-sm sm:text-base">{title}</b><span className="mt-1 block truncate text-[9px] text-white/35">{summary}</span></span><ChevronDown className={`h-5 w-5 shrink-0 text-white/40 transition-transform ${open ? 'rotate-180' : ''}`} /></button>{open ? <div className="border-t border-white/[.07] px-4 pb-4 pt-4 sm:px-5 sm:pb-5">{children}</div> : null}</section>;
+  return <section className="mt-3 overflow-hidden rounded-xl border border-white/[.06] bg-white/[.025] shadow-sm backdrop-blur-sm"><button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-center gap-3 p-4 text-left sm:p-5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[#F6C64A]/12 bg-[#F6C64A]/[.05] text-[#F6C64A] [&>svg]:h-4 [&>svg]:w-4">{icon}</span><span className="min-w-0 flex-1"><span className="block text-[8px] font-semibold uppercase tracking-[.14em] text-white/28">Paso {step}</span><b className="mt-0.5 block text-sm sm:text-base" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{title}</b><span className="mt-1 block truncate text-[9px] text-white/32">{summary}</span></span><ChevronDown className={`h-5 w-5 shrink-0 text-white/35 transition-transform ${open ? 'rotate-180' : ''}`} /></button>{open ? <div className="border-t border-white/[.05] px-4 pb-4 pt-4 sm:px-5 sm:pb-5">{children}</div> : null}</section>;
 }
 
 function MiniAccordion({ title, summary, open, onToggle, children }: { title: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
-  return <div className="mt-3 overflow-hidden rounded-[1.4rem] border border-white/10 bg-black/22"><button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-center gap-3 p-3 text-left"><span className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[.04] text-[#72D9FF]"><Power size={15} /></span><span className="min-w-0 flex-1"><b className="block text-xs">{title}</b><span className="mt-0.5 block truncate text-[8px] text-white/35">{summary}</span></span><ChevronDown className={`h-4 w-4 text-white/35 transition-transform ${open ? 'rotate-180' : ''}`} /></button>{open ? <div className="border-t border-white/[.07] p-3 sm:p-4">{children}</div> : null}</div>;
+  return <div className="mt-3 overflow-hidden rounded-xl border border-white/[.06] bg-white/[.02]"><button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-center gap-3 p-3 text-left"><span className="grid h-9 w-9 place-items-center rounded-lg border border-white/8 bg-white/[.03] text-[#72D9FF]"><Power size={15} /></span><span className="min-w-0 flex-1"><b className="block text-xs" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{title}</b><span className="mt-0.5 block truncate text-[8px] text-white/32">{summary}</span></span><ChevronDown className={`h-4 w-4 text-white/30 transition-transform ${open ? 'rotate-180' : ''}`} /></button>{open ? <div className="border-t border-white/[.05] p-3 sm:p-4">{children}</div> : null}</div>;
 }
 
 function AirRemoteControl({ powerOn, setPowerOn, mode, setMode, fanSpeed, setFanSpeed, targetTempC, setTargetTempC, eco, swing, sleep, turbo, toggleEco, toggleSwing, toggleSleep, toggleTurbo }: { powerOn: boolean; setPowerOn: (value: boolean | ((value: boolean) => boolean)) => void; mode: AirMode; setMode: (value: AirMode) => void; fanSpeed: AirFanSpeed; setFanSpeed: (value: AirFanSpeed) => void; targetTempC: number; setTargetTempC: (value: number | ((value: number) => number)) => void; eco: boolean; swing: boolean; sleep: boolean; turbo: boolean; toggleEco: () => void; toggleSwing: () => void; toggleSleep: () => void; toggleTurbo: () => void }) {

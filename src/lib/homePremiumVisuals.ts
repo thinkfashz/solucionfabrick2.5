@@ -109,3 +109,21 @@ export const HOME_PREMIUM_GALLERY = (Object.keys(SOURCES) as PremiumVisualKey[])
   alt: SOURCES[key].alt,
   publicId: SOURCES[key].publicId,
 }));
+
+/** Set generado con Google Flow: casa mediterránea moderna resuelta en estructura Metalcon.
+    Son assets locales optimizados a JPEG; se sirven desde /flow sin depender de Cloudinary. */
+export const HOME_FLOW_VISUALS = {
+  hero: '/flow/fabrick-portada-casa-mediterranea.jpeg',
+  metalcon: '/flow/fabrick-metalcon-estructura.jpeg',
+  radier: '/flow/fabrick-radier-losa-hormigon.jpeg',
+  interior: '/flow/fabrick-interior-climatizacion.jpeg',
+  seismicDetail: '/flow/fabrick-metalcon-detalle-estructural.jpeg',
+} as const;
+
+export const HOME_FLOW_ALTS = {
+  hero: 'Villa mediterránea moderna de una planta con estructura metálica, iluminada al atardecer',
+  metalcon: 'Estructura Steel Frame con paneles de estuco blanco y base de piedra',
+  radier: 'Losa de hormigón pulido recién vaciada con malla de armadura a la vista',
+  interior: 'Interior mediterráneo con ventanal amplio y equipo de climatización split',
+  seismicDetail: 'Detalle de unión estructural metálica con luz cálida',
+} as const;

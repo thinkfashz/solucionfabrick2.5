@@ -8,6 +8,7 @@ import {
   Eye,
   Focus,
   Grid3X3,
+  Layers,
   Layers3,
   Pause,
   Play,
@@ -24,14 +25,8 @@ import {
   SRGBColorSpace,
   UnsignedByteType,
 } from 'three';
-import {
-  METALCON_HOUSE_PRESET_ORDER,
-  METALCON_HOUSE_PRESETS,
-  assemblySummary,
-  type MetalconAssemblyOpening,
-  type MetalconHousePreset,
-  type MetalconHousePresetId,
-} from '@/lib/metalconAssembly';
+import { METALCON_HOUSE_PRESET_ORDER, METALCON_HOUSE_PRESETS, assemblySummary, type MetalconAssemblyOpening, type MetalconHousePreset, type MetalconHousePresetId } from '@/lib/metalconAssembly';
+import { METALCON_WALL_LAYERS, type MetalconWallLayerId } from '@/lib/metalconSpecs';
 import type { MetalconInput } from '@/lib/metalconCalculator';
 import { MetalconAssembly3D, type MetalconAssemblyDisplayMode } from './MetalconAssembly3D';
 
@@ -54,6 +49,17 @@ const LIGHT: Array<[Light, string]> = [
   ['noche', 'Noche'],
   ['estudio', 'Estudio'],
 ];
+
+/** Punto del timeline en que cada capa queda terminada. Debe coincidir con METALCON_LAYER_PHASES. */
+const LAYER_DONE_AT: Record<MetalconWallLayerId, number> = {
+  structure: 0,
+  osb: 0.18,
+  membrane: 0.34,
+  battens: 0.48,
+  insulation: 0.64,
+  gypsum: 0.8,
+  siding: 1,
+};
 
 function shiftedWallPreset(preset: MetalconHousePreset, wallId: string | null, offsetM: number): MetalconHousePreset {
   if (!wallId || Math.abs(offsetM) < 0.001) return preset;
@@ -126,6 +132,24 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
     setCameraPreset('perspective');
   };
 
+  /** Al entrar a Capas se muestra el muro cerrado; el botón de reproducción lo vuelve a armar.
+      Se aísla un muro perimetral y se oculta la techumbre: si no, el techo tapa justo el corte. */
+  const changeView = (next: ViewerView) => {
+    if (view === 'layers' && next !== 'layers') setIsolateSelected(false);
+    setView(next);
+    if (next === 'layers') {
+      setTimeline(1);
+      setPlaying(false);
+      setAutoRotate(false);
+      setCameraPreset('perspective');
+      const firstPerimeter = activePreset.walls.find((wall) => wall.role === 'perimeter');
+      if (firstPerimeter) {
+        setSelectedWallId(firstPerimeter.id);
+        setIsolateSelected(true);
+      }
+    }
+  };
+
   const selectWall = (wallId: string | null) => {
     setSelectedWallId(wallId);
     setPanelOffsetM(0);
@@ -141,7 +165,7 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
         </div>
         <div className="flex flex-wrap gap-1.5">
           <button type="button" onClick={() => setAutoRotate((value) => !value)} className={chip(autoRotate)}><Rotate3D size={12} />360°</button>
-          <button type="button" onClick={playing ? () => setPlaying(false) : playAssembly} className="inline-flex items-center gap-1.5 rounded-full bg-[#F6C64A] px-3 py-2 text-[8px] font-black uppercase tracking-[.1em] text-black">{playing ? <Pause size={12} /> : <Play size={12} fill="currentColor" />}{playing ? 'Pausar' : '4D montaje'}</button>
+          <button type="button" onClick={playing ? () => setPlaying(false) : playAssembly} className="inline-flex items-center gap-1.5 rounded-full bg-[#FFE600] px-3 py-2 text-[8px] font-black uppercase tracking-[.1em] text-black">{playing ? <Pause size={12} /> : <Play size={12} fill="currentColor" />}{playing ? 'Pausar' : view === 'layers' ? 'Armar capas' : '4D montaje'}</button>
         </div>
       </div>
 
@@ -159,7 +183,7 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
         <Canvas shadows dpr={[1, 1.65]} camera={{ position: [8.2, 6.2, 9.5], fov: 42, near: 0.05, far: 120 }}>
           <Suspense fallback={null}>
             <ViewerEnvironment ground={ground} light={light} />
-            <CameraDirector preset={activePreset} cameraPreset={cameraPreset} />
+            <CameraDirector preset={activePreset} cameraPreset={cameraPreset} layerView={view === 'layers'} />
             {view === 'profiles' ? (
               <ProfileScene input={input} offsetM={profileOffsetM} />
             ) : (
@@ -171,7 +195,9 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
                 selectedWallId={selectedWallId}
                 onSelectWall={(wallId) => selectWall(wallId)}
                 isolateSelected={isolateSelected}
-                assemblyProgress={playing || timeline > 0 ? timeline : null}
+                assemblyProgress={view === 'layers' ? 1 : (playing || timeline > 0 ? timeline : null)}
+                layerProgress={view === 'layers' ? timeline : null}
+                showRoof={view !== 'layers'}
               />
             )}
             <OrbitControls
@@ -200,29 +226,64 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
 
         {playing || timeline > 0 ? (
           <div className="absolute inset-x-3 bottom-3 rounded-xl border border-white/10 bg-black/76 p-3 backdrop-blur-xl">
-            <div className="mb-2 flex justify-between text-[7px] font-black uppercase tracking-[.1em] text-white/45"><span>Soleras</span><span>Montantes</span><span>Vanos</span><span>Travesaños</span><span>Pletinas</span></div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full bg-[#57D4FF] transition-[width] duration-100" style={{ width: `${timeline * 100}%` }} /></div>
+            <div className="mb-2 flex justify-between text-[7px] font-black uppercase tracking-[.1em] text-white/45">
+              {view === 'layers'
+                ? METALCON_WALL_LAYERS.map((layer) => <span key={layer.id}>{layer.label}</span>)
+                : <><span>Soleras</span><span>Montantes</span><span>Vanos</span><span>Travesaños</span><span>Pletinas</span></>}
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full bg-[#FFE600] transition-[width] duration-100" style={{ width: `${timeline * 100}%` }} /></div>
           </div>
         ) : null}
       </div>
 
       <div className="border-t border-white/10 p-3">
-        <div className="grid grid-cols-5 gap-1">
+        <div className="grid grid-cols-3 gap-1 sm:grid-cols-6">
           {([
             ['mesh', 'Malla', <Box key="a" size={12} />],
             ['dimensions', 'Medidas', <Ruler key="b" size={12} />],
             ['openings', 'Vanos', <Wrench key="c" size={12} />],
             ['bracing', 'Refuerzo', <Layers3 key="d" size={12} />],
-            ['profiles', 'Perfiles', <Eye key="e" size={12} />],
+            ['layers', 'Capas', <Layers key="e" size={12} />],
+            ['profiles', 'Perfiles', <Eye key="f" size={12} />],
           ] as const).map(([id, label, icon]) => (
-            <button key={id} type="button" onClick={() => setView(id)} className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[8px] font-black ${view === id ? 'bg-[#F6C64A] text-black' : 'bg-white/[.04] text-white/50'}`}>{icon}{label}</button>
+            <button key={id} type="button" onClick={() => changeView(id)} className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[8px] font-black ${view === id ? 'bg-[#FFE600] text-black' : 'bg-white/[.04] text-white/50'}`}>{icon}{label}</button>
           ))}
         </div>
 
-        {view === 'profiles' ? (
-          <div className="mt-3 rounded-xl border border-[#F6C64A]/15 bg-[#F6C64A]/[.035] p-3">
-            <div className="flex items-center justify-between gap-3 text-[8px] font-black uppercase tracking-[.1em]"><span className="text-white/50">Mover montante C · izquierda ↔ derecha</span><span className="text-[#F6C64A]">{profileOffsetM.toFixed(2)} m</span></div>
-            <input type="range" min={-.75} max={.75} step={.05} value={profileOffsetM} onChange={(event) => setProfileOffsetM(Number(event.target.value))} className="mt-2 w-full accent-[#F6C64A]" />
+        {view === 'layers' ? (
+          <div className="mt-3 rounded-xl border border-[#FFE600]/18 bg-[#FFE600]/[.035] p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-[.14em] text-white/45">Cierre del muro · afuera hacia adentro</p>
+                <p className="mt-1 text-[8px] text-white/30">Cada capa entra en su fase. El orden es el publicado para el sistema.</p>
+                <p className="mt-1 text-[8px] text-[#FFE600]/70">El visor oculta la techumbre y aísla un muro perimetral. Gira al canto del muro para ver el corte de capas.</p>
+              </div>
+              <button type="button" onClick={playing ? () => setPlaying(false) : playAssembly} className="inline-flex items-center gap-1.5 rounded-full bg-[#FFE600] px-3 py-2 text-[8px] font-black uppercase tracking-[.1em] text-black">
+                {playing ? <Pause size={11} /> : <Play size={11} fill="currentColor" />}{playing ? 'Pausar' : timeline >= 0.995 ? 'Armar capas' : 'Continuar'}
+              </button>
+            </div>
+            <ol className="mt-3 grid gap-1.5 sm:grid-cols-2">
+              {METALCON_WALL_LAYERS.map((layer, index) => {
+                const done = timeline >= LAYER_DONE_AT[layer.id];
+                return (
+                  <li key={layer.id} className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 transition-colors ${done ? 'border-[#FFE600]/40 bg-[#FFE600]/[.08]' : 'border-white/8 bg-black/25'}`}>
+                    <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[9px] font-black tabular-nums ${done ? 'bg-[#FFE600] text-black' : 'bg-white/10 text-white/40'}`}>{index + 1}</span>
+                    <span className="min-w-0">
+                      <b className={`block text-[10px] ${done ? 'text-white/85' : 'text-white/45'}`}>{layer.label}</b>
+                      <small className="block truncate text-[8px] text-white/35">{layer.layer}</small>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="mt-3 rounded-lg bg-black/30 px-3 py-2 text-[8px] leading-4 text-white/45">
+              Montantes cada <b className="text-[#FFE600]">{input.spacingCm} cm</b> · perfil C alma {input.cDepthMm} mm · espesor {input.thicknessMm.toFixed(2).replace('.', ',')} mm. La separación de montantes reparte también los listones de la cámara ventilada.
+            </p>
+          </div>
+        ) : view === 'profiles' ? (
+          <div className="mt-3 rounded-xl border border-[#FFE600]/15 bg-[#FFE600]/[.035] p-3">
+            <div className="flex items-center justify-between gap-3 text-[8px] font-black uppercase tracking-[.1em]"><span className="text-white/50">Mover montante C · izquierda ↔ derecha</span><span className="text-[#FFE600]">{profileOffsetM.toFixed(2)} m</span></div>
+            <input type="range" min={-.75} max={.75} step={.05} value={profileOffsetM} onChange={(event) => setProfileOffsetM(Number(event.target.value))} className="mt-2 w-full accent-[#FFE600]" />
             <p className="mt-2 text-[8px] leading-4 text-white/30">Movimiento visual para comprender el encuentro C/U. En el entramado real los montantes siguen la modulación seleccionada de 40/60 cm y el proyecto.</p>
           </div>
         ) : (
@@ -244,7 +305,7 @@ export function MetalconCinematicViewer({ input }: { input: MetalconInput }) {
               <div className="mt-2 space-y-2">
                 <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div className="rounded-lg bg-black/25 px-3 py-2 text-[8px] leading-4 text-white/48"><b className="text-white/80">{selectedWall.label}</b><br/>{selectedWall.role === 'perimeter' ? 'Perimetral' : 'Interior'} · {selectedWall.structural ? 'marcado estructural' : 'división referencial'} · {selectedWall.openings.length} vano(s)</div>
-                  <button type="button" onClick={() => setView('openings')} className="rounded-lg border border-[#F6C64A]/20 px-3 py-2 text-[8px] font-black text-[#F6C64A]">Ver detalle de vano</button>
+                  <button type="button" onClick={() => setView('openings')} className="rounded-lg border border-[#FFE600]/20 px-3 py-2 text-[8px] font-black text-[#FFE600]">Ver detalle de vano</button>
                 </div>
                 <div className="rounded-lg border border-cyan-300/10 bg-cyan-300/[.025] px-3 py-2">
                   <div className="flex items-center justify-between gap-3 text-[8px] font-black uppercase tracking-[.1em]"><span className="text-white/45">Separar panel para inspección</span><span className="text-cyan-200">{panelOffsetM.toFixed(2)} m</span></div>
@@ -312,7 +373,7 @@ function chip(active: boolean) {
 }
 
 function ModelButton({ active, onClick, label, detail }: { active: boolean; onClick: () => void; label: string; detail: string }) {
-  return <button type="button" onClick={onClick} className={`min-w-[132px] shrink-0 rounded-xl border px-3 py-2 text-left ${active ? 'border-[#F6C64A]/45 bg-[#F6C64A]/10' : 'border-white/8 bg-white/[.025]'}`}><b className={`block text-[9px] ${active ? 'text-[#F6C64A]' : 'text-white/65'}`}>{label}</b><small className="mt-1 block text-[7px] text-white/30">{detail}</small></button>;
+  return <button type="button" onClick={onClick} className={`min-w-[132px] shrink-0 rounded-xl border px-3 py-2 text-left ${active ? 'border-[#FFE600]/45 bg-[#FFE600]/10' : 'border-white/8 bg-white/[.025]'}`}><b className={`block text-[9px] ${active ? 'text-[#FFE600]' : 'text-white/65'}`}>{label}</b><small className="mt-1 block text-[7px] text-white/30">{detail}</small></button>;
 }
 
 function CameraButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
@@ -320,19 +381,25 @@ function CameraButton({ active, onClick, icon, label }: { active: boolean; onCli
 }
 
 function MiniMetric({ value, label }: { value: string | number; label: string }) {
-  return <div className="rounded-xl bg-white/[.04] p-3"><b className="text-base text-[#F6C64A]">{value}</b><small className="mt-1 block text-[7px] text-white/35">{label}</small></div>;
+  return <div className="rounded-xl bg-white/[.04] p-3"><b className="text-base text-[#FFE600]">{value}</b><small className="mt-1 block text-[7px] text-white/35">{label}</small></div>;
 }
 
-function CameraDirector({ preset, cameraPreset }: { preset: MetalconHousePreset; cameraPreset: CameraPreset }) {
+function CameraDirector({ preset, cameraPreset, layerView = false }: { preset: MetalconHousePreset; cameraPreset: CameraPreset; layerView?: boolean }) {
   const { camera } = useThree();
   useEffect(() => {
     const maxDimension = Math.max(preset.widthM, preset.depthM + (preset.terraceDepthM ?? 0));
-    if (cameraPreset === 'top') camera.position.set(0.01, Math.max(8, maxDimension * 1.55), 0.02);
+    if (layerView) {
+      // Muro aislado en el borde perimetral: la cámara se pone a su altura y al costado,
+      // mirando a lo largo del muro, que es donde se ve el corte de las capas.
+      const wallZ = -preset.depthM / 2;
+      camera.position.set(preset.widthM / 2 + 1.7, Math.max(1.5, preset.heightM * 0.52), wallZ + 1.7);
+      camera.lookAt(0, preset.heightM * 0.5, wallZ);
+    } else if (cameraPreset === 'top') camera.position.set(0.01, Math.max(8, maxDimension * 1.55), 0.02);
     else if (cameraPreset === 'front') camera.position.set(0, Math.max(2.8, preset.heightM * 1.35), Math.max(7, preset.depthM * 1.35));
     else camera.position.set(Math.max(6.5, preset.widthM * 1.05), Math.max(4.6, preset.heightM * 2.1), Math.max(7.2, preset.depthM * 1.05));
-    camera.lookAt(0, preset.heightM * 0.42, 0);
+    if (!layerView) camera.lookAt(0, preset.heightM * 0.42, 0);
     camera.updateProjectionMatrix();
-  }, [camera, cameraPreset, preset]);
+  }, [camera, cameraPreset, preset, layerView]);
   return null;
 }
 

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mar Cinematográfico 4D — Escena Interactiva</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#08090A; --surface:#111214; --raised:#1A1B1F; --gold:#FFB000; --gold-light:#FFD05A; --cream:#FFF9EE; --muted:#BFB8AC; }
+    html,body{margin:0;padding:0;overflow:hidden;background:var(--ink);color:var(--cream);font-family:'Inter',sans-serif;}
+    #canvas-container{position:fixed;inset:0;z-index:0;}
+    canvas{display:block;}
+    .glass{background:rgba(255,249,238,0.07);backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);border:1px solid rgba(255,249,238,0.10);border-radius:1.25rem;}
+    .text-editorial{font-family:'Cormorant Garamond',serif;}
+    .slider-track{-webkit-appearance:none;height:7px;border-radius:3.5px;background:linear-gradient(90deg, rgba(255,176,0,0.35), rgba(255,208,90,0.55));outline:none;cursor:pointer;}
+    .slider-track::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#FFB000,#F5871F);box-shadow:0 0 10px rgba(255,176,0,0.55),0 0 20px rgba(255,176,0,0.25);cursor:pointer;border:2px solid rgba(255,249,238,0.9);}
+    ::selection{background:rgba(255,176,0,0.25);color:var(--cream);}
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <main class="relative z-10 h-screen w-full pointer-events-none flex flex-col">
+    <header class="pointer-events-auto px-6 md:px-10 pt-8 md:pt-10 pb-4 flex items-start justify-between">
+      <div class="max-w-xl">
+        <p class="text-[10px] md:text-[11px] uppercase tracking-[0.22em] text-amber-300/80 mb-2 font-mono">Cinemático 4D Interactivo</p>
+        <h1 class="text-editorial text-4xl md:text-6xl lg:text-7xl font-light leading-[0.92] tracking-tight text-cream drop-shadow-2xl">
+          El Mar <span class="italic text-amber-300">Vivo</span>
+        </h1>
+        <p class="mt-4 text-sm md:text-base text-cream/70 max-w-md leading-relaxed">Superficie brillante, sol radiante, cielo dinámico, marea viva, peces, tiburones y vistas submarinas.</p>
+      </div>
+      <div class="hidden md:block text-right">
+        <p class="text-[10px] uppercase tracking-[0.18em] text-cream/30 mb-1">Estado</p>
+        <p id="render-status" class="text-xs text-amber-300/80">Cargando escena...</p>
+      </div>
+    </header>
+
+    <section class="pointer-events-auto flex-1 flex items-end justify-center pb-10 md:pb-16 px-6 md:px-10 gap-5 md:gap-8 flex-wrap">
+      <!-- Panel Tiempo -->
+      <div class="glass p-6 md:p-7 min-w-[270px] max-w-[400px] shadow-2xl shadow-black/40">
+        <div class="flex items-center gap-3 mb-5">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(255,176,0,0.6)]"></span>
+          <h2 class="text-xs uppercase tracking-[0.15em] text-cream/70 font-semibold">Tiempo y Cielo</h2>
+        </div>
+        <div class="space-y-4">
+          <label class="block"><div class="flex justify-between text-[11px] text-cream/50 mb-1"><span>Hora del día</span><span id="time-label">Mediodía</span></div><input type="range" id="time-slider" min="0" max="24" step="0.5" value="12" class="slider-track w-full"></label>
+          <label class="block"><div class="flex justify-between text-[11px] text-cream/50 mb-1"><span>Intensidad solar</span><span id="sun-label">100%</span></div><input type="range" id="sun-slider" min="0" max="100" step="1" value="100" class="slider-track w-full"></label>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button onclick="setTime(6)" class="px-2 py-2 text-[11px] rounded-lg bg-cream/5 hover:bg-amber-400/20 text-cream/60 hover:text-amber-300 border border-cream/10 transition">Amanecer</button>
+            <button onclick="setTime(12)" class="px-2 py-2 text-[11px] rounded-lg bg-cream/5 hover:bg-amber-400/20 text-cream/60 hover:text-amber-300 border border-cream/10 transition">Mediodía</button>
+            <button onclick="setTime(18)" class="px-2 py-2 text-[11px] rounded-lg bg-cream/5 hover:bg-amber-400/20 text-cream/60 hover:text-amber-300 border border-cream/10 transition">Atardecer</button>
+            <button onclick="setTime(22)" class="px-2 py-2 text-[11px] rounded-lg bg-cream/5 hover:bg-amber-400/20 text-cream/60 hover:text-amber-300 border border-cream/10 transition">Noche</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel Naturaleza -->
+      <div class="glass p-6 md:p-7 min-w-[270px] max-w-[400px] shadow-2xl shadow-black/40">
+        <div class="flex items-center gap-3 mb-5">
+          <span class="w-2 h-2 rounded-full bg-amber-300 shadow-[0_0_8px_rgba(255,208,90,0.6)]"></span>
+          <h2 class="text-xs uppercase tracking-[0.15em] text-cream/70 font-semibold">Elementos Naturales</h2>
+        </div>
+        <div class="space-y-4">
+          <label class="block"><div class="flex justify-between text-[11px] text-cream/50 mb-1"><span>Densidad de nubes</span><span id="cloud-label">60%</span></div><input type="range" id="cloud-slider" min="0" max="100" step="1" value="60" class="slider-track w-full"></label>
+          <label class="block"><div class="flex justify-between text-[11px] text-cream/50 mb-1"><span>Altura de marea</span><span id="tide-label">50%</span></div><input type="range" id="tide-slider" min="0" max="100" step="1" value="50" class="slider-track w-full"></label>
+          <label class="block"><div class="flex justify-between text-[11px] text-cream/50 mb-1"><span>Visibilidad submarina</span><span id="under-label">70%</span></div><input type="range" id="under-slider" min="0" max="100" step="1" value="70" class="slider-track w-full"></label>
+          <div class="pt-1 flex gap-2">
+            <button onclick="toggleTide()" class="flex-1 py-2 text-[11px] rounded-lg bg-amber-400/15 text-amber-300 border border-amber-400/30 hover:bg-amber-400/25">Marea Alta</button>
+            <button onclick="toggleClouds()" class="flex-1 py-2 text-[11px] rounded-lg bg-cream/5 text-cream/50 border border-cream/10 hover:bg-amber-400/20 hover:text-amber-300">Nubes Densas</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel Vida -->
+      <div class="glass p-6 md:p-7 min-w-[270px] max-w-[400px] shadow-2xl shadow-black/40">
+        <div class="flex items-center gap-3 mb-5">
+          <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(255,176,0,0.6)]"></span>
+          <h2 class="text-xs uppercase tracking-[0.15em] text-cream/70 font-semibold">Vida Marina</h2>
+        </div>
+        <div class="space-y-4">
+          <label class="block"><div class="flex justify-between text-[11px] text-cream/50 mb-1"><span>Cantidad de peces</span><span id="fish-label">Medios</span></div><input type="range" id="fish-slider" min="10" max="120" step="10" value="50" class="slider-track w-full"></label>
+          <label class="block"><div class="flex justify-between text-[11px] text-cream/50 mb-1"><span>Actividad de tiburones</span><span id="shark-label">Baja</span></div><input type="range" id="shark-slider" min="0" max="100" step="5" value="15" class="slider-track w-full"></label>
+          <div class="grid grid-cols-3 gap-2 pt-1">
+            <button onclick="setFish(10)" class="px-2 py-2 text-[10px] rounded-md bg-cream/5 hover:bg-amber-400/15 text-cream/50 hover:text-amber-300 border border-cream/10">Pocos</button>
+            <button onclick="setFish(50)" class="px-2 py-2 text-[10px] rounded-md bg-cream/5 hover:bg-amber-400/15 text-cream/50 hover:text-amber-300 border border-cream/10">Medios</button>
+            <button onclick="setFish(100)" class="px-2 py-2 text-[10px] rounded-md bg-cream/5 hover:bg-amber-400/15 text-cream/50 hover:text-amber-300 border border-cream/10">Muchos</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="pointer-events-auto px-6 md:px-10 pb-6 md:pb-8 flex items-end justify-between text-[10px] text-cream/30 font-mono">
+      <div>Iluminación dinámica · Superficie brillante · Cielo en movimiento</div>
+      <div class="hidden md:block">Arrastra para rotar · Scroll para acercar</div>
+    </footer>
+  </main>
+
+  <script>
+    // ===== Verificación de carga =====
+    document.getElementById('render-status').textContent = 'Cargando Three.js...';
+    if (typeof THREE === 'undefined') {
+      document.getElementById('render-status').textContent = 'ERROR: Three.js no cargó';
+    }
+
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x091a30);
+    scene.fog = new THREE.FogExp2(0x0e2940, 0.012);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 300);
+    camera.position.set(10, 5, 14);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    container.appendChild(renderer.domElement);
+
+    // OrbitControls (robusto con verificación)
+    let controls = null;
+    try {
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.autoRotate = false;
+      controls.target.set(0, 1, 0);
+      controls.maxPolarAngle = Math.PI / 2 - 0.02;
+      controls.enablePan = true;
+      document.getElementById('render-status').textContent = 'Escena activa · Arrastra para explorar';
+    } catch (e) {
+      document.getElementById('render-status').textContent = 'Controles: usar teclado (WASD)';
+      console.error('OrbitControls error:', e);
+    }
+
+    // ===== Luces =====
+    const sunLight = new THREE.DirectionalLight(0xfff0dc, 3.5);
+    sunLight.position.set(50, 70, 30);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(1024, 1024);
+    sunLight.shadow.bias = -0.001;
+    scene.add(sunLight);
+
+    const moonLight = new THREE.DirectionalLight(0xccddee, 0.7);
+    moonLight.position.set(-40, 50, -20);
+    scene.add(moonLight);
+
+    const ambient = new THREE.AmbientLight(0x334466, 0.6);
+    scene.add(ambient);
+
+    // ===== Agua brillante (superficie visible con sol) =====
+    const waterGeo = new THREE.PlaneGeometry(200, 200, 150, 150);
+    const waterMat = new THREE.MeshPhongMaterial({
+      color: 0x1b7fa8,
+      shininess: 300,
+      specular: 0xffffff,
+      emissive: 0x103050,
+      transparent: true,
+      opacity: 0.92,
+      reflectivity: 0.95,
+      flatShading: false,
+    });
+    const water = new THREE.Mesh(waterGeo, waterMat);
+    water.rotation.x = -Math.PI / 2;
+    water.position.y = 0;
+    scene.add(water);
+
+    const floorGeo = new THREE.PlaneGeometry(300, 300);
+    const floorMat = new THREE.MeshPhongMaterial({ color: 0x021524, shininess: 10 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -8;
+    scene.add(floor);
+
+    // ===== Cielo =====
+    const skyGeo = new THREE.SphereGeometry(250, 60, 60);
+    const skyMat = new THREE.MeshBasicMaterial({ color: 0x091a30, side: THREE.BackSide, fog: false });
+    const sky = new THREE.Mesh(skyGeo, skyMat);
+    scene.add(sky);
+
+    // ===== Nubes volumétricas =====
+    const cloudGroup = new THREE.Group();
+    scene.add(cloudGroup);
+    const cloudMeshes = [];
+    function buildClouds(count, sBase) {
+      cloudMeshes.forEach(c => cloudGroup.remove(c));
+      cloudMeshes.length = 0;
+      for (let i = 0; i < count; i++) {
+        const s = sBase * (0.7 + Math.random() * 0.7);
+        const geo = new THREE.SphereGeometry(s, 10, 10);
+        const mat = new THREE.MeshPhongMaterial({ color: 0xeeeeee, transparent: true, opacity: 0.35 + Math.random()*0.35, emissive: 0x8899aa, shininess: 8 });
+        const c = new THREE.Mesh(geo, mat);
+        c.position.set((Math.random()-0.5)*70, 18 + Math.random()*22, (Math.random()-0.5)*70);
+        cloudGroup.add(c); cloudMeshes.push(c);
+      }
+    }
+    buildClouds(18, 3.5);
+
+    // ===== Sol brillante =====
+    const sunGeo = new THREE.SphereGeometry(6, 32, 32);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff5e0, fog: false });
+    const sun = new THREE.Mesh(sunGeo, sunMat);
+    sun.position.set(60, 75, 0);
+    scene.add(sun);
+
+    // ===== Luna =====
+    const moonGeo = new THREE.SphereGeometry(3.5, 24, 24);
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xb0c4de, fog: false });
+    const moon = new THREE.Mesh(moonGeo, moonMat);
+    moon.position.set(-50, 45, 30);
+    moon.visible = false;
+    scene.add(moon);
+
+    // ===== Peces =====
+    const fishes = [];
+    const fishGeo = new THREE.SphereGeometry(0.35, 7, 7);
+    const fishMat = new THREE.MeshPhongMaterial({ color: 0xffaa55, emissive: 0x331100, shininess: 90 });
+    const FISH_COUNT = 60;
+    for (let i = 0; i < FISH_COUNT; i++) {
+      const f = new THREE.Mesh(fishGeo, fishMat);
+      f.position.set((Math.random()-0.5)*35, -2 - Math.random()*6, (Math.random()-0.5)*35);
+      scene.add(f); fishes.push({mesh:f, phase:Math.random()*Math.PI*2, sp:0.5+Math.random()*0.8});
+    }
+
+    // ===== Tiburones =====
+    const sharks = [];
+    const sharkGeo = new THREE.ConeGeometry(0.6, 2.4, 8);
+    const sharkMat = new THREE.MeshPhongMaterial({ color: 0x223344, emissive: 0x112233, shininess: 40 });
+    for (let i = 0; i < 4; i++) {
+      const s = new THREE.Mesh(sharkGeo, sharkMat);
+      s.rotation.y = Math.random()*Math.PI*2;
+      s.position.set((Math.random()-0.5)*45, -4 - Math.random()*3, (Math.random()-0.5)*45);
+      scene.add(s); sharks.push({mesh:s, phase:Math.random()*Math.PI*2, sp:0.3+Math.random()*0.4});
+    }
+
+    // ===== Partículas =====
+    const particles = [];
+    const pGeo = new THREE.SphereGeometry(0.08, 4, 4);
+    const pMat = new THREE.MeshPhongMaterial({ color: 0x88ccff, emissive: 0x224455, shininess: 60 });
+    for (let i = 0; i < 140; i++) {
+      const p = new THREE.Mesh(pGeo, pMat);
+      p.position.set((Math.random()-0.5)*60, -2 - Math.random()*10, (Math.random()-0.5)*60);
+      scene.add(p); particles.push({mesh:p, phase:Math.random()*Math.PI*2, sp:0.2+Math.random()*0.5});
+    }
+
+    // ===== Estado =====
+    let currentTime = 12, sunIntensity = 1.0, cloudDensity = 0.6, tideHeight = 0.5, underwaterVis = 0.7, fishActive = 60, sharkActive = 15;
+
+    function updateLighting() {
+      const a = ((currentTime - 6) / 18) * Math.PI;
+      const r = 80;
+      sunLight.position.set(Math.sin(a)*r, Math.max(12, Math.sin(a)*75), Math.cos(a)*r);
+      sunLight.intensity = sunIntensity * Math.max(0.35, Math.sin(a));
+      if (currentTime < 7) { sunLight.color.setHex(0xffaa88); ambient.color.setHex(0x223344); }
+      else if (currentTime < 10) { sunLight.color.setHex(0xffdd99); ambient.color.setHex(0x445577); }
+      else if (currentTime < 15) { sunLight.color.setHex(0xfff4cc); ambient.color.setHex(0x6688aa); }
+      else if (currentTime < 18) { sunLight.color.setHex(0xffcc88); ambient.color.setHex(0x445577); }
+      else { sunLight.color.setHex(0x6677aa); ambient.color.setHex(0x223344); }
+      moon.visible = (currentTime > 19 || currentTime < 5);
+      moonLight.intensity = moon.visible ? 0.5 + (1 - Math.abs(currentTime-22)/6)*0.35 : 0;
+      const c = new THREE.Color();
+      if (currentTime < 6) c.setHex(0x050814);
+      else if (currentTime < 9) c.setHex(0x0a1a30);
+      else if (currentTime < 17) c.setHex(0x0e2a4e);
+      else if (currentTime < 20) c.setHex(0x081a30);
+      else c.setHex(0x030814);
+      scene.background = c; sky.material.color = c; scene.fog.color = c;
+    }
+
+    // ===== Animación =====
+    let time = 0;
+    function animate() {
+      requestAnimationFrame(animate);
+      time += 0.009;
+      updateLighting();
+
+      // Nubes
+      cloudMeshes.forEach((c, i) => { c.position.x += Math.sin(time*0.2+i)*0.06; c.position.z += Math.cos(time*0.15+i)*0.05; c.rotation.y += 0.001; });
+      // Sol/Luna
+      sun.rotation.y += 0.004; sun.rotation.z = Math.sin(time*0.15)*0.08;
+      if (moon.visible) { moon.rotation.y += 0.002; moon.position.y = 45 + Math.sin(time*0.3)*2; }
+      // Peces
+      fishes.forEach(({mesh, phase, sp}) => { const o = time*sp+phase; mesh.position.x += Math.sin(o)*0.03; mesh.position.y += Math.sin(o*0.7)*0.015; mesh.position.z += Math.cos(o)*0.03; mesh.rotation.y = o; });
+      // Tiburones
+      sharks.forEach(({mesh, phase, sp}) => { const o = time*sp+phase; mesh.position.x += Math.sin(o)*0.025; mesh.position.z += Math.cos(o)*0.02; mesh.rotation.y = o + Math.PI/2; });
+      // Partículas
+      particles.forEach(({mesh, phase, sp}) => { const o = time*sp+phase; mesh.position.y += Math.sin(o*2)*0.02 + 0.005; mesh.position.x += Math.sin(o)*0.012; if (mesh.position.y > 0) mesh.position.y = -8; });
+
+      // Agua brillante ondulada
+      const posAttr = waterGeo.attributes.position;
+      for (let i = 0; i < posAttr.count; i++) {
+        const x = posAttr.getX(i), z = posAttr.getZ(i);
+        posAttr.setY(i, Math.sin(x*0.12 + time)*0.35 + Math.sin(z*0.1 + time*0.7)*0.3);
+      }
+      posAttr.needsUpdate = true; waterGeo.computeVertexNormals();
+
+      if (controls) controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+
+    // ===== UI Controles =====
+    function updateLabels() {
+      document.getElementById('time-label').textContent = currentTime < 12 ? 'Mañana' : (currentTime < 17 ? 'Mediodía' : 'Tarde');
+      document.getElementById('sun-label').textContent = Math.round(sunIntensity*100)+'%';
+      document.getElementById('cloud-label').textContent = Math.round(cloudDensity*100)+'%';
+      document.getElementById('tide-label').textContent = Math.round(tideHeight*100)+'%';
+      document.getElementById('under-label').textContent = Math.round(underwaterVis*100)+'%';
+      document.getElementById('fish-label').textContent = fishActive < 30 ? 'Pocos' : (fishActive < 70 ? 'Medios' : 'Muchos');
+      document.getElementById('shark-label').textContent = sharkActive < 30 ? 'Baja' : (sharkActive < 70 ? 'Media' : 'Alta');
+    }
+
+    document.getElementById('time-slider').addEventListener('input', e => { currentTime = parseFloat(e.target.value); updateLabels(); });
+    document.getElementById('sun-slider').addEventListener('input', e => { sunIntensity = parseFloat(e.target.value)/100; updateLabels(); });
+    document.getElementById('cloud-slider').addEventListener('input', e => { cloudDensity = parseFloat(e.target.value)/100; buildClouds(Math.round(6+cloudDensity*18), 3+cloudDensity*2); updateLabels(); });
+    document.getElementById('tide-slider').addEventListener('input', e => { tideHeight = parseFloat(e.target.value)/100; water.position.y = tideHeight*1.2 - 0.6; floor.position.y = -8 + tideHeight*3; updateLabels(); });
+    document.getElementById('under-slider').addEventListener('input', e => { underwaterVis = parseFloat(e.target.value)/100; waterMat.opacity = 0.7 + underwaterVis*0.25; floorMat.color.setHex(0x021524); floorMat.color.multiplyScalar(0.7 + underwaterVis*0.6); updateLabels(); });
+    document.getElementById('fish-slider').addEventListener('input', e => { fishActive = parseInt(e.target.value); fishes.forEach((f,i) => f.mesh.visible = i < Math.round(fishActive)); updateLabels(); });
+    document.getElementById('shark-slider').addEventListener('input', e => { sharkActive = parseInt(e.target.value); sharks.forEach((s,i) => s.mesh.visible = i < Math.round(4*(sharkActive/100))); updateLabels(); });
+
+    window.setTime = (h) => { currentTime = h; document.getElementById('time-slider').value = h; updateLabels(); };
+    window.toggleTide = () => { tideHeight = tideHeight > 0.6 ? 0.2 : 0.9; document.getElementById('tide-slider').value = Math.round(tideHeight*100); water.position.y = tideHeight*1.2 - 0.6; floor.position.y = -8 + tideHeight*3; updateLabels(); };
+    window.toggleClouds = () => { cloudDensity = cloudDensity > 0.5 ? 0.15 : 0.85; document.getElementById('cloud-slider').value = Math.round(cloudDensity*100); buildClouds(Math.round(6+cloudDensity*18), 3+cloudDensity*2); updateLabels(); };
+    window.setFish = (v) => { fishActive = v; document.getElementById('fish-slider').value = v; fishes.forEach((f,i) => f.mesh.visible = i < Math.round(v)); updateLabels(); };
+
+    updateLabels();
+  </script>
+</body>
+</html>

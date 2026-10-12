@@ -2,11 +2,17 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { insforge } from '@/lib/insforge';
 import { getResendCredentials } from '@/lib/resendCredentials';
+import { getClientIp } from '@/lib/adminAuth';
+import { checkPersistentRateLimit } from '@/lib/adminRateLimitStore';
 import { v, parse, validationError } from '@/lib/validate';
 
 const DEFAULT_FROM = 'Soluciones Fabrick <onboarding@resend.dev>';
 const DEFAULT_NOTIFY_EMAIL = 'faubricioedms@gmail.com';
 const INSFORGE_URL = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
+
+// El formulario público inserta en base de datos y dispara correo: mismo límite que /api/presupuesto.
+const RATE_LIMIT_MAX = 8;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 const leadsSchema = {
   nombre:        v.string({ required: true, min: 1, max: 255 }),
@@ -172,6 +178,19 @@ async function persistCrmLead(lead: NotifyPayload): Promise<boolean> {
 }
 
 export async function POST(request: Request) {
+  const rl = await checkPersistentRateLimit({
+    namespace: 'public:leads',
+    identity: getClientIp(request),
+    max: RATE_LIMIT_MAX,
+    windowMs: RATE_LIMIT_WINDOW_MS,
+  });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Demasiadas solicitudes. Intenta nuevamente en unos minutos.', retry_after: rl.retryAfterSec },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
+    );
+  }
+
   let raw: Record<string, unknown> = {};
   try {
     const contentType = request.headers.get('content-type') || '';

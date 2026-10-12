@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { MetalconCalculator } from '@/components/store/MetalconCalculator';
+import MetalconSpecSheet from '@/components/store/MetalconSpecSheet';
 import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
 import CollapsibleMeasureControls from '@/components/tools/CollapsibleMeasureControls';
@@ -10,24 +11,24 @@ import a11y from '../../mobile-accessibility.module.css';
 const CANONICAL = `${SITE_URL}/herramientas/metalcon`;
 
 export const metadata: Metadata = {
-  title: 'Calculadora y editor Metalcon | Soluciones Fabrick',
-  description: 'Configura la edificación Metalcon, modulación de montantes, vanos, refuerzos, metros de perfil y planchas OSB sin perder el visor 3D/4D ni el simulador sísmico.',
+  title: 'Guía técnica Metalcon: perfiles, medidas y montaje',
+  description: 'Ficha técnica del sistema Metalcon: familias y espesores, perfiles C con peso y largos comerciales, soleras U compatibles, aplicaciones por escala, capacidad y montaje capa por capa en visor 4D.',
   alternates: { canonical: CANONICAL },
   openGraph: {
-    title: 'Calculadora, visor y editor Metalcon | Soluciones Fabrick',
-    description: 'Conserva la edificación 3D, configura paneles y perfiles con criterios de instalación Cintac y accede al laboratorio sísmico educativo.',
+    title: 'Guía técnica del Metalcon: perfiles, medidas y montaje | Soluciones Fabrick',
+    description: 'Especificaciones, medidas, pesos y aplicaciones del sistema Metalcon, con visor 4D del armado por capas y acceso al laboratorio sísmico educativo.',
     url: CANONICAL,
-    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Configurador Metalcon Soluciones Fabrick' }],
+    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Guía técnica Metalcon Soluciones Fabrick' }],
   },
 };
 
 export default function MetalconPage() {
   const jsonLd = buildTechnicalToolJsonLd({
     path: '/herramientas/metalcon',
-    name: 'Calculadora, visor y editor Metalcon',
-    description: 'Herramienta gratuita para estimar modulación, montantes, soleras, perfiles, vanos y placas de una solución Metalcon, conservando la visualización 3D/4D y acceso al simulador sísmico.',
+    name: 'Guía técnica Metalcon: perfiles, medidas y montaje',
+    description: 'Ficha técnica del sistema constructivo Metalcon: familias y espesores, perfiles C con peso y largos comerciales, soleras U compatibles, aplicaciones por escala y montaje capa por capa en un visor 4D.',
     category: 'DesignApplication',
-    keywords: ['Metalcon', 'calculadora Metalcon', 'montantes 40 60 cm', 'Steel Frame Chile', 'panel estructural'],
+    keywords: ['Metalcon', 'ficha técnica Metalcon', 'perfiles Metalcon medidas', 'peso perfil C Metalcon', 'montantes 40 60 cm', 'Steel Frame Chile', 'panel estructural'],
   });
 
   return (
@@ -35,6 +36,7 @@ export default function MetalconPage() {
       <StructuredData data={jsonLd} />
       <div className={a11y.metalconScope}>
         <MetalconCalculator />
+        <MetalconSpecSheet />
         <CollapsibleMeasureControls
           targetText="Define la estructura"
           ancestorDepth={1}

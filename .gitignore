@@ -59,3 +59,10 @@ Thumbs.db
 
 # runtime logs
 dev-server.log
+
+# Artefactos de trabajo local (no forman parte de la app)
+*.log
+.playwright-mcp/
+preview-home/
+videos/
+.opencode/

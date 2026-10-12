@@ -9,10 +9,8 @@ import {
   Menu,
   Home,
   Wrench,
-  FileText,
   ShoppingCart,
   ShoppingBag,
-  Calculator,
   Phone,
   ShieldCheck,
   User,
@@ -27,13 +25,11 @@ import { navigateWithTransition } from '@/lib/routeTransition';
 const MAIN_MENU_ITEMS = [
   { label: 'Inicio', description: 'Conoce Fabrick y calcula tu proyecto', href: '/', Icon: Home },
   { label: 'Servicios', description: 'Construcción, instalaciones y terminaciones', href: '/servicios', Icon: Wrench },
-  { label: 'Cotizar', description: 'Arma tu presupuesto en tiempo real', href: '/presupuesto', Icon: FileText, quoteCount: true },
   { label: 'Tienda', description: 'Productos para construir y mejorar', href: '/tienda', Icon: ShoppingBag, cartCount: true },
   { label: 'Contacto', description: 'WhatsApp, ubicación y evaluación', href: '/contacto', Icon: Phone },
 ];
 
 const SUPPORT_MENU_ITEMS = [
-  { label: 'Presupuesto', href: '/presupuesto', Icon: Calculator },
   { label: 'Garantías', href: '/garantias', Icon: ShieldCheck },
   { label: 'WhatsApp', href: 'https://wa.me/56930121625', Icon: MessageCircle, external: true },
 ];

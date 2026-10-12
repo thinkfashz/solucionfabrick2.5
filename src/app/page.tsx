@@ -25,7 +25,11 @@ export default async function Home() {
       <div className="min-h-screen overflow-x-hidden bg-[#08090A] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-[#FFE600] selection:text-[#08090A] md:pb-0">
         <Navbar reference />
         <div className={a11y.homeScope}>
-          <HomePremiumV10 copyrightText={copyrightText} socialLinks={socialLinks} />
+          <HomePremiumV10
+            copyrightText={copyrightText}
+            socialLinks={socialLinks}
+            contact={{ email: settings.email_contacto, address: settings.direccion }}
+          />
         </div>
         <StoreBottomNav />
       </div>

@@ -147,7 +147,6 @@ export const DEFAULT_NAV_MENU: NavMenuContent = {
     { label: 'Servicios', href: '/servicios' },
     { label: 'Evolución', href: '/evolucion' },
     { label: 'Tienda', href: '/tienda' },
-    { label: 'Presupuesto', href: '/presupuesto' },
     { label: 'Proyectos', href: '/proyectos' },
     { label: 'Contacto', href: '/contacto' },
   ],

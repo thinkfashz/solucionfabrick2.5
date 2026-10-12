@@ -46,6 +46,10 @@ export function getMetalconProfileReference(input: Pick<MetalconInput, 'cDepthMm
   };
 }
 
+/** Tabla de perfiles C publicada en el Manual de Diseño Metalcon de Cintac.
+    Es la misma fuente que usa el cálculo: aquí solo se expone como lista para la ficha técnica. */
+export const METALCON_C_PROFILE_TABLE = Object.values(C_PROFILE_REFERENCE).filter((item) => item.kgPerM != null);
+
 export function compatibleTrackLabel(depthMm: MetalconInput['cDepthMm']) {
   if (depthMm === 60) return 'U 61';
   if (depthMm === 90) return 'U 92';

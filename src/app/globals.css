@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -34,6 +34,19 @@
   --tenant-bg: var(--fabrick-ink);
   --tenant-surface: var(--fabrick-surface);
   --tenant-text: var(--fabrick-cream);
+  /* ── Taste-skill design tokens ── */
+  --ts-radius: 6px;
+  --ts-radius-lg: 10px;
+  --ts-radius-xl: 14px;
+  --ts-shadow-sm: 0 1px 3px rgba(0,0,0,.35);
+  --ts-shadow-md: 0 4px 16px rgba(0,0,0,.45);
+  --ts-shadow-lg: 0 12px 40px rgba(0,0,0,.55);
+  --ts-surface: rgba(17,18,20,.72);
+  --ts-surface-elevated: rgba(26,27,31,.8);
+  --ts-line: rgba(255,255,255,.06);
+  --ts-muted: #9a948c;
+  --ts-orange-dim: rgba(246,198,74,.12);
+  --ts-font-display: 'Space Grotesk', 'Inter', sans-serif;
 }
 
 .dark {
@@ -108,7 +121,10 @@ html[data-tenant-theme='ready'] body {
   color: var(--tenant-text);
 }
 
-html[data-tenant-theme='ready'] a:not([class*='text-']):not([data-no-tenant-theme]) {
+/* El acento del tenant solo aplica a enlaces sin color propio. Antes ganaba por
+   especificidad (0,3,2) a las clases de CSS Modules y pintaba de amarillo los botones
+   de la marca. Se excluyen también las clases de módulo, que ya declaran su color. */
+html[data-tenant-theme='ready'] a:not([class*='text-']):not([class*='_']):not([data-no-tenant-theme]) {
   color: var(--tenant-accent);
 }
 
@@ -148,6 +164,40 @@ html[data-tenant-theme='ready'] .tenant-border {
 
 .font-playfair { font-family: 'Playfair Display', serif; }
 .font-cormorant { font-family: 'Cormorant Garamond', serif; }
+.font-display { font-family: var(--ts-font-display); }
+
+/* Taste-skill grain overlay */
+.grain::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: .022;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
+
+/* Taste-skill scroll-triggered stagger */
+@keyframes ts-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ts-stagger > * {
+  opacity: 0;
+  animation: ts-fade-up .5s cubic-bezier(.23,1,.32,1) forwards;
+}
+.ts-stagger > *:nth-child(1) { animation-delay: 0s; }
+.ts-stagger > *:nth-child(2) { animation-delay: .06s; }
+.ts-stagger > *:nth-child(3) { animation-delay: .12s; }
+.ts-stagger > *:nth-child(4) { animation-delay: .18s; }
+.ts-stagger > *:nth-child(5) { animation-delay: .24s; }
+.ts-stagger > *:nth-child(6) { animation-delay: .3s; }
+.ts-stagger > *:nth-child(7) { animation-delay: .36s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ts-stagger > * { animation: none !important; opacity: 1; }
+}
 
 @keyframes shimmer { 0% { background-position: -400% center; } 100% { background-position: 400% center; } }
 .shimmer-gold { background: linear-gradient(105deg,#C97700 0%,#FFB000 28%,#fff8dc 50%,#FFB000 72%,#C97700 100%); background-size: 400% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: shimmer 4s linear infinite; }

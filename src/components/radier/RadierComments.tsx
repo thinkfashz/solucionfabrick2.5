@@ -17,6 +17,21 @@ type Status = 'loading' | 'ready' | 'empty' | 'error';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 
+function initials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() || '').join('') || '•';
+}
+
+function relativeTime(iso: string) {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (minutes < 1) return 'ahora mismo';
+  if (minutes < 60) return `hace ${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `hace ${days} d`;
+  return new Date(iso).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 /** Comentarios de la guía del radier. Se guardan en `radier_comments` y se publican tras revisión. */
 export default function RadierComments() {
   const [status, setStatus] = useState<Status>('loading');
@@ -103,20 +118,25 @@ export default function RadierComments() {
             </div>
           ) : (
             comments.map((comment) => (
-              <article key={comment.id} className="rounded-[1.2rem] border border-white/10 bg-[#0A0F13] p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-1.5">
-                  <b className="text-xs font-black text-white/90">{comment.author_name}</b>
-                  <time className="text-[10px] text-white/35" dateTime={comment.published_at || comment.created_at}>
-                    {new Date(comment.published_at || comment.created_at).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </time>
+              <article key={comment.id} className="flex gap-3 rounded-[1.2rem] border border-white/10 bg-[#0A0F13] p-4">
+                <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#F6C64A]/15 text-[11px] font-black text-[#F6C64A]">
+                  {initials(comment.author_name)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <b className="text-xs font-black text-white/90">{comment.author_name}</b>
+                    <time className="text-[10px] text-white/35" dateTime={comment.published_at || comment.created_at}>
+                      {relativeTime(comment.published_at || comment.created_at)}
+                    </time>
+                  </div>
+                  <p className="mt-1.5 text-xs leading-5 text-white/60">{comment.body}</p>
+                  {comment.admin_reply ? (
+                    <p className="mt-2.5 border-l-2 border-[#F6C64A] pl-3 text-[11px] leading-5 text-white/70">
+                      <b className="mb-0.5 block text-[9px] font-black uppercase tracking-[.14em] text-[#F6C64A]">Respuesta de Fabrick</b>
+                      {comment.admin_reply}
+                    </p>
+                  ) : null}
                 </div>
-                <p className="mt-2 text-xs leading-5 text-white/60">{comment.body}</p>
-                {comment.admin_reply ? (
-                  <p className="mt-3 border-l-2 border-[#F6C64A] pl-3 text-[11px] leading-5 text-white/70">
-                    <b className="mb-0.5 block text-[9px] font-black uppercase tracking-[.14em] text-[#F6C64A]">Respuesta de Fabrick</b>
-                    {comment.admin_reply}
-                  </p>
-                ) : null}
               </article>
             ))
           )}

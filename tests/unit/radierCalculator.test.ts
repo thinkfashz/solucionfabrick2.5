@@ -12,12 +12,13 @@ describe('calculateRadier', () => {
     expect(result.concrete).toBeCloseTo(2.52, 3);
     expect(result.stabilized).toBeCloseTo(2.4, 3);
     expect(result.gravel).toBeCloseTo(1.2, 3);
-    // Dosificación G20 por defecto (320 kg/m³ referencial): 2,52 × 320 / 25 = 33 sacos.
-    expect(result.cementBags25).toBe(33);
-    expect(result.meshSheets).toBe(2);
-    // Rendimiento por saco derivado de la misma dosis: 25/320 m³ = 78 L.
-    expect(result.cementBagCoverageLiters).toBeGreaterThan(70);
-    expect(result.cementBagCoverageLiters).toBeLessThan(85);
+    // Malla en planchas de 13 m² con 2 m² de traslape: 24 / 11 = 3 planchas.
+    expect(result.meshSheets).toBe(3);
+    // Dosificación G20 (300 kg/m³): 2,52 × 300 / 25 = 31 sacos.
+    expect(result.cementBags25).toBe(31);
+    // Rendimiento por saco derivado de la misma dosis: 25/300 m³ = 83 L.
+    expect(result.cementBagCoverageLiters).toBeGreaterThan(75);
+    expect(result.cementBagCoverageLiters).toBeLessThan(90);
     expect(result.mixerBatches).toBe(Math.ceil(result.concrete / .13));
     expect(result.mixerTrucks).toBe(Math.ceil(result.concrete / 7));
   });

@@ -23,10 +23,8 @@ function recommendation(volumeM3: number): { choice: MixChoice; reason: string }
 
 /** Tipo de hormigón premezclado según el grado. Guía publicada por Polpaico. */
 function truckGradeLabel(gradeId: string) {
-  if (gradeId === 'g30') return 'G30';
   if (gradeId === 'g25') return 'G25';
   if (gradeId === 'g15') return 'G15';
-  if (gradeId === 'g10') return 'G10';
   return 'G20';
 }
 

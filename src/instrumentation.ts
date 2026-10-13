@@ -10,10 +10,18 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
   try {
     const { ensureRadierCommentsTable } = await import('@/lib/radierDb');
-    const result = await ensureRadierCommentsTable();
-    if (result.ok) console.log('[instrumentation] radier_comments verificada.');
-    else if (!result.skipped) console.warn(`[instrumentation] radier_comments no verificada (${result.error || 'sin detalle'}). Se reintenta al recibir escritura.`);
+    const radier = await ensureRadierCommentsTable();
+    if (radier.ok) console.log('[instrumentation] radier_comments verificada.');
+    else if (!radier.skipped) console.warn(`[instrumentation] radier_comments no verificada (${radier.error || 'sin detalle'}). Se reintenta al recibir escritura.`);
   } catch (error) {
-    console.warn('[instrumentation] arranque sin verificación de tablas:', error instanceof Error ? error.message : String(error));
+    console.warn('[instrumentation] radier sin verificación de tablas:', error instanceof Error ? error.message : String(error));
+  }
+  try {
+    const { ensureBlogPostsTable } = await import('@/lib/blogDb');
+    const blog = await ensureBlogPostsTable();
+    if (blog.ok) console.log('[instrumentation] blog_posts verificada.');
+    else if (!blog.skipped) console.warn(`[instrumentation] blog_posts no verificada (${blog.error || 'sin detalle'}). El editor lo reintenta al guardar.`);
+  } catch (error) {
+    console.warn('[instrumentation] blog sin verificación de tablas:', error instanceof Error ? error.message : String(error));
   }
 }

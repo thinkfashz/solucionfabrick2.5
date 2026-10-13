@@ -22,9 +22,13 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
   const { slug } = await params;
   const post = await getBlogPost(slug);
   if (!post) return {};
+  const keywords = Array.isArray((post as { tags?: unknown }).tags)
+    ? ((post as { tags?: unknown[] }).tags as unknown[]).map(String).filter(Boolean)
+    : [];
   return {
     title: post.title,
     description: post.description,
+    ...(keywords.length ? { keywords } : {}),
     alternates: { canonical: `${BASE_URL}/blog/${post.slug}` },
     openGraph: {
       title: post.title,

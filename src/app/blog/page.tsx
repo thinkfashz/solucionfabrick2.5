@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import ContentListPage from '@/components/ContentListPage';
+import BlogHome from '@/components/blog/BlogHome';
 import { listAllBlog } from '@/lib/content';
 
 export const dynamic = 'force-dynamic';
@@ -22,12 +22,5 @@ export const metadata: Metadata = {
 
 export default async function BlogIndexPage() {
   const items = await listAllBlog();
-  return (
-    <ContentListPage
-      type="blog"
-      title="Construcción sin humo"
-      description="Guías prácticas, costos reales y criterios técnicos para que tomes decisiones informadas sobre tu obra."
-      items={items}
-    />
-  );
+  return <BlogHome items={items} />;
 }

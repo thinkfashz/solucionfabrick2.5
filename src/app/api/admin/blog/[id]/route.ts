@@ -6,6 +6,7 @@ import { estimateReadingMinutes, renderMarkdown, slugify } from '@/lib/markdown'
 import { publishCmsEvent } from '@/lib/cmsBus';
 import { CMS_CACHE_TAGS } from '@/lib/cms';
 import { detectSchemaError, schemaErrorHint } from '@/lib/schemaErrors';
+import { extractDescription, extractKeywords } from '@/lib/blogSeo';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -63,16 +64,21 @@ export async function PUT(request: NextRequest, ctx: RouteCtx) {
         ? body.body_md
         : (existing as { body_md?: string }).body_md ?? '';
     const description =
-      typeof body.description === 'string'
+      typeof body.description === 'string' && body.description.trim()
         ? body.description.trim()
-        : (existing as { description?: string }).description ?? '';
+        : ((existing as { description?: string }).description || extractDescription(md, title));
     const cover_url =
       typeof body.cover_url === 'string'
         ? body.cover_url.trim() || null
         : (existing as { cover_url?: string | null }).cover_url ?? null;
-    const tags = Array.isArray(body.tags)
+    const incomingTags = Array.isArray(body.tags)
       ? (body.tags as unknown[]).map((t) => String(t)).filter(Boolean)
-      : (existing as { tags?: string[] }).tags ?? [];
+      : null;
+    const tags = incomingTags && incomingTags.length
+      ? incomingTags
+      : (((existing as { tags?: string[] }).tags?.length
+        ? (existing as { tags?: string[] }).tags!
+        : extractKeywords(md, title)).slice(0, 8));
     const author =
       typeof body.author === 'string'
         ? body.author.trim() || null

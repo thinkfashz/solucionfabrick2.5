@@ -95,6 +95,152 @@ function CameraFit({ maxDim }: { maxDim: number }) {
   return null;
 }
 
+/** Obrero articulado con ciclo de caminata. Recorre una elipse alrededor de la obra. */
+function WorkerFigure({ rx, rz, speed, phase, vest = '#e8862e', skin = '#8a5f43' }: {
+  rx: number; rz: number; speed: number; phase: number; vest?: string; skin?: string;
+}) {
+  const root = useRef<THREE.Group>(null);
+  const legL = useRef<THREE.Group>(null);
+  const legR = useRef<THREE.Group>(null);
+  const armL = useRef<THREE.Group>(null);
+  const armR = useRef<THREE.Group>(null);
+  const torso = useRef<THREE.Group>(null);
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime * speed + phase;
+    const a = t * .3;
+    const x = Math.cos(a) * rx;
+    const z = Math.sin(a) * rz;
+    const dx = -Math.sin(a) * rx;
+    const dz = Math.cos(a) * rz;
+    if (root.current) {
+      root.current.position.set(x, 0, z);
+      root.current.rotation.y = Math.atan2(dx, dz);
+    }
+    const swing = Math.sin(t * 5.2) * .5;
+    const bob = Math.abs(Math.sin(t * 5.2)) * .045;
+    if (legL.current) legL.current.rotation.x = swing;
+    if (legR.current) legR.current.rotation.x = -swing;
+    if (armL.current) armL.current.rotation.x = -swing * .8;
+    if (armR.current) armR.current.rotation.x = swing * .8;
+    if (torso.current) torso.current.position.y = bob;
+  });
+
+  const limb = (color: string, len: number, rad: number) => (
+    <mesh position={[0, -len / 2, 0]} castShadow>
+      <capsuleGeometry args={[rad, len - rad * 2, 3, 8]} />
+      <meshStandardMaterial color={color} roughness={.9} />
+    </mesh>
+  );
+
+  return (
+    <group ref={root}>
+      <group ref={torso}>
+        {/* Piernas (pivote en la cadera) */}
+        <group ref={legL} position={[-.11, .82, 0]}>{limb('#2b3440', .42, .075)}</group>
+        <group ref={legR} position={[.11, .82, 0]}>{limb('#2b3440', .42, .075)}</group>
+        {/* Torso con chaleco */}
+        <mesh position={[0, 1.1, 0]} castShadow>
+          <boxGeometry args={[.4, .52, .24]} />
+          <meshStandardMaterial color={vest} roughness={.85} />
+        </mesh>
+        <mesh position={[0, 1.1, .125]}>
+          <boxGeometry args={[.1, .4, .01]} />
+          <meshStandardMaterial color="#e8e8e8" roughness={.6} emissive="#ffffff" emissiveIntensity={.25} />
+        </mesh>
+        {/* Brazos (pivote en el hombro, contramovimiento) */}
+        <group ref={armL} position={[-.27, 1.32, 0]}>{limb(skin, .34, .06)}</group>
+        <group ref={armR} position={[.27, 1.32, 0]}>{limb(skin, .34, .06)}</group>
+        {/* Cabeza + casco */}
+        <mesh position={[0, 1.52, 0]} castShadow>
+          <sphereGeometry args={[.13, 12, 10]} />
+          <meshStandardMaterial color={skin} roughness={.8} />
+        </mesh>
+        <mesh position={[0, 1.6, 0]}>
+          <sphereGeometry args={[.15, 12, 8, 0, Math.PI * 2, 0, Math.PI * .55]} />
+          <meshStandardMaterial color="#f6c64a" roughness={.5} />
+        </mesh>
+        <mesh position={[0, 1.585, 0]}>
+          <cylinderGeometry args={[.2, .2, .025, 14]} />
+          <meshStandardMaterial color="#f6c64a" roughness={.5} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+/** Obrero arrodillado trabajando (martilleo en bucle) junto al moldaje. */
+function KneelingWorker({ position, rotationY = 0 }: { position: [number, number, number]; rotationY?: number }) {
+  const arm = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime * 3.4;
+    if (arm.current) arm.current.rotation.x = -.5 + Math.sin(t) * .45;
+  });
+  return (
+    <group position={position} rotation={[0, rotationY, 0]}>
+      <mesh position={[-.1, .28, 0]} castShadow>
+        <capsuleGeometry args={[.08, .3, 3, 8]} />
+        <meshStandardMaterial color="#2b3440" roughness={.9} />
+      </mesh>
+      <mesh position={[.12, .28, .08]} rotation={[.9, 0, 0]}>
+        <capsuleGeometry args={[.08, .3, 3, 8]} />
+        <meshStandardMaterial color="#2b3440" roughness={.9} />
+      </mesh>
+      <mesh position={[0, .72, 0]} castShadow>
+        <boxGeometry args={[.4, .5, .24]} />
+        <meshStandardMaterial color="#2e7fc2" roughness={.85} />
+      </mesh>
+      <group ref={arm} position={[.27, .92, 0]}>
+        <mesh position={[0, -.17, 0]}>
+          <capsuleGeometry args={[.06, .28, 3, 8]} />
+          <meshStandardMaterial color="#8a5f43" roughness={.8} />
+        </mesh>
+        <mesh position={[0, -.36, .06]}>
+          <boxGeometry args={[.07, .07, .3]} />
+          <meshStandardMaterial color="#6b4a2f" roughness={.9} />
+        </mesh>
+      </group>
+      <mesh position={[0, 1.12, 0]}>
+        <sphereGeometry args={[.13, 12, 10]} />
+        <meshStandardMaterial color="#8a5f43" roughness={.8} />
+      </mesh>
+      <mesh position={[0, 1.2, 0]}>
+        <sphereGeometry args={[.15, 12, 8, 0, Math.PI * 2, 0, Math.PI * .55]} />
+        <meshStandardMaterial color="#f6c64a" roughness={.5} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Cuadrilla ambientando la obra. Posiciones relativas al tamaño del radier. */
+function SiteCrew({ maxDim }: { maxDim: number }) {
+  const r = maxDim * .95;
+  return (
+    <group>
+      <WorkerFigure rx={r * 1.15} rz={r * .95} speed={1} phase={0} vest="#e8862e" />
+      <WorkerFigure rx={r * 1.3} rz={r * 1.1} speed={.8} phase={2.4} vest="#2e7fc2" />
+      <KneelingWorker position={[maxDim * .42, 0, maxDim * .52]} rotationY={-.7} />
+    </group>
+  );
+}
+
+/** Cámara en recorrido orbital lento, estilo cutscene. Desactiva el control manual. */
+function WalkthroughRig({ active, maxDim }: { active: boolean; maxDim: number }) {
+  const { camera, controls } = useThree() as unknown as { camera: THREE.PerspectiveCamera; controls?: { enabled: boolean; update?: () => void } };
+  useEffect(() => {
+    if (controls) controls.enabled = !active;
+    if (!active && controls?.update) controls.update();
+  }, [active, controls]);
+  useFrame(({ clock }) => {
+    if (!active) return;
+    const t = clock.elapsedTime * .1;
+    const r = maxDim * 1.5;
+    camera.position.set(Math.cos(t) * r, maxDim * .5 + Math.sin(t * .7) * maxDim * .08, Math.sin(t) * r);
+    camera.lookAt(0, .3, 0);
+  });
+  return null;
+}
+
 function AnimatedLayer({ progress, y, children }: { progress: number; y: number; children: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null);
   useFrame(() => {
@@ -283,7 +429,7 @@ function SiteEnvironment({ maxDim }: { maxDim: number }) {
   );
 }
 
-function Scene({ length, width, thickness, baseDepth, gravelDepth, shape, activeLayer = 'concrete', timeline, exploded, autoRotate }: Props & { timeline: number; exploded: boolean; autoRotate: boolean }) {
+function Scene({ length, width, thickness, baseDepth, gravelDepth, shape, activeLayer = 'concrete', timeline, exploded, autoRotate, walkthrough }: Props & { timeline: number; exploded: boolean; autoRotate: boolean; walkthrough: boolean }) {
   const pieces = useMemo(() => layout(shape, length, width), [shape, length, width]);
   const maxDim = Math.max(length, width);
   const soilH = .16;
@@ -316,6 +462,8 @@ function Scene({ length, width, thickness, baseDepth, gravelDepth, shape, active
     <pointLight position={[0, maxDim * .65, -maxDim]} intensity={1.4} color="#ff9b43" distance={maxDim * 4} />
 
     <SiteEnvironment maxDim={maxDim} />
+    <SiteCrew maxDim={maxDim} />
+    <WalkthroughRig active={walkthrough} maxDim={maxDim} />
 
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.085, 0]} receiveShadow>
       <planeGeometry args={[maxDim * 3.1, maxDim * 2.5, 1, 1]} />
@@ -381,6 +529,7 @@ export default function RadierCinematicViewer(props: Props) {
   const [exploded, setExploded] = useState(true);
   const [autoRotate, setAutoRotate] = useState(true);
   const [immersive, setImmersive] = useState(false);
+  const [walkthrough, setWalkthrough] = useState(false);
   const [webgl] = useState(hasWebGl);
 
   useEffect(() => {
@@ -438,7 +587,7 @@ export default function RadierCinematicViewer(props: Props) {
         }}
       >
         <Suspense fallback={null}>
-          <Scene {...props} timeline={timeline} exploded={exploded} autoRotate={autoRotate} />
+          <Scene {...props} timeline={timeline} exploded={exploded} autoRotate={autoRotate && !walkthrough} walkthrough={walkthrough} />
         </Suspense>
       </Canvas>
 
@@ -449,7 +598,8 @@ export default function RadierCinematicViewer(props: Props) {
     <div className="relative z-30 border-t border-white/[.07] bg-[#071017]/94 p-3 backdrop-blur-xl sm:p-4">
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setPlaying((value) => !value)} className="inline-flex h-10 items-center gap-2 rounded-full bg-[#F6C64A] px-4 text-[9px] font-black uppercase tracking-[.12em] text-black transition hover:bg-[#FFD95F]">{playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}{playing ? 'Pausar 4D' : 'Reproducir 4D'}</button>
-        <button type="button" onClick={() => setAutoRotate((value) => !value)} className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[9px] font-black uppercase tracking-[.11em] transition ${autoRotate ? 'border-[#F6C64A]/40 bg-[#F6C64A]/10 text-[#F6C64A]' : 'border-white/10 bg-white/[.035] text-white/55'}`}><Rotate3D className="h-3.5 w-3.5" /> Giro</button>
+        <button type="button" onClick={() => setAutoRotate((value) => !value)} className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[9px] font-black uppercase tracking-[.11em] transition ${autoRotate && !walkthrough ? 'border-[#F6C64A]/40 bg-[#F6C64A]/10 text-[#F6C64A]' : 'border-white/10 bg-white/[.035] text-white/55'}`}><Rotate3D className="h-3.5 w-3.5" /> Giro</button>
+        <button type="button" onClick={() => setWalkthrough((value) => !value)} aria-pressed={walkthrough} className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[9px] font-black uppercase tracking-[.11em] transition ${walkthrough ? 'border-[#F6C64A] bg-[#F6C64A] text-black' : 'border-white/10 bg-white/[.035] text-white/55 hover:border-white/25'}`}><Move3D className="h-3.5 w-3.5" /> Recorrido</button>
         <button type="button" onClick={() => setExploded((value) => !value)} className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[9px] font-black uppercase tracking-[.11em] transition ${exploded ? 'border-amber-300/35 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-white/[.035] text-white/55'}`}><Layers3 className="h-3.5 w-3.5" /> {exploded ? 'Capas abiertas' : 'Capas unidas'}</button>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">

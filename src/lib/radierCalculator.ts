@@ -1,6 +1,6 @@
 export type RadierShape = 'rectangular' | 'l' | 'u' | 't' | 'h' | 'i';
 export type RadierPlanId = 'materiales' | 'estandar' | 'reforzado';
-export type RadierGradeId = 'g10' | 'g15' | 'g20' | 'g25' | 'g30';
+export type RadierGradeId = 'g15' | 'g20' | 'g25';
 
 /**
  * Dosificación por grado. El cemento por m³ es un valor REFERENCIAL de práctica
@@ -15,15 +15,13 @@ export const RADIER_CONCRETE_GRADES: Array<{
   cementKgPerM3: number;
   needsProfessionalReview: boolean;
 }> = [
-  { id: 'g10', label: 'G10 · Emparejar', use: 'Emplantillados y nivelación sin carga', cementKgPerM3: 200, needsProfessionalReview: false },
-  { id: 'g15', label: 'G15 · Liviano', use: 'Radier liviano sin carga (quincho, terraza)', cementKgPerM3: 260, needsProfessionalReview: false },
-  { id: 'g20', label: 'G20 · Radier vivienda', use: 'Radieres y muros de vivienda', cementKgPerM3: 320, needsProfessionalReview: false },
-  { id: 'g25', label: 'G25 · Losa', use: 'Losas y vigas: exige revisión profesional', cementKgPerM3: 380, needsProfessionalReview: true },
-  { id: 'g30', label: 'G30 · Estructural', use: 'Columnas, fundaciones y piscinas: exige cálculo profesional', cementKgPerM3: 420, needsProfessionalReview: true },
+  { id: 'g15', label: 'G15 · Liviano', use: 'Cobertizos y terrazas sin carga', cementKgPerM3: 260, needsProfessionalReview: false },
+  { id: 'g20', label: 'G20 · Vivienda', use: 'Ampliaciones y habitaciones con tránsito común', cementKgPerM3: 300, needsProfessionalReview: false },
+  { id: 'g25', label: 'G25 · Pesado', use: 'Estacionamientos y bodegas con tránsito vehicular', cementKgPerM3: 340, needsProfessionalReview: true },
 ];
 
 export function getRadierGrade(id: RadierGradeId | undefined) {
-  return RADIER_CONCRETE_GRADES.find((grade) => grade.id === id) || RADIER_CONCRETE_GRADES[2];
+  return RADIER_CONCRETE_GRADES.find((grade) => grade.id === id) || RADIER_CONCRETE_GRADES.find((grade) => grade.id === 'g20')!;
 }
 
 export type RadierPlan = {
@@ -33,11 +31,14 @@ export type RadierPlan = {
   description: string;
   includes: string[];
   excludes: string[];
-  materialsM2: number;
-  laborM2: number;
-  extrasM2: number;
+  /** Precio comercial final por m² (con IVA). Es el número que se muestra y se cobra. */
+  priceM2: number;
+  /** Reparto referencial del neto para transparentar la composición. Suma 1. */
+  shareMaterials: number;
+  shareLabor: number;
+  shareExtras: number;
+  shareTransport: number;
   extrasLabel: string;
-  transportIncluded: boolean;
 };
 
 export type RadierInput = {
@@ -70,12 +71,12 @@ export const RADIER_PLANS: RadierPlan[] = [
       'Madera, estacas y otros materiales',
       'Despacho o transporte de materiales',
     ],
-    // Precio comercial $18.000/m² final. 13126 + 2000 = 15126 pre-IVA → ×1,19 = $18.000/m².
-    materialsM2: 0,
-    laborM2: 13126,
-    extrasM2: 2000,
+    priceM2: 18000,
+    shareMaterials: 0,
+    shareLabor: 0.85,
+    shareExtras: 0.15,
+    shareTransport: 0,
     extrasLabel: 'Preparación / herramientas',
-    transportIncluded: false,
   },
   {
     id: 'estandar',
@@ -97,12 +98,12 @@ export const RADIER_PLANS: RadierPlan[] = [
       'Bombeo, grúa o acceso especial no previsto',
       'Ingeniería estructural cuando corresponda',
     ],
-    // Precio comercial $28.000/m² final. 10000 + 9000 + 2654 = 21654 pre-IVA → con transporte e IVA = $28.000/m².
-    materialsM2: 10000,
-    laborM2: 9000,
-    extrasM2: 2654,
+    priceM2: 45000,
+    shareMaterials: 0.42,
+    shareLabor: 0.33,
+    shareExtras: 0.12,
+    shareTransport: 0.13,
     extrasLabel: 'Preparación / extras',
-    transportIncluded: true,
   },
   {
     id: 'reforzado',
@@ -122,12 +123,12 @@ export const RADIER_PLANS: RadierPlan[] = [
       'Estudio de suelo o cálculo estructural',
       'Bombeo, maquinaria o accesos especiales no previstos',
     ],
-    // Precio comercial $38.000/m² final. 15000 + 11000 + 4058 = 30058 pre-IVA → con transporte e IVA = $38.000/m².
-    materialsM2: 15000,
-    laborM2: 11000,
-    extrasM2: 4058,
+    priceM2: 55000,
+    shareMaterials: 0.45,
+    shareLabor: 0.32,
+    shareExtras: 0.13,
+    shareTransport: 0.10,
     extrasLabel: 'Preparación reforzada',
-    transportIncluded: true,
   },
 ];
 
@@ -179,19 +180,23 @@ export function calculateRadier(input: RadierInput) {
   const pourHours = Math.max(4, Math.ceil(area / 5));
   const executionDaysFrom = Math.max(1, Math.ceil((area / 35) + .5));
   const executionDaysTo = Math.max(2, Math.ceil((area / 22) + 1));
-  const meshSheets = Math.ceil(area / 13.5);
+  const meshSheets = Math.ceil(area / 11);
   const moistureBarrierM2 = area * 1.1;
   const stakes43cm = Math.max(4, Math.ceil(perimeter / 1.5));
   const formworkMeters = perimeter;
 
+  // Total comercial exacto (precio por m² × superficie) y reparto referencial
+  // que siempre suma perfecto. El redondeo se absorbe en mano de obra para
+  // garantizar materiales=0 y transporte=0 en mano de obra.
   const plans = RADIER_PLANS.map((plan) => {
-    const materials = Math.round(area * plan.materialsM2);
-    const labor = Math.round(area * plan.laborM2);
-    const extras = Math.round(area * plan.extrasM2);
-    const transport = plan.transportIncluded ? Math.max(45000, Math.round(area * 1500)) : 0;
-    const subtotal = materials + labor + extras + transport;
-    const tax = Math.round(subtotal * .19);
-    const total = subtotal + tax;
+    const total = Math.round(area * plan.priceM2);
+    const subtotal = Math.round(total / 1.19);
+    const tax = total - subtotal;
+    let materials = plan.shareMaterials === 0 ? 0 : Math.round(subtotal * plan.shareMaterials);
+    let labor = Math.round(subtotal * plan.shareLabor);
+    let extras = Math.round(subtotal * plan.shareExtras);
+    let transport = plan.shareTransport === 0 ? 0 : subtotal - materials - labor - extras;
+    labor += subtotal - materials - labor - extras - transport;
     return {
       ...plan,
       materials,
@@ -201,7 +206,7 @@ export function calculateRadier(input: RadierInput) {
       subtotal,
       tax,
       total,
-      referenceM2: Math.round(total / area),
+      referenceM2: plan.priceM2,
     };
   });
 

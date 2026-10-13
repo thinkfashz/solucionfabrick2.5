@@ -2,12 +2,15 @@
 
 import { useState } from 'react';
 import { jsPDF } from 'jspdf';
+import JsBarcode from 'jsbarcode';
 import { Download, Loader2 } from 'lucide-react';
 import type { RadierQuote } from './useRadierQuote';
 
 const INK: [number, number, number] = [8, 9, 10];
 const MUTED: [number, number, number] = [110, 110, 108];
 const ACCENT: [number, number, number] = [246, 198, 74];
+const CONTACT_PHONE = '+56 9 3012 1625';
+const CONTACT_EMAIL = 'solucionesfabrick@gmail.com';
 const PAPER: [number, number, number] = [255, 255, 255];
 const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const NUM = (value: number, digits = 2) => value.toLocaleString('es-CL', { maximumFractionDigits: digits });
@@ -23,6 +26,23 @@ async function logoDataUrl(): Promise<string | null> {
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
+  } catch { return null; }
+}
+
+/** Código de barras Code128 del folio, para verificación en obra y archivo. */
+function barcodeDataUrl(text: string): string | null {
+  try {
+    const canvas = document.createElement('canvas');
+    JsBarcode(canvas, text, {
+      format: 'CODE128',
+      width: 2,
+      height: 56,
+      displayValue: false,
+      margin: 6,
+      background: '#ffffff',
+      lineColor: '#000000',
+    });
+    return canvas.toDataURL('image/png');
   } catch { return null; }
 }
 
@@ -50,7 +70,31 @@ export async function buildRadierPdf(result: RadierQuote) {
   doc.setFont('helvetica', 'normal');
   const today = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
   doc.text(`Emitida el ${today} · referencia comercial, no cotización final`, W - M, 20, { align: 'right' });
+  doc.text(`${CONTACT_PHONE} · ${CONTACT_EMAIL}`, W - M, 25, { align: 'right' });
   y = 42;
+
+  // Folio + código de barras para verificación en obra y archivo
+  const folio = `RDR-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.round(result.area)}M2`;
+  const barcode = barcodeDataUrl(folio);
+  if (barcode) {
+    try {
+      doc.addImage(barcode, 'PNG', M, y - 2, 52, 14);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(...INK);
+      doc.text(`Folio: ${folio}`, M + 56, y + 4);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...MUTED);
+      doc.text('Escanea para verificar contra la cotización guardada', M + 56, y + 8.5);
+    } catch { /* sin código si falla el render */ }
+  } else {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...INK);
+    doc.text(`Folio: ${folio}`, M, y + 4);
+  }
+  y += 16;
 
   const section = (title: string) => {
     doc.setFont('helvetica', 'bold');
@@ -118,8 +162,25 @@ export async function buildRadierPdf(result: RadierQuote) {
     doc.setFontSize(8.5);
     doc.setTextColor(...MUTED);
     doc.text(`${plan.label} · ${CLP.format(plan.referenceM2)}/m² con IVA`, M, y + 4.5);
-    y += 11;
-    if (y > 258) { doc.addPage(); y = 20; }
+    y += 10;
+    // Composición comercial del alcance
+    doc.setFontSize(8);
+    const parts: Array<[string, number]> = [
+      ['Mano de obra', plan.labor],
+      ['Materiales', plan.materials],
+      ['Preparación/extras', plan.extras],
+    ];
+    if (plan.transport > 0) parts.push(['Transporte ref.', plan.transport]);
+    parts.push(['IVA 19%', plan.tax]);
+    parts.forEach(([label, value]) => {
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...MUTED);
+      doc.text(`· ${label}`, M + 4, y);
+      doc.text(CLP.format(value), W - M, y, { align: 'right' });
+      y += 4.5;
+    });
+    y += 3;
+    if (y > 250) { doc.addPage(); y = 20; }
   });
 
   y += 2;
@@ -129,7 +190,7 @@ export async function buildRadierPdf(result: RadierQuote) {
   const footer = [
     'Referencia comercial generada con tus medidas. No es cotización final ni documento tributario.',
     'Los materiales y precios varían por zona, acceso y proyecto. Revisión profesional antes de comprar.',
-    'Soluciones Fabrick · solucionesfabrick.com · guía completa y atención por WhatsApp en la página del radier.',
+    `Soluciones Fabrick · ${CONTACT_PHONE} · ${CONTACT_EMAIL} · solucionesfabrick.com`,
   ];
   footer.forEach((line) => { doc.text(line, M, y, { maxWidth: W - M * 2 }); y += 5; });
 

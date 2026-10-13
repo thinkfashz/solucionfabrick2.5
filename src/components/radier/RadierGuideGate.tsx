@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { AlertCircle, CheckCircle2, Lock } from 'lucide-react';
 import { markRadierUnlocked, radierSummaryLine, type RadierQuote } from './useRadierQuote';
+import { rememberRadierClient } from './RadierBudgetSheet';
+import GoogleSignInButton, { type GoogleProfile } from './GoogleSignInButton';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 
@@ -12,6 +14,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
  */
 export default function RadierGuideGate({ result, onUnlock }: { result: RadierQuote; onUnlock: () => void }) {
   const [sending, setSending] = useState(false);
+  const [googleSending, setGoogleSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [fields, setFields] = useState({ nombre: '', email: '', telefono: '' });
@@ -20,6 +23,42 @@ export default function RadierGuideGate({ result, onUnlock }: { result: RadierQu
   function set<K extends keyof typeof fields>(key: K, value: string) {
     setFields((current) => ({ ...current, [key]: value }));
     setFieldErrors((current) => ({ ...current, [key]: undefined }));
+  }
+
+  async function submitLead(payload: { nombre: string; email: string; telefono: string; via: string }) {
+    const response = await fetch('/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: payload.nombre,
+        email: payload.email,
+        telefono: payload.telefono,
+        tipo_proyecto: 'Radier — guía completa y presupuesto',
+        mensaje: `${payload.via}\n${radierSummaryLine(result)}\nEspesores: losa ${result.thickness} cm · base ${result.baseDepth} cm · gravilla ${result.gravelDepth} cm.`,
+      }),
+    });
+    if (!response.ok) {
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new Error(data.error || 'No pudimos registrar tus datos. Intenta nuevamente.');
+    }
+  }
+
+  async function useGoogleProfile(profile: GoogleProfile) {
+    if (googleSending || sending) return;
+    setGoogleSending(true);
+    setError(null);
+    try {
+      await submitLead({ nombre: profile.nombre, email: profile.email, telefono: '', via: 'Registro con Google (email verificado).' });
+      markRadierUnlocked(result);
+      rememberRadierClient(profile.nombre);
+      setFields((current) => ({ ...current, nombre: profile.nombre, email: profile.email }));
+      setDone(true);
+      onUnlock();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos registrar tus datos.');
+    } finally {
+      setGoogleSending(false);
+    }
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -36,22 +75,14 @@ export default function RadierGuideGate({ result, onUnlock }: { result: RadierQu
 
     setSending(true);
     try {
-      const response = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre: fields.nombre.trim(),
-          email: fields.email.trim(),
-          telefono: fields.telefono.trim(),
-          tipo_proyecto: 'Radier — guía completa y presupuesto',
-          mensaje: `Quiere la guía completa y el PDF.\n${radierSummaryLine(result)}\nEspesores: losa ${result.thickness} cm · base ${result.baseDepth} cm · gravilla ${result.gravelDepth} cm.`,
-        }),
+      await submitLead({
+        nombre: fields.nombre.trim(),
+        email: fields.email.trim(),
+        telefono: fields.telefono.trim(),
+        via: 'Quiere la guía completa y el PDF.',
       });
-      if (!response.ok) {
-        const data = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error || 'No pudimos registrar tus datos. Intenta nuevamente.');
-      }
       markRadierUnlocked(result);
+      rememberRadierClient(fields.nombre.trim());
       setDone(true);
       onUnlock();
     } catch (err) {
@@ -78,6 +109,13 @@ export default function RadierGuideGate({ result, onUnlock }: { result: RadierQu
         <p className="mt-1.5 text-xs leading-5 text-white/50">Deja tus datos y te abrimos las 10 etapas, el PDF descargable y la atención por WhatsApp con tus medidas listas.</p>
       </div>
       <form onSubmit={submit} noValidate className="grid gap-4 px-5 py-5 sm:px-6">
+        <div className="grid gap-3">
+          <GoogleSignInButton onProfile={useGoogleProfile} onError={(message) => setError(message)} />
+          {googleSending ? <p role="status" className="text-center text-[11px] font-bold text-[#F6C64A]">Registrando tu cuenta de Google…</p> : null}
+          <p className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[.14em] text-white/30" aria-hidden>
+            <span className="h-px flex-1 bg-white/10" /> o completa tus datos <span className="h-px flex-1 bg-white/10" />
+          </p>
+        </div>
         <label className="grid gap-1.5">
           <span className="text-[10px] font-black uppercase tracking-[.12em] text-white/45">Nombre y apellido *</span>
           <input name="nombre" autoComplete="name" value={fields.nombre} onChange={(e) => set('nombre', e.target.value)} placeholder="Tu nombre" aria-invalid={Boolean(fieldErrors.nombre)} className="w-full border-b border-white/15 bg-transparent px-0 py-3 text-sm font-semibold text-white outline-none placeholder:text-white/35 focus:border-[#F6C64A]" />

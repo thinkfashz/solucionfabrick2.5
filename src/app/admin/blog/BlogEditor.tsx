@@ -5,8 +5,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, Save, Trash2, Eye, ImagePlus, ArrowLeft } from 'lucide-react';
+import { Loader2, Save, Trash2, Eye, ImagePlus, ArrowLeft, Sparkles } from 'lucide-react';
 import { MediaPicker } from '@/components/admin/cms/MediaPicker';
+import BlogRichEditor from '@/components/admin/blog/BlogRichEditor';
 
 export interface BlogEditable {
   id?: string;
@@ -91,6 +92,8 @@ export function BlogEditor({ initial, isNew }: Props) {
   const [published, setPublished] = useState(Boolean(initial.published));
   const [showPicker, setShowPicker] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [editorMode, setEditorMode] = useState<'visual' | 'markdown'>('visual');
+  const [seoBusy, setSeoBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -101,6 +104,37 @@ export function BlogEditor({ initial, isNew }: Props) {
   }, [title, slugTouched]);
 
   const previewHtml = useMemo(() => previewMd(body), [body]);
+
+  async function improveSeo() {
+    if (seoBusy || !title.trim()) {
+      if (!title.trim()) setError('Pon un título antes de mejorar el SEO.');
+      return;
+    }
+    setSeoBusy(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/blog/seo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body_md: body }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        title?: string; description?: string; tags?: string[]; error?: string;
+      };
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      if (json.description) setDescription(json.description);
+      if (json.tags?.length) setTagsRaw(json.tags.join(', '));
+      if (json.title && json.title !== title) {
+        setMessage(`Título sugerido por IA: “${json.title}”. Revísalo antes de publicar.`);
+      } else {
+        setMessage('SEO mejorado: descripción y palabras clave actualizadas. Revísalas antes de publicar.');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo mejorar el SEO.');
+    } finally {
+      setSeoBusy(false);
+    }
+  }
 
   async function handleSave() {
     // Pre-submit validation so we don't even hit the server with an obviously
@@ -181,11 +215,20 @@ export function BlogEditor({ initial, isNew }: Props) {
         </Link>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setShowPreview((v) => !v)}
-            className="flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-400"
+            onClick={improveSeo}
+            disabled={seoBusy || !title.trim()}
+            className="flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-400 disabled:opacity-50"
           >
-            <Eye className="h-3.5 w-3.5" /> {showPreview ? 'Editar' : 'Preview'}
+            {seoBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} SEO con IA
           </button>
+          {editorMode === 'markdown' ? (
+            <button
+              onClick={() => setShowPreview((v) => !v)}
+              className="flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-400"
+            >
+              <Eye className="h-3.5 w-3.5" /> {showPreview ? 'Editar' : 'Preview'}
+            </button>
+          ) : null}
           {!isNew && (
             <button
               onClick={handleDelete}
@@ -228,8 +271,39 @@ export function BlogEditor({ initial, isNew }: Props) {
               className="w-full rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-white"
             />
           </Field>
-          <Field label="Contenido (Markdown)">
-            {showPreview ? (
+          <Field label="Contenido">
+            <div className="mb-2 flex gap-1 rounded-lg border border-white/10 bg-black p-1" role="tablist" aria-label="Modo de edición">
+              {(['visual', 'markdown'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="tab"
+                  aria-selected={editorMode === mode}
+                  onClick={() => setEditorMode(mode)}
+                  className={`flex-1 rounded-md px-3 py-1.5 text-[11px] font-black uppercase tracking-[.12em] transition ${editorMode === mode ? 'bg-yellow-400 text-black' : 'text-zinc-400 hover:text-white'}`}
+                >
+                  {mode === 'visual' ? 'Visual (Word)' : 'Markdown'}
+                </button>
+              ))}
+            </div>
+            {editorMode === 'visual' ? (
+              <BlogRichEditor
+                initialMd={body}
+                title={title}
+                onChange={setBody}
+                onPickImage={() => setShowPicker(true)}
+                onAiDraft={async () => {
+                  const res = await fetch('/api/admin/blog/draft', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: title || 'Artículo de construcción', focus: description, length: 'medio' }),
+                  });
+                  const json = (await res.json().catch(() => ({}))) as { draft?: string; error?: string };
+                  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+                  return json.draft || null;
+                }}
+              />
+            ) : showPreview ? (
               <div
                 className="prose prose-invert min-h-[400px] max-w-none rounded-lg border border-white/10 bg-black p-4"
                 dangerouslySetInnerHTML={{ __html: previewHtml }}

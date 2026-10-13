@@ -7,6 +7,7 @@ import { publishCmsEvent } from '@/lib/cmsBus';
 import { CMS_CACHE_TAGS } from '@/lib/cms';
 import { detectSchemaError, schemaErrorHint } from '@/lib/schemaErrors';
 import { v, parse, validationError } from '@/lib/validate';
+import { extractDescription, extractKeywords } from '@/lib/blogSeo';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -81,14 +82,19 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
     const published = d.published ?? false;
 
+    // SEO automático: si vienen vacíos, se generan del contenido para que
+    // ningún borrador nazca sin descripción ni palabras clave.
+    const description = d.description?.trim() || extractDescription(md, title);
+    const tags = (d.tags && d.tags.length ? d.tags : extractKeywords(md, title)).slice(0, 8);
+
     const row = {
       slug,
       title,
-      description: d.description ?? '',
+      description,
       cover_url: d.cover_url || null,
       body_md: md,
       body_html: html,
-      tags: d.tags ?? [],
+      tags,
       author: (d.author ?? session.email).trim() || null,
       published,
       published_at: published ? now : null,

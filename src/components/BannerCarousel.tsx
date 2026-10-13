@@ -20,9 +20,9 @@ const FALLBACK_BANNERS: Banner[] = [
   {
     id: 'b1',
     image_url:
-      'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=1200&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1618221195710-dd6b41faa6?q=80&w=1200&auto=format&fit=crop',
     title: 'Revestimientos de Lujo',
-    subtitle: 'Hasta 30% OFF en productos seleccionados',
+    subtitle: 'Nueva colección de revestimientos seleccionados',
     link: '/tienda',
   },
   {

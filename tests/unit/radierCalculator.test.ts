@@ -8,13 +8,16 @@ describe('calculateRadier', () => {
     const result = calculateRadier(base);
     expect(result.area).toBe(24);
     expect(result.perimeter).toBe(20);
-    expect(result.concrete).toBeCloseTo(2.592, 3);
+    // 5% por pérdida según Cubicador de Polpaico (antes 8% propio): 24 × 0,10 × 1,05.
+    expect(result.concrete).toBeCloseTo(2.52, 3);
     expect(result.stabilized).toBeCloseTo(2.4, 3);
     expect(result.gravel).toBeCloseTo(1.2, 3);
-    expect(result.cementBags25).toBe(44);
+    // Dosificación G20 por defecto (320 kg/m³ referencial): 2,52 × 320 / 25 = 33 sacos.
+    expect(result.cementBags25).toBe(33);
     expect(result.meshSheets).toBe(2);
-    expect(result.cementBagCoverageLiters).toBeGreaterThan(50);
-    expect(result.cementBagCoverageLiters).toBeLessThan(70);
+    // Rendimiento por saco derivado de la misma dosis: 25/320 m³ = 78 L.
+    expect(result.cementBagCoverageLiters).toBeGreaterThan(70);
+    expect(result.cementBagCoverageLiters).toBeLessThan(85);
     expect(result.mixerBatches).toBe(Math.ceil(result.concrete / .13));
     expect(result.mixerTrucks).toBe(Math.ceil(result.concrete / 7));
   });

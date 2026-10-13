@@ -5,6 +5,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { ContactShadows, Html, OrbitControls } from '@react-three/drei';
 import {
   Layers3,
+  Maximize2,
+  Minimize2,
   Move3D,
   Pause,
   Play,
@@ -176,6 +178,111 @@ function Formwork({ length, width, concreteY, concreteHeight, progress, exploded
   </group>;
 }
 
+function skyTexture() {
+  const c = document.createElement('canvas');
+  c.width = 4;
+  c.height = 256;
+  const ctx = c.getContext('2d')!;
+  const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+  gradient.addColorStop(0, '#0a1322');
+  gradient.addColorStop(.55, '#182233');
+  gradient.addColorStop(.78, '#54402c');
+  gradient.addColorStop(1, '#0a0c0e');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 4, 256);
+  const texture = new THREE.CanvasTexture(c);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function grassTexture() {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 128;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#33462c';
+  ctx.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 1100; i++) {
+    const g = 58 + Math.random() * 34;
+    ctx.fillStyle = `rgba(${(g * .62) | 0},${g | 0},${(g * .5) | 0},.55)`;
+    ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+  }
+  const texture = new THREE.CanvasTexture(c);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(28, 28);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+/** Posiciones fijas en anillo: no pisan el radier ni el camino. */
+const TREES: Array<[number, number, number]> = [
+  [-1.35, -1.05, 1.05], [1.45, -.85, .9], [-1.65, .55, .8],
+  [1.25, 1.45, 1.15], [.15, -1.55, .7], [-.95, 1.6, .85], [1.75, .35, .75],
+];
+
+function Tree({ position, scale }: { position: [number, number, number]; scale: number }) {
+  return (
+    <group position={position} scale={scale}>
+      <mesh position={[0, .35, 0]}>
+        <cylinderGeometry args={[.07, .1, .7, 7]} />
+        <meshStandardMaterial color="#4a3a28" roughness={1} />
+      </mesh>
+      <mesh position={[0, 1, 0]}>
+        <coneGeometry args={[.55, 1.1, 8]} />
+        <meshStandardMaterial color="#2c452b" roughness={1} />
+      </mesh>
+      <mesh position={[0, 1.55, 0]}>
+        <coneGeometry args={[.38, .8, 8]} />
+        <meshStandardMaterial color="#35522f" roughness={1} />
+      </mesh>
+    </group>
+  );
+}
+
+/**
+ * Entorno del sitio: cielo al atardecer, pasto, camino de acceso y vegetación.
+ * Todo procedural (sin texturas externas): no depende de red, CORS ni licencias.
+ */
+function SiteEnvironment({ maxDim }: { maxDim: number }) {
+  const sky = useMemo(skyTexture, []);
+  const grass = useMemo(grassTexture, []);
+  const dashes = useMemo(() => Array.from({ length: 9 }, (_, i) => (i - 4) * maxDim * .42), [maxDim]);
+  useEffect(() => () => { sky.dispose(); grass.dispose(); }, [sky, grass]);
+
+  return (
+    <group>
+      {/* Cielo */}
+      <mesh>
+        <sphereGeometry args={[maxDim * 9, 24, 16]} />
+        <meshBasicMaterial map={sky} side={THREE.BackSide} fog={false} depthWrite={false} />
+      </mesh>
+      {/* Pasto */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.095, 0]} receiveShadow>
+        <circleGeometry args={[maxDim * 4.6, 48]} />
+        <meshStandardMaterial map={grass} roughness={1} />
+      </mesh>
+      {/* Camino de acceso */}
+      <group position={[0, -.082, maxDim * 1.28]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[maxDim * 4.4, 2.1]} />
+          <meshStandardMaterial color="#202428" roughness={.96} />
+        </mesh>
+        {dashes.map((x, i) => (
+          <mesh key={i} position={[x, .012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[.7, .09]} />
+            <meshBasicMaterial color="#c8b98a" transparent opacity={.85} />
+          </mesh>
+        ))}
+      </group>
+      {/* Vegetación */}
+      {TREES.map(([x, z, s], i) => (
+        <Tree key={i} position={[x * maxDim, -.095, z * maxDim]} scale={s * Math.max(.7, maxDim * .14)} />
+      ))}
+    </group>
+  );
+}
+
 function Scene({ length, width, thickness, baseDepth, gravelDepth, shape, activeLayer = 'concrete', timeline, exploded, autoRotate }: Props & { timeline: number; exploded: boolean; autoRotate: boolean }) {
   const pieces = useMemo(() => layout(shape, length, width), [shape, length, width]);
   const maxDim = Math.max(length, width);
@@ -199,14 +306,16 @@ function Scene({ length, width, thickness, baseDepth, gravelDepth, shape, active
   const top = levels.concrete + concreteH / 2;
 
   return <>
-    <color attach="background" args={['#05090c']} />
-    <fog attach="fog" args={['#05090c', maxDim * 2.6, maxDim * 7]} />
+    <color attach="background" args={['#0b1220']} />
+    <fog attach="fog" args={['#131a26', maxDim * 3, maxDim * 8.5]} />
     <CameraFit maxDim={maxDim} />
     <ambientLight intensity={.42} />
     <hemisphereLight intensity={.7} color="#dff4ff" groundColor="#3a2315" />
     <directionalLight position={[maxDim * .7, maxDim * 1.25, maxDim * .8]} intensity={3.1} color="#fff2d3" castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} shadow-bias={-.00015} />
     <directionalLight position={[-maxDim, maxDim * .5, -maxDim * .6]} intensity={1.05} color="#63d8ff" />
     <pointLight position={[0, maxDim * .65, -maxDim]} intensity={1.4} color="#ff9b43" distance={maxDim * 4} />
+
+    <SiteEnvironment maxDim={maxDim} />
 
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.085, 0]} receiveShadow>
       <planeGeometry args={[maxDim * 3.1, maxDim * 2.5, 1, 1]} />
@@ -223,10 +332,10 @@ function Scene({ length, width, thickness, baseDepth, gravelDepth, shape, active
     <Formwork length={length} width={width} concreteY={levels.concrete} concreteHeight={concreteH} progress={phase(87)} exploded={exploded} />
 
     <Html position={[0, top + .5, -width / 2 - .34]} center className="pointer-events-none select-none">
-      <div className="whitespace-nowrap rounded-full border border-cyan-300/35 bg-[#031016]/88 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.14em] text-cyan-200 shadow-xl backdrop-blur">{length.toLocaleString('es-CL', { maximumFractionDigits: 2 })} m · largo</div>
+      <div className="whitespace-nowrap rounded-full border border-[#F6C64A]/35 bg-[#0A0F13]/88 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.14em] text-[#F6C64A] shadow-xl backdrop-blur">{length.toLocaleString('es-CL', { maximumFractionDigits: 2 })} m · largo</div>
     </Html>
     <Html position={[-length / 2 - .36, top + .34, 0]} center className="pointer-events-none select-none">
-      <div className="whitespace-nowrap rounded-full border border-cyan-300/35 bg-[#031016]/88 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.14em] text-cyan-200 shadow-xl backdrop-blur">{width.toLocaleString('es-CL', { maximumFractionDigits: 2 })} m · ancho</div>
+      <div className="whitespace-nowrap rounded-full border border-[#F6C64A]/35 bg-[#0A0F13]/88 px-2.5 py-1 text-[9px] font-black uppercase tracking-[.14em] text-[#F6C64A] shadow-xl backdrop-blur">{width.toLocaleString('es-CL', { maximumFractionDigits: 2 })} m · ancho</div>
     </Html>
     <Html position={[length / 2 + .34, levels.concrete, width / 2]} center className="pointer-events-none select-none">
       <div className="whitespace-nowrap rounded-lg border border-amber-300/30 bg-[#160d04]/88 px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] text-amber-200 shadow-xl backdrop-blur">{thickness.toLocaleString('es-CL', { maximumFractionDigits: 0 })} cm</div>
@@ -271,6 +380,7 @@ export default function RadierCinematicViewer(props: Props) {
   const [playing, setPlaying] = useState(false);
   const [exploded, setExploded] = useState(true);
   const [autoRotate, setAutoRotate] = useState(true);
+  const [immersive, setImmersive] = useState(false);
   const [webgl] = useState(hasWebGl);
 
   useEffect(() => {
@@ -281,6 +391,18 @@ export default function RadierCinematicViewer(props: Props) {
     return () => window.clearInterval(id);
   }, [playing]);
 
+  useEffect(() => {
+    if (!immersive) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setImmersive(false); };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [immersive]);
+
   if (!webgl) {
     return <div className="relative h-[380px] overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#071017] sm:h-[480px]">
       <img src={FALLBACK} alt="Vista de radier por capas" className="h-full w-full object-contain" />
@@ -288,14 +410,20 @@ export default function RadierCinematicViewer(props: Props) {
     </div>;
   }
 
-  return <section className="relative overflow-hidden rounded-[1.55rem] border border-white/10 bg-[#05090c] shadow-[0_30px_90px_rgba(0,0,0,.48)]">
+  return <section className={immersive ? 'fixed inset-0 z-[300] flex flex-col overflow-hidden bg-[#05090c]' : 'relative overflow-hidden rounded-[1.55rem] border border-white/10 bg-[#05090c] shadow-[0_30px_90px_rgba(0,0,0,.48)]'}>
     <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_65%_18%,rgba(82,214,255,.08),transparent_34%),radial-gradient(circle_at_32%_82%,rgba(246,198,74,.07),transparent_28%)]" />
     <div className="absolute left-3 top-3 z-30 flex flex-wrap items-center gap-2">
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/20 bg-[#031016]/82 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.13em] text-cyan-200 backdrop-blur"><Sparkles className="h-3 w-3" /> PBR · ACES</span>
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.13em] text-[#F6C64A] backdrop-blur"><Sparkles className="h-3 w-3" /> PBR · ACES</span>
       <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/20 bg-[#160d04]/82 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.13em] text-amber-200 backdrop-blur"><Layers3 className="h-3 w-3" /> Visor 4D</span>
     </div>
+    <div className="absolute right-3 top-3 z-30">
+      <button type="button" onClick={() => setImmersive((value) => !value)} aria-label={immersive ? 'Salir de pantalla completa' : 'Ver en pantalla completa'} aria-pressed={immersive} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-white/15 bg-black/70 px-3 text-[11px] font-black text-white/85 backdrop-blur transition hover:border-[#F6C64A]/50 hover:text-[#F6C64A]">
+        {immersive ? <Minimize2 size={16} aria-hidden /> : <Maximize2 size={16} aria-hidden />}
+        {immersive ? 'Cerrar' : null}
+      </button>
+    </div>
 
-    <div className="relative h-[390px] sm:h-[500px] lg:h-[520px]">
+    <div className={immersive ? 'relative min-h-0 flex-1 touch-none' : 'relative h-[390px] touch-none sm:h-[500px] lg:h-[520px]'}>
       <Canvas
         shadows
         dpr={[1, 1.65]}
@@ -314,14 +442,14 @@ export default function RadierCinematicViewer(props: Props) {
         </Suspense>
       </Canvas>
 
-      <div className="pointer-events-none absolute bottom-[76px] left-3 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-1.5 text-[8px] font-black uppercase tracking-[.11em] text-white/62 backdrop-blur"><Move3D className="h-3.5 w-3.5 text-[#57D4FF]" /> Arrastra · gira · zoom</div>
+      <div className="pointer-events-none absolute bottom-[76px] left-3 z-20 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-1.5 text-[8px] font-black uppercase tracking-[.11em] text-white/62 backdrop-blur"><Move3D className="h-3.5 w-3.5 text-[#F6C64A]" /> Arrastra · gira · zoom</div>
       <div className="pointer-events-none absolute bottom-[76px] right-3 z-20 rounded-full border border-white/10 bg-black/62 px-3 py-1.5 text-[8px] font-black uppercase tracking-[.11em] text-white/62 backdrop-blur">Estacas calculadas: {props.stakes ?? '—'}</div>
     </div>
 
     <div className="relative z-30 border-t border-white/[.07] bg-[#071017]/94 p-3 backdrop-blur-xl sm:p-4">
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setPlaying((value) => !value)} className="inline-flex h-10 items-center gap-2 rounded-full bg-[#F6C64A] px-4 text-[9px] font-black uppercase tracking-[.12em] text-black transition hover:bg-[#FFD95F]">{playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}{playing ? 'Pausar 4D' : 'Reproducir 4D'}</button>
-        <button type="button" onClick={() => setAutoRotate((value) => !value)} className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[9px] font-black uppercase tracking-[.11em] transition ${autoRotate ? 'border-cyan-300/35 bg-cyan-300/10 text-cyan-100' : 'border-white/10 bg-white/[.035] text-white/55'}`}><Rotate3D className="h-3.5 w-3.5" /> Giro</button>
+        <button type="button" onClick={() => setAutoRotate((value) => !value)} className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[9px] font-black uppercase tracking-[.11em] transition ${autoRotate ? 'border-[#F6C64A]/40 bg-[#F6C64A]/10 text-[#F6C64A]' : 'border-white/10 bg-white/[.035] text-white/55'}`}><Rotate3D className="h-3.5 w-3.5" /> Giro</button>
         <button type="button" onClick={() => setExploded((value) => !value)} className={`inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[9px] font-black uppercase tracking-[.11em] transition ${exploded ? 'border-amber-300/35 bg-amber-300/10 text-amber-100' : 'border-white/10 bg-white/[.035] text-white/55'}`}><Layers3 className="h-3.5 w-3.5" /> {exploded ? 'Capas abiertas' : 'Capas unidas'}</button>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">

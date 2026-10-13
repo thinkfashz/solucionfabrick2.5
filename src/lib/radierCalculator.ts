@@ -1,5 +1,30 @@
 export type RadierShape = 'rectangular' | 'l' | 'u' | 't' | 'h' | 'i';
 export type RadierPlanId = 'materiales' | 'estandar' | 'reforzado';
+export type RadierGradeId = 'g10' | 'g15' | 'g20' | 'g25' | 'g30';
+
+/**
+ * Dosificación por grado. El cemento por m³ es un valor REFERENCIAL de práctica
+ * chilena en obra para hormigón hecho en sitio; la ficha técnica del saco y el
+ * diseño del proyecto mandan. El mapeo uso→grado sigue la guía publicada por
+ * Polpaico (G20 radieres y muros, G25 losas y vigas, G30 uso estructural).
+ */
+export const RADIER_CONCRETE_GRADES: Array<{
+  id: RadierGradeId;
+  label: string;
+  use: string;
+  cementKgPerM3: number;
+  needsProfessionalReview: boolean;
+}> = [
+  { id: 'g10', label: 'G10 · Emparejar', use: 'Emplantillados y nivelación sin carga', cementKgPerM3: 200, needsProfessionalReview: false },
+  { id: 'g15', label: 'G15 · Liviano', use: 'Radier liviano sin carga (quincho, terraza)', cementKgPerM3: 260, needsProfessionalReview: false },
+  { id: 'g20', label: 'G20 · Radier vivienda', use: 'Radieres y muros de vivienda', cementKgPerM3: 320, needsProfessionalReview: false },
+  { id: 'g25', label: 'G25 · Losa', use: 'Losas y vigas: exige revisión profesional', cementKgPerM3: 380, needsProfessionalReview: true },
+  { id: 'g30', label: 'G30 · Estructural', use: 'Columnas, fundaciones y piscinas: exige cálculo profesional', cementKgPerM3: 420, needsProfessionalReview: true },
+];
+
+export function getRadierGrade(id: RadierGradeId | undefined) {
+  return RADIER_CONCRETE_GRADES.find((grade) => grade.id === id) || RADIER_CONCRETE_GRADES[2];
+}
 
 export type RadierPlan = {
   id: RadierPlanId;
@@ -22,6 +47,8 @@ export type RadierInput = {
   baseDepth: number;
   gravelDepth: number;
   shape: RadierShape;
+  /** Grado del hormigón. Si se omite, G20 (radier de vivienda). */
+  gradeId?: RadierGradeId;
 };
 
 export const RADIER_PLANS: RadierPlan[] = [
@@ -43,9 +70,10 @@ export const RADIER_PLANS: RadierPlan[] = [
       'Madera, estacas y otros materiales',
       'Despacho o transporte de materiales',
     ],
+    // Precio comercial $18.000/m² final. 13126 + 2000 = 15126 pre-IVA → ×1,19 = $18.000/m².
     materialsM2: 0,
-    laborM2: 27000,
-    extrasM2: 6000,
+    laborM2: 13126,
+    extrasM2: 2000,
     extrasLabel: 'Preparación / herramientas',
     transportIncluded: false,
   },
@@ -69,9 +97,10 @@ export const RADIER_PLANS: RadierPlan[] = [
       'Bombeo, grúa o acceso especial no previsto',
       'Ingeniería estructural cuando corresponda',
     ],
-    materialsM2: 35000,
-    laborM2: 27000,
-    extrasM2: 10000,
+    // Precio comercial $28.000/m² final. 10000 + 9000 + 2654 = 21654 pre-IVA → con transporte e IVA = $28.000/m².
+    materialsM2: 10000,
+    laborM2: 9000,
+    extrasM2: 2654,
     extrasLabel: 'Preparación / extras',
     transportIncluded: true,
   },
@@ -93,9 +122,10 @@ export const RADIER_PLANS: RadierPlan[] = [
       'Estudio de suelo o cálculo estructural',
       'Bombeo, maquinaria o accesos especiales no previstos',
     ],
-    materialsM2: 43000,
-    laborM2: 33000,
-    extrasM2: 20000,
+    // Precio comercial $38.000/m² final. 15000 + 11000 + 4058 = 30058 pre-IVA → con transporte e IVA = $38.000/m².
+    materialsM2: 15000,
+    laborM2: 11000,
+    extrasM2: 4058,
     extrasLabel: 'Preparación reforzada',
     transportIncluded: true,
   },
@@ -123,16 +153,22 @@ export function calculateRadier(input: RadierInput) {
   const baseDepth = positive(input.baseDepth, 10);
   const gravelDepth = positive(input.gravelDepth, 5);
   const shape = RADIER_SHAPES.find((item) => item.id === input.shape) || RADIER_SHAPES[0];
+  const grade = getRadierGrade(input.gradeId);
 
   const area = length * width * shape.areaFactor;
   const perimeter = 2 * (length + width) * shape.perimeterFactor;
-  const concrete = area * (thickness / 100) * 1.08;
+  // 5% por pérdida (sobreconsumo, derrame, sobre-espesor) según recomendación
+  // publicada por Polpaico en su Cubicador. Es el estándar del fabricante,
+  // no un margen propio.
+  const concrete = area * (thickness / 100) * 1.05;
   const stabilized = area * (baseDepth / 100);
   const gravel = area * (gravelDepth / 100);
-  // Mezcla referencial en obra 4:8:9 por volumen (cemento:arena:gravilla).
-  const cementBagVolumeLiters = 25 / 1.44;
-  const mixYieldPerBagM3 = (cementBagVolumeLiters * (21 / 4) / 1.54) / 1000;
+  // Cemento por grado: sacos = volumen × dosis / 25 kg. La dosis (kg/m³) es
+  // referencial de práctica en obra; la ficha del saco y el proyecto mandan.
+  // El rendimiento por saco se deriva de la misma dosis para no contradecirse.
+  const mixYieldPerBagM3 = 25 / grade.cementKgPerM3;
   const cementBags25 = Math.ceil(concrete / mixYieldPerBagM3);
+  // Áridos de referencia por volumen (mezcla en obra 4:8:9). No dependen del grado.
   const sand = concrete * (8 / 21) * 1.54;
   const mixGravel = concrete * (9 / 21) * 1.54;
   const mixerUsefulM3 = .13;
@@ -176,6 +212,7 @@ export function calculateRadier(input: RadierInput) {
     baseDepth,
     gravelDepth,
     shape,
+    grade,
     area,
     perimeter,
     concrete,

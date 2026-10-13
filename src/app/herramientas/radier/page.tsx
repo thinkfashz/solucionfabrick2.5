@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
-import RadierCalculatorPremium from '@/components/store/RadierCalculatorPremium';
+import { Suspense } from 'react';
 import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
 import CollapsibleMeasureControls from '@/components/tools/CollapsibleMeasureControls';
 import ImmersiveLabEntry from '@/components/tools/ImmersiveLabEntry';
+import RadierStudio from '@/components/radier/RadierStudio';
+import RadierComments from '@/components/radier/RadierComments';
+import RadierSocial from '@/components/radier/RadierSocial';
+import RadierMobileBar from '@/components/radier/RadierMobileBar';
 import { buildTechnicalToolJsonLd, SITE_URL } from '@/lib/seo';
+import { getCmsSettings } from '@/lib/cms';
 import a11y from '../../mobile-accessibility.module.css';
 
 const CANONICAL = `${SITE_URL}/herramientas/radier`;
@@ -21,7 +26,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
+export default async function Page() {
   const jsonLd = buildTechnicalToolJsonLd({
     path: '/herramientas/radier',
     name: 'Calculadora de radier',
@@ -30,18 +35,38 @@ export default function Page() {
     keywords: ['calculadora radier', 'cubicación hormigón', 'materiales radier', 'precio radier Chile'],
   });
 
+  let settings: Awaited<ReturnType<typeof getCmsSettings>> | null = null;
+  try {
+    settings = await getCmsSettings();
+  } catch { settings = null; }
+  const socialLinks = {
+    facebook: settings?.social_facebook || 'https://www.facebook.com/FabrickSoluciones',
+    instagram: settings?.social_instagram || 'https://www.instagram.com/solucionesfabrick/',
+    tiktok: settings?.social_tiktok,
+  };
+
   return (
     <>
       <StructuredData data={jsonLd} />
-      <div className={a11y.radierScope}>
-        <RadierCalculatorPremium />
-        <CollapsibleMeasureControls
-          targetText="Pon las medidas de tu radier"
-          ancestorDepth={3}
-          label="Medidas del radier"
-          summary="Forma, largo, ancho, espesor, base compactada, gravilla, uso y terminación"
-        />
-        <ImmersiveLabEntry href="/herramientas/radier/lab" label="Lab Radier 4D" />
+      <div className={`${a11y.radierScope} pb-24 md:pb-0`}>
+        {/* Medidas, visor 4D, presupuesto, guía y puerta: una sola experiencia conectada por la URL. */}
+        <div className="mx-auto w-full max-w-[880px] px-3 pt-4 sm:px-5 sm:pt-6">
+          <Suspense fallback={null}>
+            <RadierStudio />
+          </Suspense>
+        </div>
+
+        <div className="mx-auto w-full max-w-[880px] space-y-4 px-3 pt-4 sm:space-y-5 sm:px-5">
+          <CollapsibleMeasureControls
+            targetText="Pon las medidas de tu radier"
+            ancestorDepth={3}
+            label="Medidas del radier"
+            summary="Forma, largo, ancho, espesor, base compactada, gravilla, uso y terminación"
+          />
+          <ImmersiveLabEntry href="/herramientas/radier/lab" label="Lab Radier 4D" />
+          <RadierComments />
+          <RadierSocial socialLinks={socialLinks} contactEmail={settings?.email_contacto} />
+        </div>
       </div>
       <TechnicalAuthoritySection
         compact
@@ -50,7 +75,7 @@ export default function Page() {
         answer="La herramienta transforma las medidas del proyecto en una cubicación reproducible: primero estima área y perímetro, luego convierte cada espesor a volumen y finalmente aplica márgenes de trabajo y unidades comerciales para entregar materiales y rangos de costo."
         method={[
           'Área = largo × ancho × factor de forma. Las formas L, U, T, H e I usan factores de aproximación para una estimación rápida; una geometría irregular real debe medirse por paños.',
-          'Hormigón = área × espesor en metros × 1,08. El 8% adicional funciona como margen operativo de la herramienta, no como exigencia normativa universal.',
+          'Hormigón = área × espesor en metros × 1,05. El 5% adicional por pérdida (sobreconsumo, derrame, sobre-espesor) sigue la recomendación publicada por Polpaico en su Cubicador.',
           'Base estabilizada y gravilla se calculan como área × profundidad. La barrera de humedad incorpora 10% de traslape y las estacas se estiman desde el perímetro.',
           'Los planes comerciales separan materiales, mano de obra, preparación/extras, transporte e IVA para comparar alcances antes de cotizar.',
         ]}
@@ -77,6 +102,7 @@ export default function Page() {
           { label: 'Cotizar radier', href: '/presupuesto?servicio=radier' },
         ]}
       />
+      <RadierMobileBar />
     </>
   );
 }

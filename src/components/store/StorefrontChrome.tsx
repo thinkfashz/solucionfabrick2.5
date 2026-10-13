@@ -2,7 +2,7 @@
 
 import { useState, type ChangeEvent } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Grid2X2, Heart, Home, Menu, Package, Search, ShoppingCart, User, X } from 'lucide-react';
+import { FileText, Grid2X2, Heart, Home, LayoutGrid, Menu, Package, Ruler, Search, ShoppingCart, Sparkles, User, Wind, X } from 'lucide-react';
 import { FabrickNavLogo } from '@/components/FabrickBrandIcon';
 import { useCartContext } from '@/context/CartContext';
 import { useTenantBranding, type TenantBranding } from '@/hooks/useTenantBranding';
@@ -10,6 +10,16 @@ import { navigateWithTransition } from '@/lib/routeTransition';
 
 const YELLOW = '#F6C64A';
 function goTo(href: string, router: ReturnType<typeof useRouter>) { navigateWithTransition(href, router); }
+
+/** Accesos del header. `match` marca la sección activa. */
+const STORE_ACCESS: Array<{ label: string; href: string; Icon: typeof Home; match?: RegExp }> = [
+  { label: 'Tienda', href: '/tienda', Icon: Home, match: /^\/tienda$/ },
+  { label: 'Todos los productos', href: '/tienda/catalogo', Icon: LayoutGrid, match: /^\/tienda\/catalogo/ },
+  { label: 'Colecciones', href: '/tienda#colecciones', Icon: Sparkles },
+  { label: 'Calcula tu radier', href: '/herramientas/radier', Icon: Ruler, match: /^\/herramientas\/radier/ },
+  { label: 'Calcula tu aire', href: '/herramientas/aire-acondicionado', Icon: Wind, match: /^\/herramientas\/aire-acondicionado/ },
+  { label: 'Cotizar proyecto', href: '/presupuesto', Icon: FileText, match: /^\/presupuesto/ },
+];
 
 export function StoreFabrickLogo({ tone = 'dark', compact = false, branding }: { tone?: 'light' | 'dark'; branding: TenantBranding; compact?: boolean }) {
   if (branding.logoUrl) return <img src={branding.logoUrl} alt={branding.name} className={`${compact ? 'h-9 max-w-[190px]' : 'h-11 max-w-[230px]'} w-auto object-contain`} />;
@@ -31,6 +41,7 @@ export function StorefrontHeader({ onSearch }: { onSearch?: () => void }) {
   const { openCart, totalItems } = useCartContext();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileQuery, setMobileQuery] = useState('');
+  const pathname = usePathname();
   const changeSearch = (event: ChangeEvent<HTMLInputElement>) => { setMobileQuery(event.target.value); syncCatalogSearch(event.target.value); };
 
   return <>
@@ -53,7 +64,29 @@ export function StorefrontHeader({ onSearch }: { onSearch?: () => void }) {
           <button onClick={openCart} className="relative grid h-10 w-10 place-items-center rounded-xl bg-[#F6C64A] text-[#080A0D]" aria-label="Carrito"><ShoppingCart size={19}/>{totalItems>0?<span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[10px] font-black text-black">{totalItems}</span>:null}</button>
         </div>
       </div>
-      <div className="hidden border-t border-white/[.055] md:block"><div className="mx-auto flex max-w-[1380px] items-center gap-6 px-8 py-2.5 text-[11px] font-bold text-white/52"><button onClick={() => goTo('/tienda', router)} className="text-white">Tienda</button><button onClick={() => goTo('/tienda/catalogo', router)}>Todos los productos</button><button onClick={() => goTo('/herramientas/radier', router)}>Calcula tu radier</button><button onClick={() => goTo('/herramientas/aire-acondicionado', router)}>Calcula tu aire</button><button onClick={() => goTo('/presupuesto', router)}>Cotizar proyecto</button></div></div>
+      <div className="hidden border-t border-white/[.055] md:block">
+        <nav aria-label="Accesos de la tienda" className="mx-auto flex max-w-[1380px] items-center gap-1.5 overflow-x-auto px-6 py-2 [scrollbar-width:none] lg:px-8">
+          {STORE_ACCESS.map((item) => {
+            const active = item.match ? item.match.test(pathname) : false;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => goTo(item.href, router)}
+                aria-current={active ? 'page' : undefined}
+                className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-bold transition-colors duration-200 ${
+                  active
+                    ? 'border-[#F6C64A]/45 bg-[#F6C64A]/[.1] text-[#F6C64A]'
+                    : 'border-white/10 text-white/60 hover:border-white/25 hover:text-white'
+                }`}
+              >
+                <item.Icon size={13} aria-hidden />
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
     </nav>
 
     {menuOpen?<div className="fixed inset-0 z-[270] bg-black/70 backdrop-blur-sm md:hidden" onClick={()=>setMenuOpen(false)}><section className="absolute inset-x-3 top-3 rounded-[1.6rem] border border-white/10 bg-[#0A0E12] p-4 text-white shadow-2xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between"><StoreFabrickLogo tone="dark" branding={branding} compact/><button onClick={()=>setMenuOpen(false)} className="grid h-10 w-10 place-items-center rounded-full border border-white/10"><X size={18}/></button></div><div className="mt-5 grid gap-2"><MenuLink label="Tienda" onClick={()=>{setMenuOpen(false);goTo('/tienda',router)}}/><MenuLink label="Todos los productos" onClick={()=>{setMenuOpen(false);goTo('/tienda/catalogo',router)}}/><MenuLink label="Calcula tu radier" onClick={()=>{setMenuOpen(false);goTo('/herramientas/radier',router)}}/><MenuLink label="Calcula tu aire ideal" onClick={()=>{setMenuOpen(false);goTo('/herramientas/aire-acondicionado',router)}}/><MenuLink label={`Carrito · ${totalItems}`} onClick={()=>{setMenuOpen(false);openCart()}}/></div></section></div>:null}

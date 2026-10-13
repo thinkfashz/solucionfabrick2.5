@@ -10,7 +10,8 @@ type VisualProduct = {
 const CLOUD = 'https://res.cloudinary.com/disghf6xc/image/upload';
 
 export const STORE_VISUALS = {
-  hero: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=82&w=2200&auto=format&fit=crop',
+  // Imagen propia generada para la marca (antes era una foto de stock de Unsplash).
+  hero: '/flow/fabrick-portada-casa-mediterranea.jpeg',
   airCalculatorPng: `${CLOUD}/c_limit,w_1200/f_png/q_auto:best/v1788843315/air-split-premium-v10.png`,
   air9k: `${CLOUD}/c_limit,w_900/f_png/q_auto:best/v1788677205/air-9k-v7.png`,
   air12k: `${CLOUD}/c_limit,w_900/f_png/q_auto:best/v1788677189/air-12k-v7.png`,

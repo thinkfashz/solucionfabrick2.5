@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, ArrowUpRight, Clock } from 'lucide-react';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
+import BlogAuthorities from '@/components/blog/BlogAuthorities';
 import type { ContentMeta } from '@/lib/content';
 
 type Topic = { id: string; title: string; text: string; image: string; keywords: string[] };
@@ -50,7 +52,8 @@ export default function BlogHome({ items }: { items: ContentMeta[] }) {
         )}
         <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(5,8,11,.55)_0%,rgba(5,8,11,.82)_100%)]" />
         <div className="mx-auto max-w-[1200px] px-4 pb-10 pt-20 sm:px-6 sm:pb-14 sm:pt-28">
-          <p className="text-[10px] font-black uppercase tracking-[.24em] text-[#F6C64A]">Blog · construcción sin humo</p>
+          <FabrickFullLogo compact theme="light" />
+          <p className="mt-4 text-[10px] font-black uppercase tracking-[.24em] text-[#F6C64A]">Blog · construcción sin humo</p>
           <h1 className="mt-3 max-w-[16ch] text-[clamp(2.2rem,6vw,3.8rem)] font-black leading-[.95] tracking-[-.045em]">
             {featured ? featured.title : 'Guías para construir sin improvisar.'}
           </h1>
@@ -74,7 +77,7 @@ export default function BlogHome({ items }: { items: ContentMeta[] }) {
       <section id="temas" aria-labelledby="temas-title" className="mx-auto max-w-[1200px] scroll-mt-24 px-4 pt-10 sm:px-6 sm:pt-14">
         <p className="text-[9px] font-black uppercase tracking-[.22em] text-[#F6C64A]">Temas que cubrimos</p>
         <h2 id="temas-title" className="mt-1 text-2xl font-black tracking-[-.04em] sm:text-3xl">Elige por dónde partir.</h2>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3">
           {TOPICS.map((item) => {
             const active = activeTopic === item.id;
             return (
@@ -83,7 +86,7 @@ export default function BlogHome({ items }: { items: ContentMeta[] }) {
                 type="button"
                 onClick={() => setActiveTopic((current) => (current === item.id ? null : item.id))}
                 aria-pressed={active}
-                className={`group relative isolate min-h-[220px] overflow-hidden rounded-[1.4rem] border text-left transition ${active ? 'border-[#F6C64A]/60' : 'border-white/10 hover:border-white/25'}`}
+                className={`group relative isolate min-h-[240px] w-[76vw] shrink-0 snap-start overflow-hidden rounded-[1.4rem] border text-left transition sm:w-auto sm:min-h-[220px] ${active ? 'border-[#F6C64A]/60' : 'border-white/10'}`}
               >
                 <img src={item.image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.04]" />
                 <span aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,8,11,.15)_0%,rgba(5,8,11,.35)_40%,rgba(5,8,11,.92)_100%)]" />
@@ -146,6 +149,8 @@ export default function BlogHome({ items }: { items: ContentMeta[] }) {
           </div>
         )}
       </section>
+
+      <BlogAuthorities />
     </div>
   );
 }

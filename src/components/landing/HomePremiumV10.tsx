@@ -6,6 +6,7 @@ import ConstructionM2Calculator from './ConstructionM2Calculator';
 import HomeContactSection, { type HomeContact } from './HomeContactSection';
 import HomeFooter from './HomeFooter';
 import HomeInspirationGallery from './HomeInspirationGallery';
+import HomeBlogBanner from './HomeBlogBanner';
 import HomeToolHub, { type HubBand, type HubTool } from './HomeToolHub';
 import MetalconSeismicStory from './MetalconSeismicStory';
 import styles from './HomePremiumV10.module.css';
@@ -97,6 +98,8 @@ export default function HomePremiumV10({ copyrightText, socialLinks, contact }: 
         <HomeInspirationGallery />
       </section>
     </div>
+
+    <HomeBlogBanner />
 
     <MetalconSeismicStory />
 

@@ -1026,3 +1026,92 @@ a.channelValue {
     transform: none;
   }
 }
+
+/* ─── BLOG BANNER — acceso destacado a /blog, full-bleed ─── */
+.blogBanner {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  min-height: clamp(300px, 42vh, 420px);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.blogBannerImage {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.blogBannerScrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(8,9,10,.94) 0%, rgba(8,9,10,.72) 48%, rgba(8,9,10,.28) 100%);
+}
+
+.blogBannerContent {
+  width: 100%;
+  max-width: var(--measure);
+  margin-inline: auto;
+  padding: 48px 24px;
+}
+
+.blogBannerEyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.blogBannerTitle {
+  margin: 10px 0 0;
+  max-width: 16ch;
+  font-size: clamp(30px, 4.6vw, 52px);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -.04em;
+  text-wrap: balance;
+}
+
+.blogBannerText {
+  margin: 12px 0 0;
+  max-width: 46ch;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.blogBannerContent .primary {
+  margin-top: 22px;
+}
+
+@media (max-width: 767px) {
+  .blogBanner {
+    min-height: 340px;
+  }
+
+  .blogBannerContent {
+    padding: 36px 20px;
+  }
+
+  .blogBannerScrim {
+    background:
+      linear-gradient(180deg, rgba(8,9,10,.55) 0%, rgba(8,9,10,.9) 78%),
+      linear-gradient(90deg, rgba(8,9,10,.75) 0%, rgba(8,9,10,.3) 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blogBannerContent > * {
+    animation: none;
+  }
+}

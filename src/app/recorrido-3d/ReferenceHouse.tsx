@@ -229,11 +229,11 @@ export default function ReferenceHouse(){
    const kitchenCabinet=mat('#d9d2c7'),kitchenFront=mat('#edeae2'),countertop=mat('#c8c7c2'),appliance=mat('#aeb5b8',.72),handleMat=mat('#2c343a',.7);
    const baseDepth=.61,baseHeight=.762,worktopY=.93,kitchenX=6.84;
    const modules=[{w:.61,z:-1.22,type:'sink'},{w:.76,z:-.535,type:'drawers'},{w:.61,z:.15,type:'cooktop'},{w:.46,z:.685,type:'storage'}] as const;
-   for(const module of modules){
-    box([kitchenX,.12+baseHeight/2,module.z],[baseDepth,baseHeight,module.w-.018],kitchenCabinet,kitchenInteractive);
-    box([kitchenX-baseDepth/2-.012,.12+baseHeight/2,module.z],[.024,baseHeight-.035,module.w-.045],kitchenFront,kitchenInteractive);
-    beam([kitchenX-baseDepth/2-.03,.42,module.z-module.w*.28],[kitchenX-baseDepth/2-.03,.42,module.z+module.w*.28],.014,handleMat,kitchenInteractive);
-   }
+    for(const mod of modules){
+     box([kitchenX,.12+baseHeight/2,mod.z],[baseDepth,baseHeight,mod.w-.018],kitchenCabinet,kitchenInteractive);
+     box([kitchenX-baseDepth/2-.012,.12+baseHeight/2,mod.z],[.024,baseHeight-.035,mod.w-.045],kitchenFront,kitchenInteractive);
+     beam([kitchenX-baseDepth/2-.03,.42,mod.z-mod.w*.28],[kitchenX-baseDepth/2-.03,.42,mod.z+mod.w*.28],.014,handleMat,kitchenInteractive);
+    }
    box([kitchenX-.015,worktopY,-.27],[.66,.055,2.52],countertop,kitchenInteractive);
    // Fregadero y grifería.
    box([kitchenX-.34,worktopY+.012,-1.22],[.055,.018,.42],appliance,kitchenInteractive);
@@ -248,13 +248,13 @@ export default function ReferenceHouse(){
    box([6.82,1.15,-1.82],[.61,2.06,.46],kitchenFront,kitchenInteractive);
    // Muebles superiores: profundidad 0,376 m, altura 0,762 m.
    const upperDepth=.376,upperHeight=.762,upperY=2.13;const kitchenDoors:T.Group[]=[];
-   for(const module of modules){
-    if(module.type==='cooktop')continue;
-    box([7.01,upperY,module.z],[upperDepth,upperHeight,module.w-.022],kitchenCabinet,kitchenInteractive);
-    const hinge=new THREE.Group();hinge.position.set(6.81,upperY,module.z-module.w/2+.02);kitchenInteractive.add(hinge);
-    const door=box([-.018,0,(module.w-.05)/2],[.035,upperHeight-.04,module.w-.05],kitchenFront,hinge);door.userData.baseZ=(module.w-.05)/2;
-    beam([-.04,-.18,module.w*.28],[-.04,.18,module.w*.28],.012,handleMat,hinge);kitchenDoors.push(hinge);
-   }
+    for(const mod of modules){
+     if(mod.type==='cooktop')continue;
+     box([7.01,upperY,mod.z],[upperDepth,upperHeight,mod.w-.022],kitchenCabinet,kitchenInteractive);
+     const hinge=new THREE.Group();hinge.position.set(6.81,upperY,mod.z-mod.w/2+.02);kitchenInteractive.add(hinge);
+     const door=box([-.018,0,(mod.w-.05)/2],[.035,upperHeight-.04,mod.w-.05],kitchenFront,hinge);door.userData.baseZ=(mod.w-.05)/2;
+     beam([-.04,-.18,mod.w*.28],[-.04,.18,mod.w*.28],.012,handleMat,hinge);kitchenDoors.push(hinge);
+    }
    // LED continuo bajo mueble superior.
    const ledMat=new THREE.MeshStandardMaterial({color:'#fff3c4',emissive:'#ffe5a3',emissiveIntensity:2,roughness:.55});materials.push(ledMat);
    box([6.79,1.72,-.58],[.025,.025,1.88],ledMat,kitchenInteractive);

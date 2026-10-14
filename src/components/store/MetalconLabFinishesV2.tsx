@@ -13,7 +13,7 @@ export default function MetalconLabFinishesV2({preset,timeline,layers,cutaway}:{
  const textures=useViewerTextures();
  const floorMap=textures.pisoMadera?viewerTextureVariant('pisoMadera',1,1):null;
  return <group scale={scale}>
-  <Foundation preset={preset} opacity={visible(timeline,0)}/>
+<Foundation preset={preset} opacity={visible(timeline,0)}/>
   {layers.osb?<Shell preset={preset} offset={.055} thickness={.028} color="#b9824c" opacity={visible(timeline,40)*.9} cutaway={cutaway}/>:null}
   {layers.membrane?<Shell preset={preset} offset={.078} thickness={.012} color="#243b50" opacity={visible(timeline,49)*.62} cutaway={cutaway}/>:null}
   {layers.battens?<Battens preset={preset} opacity={visible(timeline,56)} cutaway={cutaway}/>:null}
@@ -22,7 +22,8 @@ export default function MetalconLabFinishesV2({preset,timeline,layers,cutaway}:{
   {layers.gypsum?<Shell preset={preset} offset={-.082} thickness={.016} color="#e7e3d8" opacity={visible(timeline,72)*.92} cutaway={cutaway} map={textures.intDrywall} roughness={.95}/>:null}
   {layers.floor?<Floor preset={preset} opacity={visible(timeline,78)} map={floorMap}/>:null}
   {layers.ceiling?<Ceiling preset={preset} opacity={visible(timeline,83)}/>:null}
-  {layers.fixtures?<Fixtures preset={preset} opacity={visible(timeline,87)}/>:null}
+   
+   {layers.fixtures?<Fixtures preset={preset} opacity={visible(timeline,87)}/>:null}
   {layers.sanitary?<Sanitary preset={preset} opacity={visible(timeline,91)}/>:null}
   {layers.siding?<Siding preset={preset} opacity={visible(timeline,95)} cutaway={cutaway}/>:null}
   {(layers.osb||layers.siding)?<OpeningsFill preset={preset} opacity={visible(timeline,40)} cutaway={cutaway}/>:null}
@@ -131,33 +132,46 @@ function OpeningsFill({preset,opacity,cutaway}:{preset:MetalconHousePreset;opaci
  return <group>{faces.map(face=>{const center=faceCenter(preset,face,off);const openings=perimeterWallOpenings(preset,face);return <group key={face}>{openings.map((opening,index)=><OpeningFillAt key={`${face}-${index}`} axis={FACE_GEOM[face].axis} center={center} opening={opening} opacity={opacity}/>)}</group>;})}</group>
 }
 function Roof({preset,opacity,cutaway,map}:{preset:MetalconHousePreset;opacity:number;cutaway:boolean;map?:Texture|null}){
- if(opacity<=.01)return null;
- // Geometría canónica única: idéntica a SteelRoofStructure (MetalconAssembly3D).
- // eaveY=heightM+0.02 · run=(d+0.7)/2 · rise=max(0.65,d*0.18). El covering va OPACO y por
- // encima de la estructura de acero (tablero → membrana → cubierta → ribetes → cumbrera).
- const run=(preset.depthM+.7)/2,rise=Math.max(.65,preset.depthM*.18),eaveY=preset.heightM+.02,ridgeY=eaveY+rise,panelWidth=preset.widthM+.7;
- const slope=Math.sqrt(run*run+rise*rise),angle=Math.atan2(rise,run),midY=eaveY+rise/2;
- const ribSteps=Math.max(5,Math.ceil(panelWidth/.52)),ribXs=Array.from({length:ribSteps+1},(_,i)=>-panelWidth/2+i*panelWidth/ribSteps);
+  if(opacity<=.01)return null;
+  const run=(preset.depthM+.7)/2,rise=Math.max(.65,preset.depthM*.18),eaveY=preset.heightM+.02,ridgeY=eaveY+rise,panelWidth=preset.widthM+.7;
+  const slope=Math.sqrt(run*run+rise*rise),angle=Math.atan2(rise,run),midY=eaveY+rise/2;
+  const ribSteps=Math.max(5,Math.ceil(panelWidth/.52)),ribXs=Array.from({length:ribSteps+1},(_,i)=>-panelWidth/2+i*panelWidth/ribSteps);
+  const halfW=panelWidth/2;
   return <group>
-  {/* Capas apiladas por encima del deck estructural (SteelRoofPanel en midY+0.04): tablero → membrana → cubierta. */}
-  <RoofPlane side="far-board" width={panelWidth} slope={slope} angle={-angle} y={midY+.068} z={-run/2} opacity={opacity} color="#a66f3d" thickness={.026}/>
-  {!cutaway?<RoofPlane side="near-board" width={panelWidth} slope={slope} angle={angle} y={midY+.068} z={run/2} opacity={opacity} color="#a66f3d" thickness={.026}/>:null}
-  <RoofPlane side="far-membrane" width={panelWidth} slope={slope} angle={-angle} y={midY+.087} z={-run/2} opacity={opacity} color="#263a45" thickness={.012}/>
-  {!cutaway?<RoofPlane side="near-membrane" width={panelWidth} slope={slope} angle={angle} y={midY+.087} z={run/2} opacity={opacity} color="#263a45" thickness={.012}/>:null}
-  <RoofPlane side="far-cover" width={panelWidth} slope={slope} angle={-angle} y={midY+.111} z={-run/2} opacity={opacity} color="#59666b" thickness={.035} metalness={.5} map={map}/>
-  {!cutaway?<RoofPlane side="near-cover" width={panelWidth} slope={slope} angle={angle} y={midY+.111} z={run/2} opacity={opacity} color="#59666b" thickness={.035} metalness={.5} map={map}/>:null}
-  {ribXs.map(x=><mesh key={`rf${x}`} position={[x,midY+.141,-run/2]} rotation={[-angle,0,0]}><boxGeometry args={[.018,.026,slope]}/>{mat('#849197',opacity,.65,.28)}</mesh>)}
-  {!cutaway?ribXs.map(x=><mesh key={`rn${x}`} position={[x,midY+.141,run/2]} rotation={[angle,0,0]}><boxGeometry args={[.018,.026,slope]}/>{mat('#849197',opacity,.65,.28)}</mesh>):null}
-  <mesh position={[0,ridgeY+.155,0]} castShadow><boxGeometry args={[panelWidth+.08,.095,.2]}/>{mat('#737f84',opacity,.65,.28)}</mesh>
-  <mesh position={[0,eaveY-.02,-run]}><boxGeometry args={[panelWidth,.2,.065]}/>{mat('#657176',opacity,.62,.38)}</mesh>
-  {!cutaway?<mesh position={[0,eaveY-.02,run]}><boxGeometry args={[panelWidth,.2,.065]}/>{mat('#657176',opacity,.62,.38)}</mesh>:null}
-  <mesh position={[0,eaveY-.15,-run-.1]} rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[.055,.055,panelWidth,12]}/>{mat('#606c71',opacity,.7,.3)}</mesh>
-  {!cutaway?<mesh position={[0,eaveY-.15,run+.1]} rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[.055,.055,panelWidth,12]}/>{mat('#606c71',opacity,.7,.3)}</mesh>:null}
-  <mesh position={[panelWidth/2-.08,preset.heightM/2,-run-.1]}><cylinderGeometry args={[.038,.038,preset.heightM,10]}/>{mat('#606c71',opacity,.7,.3)}</mesh>
-  <Html center distanceFactor={10} position={[0,ridgeY+.5,0]}><Tag>Cumbrera · cerchas/cabios ~0,60 m</Tag></Html>
-  <Html center distanceFactor={10} position={[0,eaveY+rise*.5+.42,-run*.5]}><Tag>Correas + tablero + membrana + cubierta</Tag></Html>
-  <Html center distanceFactor={10} position={[0,eaveY-.42,-run-.1]}><Tag>Alero · tapacán · canaleta</Tag></Html>
- </group>
+   {/* Capas apiladas por encima del deck estructural (SteelRoofPanel en midY+0.04): tablero → membrana → cubierta. */}
+   <RoofPlane side="far-board" width={panelWidth} slope={slope} angle={-angle} y={midY+.068} z={-run/2} opacity={opacity} color="#a66f3d" thickness={.026}/>
+   {!cutaway?<RoofPlane side="near-board" width={panelWidth} slope={slope} angle={angle} y={midY+.068} z={run/2} opacity={opacity} color="#a66f3d" thickness={.026}/>:null}
+   <RoofPlane side="far-membrane" width={panelWidth} slope={slope} angle={-angle} y={midY+.087} z={-run/2} opacity={opacity} color="#263a45" thickness={.012}/>
+   {!cutaway?<RoofPlane side="near-membrane" width={panelWidth} slope={slope} angle={angle} y={midY+.087} z={run/2} opacity={opacity} color="#263a45" thickness={.012}/>:null}
+   <RoofPlane side="far-cover" width={panelWidth} slope={slope} angle={-angle} y={midY+.111} z={-run/2} opacity={opacity} color="#59666b" thickness={.035} metalness={.5} map={map}/>
+   <RoofPlane side="near-cover" width={panelWidth} slope={slope} angle={angle} y={midY+.111} z={run/2} opacity={opacity} color="#59666b" thickness={.035} metalness={.5} map={map}/>
+   {/* Frontones (gables) en X = ±panelWidth/2: cierran el hueco entre cumbrera y alero con la misma cubierta. */}
+   <RoofGable x={-halfW} run={run} rise={rise} eaveY={eaveY} ridgeY={ridgeY} opacity={opacity} color="#59666b" metalness={.5} map={map}/>
+   <RoofGable x={halfW} run={run} rise={rise} eaveY={eaveY} ridgeY={ridgeY} opacity={opacity} color="#59666b" metalness={.5} map={map}/>
+   {ribXs.map(x=><mesh key={`rf${x}`} position={[x,midY+.141,-run/2]} rotation={[-angle,0,0]}><boxGeometry args={[.018,.026,slope]}/>{mat('#849197',opacity,.65,.28)}</mesh>)}
+   {!cutaway?ribXs.map(x=><mesh key={`rn${x}`} position={[x,midY+.141,run/2]} rotation={[angle,0,0]}><boxGeometry args={[.018,.026,slope]}/>{mat('#849197',opacity,.65,.28)}</mesh>):null}
+   <mesh position={[0,ridgeY+.155,0]} castShadow><boxGeometry args={[panelWidth+.08,.095,.2]}/>{mat('#737f84',opacity,.65,.28)}</mesh>
+   <mesh position={[0,eaveY-.02,-run]}><boxGeometry args={[panelWidth,.2,.065]}/>{mat('#657176',opacity,.62,.38)}</mesh>
+   {!cutaway?<mesh position={[0,eaveY-.02,run]}><boxGeometry args={[panelWidth,.2,.065]}/>{mat('#657176',opacity,.62,.38)}</mesh>:null}
+   <mesh position={[0,eaveY-.15,-run-.1]} rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[.055,.055,panelWidth,12]}/>{mat('#606c71',opacity,.7,.3)}</mesh>
+   {!cutaway?<mesh position={[0,eaveY-.15,run+.1]} rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[.055,.055,panelWidth,12]}/>{mat('#606c71',opacity,.7,.3)}</mesh>:null}
+   <mesh position={[panelWidth/2-.08,preset.heightM/2,-run-.1]}><cylinderGeometry args={[.038,.038,preset.heightM,10]}/>{mat('#606c71',opacity,.7,.3)}</mesh>
+   <Html center distanceFactor={10} position={[0,ridgeY+.5,0]}><Tag>Cumbrera · cerchas/cabios ~0,60 m</Tag></Html>
+   <Html center distanceFactor={10} position={[0,eaveY+rise*.5+.42,-run*.5]}><Tag>Correas + tablero + membrana + cubierta</Tag></Html>
+   <Html center distanceFactor={10} position={[0,eaveY-.42,-run-.1]}><Tag>Alero · tapacán · canaleta</Tag></Html>
+  </group>
+}
+function RoofGable({x,run,rise,eaveY,ridgeY,opacity,color,metalness,map}:{x:number;run:number;rise:number;eaveY:number;ridgeY:number;opacity:number;color:string;metalness:number;map?:Texture|null}){
+  const material=useTextureMaterial(map??null,{color:map?'#ffffff':color,roughness:metalness>.2?.42:.7,metalness,envMapIntensity:.75,side:DoubleSide},opacity);
+  const isWest=x<0;
+  const nx=isWest?-1:1;
+  return <mesh name={`gable-${isWest?'west':'east'}`} position={[x,eaveY+rise/2,0]} castShadow receiveShadow material={material}>
+    <bufferGeometry>
+      <bufferAttribute attach="position" args={[new Float32Array([0,-rise/2,-run/2, 0,-rise/2,run/2, 0,rise/2,0]), 3]} />
+      <bufferAttribute attach="normal" args={[new Float32Array([nx,0,0, nx,0,0, nx,0,0]), 3]} />
+      <bufferAttribute attach="uv" args={[new Float32Array([0,0, 1,0, 0.5,1]), 2]} />
+    </bufferGeometry>
+  </mesh>;
 }
 function RoofPlane({side,width,slope,angle,y,z,opacity,color,thickness,metalness=0,map}:{side:string;width:number;slope:number;angle:number;y:number;z:number;opacity:number;color:string;thickness:number;metalness?:number;map?:Texture|null}){
  const material=useTextureMaterial(map??null,{color:map?'#ffffff':color,roughness:metalness>.2?.42:.7,metalness,envMapIntensity:.75},opacity);

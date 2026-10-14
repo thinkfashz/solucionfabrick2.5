@@ -1,106 +1,236 @@
 'use client';
 
+import * as THREE from 'three';
+import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { useGLTF, useAnimations } from '@react-three/drei';
-import { Group, AnimationAction, LoopRepeat, Clock } from 'three';
+import { Group, AnimationAction, LoopRepeat, Mesh, MeshStandardMaterial, TextureLoader, RepeatWrapping, SRGBColorSpace } from 'three';
 import { useFrame } from '@react-three/fiber';
-import type { RefObject } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
+
+import {
+  CharacterState,
+  CharacterConfig,
+  BehaviorState,
+  createCharacterConfig,
+  getInitialBehaviorState,
+  updateBehavior,
+  getAnimationForState,
+  getHeadRotation,
+  getBodyRotation,
+} from './CharacterBehavior';
 
 export interface AnimatedFigureProps {
   playing: boolean;
-  position?: [number, number, number];
-  scale?: number;
-  pathLength?: number;
-  speed?: number;
+  visualProgress: number;
+  shakeIntensity: number;
+  index: 0 | 1;
+  config?: Partial<CharacterConfig>;
 }
 
-const WALK_CLIP = 'Walk_Loop';
-const CROUCH_CLIP = 'Crouch_Idle_Loop';
-const IDLE_CLIP = 'Idle_Loop';
+const TEXTURE_LOADER = new TextureLoader();
 
-export function AnimatedFigure({ playing, position = [0, 0, 6.5], scale = 1, pathLength = 16, speed = 1.2 }: AnimatedFigureProps) {
-  const { scene, animations } = useGLTF('/models/ual-mannequin.glb');
+function loadClothingMaterial(): MeshStandardMaterial {
+  const colorMap = TEXTURE_LOADER.load('/materials/wood-oak/color.png');
+  const normalMap = TEXTURE_LOADER.load('/materials/wood-oak/normal.png');
+  const roughnessMap = TEXTURE_LOADER.load('/materials/wood-oak/roughness.png');
+
+  colorMap.wrapS = colorMap.wrapT = RepeatWrapping;
+  normalMap.wrapS = normalMap.wrapT = RepeatWrapping;
+  roughnessMap.wrapS = roughnessMap.wrapT = RepeatWrapping;
+  colorMap.repeat.set(2, 2);
+  normalMap.repeat.set(2, 2);
+  roughnessMap.repeat.set(2, 2);
+  colorMap.colorSpace = SRGBColorSpace;
+
+  return new MeshStandardMaterial({
+    map: colorMap,
+    normalMap: normalMap,
+    roughnessMap: roughnessMap,
+    roughness: 0.85,
+    metalness: 0.05,
+    normalScale: new THREE.Vector2(0.5, 0.5),
+  });
+}
+
+function loadSkinMaterial(): MeshStandardMaterial {
+  return new MeshStandardMaterial({
+    color: '#E8C4A0',
+    roughness: 0.65,
+    metalness: 0.05,
+  });
+}
+
+const ANIMATION_CLIPS = [
+  'Idle_Loop',
+  'Idle_Talking_Loop',
+  'Walk_Loop',
+  'Jog_Fwd_Loop',
+  'Crouch_Idle_Loop',
+  'Crouch_Fwd_Loop',
+] as const;
+
+export function AnimatedFigure({
+  playing,
+  visualProgress,
+  shakeIntensity,
+  index,
+  config,
+}: AnimatedFigureProps) {
+  const { scene: gltfScene, animations } = useGLTF('/models/ual-mannequin.glb');
+  // Clon esqueleto por instancia: useGLTF cachea el mismo scene para todos los mounts.
+  const scene = useMemo(() => skeletonClone(gltfScene), [gltfScene]);
   const { actions, mixer } = useAnimations(animations, scene);
 
-  const groupRef: RefObject<Group | null> = { current: null };
-  const walkActionRef: RefObject<AnimationAction | null> = { current: null };
-  const crouchActionRef: RefObject<AnimationAction | null> = { current: null };
-  const idleActionRef: RefObject<AnimationAction | null> = { current: null };
-  const phaseRef = { current: 0 };
+  const groupRef = useRef<Group | null>(null);
+  const headRef = useRef<Group | null>(null);
+  const spineRef = useRef<Group | null>(null);
+  const actionRefs = useRef<Record<string, AnimationAction | null>>({});
+  const currentClipRef = useRef<string>('');
 
-  useFrame((state: { clock: Clock }, delta: number) => {
+  const characterConfig = useMemo(() => {
+    const baseX = index === 0 ? -5.1 : 5.1;
+    const baseZ = 6.5;
+    const pathLength = 6 + Math.random() * 4;
+    const walkSpeed = 0.9 + Math.random() * 0.6;
+    return createCharacterConfig(
+      [baseX, -0.13, baseZ],
+      pathLength,
+      walkSpeed
+    );
+  }, [index]);
+
+  const behaviorStateRef = useRef<BehaviorState>(
+    getInitialBehaviorState(characterConfig)
+  );
+
+  const clothingMaterialRef = useRef<MeshStandardMaterial | null>(null);
+  const skinMaterialRef = useRef<MeshStandardMaterial | null>(null);
+
+  useEffect(() => {
+    clothingMaterialRef.current = loadClothingMaterial();
+    skinMaterialRef.current = loadSkinMaterial();
+
     if (!groupRef.current) return;
 
-    if (!walkActionRef.current) {
-      walkActionRef.current = actions[WALK_CLIP] ?? null;
-      crouchActionRef.current = actions[CROUCH_CLIP] ?? null;
-      idleActionRef.current = actions[IDLE_CLIP] ?? null;
-      if (walkActionRef.current) {
-        walkActionRef.current.setLoop(LoopRepeat, Infinity);
-        walkActionRef.current.play();
+    groupRef.current.traverse((obj: any) => {
+      if (obj.isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+        const name = obj.name.toLowerCase();
+        const isSkin = name.includes('head') || name.includes('hand') || name.includes('arm') || name.includes('leg') || name.includes('foot');
+        obj.material = isSkin ? skinMaterialRef.current! : clothingMaterialRef.current!;
+        obj.material.needsUpdate = true;
       }
-      if (idleActionRef.current) {
-        idleActionRef.current.setLoop(LoopRepeat, Infinity);
+    });
+  }, []);
+
+  // --- Patrones iniciales de animación ---
+  useEffect(() => {
+    // Reproduce Idle_Loop al montarse (garantizado que actions existe despues de mount)
+    const idleAction = actions['Idle_Loop'];
+    if (idleAction) {
+      idleAction.enabled = true;
+      idleAction.play();
+      idleAction.weight = 1;
+      currentClipRef.current = 'Idle_Loop';
+    }
+  }, [actions]);
+
+  const shakeValue = shakeIntensity || (playing ? visualProgress * 0.8 : 0);
+  behaviorStateRef.current = updateBehavior(
+    behaviorStateRef.current,
+    characterConfig,
+    0, // delta no usado en efecto; se actualiza en useFrame
+    playing,
+    visualProgress,
+    shakeValue
+  );
+
+  useFrame((state, delta) => {
+    if (!groupRef.current || !mixer) return;
+
+    const actionsMap = actions as Record<string, AnimationAction>;
+    const availableAnimations = new Set(Object.keys(actionsMap));
+
+    const newState = updateBehavior(
+      behaviorStateRef.current,
+      characterConfig,
+      delta,
+      playing,
+      visualProgress,
+      shakeValue
+    );
+    behaviorStateRef.current = newState;
+
+    const { currentState, currentX, crouchAmount } = behaviorStateRef.current;
+    const animInfo = getAnimationForState(behaviorStateRef.current, availableAnimations);
+    const targetClip = animInfo.clip;
+
+    if (targetClip !== currentClipRef.current) {
+      const newAction = actionRefs.current[targetClip];
+      const oldAction = actionRefs.current[currentClipRef.current];
+      if (newAction && oldAction && oldAction !== newAction) {
+        oldAction.crossFadeTo(newAction, 0.3, true);
+      } else if (newAction) {
+        newAction.enabled = true;
+        newAction.play();
+        newAction.weight = 1;
       }
-      if (crouchActionRef.current) {
-        crouchActionRef.current.setLoop(LoopRepeat, Infinity);
+      currentClipRef.current = targetClip;
+    }
+
+    const currentAction = actionRefs.current[currentClipRef.current];
+    if (currentAction) {
+      currentAction.timeScale = animInfo.speed;
+      if (currentState === 'earthquake' || currentState === 'recovery') {
+        currentAction.weight = THREE.MathUtils.lerp(currentAction.weight, crouchAmount, delta * 5);
+      } else {
+        currentAction.weight = THREE.MathUtils.lerp(currentAction.weight, 1, delta * 5);
       }
     }
 
-    const walkAction = walkActionRef.current;
-    const crouchAction = crouchActionRef.current;
-    const idleAction = idleActionRef.current;
+    const { targetX } = behaviorStateRef.current;
 
-    if (!walkAction || !crouchAction || !idleAction) return;
-
-    if (playing) {
-      if (crouchAction.weight < 0.99) {
-        crouchAction.enabled = true;
-        crouchAction.crossFadeFrom(idleAction, 0.4, true);
-        crouchAction.crossFadeFrom(walkAction, 0.4, true);
-      }
-      walkAction.enabled = false;
-      idleAction.enabled = false;
-      crouchAction.weight = 1;
-    } else {
-      if (walkAction.weight < 0.99) {
-        walkAction.enabled = true;
-        walkAction.crossFadeFrom(crouchAction, 0.5, true);
-        walkAction.crossFadeFrom(idleAction, 0.5, true);
-      }
-      crouchAction.enabled = false;
-      idleAction.enabled = false;
-      walkAction.weight = 1;
+    if (currentState === 'walk') {
+      groupRef.current.position.x = currentX;
+      const direction = behaviorStateRef.current.targetX > currentX ? 1 : -1;
+      groupRef.current.rotation.y = Math.PI + (direction > 0 ? 0 : Math.PI);
     }
 
-    if (!playing && walkAction.enabled) {
-      const dt = delta * speed;
-      phaseRef.current += dt;
-      const period = pathLength / speed;
-      const t = (phaseRef.current % period) / period;
-      const x = -pathLength / 2 + t * pathLength;
-      if (groupRef.current) groupRef.current.position.x = x;
-      if (t > 0.995 && phaseRef.current > period) phaseRef.current = 0;
+    if (headRef.current) {
+      const [headX, headY, headZ] = getHeadRotation(behaviorStateRef.current, shakeValue);
+      headRef.current.rotation.set(headX, headY, headZ);
     }
 
-    if (mixer) mixer.update(delta);
+    if (spineRef.current) {
+      const [bodyX, bodyY, bodyZ] = getBodyRotation(behaviorStateRef.current, shakeValue);
+      spineRef.current.rotation.set(bodyX, bodyY, bodyZ);
+    }
+
+    const crouchOffset = -crouchAmount * 0.4;
+    groupRef.current.position.y = characterConfig.position[1] + crouchOffset;
+
+    mixer.update(delta);
   });
 
   scene.traverse((obj: any) => {
     if (obj.isMesh) {
-      obj.castShadow = true;
-      obj.receiveShadow = true;
-      if (!obj.userData.__originalMaterial) {
-        obj.userData.__originalMaterial = obj.material;
-        obj.material = obj.material.clone();
-        obj.material.color.set('#2a2c2e');
-        obj.material.roughness = 0.7;
-        obj.material.metalness = 0;
+      if (obj.name.toLowerCase().includes('head') && !obj.name.includes('hair')) {
+        headRef.current = obj;
+      }
+      if (obj.name.toLowerCase().includes('spine') || obj.name.toLowerCase().includes('chest') || obj.name.toLowerCase().includes('torso')) {
+        spineRef.current = obj;
       }
     }
   });
 
   return (
-    <group ref={groupRef} position={position} scale={scale} rotation={[0, Math.PI, 0]}>
+    <group
+      ref={groupRef}
+      position={characterConfig.position}
+      scale={1}
+      rotation={[0, Math.PI, 0]}
+    >
       <primitive object={scene} dispose={null} />
     </group>
   );

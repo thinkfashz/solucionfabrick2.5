@@ -118,6 +118,7 @@ export const HOME_FLOW_VISUALS = {
   radier: '/flow/fabrick-radier-losa-hormigon.jpeg',
   interior: '/flow/fabrick-interior-climatizacion.jpeg',
   seismicDetail: '/flow/fabrick-metalcon-detalle-estructural.jpeg',
+  seismicWall: '/flow/fabrick-sismico-metalcon-muro.jpeg',
 } as const;
 
 export const HOME_FLOW_ALTS = {

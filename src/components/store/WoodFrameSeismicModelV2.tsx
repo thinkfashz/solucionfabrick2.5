@@ -3,9 +3,11 @@
 import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
-import { Quaternion, Vector3 } from 'three';
+import { DoubleSide, Quaternion, Vector3 } from 'three';
 import type { Group } from 'three';
 import type { MetalconHousePreset } from '@/lib/metalconAssembly';
+import { perimeterWallOpenings, smoothstep01, wallCutSegments, type WallFace, type WallOpeningSlice } from './metalconOpeningGeometry';
+import { useTextureMaterial, useViewerTextures, usePbrMaps } from './monitoring/useViewerTextures';
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -50,7 +52,8 @@ export default function WoodFrameSeismicModelV2({
 
   useFrame(({ clock }, delta) => {
     if (!ref.current) return;
-    const envelope = active ? clamp((progress - 0.42) / 0.16) * clamp((0.94 - progress) / 0.12) : 0;
+    // Envolvente suave (smoothstep) al iniciar/detener + damping exponencial: sin saltos bruscos.
+    const envelope = active ? smoothstep01((progress - 0.42) / 0.16) * smoothstep01((0.94 - progress) / 0.12) : 0;
     const dir = (directionDeg * Math.PI) / 180;
     const wave = Math.sin(clock.elapsedTime * Math.max(0.8, frequencyHz) * Math.PI * 2) * response * 0.22 * envelope;
     const lerp = Math.min(1, delta * 14);
@@ -70,6 +73,8 @@ export default function WoodFrameSeismicModelV2({
           <boxGeometry args={[preset.widthM + 0.18, 0.09, preset.depthM + 0.18]} />
           <meshStandardMaterial color="#61666a" roughness={0.9} />
         </mesh>
+
+        {showPanels ? <WoodFloor preset={preset} /> : null}
 
         <group>
           {studsX.flatMap((x, i) => [
@@ -106,7 +111,7 @@ export default function WoodFrameSeismicModelV2({
 
       {showLabels ? (
         <Html center distanceFactor={11} position={[0, preset.heightM + 1.55, 0]}>
-          <div className="rounded-full border border-amber-200/30 bg-black/80 px-3 py-1.5 text-[8px] font-black uppercase tracking-[.12em] text-amber-100">
+          <div className="w-max whitespace-nowrap rounded-full border border-amber-200/30 bg-black/80 px-3 py-1.5 text-center text-[8px] font-black uppercase tracking-[.12em] text-amber-100">
             Madera · marco plataforma visual
           </div>
         </Html>
@@ -165,7 +170,22 @@ function WoodMember({
 }
 
 function WoodWallLayers({ preset, damage }: { preset: MetalconHousePreset; damage: number }) {
-  const sidingColor = damage > 0.7 ? '#ff4438' : '#9b7b52';
+  // Siding con textura de listones de madera; el daño teñe el material (antes de
+  // texturizar el color era '#9b7b52' / '#ff4438').
+  const textures = useViewerTextures();
+  const pineMaps = usePbrMaps('woodPine');
+  const sidingMat = useTextureMaterial(
+    pineMaps.color ?? textures.extMadera,
+    {
+      color: damage > 0.7 ? '#ff4438' : (pineMaps.color ? '#c9b49d' : (textures.extMadera ? '#c9b49d' : '#9b7b52')),
+      roughness: 0.85,
+      metalness: 0,
+      envMapIntensity: 0.65,
+      normalMap: pineMaps.normal,
+      roughnessMap: pineMaps.roughness,
+    },
+    0.92,
+  );
   const osbColor = damage > 0.65 ? '#e8a830' : '#d4b87a';
   const tyvekColor = '#f0ece4';
   const w = preset.widthM;
@@ -173,46 +193,97 @@ function WoodWallLayers({ preset, damage }: { preset: MetalconHousePreset; damag
   const h = preset.heightM;
 
   const walls = useMemo(() => [
-    { face: 'north' as const, pos: [0, h / 2, -d / 2 - 0.05] as [number, number, number], size: [w, h, 0.014] as [number, number, number], rot: [0, 0, 0] as [number, number, number] },
-    { face: 'south' as const, pos: [0, h / 2, d / 2 + 0.05] as [number, number, number], size: [w, h, 0.014] as [number, number, number], rot: [0, 0, 0] as [number, number, number] },
-    { face: 'west' as const, pos: [-w / 2 - 0.05, h / 2, 0] as [number, number, number], size: [0.014, h, d] as [number, number, number], rot: [0, 0, 0] as [number, number, number] },
-    { face: 'east' as const, pos: [w / 2 + 0.05, h / 2, 0] as [number, number, number], size: [0.014, h, d] as [number, number, number], rot: [0, 0, 0] as [number, number, number] },
+    { face: 'n' as WallFace, pos: [0, h / 2, -d / 2 - 0.05] as [number, number, number], rot: 0 as const, outward: -1 as const },
+    { face: 's' as WallFace, pos: [0, h / 2, d / 2 + 0.05] as [number, number, number], rot: 0 as const, outward: 1 as const },
+    { face: 'w' as WallFace, pos: [-w / 2 - 0.05, h / 2, 0] as [number, number, number], rot: Math.PI / 2, outward: -1 as const },
+    { face: 'e' as WallFace, pos: [w / 2 + 0.05, h / 2, 0] as [number, number, number], rot: Math.PI / 2, outward: 1 as const },
   ], [w, d, h]);
 
   return (
     <group>
-      {walls.map(({ face, pos, size }) => {
-        const isHorizontal = face === 'north' || face === 'south';
-        const outward = face === 'north' ? -1 : face === 'south' ? 1 : face === 'east' ? 1 : -1;
+      {walls.map(({ face, pos, rot, outward }) => {
+        const length = face === 'n' || face === 's' ? w : d;
+        // Rotación Y=π/2 invierte el eje u local: espejamos los vanos para que caigan en su mundo real.
+        const mirror = rot !== 0;
+        const openings = perimeterWallOpenings(preset, face).map((opening) =>
+          mirror ? { ...opening, u0: -opening.u1, u1: -opening.u0 } : opening,
+        );
+        const segs = wallCutSegments(length, h, openings);
         return (
-          <group key={face}>
-            <mesh position={[
-              isHorizontal ? pos[0] : pos[0] + outward * 0.005,
-              pos[1],
-              isHorizontal ? pos[2] + outward * 0.005 : pos[2],
-            ]} castShadow receiveShadow>
-              <boxGeometry args={size} />
-              <meshStandardMaterial color={sidingColor} roughness={0.78} transparent opacity={0.92} />
-            </mesh>
-            <mesh position={[
-              isHorizontal ? pos[0] : pos[0] - outward * 0.008,
-              pos[1],
-              isHorizontal ? pos[2] - outward * 0.008 : pos[2],
-            ]}>
-              <boxGeometry args={[size[0] + 0.002, size[1] + 0.002, 0.004]} />
-              <meshStandardMaterial color={tyvekColor} roughness={0.5} transparent opacity={0.4} />
-            </mesh>
-            <mesh position={[
-              isHorizontal ? pos[0] : pos[0] - outward * 0.016,
-              pos[1],
-              isHorizontal ? pos[2] - outward * 0.016 : pos[2],
-            ]}>
-              <boxGeometry args={[size[0] + 0.004, size[1] + 0.004, 0.012]} />
-              <meshStandardMaterial color={osbColor} roughness={0.82} transparent opacity={0.82} />
-            </mesh>
+          <group key={face} position={pos} rotation={[0, rot, 0]}>
+            {segs.map((segment, index) => {
+              if (segment.w <= 0.02 || segment.h <= 0.02) return null;
+              return (
+                <group key={`seg-${index}`}>
+                  <mesh position={[segment.cx, segment.cy - h / 2 + 0, outward * 0.005]} castShadow receiveShadow material={sidingMat}>
+                    <boxGeometry args={[segment.w, segment.h, 0.014]} />
+                  </mesh>
+                  <mesh position={[segment.cx, segment.cy - h / 2 + 0, -outward * 0.008]}>
+                    <boxGeometry args={[segment.w + 0.002, segment.h + 0.002, 0.004]} />
+                    <meshStandardMaterial color={tyvekColor} roughness={0.5} transparent opacity={0.4} />
+                  </mesh>
+                  <mesh position={[segment.cx, segment.cy - h / 2 + 0, -outward * 0.016]}>
+                    <boxGeometry args={[segment.w + 0.004, segment.h + 0.004, 0.012]} />
+                    <meshStandardMaterial color={osbColor} roughness={0.82} transparent opacity={0.82} />
+                  </mesh>
+                </group>
+              );
+            })}
+            {openings.map((opening, index) => (
+              <WoodOpeningFill key={`fill-${face}-${index}`} opening={opening} yOffset={-h / 2} />
+            ))}
           </group>
         );
       })}
+    </group>
+  );
+}
+
+/** Hoja de puerta o vidrio + marco simple dentro de un vano (espacio local de la pared: u sobre x, y relativa al centro del muro). */
+function WoodOpeningFill({ opening, yOffset = 0 }: { opening: WallOpeningSlice; yOffset?: number }) {
+  const w = opening.u1 - opening.u0;
+  const h = opening.y1 - opening.y0;
+  if (w <= 0.06 || h <= 0.06) return null;
+  const u = (opening.u0 + opening.u1) / 2;
+  const cy = (opening.y0 + opening.y1) / 2 + yOffset;
+  const frame = 0.035;
+  return (
+    <group position={[u, cy, 0]}>
+      {opening.kind === 'door' ? (
+        <>
+          <mesh castShadow>
+            <boxGeometry args={[Math.max(0.04, w - 0.06), Math.max(0.04, h - 0.02), 0.03]} />
+            <meshStandardMaterial color="#6e4f33" roughness={0.62} />
+          </mesh>
+          <mesh position={[Math.max(0.04, w - 0.06) / 2 - 0.09, 0, 0.022]}>
+            <sphereGeometry args={[0.018, 10, 8]} />
+            <meshStandardMaterial color="#c9ccd0" metalness={0.6} roughness={0.3} />
+          </mesh>
+        </>
+      ) : (
+        <>
+          <mesh position={[0, h / 2 - frame / 2, 0]}>
+            <boxGeometry args={[w - 0.02, frame, 0.028]} />
+            <meshStandardMaterial color="#e8ecef" roughness={0.4} metalness={0.12} />
+          </mesh>
+          <mesh position={[0, -h / 2 + frame / 2, 0]}>
+            <boxGeometry args={[w - 0.02, frame, 0.028]} />
+            <meshStandardMaterial color="#e8ecef" roughness={0.4} metalness={0.12} />
+          </mesh>
+          <mesh position={[-w / 2 + frame / 2, 0, 0]}>
+            <boxGeometry args={[frame, h - 0.02, 0.028]} />
+            <meshStandardMaterial color="#e8ecef" roughness={0.4} metalness={0.12} />
+          </mesh>
+          <mesh position={[w / 2 - frame / 2, 0, 0]}>
+            <boxGeometry args={[frame, h - 0.02, 0.028]} />
+            <meshStandardMaterial color="#e8ecef" roughness={0.4} metalness={0.12} />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[Math.max(0.05, w - 0.09), Math.max(0.05, h - 0.09), 0.01]} />
+            <meshPhysicalMaterial color="#d7ecf7" roughness={0.08} metalness={0} transparent opacity={0.35} depthWrite={false} side={DoubleSide} />
+          </mesh>
+        </>
+      )}
     </group>
   );
 }
@@ -244,69 +315,100 @@ function WoodRoofV2({
   );
 
   const purlinFractions = [0.78, 0.52, 0.26];
-  const coverColor = damage > 0.76 ? '#d92f2a' : '#704a34';
+  // Cubierta con textura de calamina; el daño teñe el material.
+  const textures = useViewerTextures();
+  const coverMat = useTextureMaterial(
+    textures.techoCalamina,
+    {
+      color: textures.techoCalamina ? (damage > 0.76 ? '#ff5a48' : '#b08a68') : (damage > 0.76 ? '#d92f2a' : '#704a34'),
+      roughness: 0.45,
+      metalness: 0.6,
+      envMapIntensity: 0.75,
+    },
+    1,
+  );
   const ridgeColor = damage > 0.7 ? '#ff3b30' : '#9d6f42';
   const purlinColor = damage > 0.65 ? '#e8a830' : '#9d6f42';
 
   return (
     <group>
-      {trussXs.map((x, i) => {
-        const stressed = damage > 0.48 && (i % 4 === 1 || damage > 0.82);
-        const broken = damage > 0.76 && i % 5 === 2;
-        return (
-          <group key={x}>
-            <WoodBeam from={[x, eaveY, -run]} to={[x, ridgeY, 0]} damage={stressed ? damage : 0} broken={broken} />
-            <WoodBeam from={[x, eaveY, run]} to={[x, ridgeY, 0]} damage={stressed ? damage * 0.95 : 0} broken={broken && damage > 0.86} />
-            <WoodBeam from={[x, eaveY, -run]} to={[x, eaveY, run]} damage={stressed ? damage * 0.7 : 0} />
-            <WoodBeam from={[x, eaveY, 0]} to={[x, ridgeY, 0]} damage={stressed ? damage * 0.8 : 0} />
-            <WoodBeam from={[x, eaveY, -run * 0.5]} to={[x, ridgeY - 0.06, 0]} damage={stressed ? damage * 0.75 : 0} />
-            <WoodBeam from={[x, eaveY, run * 0.5]} to={[x, ridgeY - 0.06, 0]} damage={stressed ? damage * 0.75 : 0} />
+      {showCover
+        ? trussXs.map((x, i) => {
+            const stressed = damage > 0.48 && (i % 4 === 1 || damage > 0.82);
+            const broken = damage > 0.76 && i % 5 === 2;
+            return (
+              <group key={x}>
+                <WoodBeam from={[x, eaveY, -run]} to={[x, ridgeY, 0]} damage={stressed ? damage : 0} broken={broken} />
+                <WoodBeam from={[x, eaveY, run]} to={[x, ridgeY, 0]} damage={stressed ? damage * 0.95 : 0} broken={broken && damage > 0.86} />
+                <WoodBeam from={[x, eaveY, -run]} to={[x, eaveY, run]} damage={stressed ? damage * 0.7 : 0} />
+                <WoodBeam from={[x, eaveY, 0]} to={[x, ridgeY, 0]} damage={stressed ? damage * 0.8 : 0} />
+                <WoodBeam from={[x, eaveY, -run * 0.5]} to={[x, ridgeY - 0.06, 0]} damage={stressed ? damage * 0.75 : 0} />
+                <WoodBeam from={[x, eaveY, run * 0.5]} to={[x, ridgeY - 0.06, 0]} damage={stressed ? damage * 0.75 : 0} />
 
-            {[0.15, 0.38, 0.62, 0.85].map((frac, vi) => {
-              const zFront = -run + frac * run;
-              const zBack = run - frac * run;
-              const yLine = eaveY + roofRise * frac * 0.65;
-              return (
-                <group key={`strut-${vi}`}>
-                  <WoodMember pos={[x, yLine, zFront]} size={[0.04, 0.04, 0.04]} damage={damage * 0.5} seed={i * 10 + vi} />
-                  <WoodMember pos={[x, yLine, zBack]} size={[0.04, 0.04, 0.04]} damage={damage * 0.5} seed={i * 10 + vi + 50} />
-                </group>
-              );
-            })}
-          </group>
-        );
-      })}
+                {[0.15, 0.38, 0.62, 0.85].map((frac, vi) => {
+                  const zFront = -run + frac * run;
+                  const zBack = run - frac * run;
+                  const yLine = eaveY + roofRise * frac * 0.65;
+                  return (
+                    <group key={`strut-${vi}`}>
+                      <WoodMember pos={[x, yLine, zFront]} size={[0.04, 0.04, 0.04]} damage={damage * 0.5} seed={i * 10 + vi} />
+                      <WoodMember pos={[x, yLine, zBack]} size={[0.04, 0.04, 0.04]} damage={damage * 0.5} seed={i * 10 + vi + 50} />
+                    </group>
+                  );
+                })}
+              </group>
+            );
+          })
+        : null}
+
+      {/* Estructura mínima visible aunque se oculte la cubierta: cumbrera + cabios de borde (sin "palitos"). */}
+      {!showCover ? (
+        <>
+          {[trussXs[0], trussXs[trussXs.length - 1]].map((x, i) => (
+            <group key={`edge-truss-${i}`}>
+              <WoodBeam from={[x, eaveY, -run]} to={[x, ridgeY, 0]} damage={0} />
+              <WoodBeam from={[x, eaveY, run]} to={[x, ridgeY, 0]} damage={0} />
+              <WoodBeam from={[x, eaveY, -run]} to={[x, eaveY, run]} damage={0} />
+            </group>
+          ))}
+        </>
+      ) : null}
 
       <mesh position={[0, ridgeY, 0]} castShadow>
         <boxGeometry args={[panelWidth + 0.06, 0.09, 0.09]} />
         <meshStandardMaterial color={ridgeColor} roughness={0.68} />
       </mesh>
 
-      {purlinFractions.map((f, i) => {
-        const y = eaveY + roofRise * (1 - f);
-        return (
-          <group key={`purlin-row-${i}`}>
-            <mesh position={[0, y + 0.02, -run * f]}>
-              <boxGeometry args={[panelWidth, 0.05, 0.07]} />
-              <meshStandardMaterial color={purlinColor} roughness={0.72} />
-            </mesh>
-            <mesh position={[0, y + 0.02, run * f]}>
-              <boxGeometry args={[panelWidth, 0.05, 0.07]} />
-              <meshStandardMaterial color={purlinColor} roughness={0.72} />
-            </mesh>
-          </group>
-        );
-      })}
+      {showCover
+        ? purlinFractions.map((f, i) => {
+            const y = eaveY + roofRise * (1 - f);
+            return (
+              <group key={`purlin-row-${i}`}>
+                <mesh position={[0, y + 0.02, -run * f]}>
+                  <boxGeometry args={[panelWidth, 0.05, 0.07]} />
+                  <meshStandardMaterial color={purlinColor} roughness={0.72} />
+                </mesh>
+                <mesh position={[0, y + 0.02, run * f]}>
+                  <boxGeometry args={[panelWidth, 0.05, 0.07]} />
+                  <meshStandardMaterial color={purlinColor} roughness={0.72} />
+                </mesh>
+              </group>
+            );
+          })
+        : null}
 
       {showCover ? (
         <>
-          <mesh position={[0, midY + 0.07, -run / 2]} rotation={[-roofAngle, 0, 0]} castShadow receiveShadow>
+          <mesh position={[0, midY + 0.07, -run / 2]} rotation={[-roofAngle, 0, 0]} castShadow receiveShadow material={coverMat}>
             <boxGeometry args={[panelWidth, 0.04, slope]} />
-            <meshStandardMaterial color={coverColor} roughness={0.82} transparent opacity={0.72} />
           </mesh>
-          <mesh position={[0, midY + 0.07, run / 2]} rotation={[roofAngle, 0, 0]} castShadow receiveShadow>
+          <mesh position={[0, midY + 0.07, run / 2]} rotation={[roofAngle, 0, 0]} castShadow receiveShadow material={coverMat}>
             <boxGeometry args={[panelWidth, 0.04, slope]} />
-            <meshStandardMaterial color={coverColor} roughness={0.82} transparent opacity={0.72} />
+          </mesh>
+          {/* Cumbrera exterior opaca */}
+          <mesh position={[0, ridgeY + 0.08, 0]} castShadow>
+            <boxGeometry args={[panelWidth + 0.08, 0.06, 0.18]} />
+            <meshStandardMaterial color={ridgeColor} roughness={0.7} />
           </mesh>
         </>
       ) : null}
@@ -320,6 +422,22 @@ function WoodRoofV2({
         <meshStandardMaterial color={ridgeColor} roughness={0.7} />
       </mesh>
     </group>
+  );
+}
+
+/** Entrepiso de madera del modelo de madera (asentado sobre las bottom plates, y=0.09). */
+function WoodFloor({ preset }: { preset: MetalconHousePreset }) {
+  const textures = useViewerTextures();
+  const oakMaps = usePbrMaps('woodOak');
+  const material = useTextureMaterial(
+    oakMaps.color ?? textures.pisoMadera,
+    { color: oakMaps.color ? '#ffffff' : (textures.pisoMadera ? '#ffffff' : '#cbb89a'), roughness: 0.55, metalness: 0, envMapIntensity: 0.65, normalMap: oakMaps.normal, roughnessMap: oakMaps.roughness },
+    1,
+  );
+  return (
+    <mesh position={[0, 0.105, 0]} receiveShadow material={material}>
+      <boxGeometry args={[preset.widthM - 0.12, 0.03, preset.depthM - 0.12]} />
+    </mesh>
   );
 }
 

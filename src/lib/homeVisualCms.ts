@@ -151,10 +151,10 @@ export const DEFAULT_HOME_PAGE: HomePageContent = {
       order: 60,
       style: { ...dark, background: '#171819', accent: '#C69A52' },
       content: {
-        eyebrow: 'Criterio constructivo',
-        title: 'La seguridad empieza antes del acabado.',
-        paragraph1: 'En Chile, una solución bien resuelta debe considerar cómo trabajan juntos base, estructura, uniones y ejecución.',
-        paragraph2: 'Por eso hablamos de desempeño y criterio constructivo sin promesas absolutas: cada proyecto se confirma según su condición real.',
+        eyebrow: 'Simulador de terremotos',
+        title: 'Mira cómo responde tu casa antes de que tiemble.',
+        paragraph1: 'Elige la intensidad del sismo y observa qué le pasa a una estructura Metalcon: dónde se concentran los daños y cuánto costaría reparar.',
+        paragraph2: 'Es una simulación visual y referencial para entender el riesgo, no un cálculo estructural. Cada proyecto real se confirma con ingeniería y visita a terreno.',
         steps: [
           { title: 'Base adecuada', text: 'Terreno, fundación y cargas definen el punto de partida.' },
           { title: 'Sistema coherente', text: 'Estructura, anclajes y uniones deben trabajar como un conjunto.' },
@@ -166,8 +166,8 @@ export const DEFAULT_HOME_PAGE: HomePageContent = {
         secondaryLabel: 'Cotizar estructura',
         secondaryHref: '/presupuesto?servicio=metalcon',
         note: 'Toda solución estructural se confirma según proyecto, cálculo profesional, terreno y normativa aplicable.',
-        supportTitle: 'Qué revisamos',
-        supportText: 'Alcance, sistema, compatibilidad de materiales y condiciones de ejecución antes de cerrar una propuesta.',
+        supportTitle: 'Qué evalúa el simulador',
+        supportText: 'Respuesta de la estructura, puntos críticos, daño aproximado y referencia de reparación para cada intensidad.',
       },
     },
     {

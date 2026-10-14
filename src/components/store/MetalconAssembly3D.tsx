@@ -3,7 +3,7 @@
 import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
-import { Quaternion, Vector3 } from 'three';
+import { DoubleSide, Quaternion, Vector3 } from 'three';
 import type { Group } from 'three';
 import {
   clearWallIntervals,
@@ -16,6 +16,8 @@ import {
   type MetalconHousePreset,
 } from '@/lib/metalconAssembly';
 import type { StructuralSystem } from './ConstructionSystems3D';
+import { clipIntervals, smoothstep01, wallCutSegments, wallLocalOpenings, type WallOpeningSlice } from './metalconOpeningGeometry';
+import { useTextureMaterial, useViewerTextures, usePbrMaps } from './monitoring/useViewerTextures';
 
 export type MetalconAssemblyDisplayMode = 'mesh' | 'dimensions' | 'openings' | 'bracing' | 'layers';
 
@@ -101,7 +103,7 @@ export function MetalconAssembly3D({
 
   useFrame(({ clock }, delta) => {
     if (!assembly.current) return;
-    const response = seismic?.active ? clamp((seismic.progress - 0.43) / 0.24) * clamp((0.92 - seismic.progress) / 0.12) : 0;
+    const response = seismic?.active ? smoothstep01((seismic.progress - 0.43) / 0.24) * smoothstep01((0.92 - seismic.progress) / 0.12) : 0;
     const direction = ((seismic?.directionDeg ?? 0) * Math.PI) / 180;
     const frequency = Math.max(0.8, (seismic?.frequencyHz ?? 2.4) * Math.PI * 2);
     const wave = Math.sin(clock.elapsedTime * frequency) * (seismic?.amplitude ?? 0) * response;
@@ -212,6 +214,7 @@ function WallPanel3D({
   const wallDepth = Math.max(0.07, profileDepthMm / 1000);
   const studWidth = 0.045;
   const regular = useMemo(() => regularStudOffsets(wall, spacingM), [wall, spacingM]);
+  const localOpenings = useMemo(() => wallLocalOpenings(wall), [wall]);
   const bottomTrackIntervals = useMemo(() => clearWallIntervals(wall, true), [wall]);
   const blockingIntervals = useMemo(() => clearWallIntervals(wall, false), [wall]);
   const braceIntervals = blockingIntervals.filter((interval) => interval.end - interval.start >= 1.05).slice(0, 2);
@@ -330,6 +333,7 @@ function WallPanel3D({
           layerProgress={layerProgress}
           spacingM={spacingM}
           wallId={wall.id}
+          openings={localOpenings}
         />
       ) : null}
 
@@ -514,6 +518,7 @@ function WallCladding({
   layerProgress,
   spacingM,
   wallId,
+  openings,
 }: {
   length: number;
   height: number;
@@ -522,6 +527,7 @@ function WallCladding({
   layerProgress: number | null;
   spacingM: number;
   wallId: string;
+  openings: WallOpeningSlice[];
 }) {
   const phased = layerProgress != null;
   const osbZ = depth / 2 + 0.008;
@@ -537,57 +543,158 @@ function WallCladding({
     () => Array.from({ length: battenCount + 1 }, (_, index) => -length / 2 + (length / battenCount) * index),
     [battenCount, length],
   );
+  // Segmentos del muro recortados en los vanos (izq/der + dintel + umbral), en coordenadas locales de la pared.
+  const cutSegs = useMemo(() => {
+    return wallCutSegments(length, height, openings)
+      .map((segment) => {
+        const y0 = Math.max(0.02, segment.cy - segment.h / 2);
+        const y1 = Math.min(height - 0.02, segment.cy + segment.h / 2);
+        return { cx: segment.cx, cy: (y0 + y1) / 2, w: segment.w, h: y1 - y0 };
+      })
+      .filter((segment) => segment.w > 0.012 && segment.h > 0.012);
+  }, [length, height, openings]);
   const osbOpacity = show('osb');
   const membraneOpacity = show('membrane');
   const battenOpacity = show('battens');
   const insulationOpacity = show('insulation');
   const gypsumOpacity = show('gypsum');
   const sidingOpacity = show('siding');
+  const fillOpacity = Math.max(osbOpacity, sidingOpacity);
+
+  // UN material compartido por capa para todos los segmentos/listones del muro
+  // (no un material por mesh). El mapa llega asíncrono; si una textura falla
+  // queda `null` y se conserva el color plano original.
+  const textures = useViewerTextures();
+  const osbMaps = usePbrMaps('woodOsb');
+  const osbMat = useTextureMaterial(
+    osbMaps.color,
+    { color: osbMaps.color ? '#ffffff' : '#d4b87a', roughness: 0.82, envMapIntensity: 0.65, normalMap: osbMaps.normal, roughnessMap: osbMaps.roughness },
+    osbOpacity * 0.9,
+  );
+  const membraneMat = useTextureMaterial(null, { color: '#f0ece4', roughness: 0.55, envMapIntensity: 0.65 }, membraneOpacity * 0.62);
+  const battenMat = useTextureMaterial(null, { color: '#c2ab84', roughness: 0.85, envMapIntensity: 0.6 }, battenOpacity);
+  const insulationMat = useTextureMaterial(null, { color: '#f2d9a0', roughness: 1, envMapIntensity: 0.5 }, insulationOpacity * 0.42);
+  const gypsumMat = useTextureMaterial(
+    textures.intDrywall,
+    { color: textures.intDrywall ? '#ffffff' : '#e9e6df', roughness: 0.95, metalness: 0, envMapIntensity: 0.6 },
+    gypsumOpacity * 0.95,
+  );
+  const sidingMat = useTextureMaterial(
+    textures.extMetalcon,
+    { color: textures.extMetalcon ? '#ffffff' : '#ddd2bf', roughness: 0.85, metalness: 0.04, envMapIntensity: 0.7 },
+    sidingOpacity * 0.98,
+  );
 
   return (
     <group>
-      {/* OSB estructural: rigidiza el panel */}
-      <mesh position={[0, height / 2, osbZ]} castShadow>
-        <boxGeometry args={[length, claddingH, 0.012]} />
-        <meshStandardMaterial color="#d4b87a" roughness={0.82} transparent opacity={osbOpacity * 0.9} depthWrite={osbOpacity > 0.96} />
-      </mesh>
+      {/* OSB estructural: rigidiza el panel, recortada en puertas y ventanas */}
+      {osbOpacity > 0.01
+        ? cutSegs.map((segment, index) => (
+            <mesh key={`osb-${index}`} position={[segment.cx, segment.cy, osbZ]} castShadow material={osbMat}>
+              <boxGeometry args={[segment.w, segment.h, 0.012]} />
+            </mesh>
+          ))
+        : null}
       {/* Barrera hidrófuga / cortaviento */}
-      <mesh position={[0, height / 2, membraneZ]}>
-        <boxGeometry args={[length, claddingH, 0.004]} />
-        <meshStandardMaterial color="#f0ece4" roughness={0.55} transparent opacity={membraneOpacity * 0.62} depthWrite={false} />
-      </mesh>
-      {/* Listones: generan la cámara ventilada */}
+      {membraneOpacity > 0.01
+        ? cutSegs.map((segment, index) => (
+            <mesh key={`membrane-${index}`} position={[segment.cx, segment.cy, membraneZ]} material={membraneMat}>
+              <boxGeometry args={[segment.w, segment.h, 0.004]} />
+            </mesh>
+          ))
+        : null}
+      {/* Listones: generan la cámara ventilada (se interrumpen en los vanos) */}
       {battenOpacity > 0.01 ? (
         <group>
-          {battens.map((x, index) => (
-            <mesh key={`batten-${index}`} position={[x, height / 2, battenZ]}>
-              <boxGeometry args={[0.04, claddingH, 0.022]} />
-              <meshStandardMaterial color="#c2ab84" roughness={0.85} transparent opacity={battenOpacity} />
-            </mesh>
-          ))}
+          {battens
+            .filter((x) => !openings.some((opening) => x > opening.u0 - 0.01 && x < opening.u1 + 0.01))
+            .map((x, index) => (
+              <mesh key={`batten-${index}`} position={[x, height / 2, battenZ]} material={battenMat}>
+                <boxGeometry args={[0.04, claddingH, 0.022]} />
+              </mesh>
+            ))}
         </group>
       ) : null}
-      {/* Lana aislante: ocupa la cámara entre montantes */}
-      {insulationOpacity > 0.01 ? (
-        <mesh position={[0, height / 2, 0]}>
-          <boxGeometry args={[Math.max(0.1, length - 0.06), claddingH - 0.04, Math.max(0.03, depth * 0.66)]} />
-          <meshStandardMaterial color="#f2d9a0" roughness={1} transparent opacity={insulationOpacity * 0.42} depthWrite={false} />
-        </mesh>
-      ) : null}
+      {/* Lana aislante: ocupa la cámara entre montantes, libre de vanos */}
+      {insulationOpacity > 0.01
+        ? cutSegs.map((segment, index) => (
+          <mesh key={`insulation-${index}`} position={[segment.cx, segment.cy, 0]} material={insulationMat}>
+            <boxGeometry args={[Math.max(0.04, segment.w - 0.02), Math.max(0.04, segment.h - 0.02), Math.max(0.03, depth * 0.66)]} />
+          </mesh>
+          ))
+        : null}
       {/* Vulcanita interior */}
-      {gypsumOpacity > 0.01 ? (
-        <mesh position={[0, height / 2, gypsumZ]} castShadow>
-          <boxGeometry args={[length, claddingH, 0.012]} />
-          <meshStandardMaterial color="#e9e6df" roughness={0.9} transparent opacity={gypsumOpacity * 0.95} depthWrite={gypsumOpacity > 0.96} />
-        </mesh>
-      ) : null}
+      {gypsumOpacity > 0.01
+        ? cutSegs.map((segment, index) => (
+            <mesh key={`gypsum-${index}`} position={[segment.cx, segment.cy, gypsumZ]} castShadow material={gypsumMat}>
+              <boxGeometry args={[segment.w, segment.h, 0.012]} />
+            </mesh>
+          ))
+        : null}
       {/* Siding exterior: última capa, la cara visible */}
-      {sidingOpacity > 0.01 ? (
-        <mesh position={[0, height / 2, sidingZ]} castShadow receiveShadow>
-          <boxGeometry args={[length, claddingH, 0.016]} />
-          <meshStandardMaterial color="#ddd2bf" roughness={0.66} metalness={0.04} transparent opacity={sidingOpacity * 0.98} depthWrite={sidingOpacity > 0.96} />
-        </mesh>
-      ) : null}
+      {sidingOpacity > 0.01
+        ? cutSegs.map((segment, index) => (
+            <mesh key={`siding-${index}`} position={[segment.cx, segment.cy, sidingZ]} castShadow receiveShadow material={sidingMat}>
+              <boxGeometry args={[segment.w, segment.h, 0.016]} />
+            </mesh>
+          ))
+        : null}
+      {/* Hojas de puerta y vidrios dentro de los vanos */}
+      {fillOpacity > 0.05
+        ? openings.map((opening, index) => <VanoFill key={`fill-${wallId}-${index}`} opening={opening} depth={depth} opacity={fillOpacity} />)
+        : null}
+    </group>
+  );
+}
+
+/** Marco + hoja de puerta o vidrio dentro de un vano, en el sistema local de la pared (u sobre x, y sobre el terreno). */
+function VanoFill({ opening, depth, opacity }: { opening: WallOpeningSlice; depth: number; opacity: number }) {
+  const w = opening.u1 - opening.u0;
+  const h = opening.y1 - opening.y0;
+  if (w < 0.06 || h < 0.06) return null;
+  const u = (opening.u0 + opening.u1) / 2;
+  const cy = (opening.y0 + opening.y1) / 2;
+  const z = depth / 2 + 0.032;
+  const frame = 0.038;
+  const glassW = Math.max(0.05, w - 0.1);
+  const glassH = Math.max(0.05, h - 0.1);
+  return (
+    <group position={[u, cy, z]} visible={opacity > 0.02}>
+      {opening.kind === 'door' ? (
+        <>
+          <mesh castShadow>
+            <boxGeometry args={[Math.max(0.04, w - 0.06), Math.max(0.04, h - 0.02), 0.036]} />
+            <meshStandardMaterial color="#8a6a48" roughness={0.55} transparent={opacity < 0.99} opacity={opacity} />
+          </mesh>
+          <mesh position={[Math.max(0.04, w - 0.06) / 2 - 0.1, 0, 0.026]}>
+            <sphereGeometry args={[0.02, 10, 8]} />
+            <meshStandardMaterial color="#c9ccd0" metalness={0.65} roughness={0.28} transparent={opacity < 0.99} opacity={opacity} />
+          </mesh>
+        </>
+      ) : (
+        <>
+          <mesh position={[0, h / 2 - frame / 2, 0]}>
+            <boxGeometry args={[w - 0.02, frame, 0.03]} />
+            <meshStandardMaterial color="#e8ecef" roughness={0.4} metalness={0.15} transparent={opacity < 0.99} opacity={opacity} />
+          </mesh>
+          <mesh position={[0, -h / 2 + frame / 2, 0]}>
+            <boxGeometry args={[w - 0.02, frame, 0.03]} />
+            <meshStandardMaterial color="#e8ecef" roughness={0.4} metalness={0.15} transparent={opacity < 0.99} opacity={opacity} />
+          </mesh>
+          <mesh position={[-w / 2 + frame / 2, 0, 0]}>
+            <boxGeometry args={[frame, h - 0.02, 0.03]} />
+            <meshStandardMaterial color="#e8ecef" roughness={0.4} metalness={0.15} transparent={opacity < 0.99} opacity={opacity} />
+          </mesh>
+          <mesh position={[w / 2 - frame / 2, 0, 0]}>
+            <boxGeometry args={[frame, h - 0.02, 0.03]} />
+            <meshStandardMaterial color="#e8ecef" roughness={0.4} metalness={0.15} transparent={opacity < 0.99} opacity={opacity} />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[glassW, glassH, 0.012]} />
+            <meshPhysicalMaterial color="#d7ecf7" roughness={0.08} metalness={0} transparent opacity={0.35} depthWrite={false} side={DoubleSide} />
+          </mesh>
+        </>
+      )}
     </group>
   );
 }
@@ -699,18 +806,20 @@ function SteelRoofStructure({
         const y = eaveY + roofRise * (1 - f);
         const zFront = -run * f;
         const zBack = run * f;
+        // Correas por debajo de la cara inferior del tablero de cubierta: no deben perforar el covering.
+        const purlinLift = -0.012;
         return (
           <group key={`purlin-row-${i}`}>
             <SteelBeam
-              from={[-w / 2 - eaveOverhang, y + 0.02, zFront]}
-              to={[w / 2 + eaveOverhang, y + 0.02, zFront]}
+              from={[-w / 2 - eaveOverhang, y + purlinLift, zFront]}
+              to={[w / 2 + eaveOverhang, y + purlinLift, zFront]}
               size={[0.04, 0.055]}
               color={purlinColor}
               opacity={opacity}
             />
             <SteelBeam
-              from={[-w / 2 - eaveOverhang, y + 0.02, zBack]}
-              to={[w / 2 + eaveOverhang, y + 0.02, zBack]}
+              from={[-w / 2 - eaveOverhang, y + purlinLift, zBack]}
+              to={[w / 2 + eaveOverhang, y + purlinLift, zBack]}
               size={[0.04, 0.055]}
               color={purlinColor}
               opacity={opacity}
@@ -719,8 +828,9 @@ function SteelRoofStructure({
         );
       })}
 
+      {/* Deck estructural: por debajo del covering canónico de MetalconLabFinishesV2 (tablero en midY+0.068). */}
       <SteelRoofPanel
-        position={[0, midY + 0.03, -run / 2]}
+        position={[0, midY + 0.04, -run / 2]}
         rotation={[-roofAngle, 0, 0]}
         width={roofWidth}
         depth={slopeLen}
@@ -728,7 +838,7 @@ function SteelRoofStructure({
         opacity={opacity * 0.78}
       />
       <SteelRoofPanel
-        position={[0, midY + 0.03, run / 2]}
+        position={[0, midY + 0.04, run / 2]}
         rotation={[roofAngle, 0, 0]}
         width={roofWidth}
         depth={slopeLen}

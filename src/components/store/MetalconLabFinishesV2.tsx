@@ -1,7 +1,7 @@
 'use client';
 import { Html } from '@react-three/drei';
-import { DoubleSide, type Texture } from 'three';
-import type { ReactNode } from 'react';
+import { BufferGeometry, DoubleSide, Float32BufferAttribute, type Texture } from 'three';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import type { MetalconHousePreset } from '@/lib/metalconAssembly';
 import type { MetalconLabLayer } from './metalconLabData';
 import { clipIntervals, perimeterWallOpenings, wallCutSegments, type WallFace, type WallOpeningSlice } from './metalconOpeningGeometry';
@@ -145,9 +145,10 @@ function Roof({preset,opacity,cutaway,map}:{preset:MetalconHousePreset;opacity:n
    {!cutaway?<RoofPlane side="near-membrane" width={panelWidth} slope={slope} angle={angle} y={midY+.087} z={run/2} opacity={opacity} color="#263a45" thickness={.012}/>:null}
    <RoofPlane side="far-cover" width={panelWidth} slope={slope} angle={-angle} y={midY+.111} z={-run/2} opacity={opacity} color="#59666b" thickness={.035} metalness={.5} map={map}/>
    <RoofPlane side="near-cover" width={panelWidth} slope={slope} angle={angle} y={midY+.111} z={run/2} opacity={opacity} color="#59666b" thickness={.035} metalness={.5} map={map}/>
-   {/* Frontones (gables) en X = ±panelWidth/2: cierran el hueco entre cumbrera y alero con la misma cubierta. */}
-   <RoofGable x={-halfW} run={run} rise={rise} eaveY={eaveY} ridgeY={ridgeY} opacity={opacity} color="#59666b" metalness={.5} map={map}/>
-   <RoofGable x={halfW} run={run} rise={rise} eaveY={eaveY} ridgeY={ridgeY} opacity={opacity} color="#59666b" metalness={.5} map={map}/>
+   {/* Frontones forrados en el borde de la cubierta (X = ±halfW): prisma triangular
+ opaco que cierra exactamente el triángulo cumbrera–alero, con el texturado del muro. */}
+   <RoofGable x={-halfW} run={run} eaveY={eaveY} ridgeY={ridgeY} opacity={opacity}/>
+   <RoofGable x={halfW} run={run} eaveY={eaveY} ridgeY={ridgeY} opacity={opacity}/>
    {ribXs.map(x=><mesh key={`rf${x}`} position={[x,midY+.141,-run/2]} rotation={[-angle,0,0]}><boxGeometry args={[.018,.026,slope]}/>{mat('#849197',opacity,.65,.28)}</mesh>)}
    {!cutaway?ribXs.map(x=><mesh key={`rn${x}`} position={[x,midY+.141,run/2]} rotation={[angle,0,0]}><boxGeometry args={[.018,.026,slope]}/>{mat('#849197',opacity,.65,.28)}</mesh>):null}
    <mesh position={[0,ridgeY+.155,0]} castShadow><boxGeometry args={[panelWidth+.08,.095,.2]}/>{mat('#737f84',opacity,.65,.28)}</mesh>
@@ -161,17 +162,62 @@ function Roof({preset,opacity,cutaway,map}:{preset:MetalconHousePreset;opacity:n
    <Html center distanceFactor={10} position={[0,eaveY-.42,-run-.1]}><Tag>Alero · tapacán · canaleta</Tag></Html>
   </group>
 }
-function RoofGable({x,run,rise,eaveY,ridgeY,opacity,color,metalness,map}:{x:number;run:number;rise:number;eaveY:number;ridgeY:number;opacity:number;color:string;metalness:number;map?:Texture|null}){
-  const material=useTextureMaterial(map??null,{color:map?'#ffffff':color,roughness:metalness>.2?.42:.7,metalness,envMapIntensity:.75,side:DoubleSide},opacity);
-  const isWest=x<0;
-  const nx=isWest?-1:1;
-  return <mesh name={`gable-${isWest?'west':'east'}`} position={[x,eaveY+rise/2,0]} castShadow receiveShadow material={material}>
-    <bufferGeometry>
-      <bufferAttribute attach="position" args={[new Float32Array([0,-rise/2,-run/2, 0,-rise/2,run/2, 0,rise/2,0]), 3]} />
-      <bufferAttribute attach="normal" args={[new Float32Array([nx,0,0, nx,0,0, nx,0,0]), 3]} />
-      <bufferAttribute attach="uv" args={[new Float32Array([0,0, 1,0, 0.5,1]), 2]} />
-    </bufferGeometry>
-  </mesh>;
+/**
+ * Frontón cerrado (forrado): prisma triangular de ~4,5 cm de espesor que tapa
+ * por completo el hueco entre cumbrera y alero en el borde de la cubierta.
+ * - Base exacta en la línea de alero (z = ±run, antes solo llegaba a ±run/2 y
+ *   dejaba las cuñas laterales abiertas, dejando ver cerchas y correas).
+ * - Ápice 8 cm sobre la cumbrera: la punta queda oculta bajo el tapa-cumbrera
+ *   y el borde superior se enrasa contra la cara inferior de la cubierta
+ *   (sin huecos ni z-fighting con el canto de las planchas).
+ * - Acabado con la textura de siding de la casa, opaco (solo se vuelve
+ *   transparente mientras corre la animación de la línea de tiempo).
+ */
+function RoofGable({x,run,eaveY,ridgeY,opacity}:{x:number;run:number;eaveY:number;ridgeY:number;opacity:number}){
+  const sign=x<0?-1:1;
+  const halfThick=.045;
+  // Cara exterior 2,5 cm por dentro del borde (halfW) para no coplanear con el
+  // canto de las planchas de cubierta (evita parpadeo/z-fighting).
+  const xOuter=sign*(Math.abs(x)-.025);
+  const xInner=xOuter-sign*halfThick;
+  const yBase=eaveY;
+  const yApex=ridgeY+.08;
+  const textures=useViewerTextures();
+  const material=useTextureMaterial(
+    textures.extMetalcon??null,
+    {color:textures.extMetalcon?'#ffffff':'#b9c1be',roughness:.82,metalness:.06,envMapIntensity:.7,side:DoubleSide},
+    opacity,
+  );
+  const geometry=useMemo(()=>{
+    const g=new BufferGeometry();
+    const outerA:[number,number,number]=[xOuter,yBase,-run];
+    const outerB:[number,number,number]=[xOuter,yBase,run];
+    const outerC:[number,number,number]=[xOuter,yApex,0];
+    const innerA:[number,number,number]=[xInner,yBase,-run];
+    const innerB:[number,number,number]=[xInner,yBase,run];
+    const innerC:[number,number,number]=[xInner,yApex,0];
+    const positions:number[]=[];
+    const tri=(a:[number,number,number],b:[number,number,number],c:[number,number,number])=>{positions.push(...a,...b,...c);};
+    // Caras grandes del prisma (DoubleSide cubre ambos sentidos de normal).
+    tri(outerA,outerB,outerC);
+    tri(innerB,innerA,innerC);
+    // Canto perimetral: base del alero y los dos cantos de faldón.
+    tri(innerA,outerB,innerB); tri(outerB,outerA,innerA);
+    tri(innerA,innerC,outerA); tri(innerC,outerC,outerA);
+    tri(innerB,outerC,innerC); tri(outerB,innerB,outerC);
+    g.setAttribute('position',new Float32BufferAttribute(positions,3));
+    // UV planos: u a lo largo del alero, v desde alero hasta cumbrera.
+    const uvs:number[]=[];
+    for(let i=0;i<positions.length;i+=3){
+      uvs.push((positions[i+2]+run)/(2*run),(positions[i+1]-yBase)/(yApex-yBase));
+    }
+    g.setAttribute('uv',new Float32BufferAttribute(uvs,2));
+    g.computeVertexNormals();
+    g.computeBoundingSphere();
+    return g;
+  },[run,xOuter,xInner,yBase,yApex]);
+  useEffect(()=>()=>geometry.dispose(),[geometry]);
+  return <mesh name={`gable-${sign<0?'west':'east'}`} geometry={geometry} material={material} castShadow receiveShadow/>;
 }
 function RoofPlane({side,width,slope,angle,y,z,opacity,color,thickness,metalness=0,map}:{side:string;width:number;slope:number;angle:number;y:number;z:number;opacity:number;color:string;thickness:number;metalness?:number;map?:Texture|null}){
  const material=useTextureMaterial(map??null,{color:map?'#ffffff':color,roughness:metalness>.2?.42:.7,metalness,envMapIntensity:.75},opacity);

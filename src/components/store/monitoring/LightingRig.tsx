@@ -1,5 +1,18 @@
 'use client';
-import { Sky } from '@react-three/drei';
+
+import { useMemo } from 'react';
+import { AdditiveBlending, BackSide, CanvasTexture } from 'three';
+import { createGlowTexture, createSkyTexture, type SkyPalette } from './proceduralTextures';
+
+/**
+ * Iluminación del comparador sísmico.
+ *
+ * El cielo es un skybox procedural (esfera con textura de <canvas>: gradiente
+ * + nubes fbm + estrellas), porque el `<Sky>` de drei quedaba recortado por el
+ * plano lejano de la cámara y dejaba el fondo plano/lavado. Cada preset
+ * define además su niebla, sincronizada con el color del horizonte para que
+ * el borde del suelo nunca se vea: el terreno se funde con el cielo.
+ */
 
 export type LightPresetId = 'day' | 'dusk' | 'night';
 
@@ -30,6 +43,8 @@ type LightPreset = {
   hemiGround: string;
   pointColor: string;
   fillColor: string;
+  fogNear: number;
+  fogFar: number;
 };
 
 export const LIGHT_PRESETS: Record<LightPresetId, LightPreset> = {
@@ -49,6 +64,10 @@ export const LIGHT_PRESETS: Record<LightPresetId, LightPreset> = {
     hemiGround: '#4a3520',
     pointColor: '#ffe8c0',
     fillColor: '#b8d4f0',
+    // la niebla arranca pasado el escenario (radio ≈ 30) y satura antes del
+    // borde del terreno lejano: el horizonte queda continuo
+    fogNear: 45,
+    fogFar: 150,
   },
   dusk: {
     label: 'Atardecer',
@@ -66,6 +85,8 @@ export const LIGHT_PRESETS: Record<LightPresetId, LightPreset> = {
     hemiGround: '#3a2418',
     pointColor: '#ffb46a',
     fillColor: '#e0a070',
+    fogNear: 40,
+    fogFar: 145,
   },
   night: {
     label: 'Noche',
@@ -83,6 +104,45 @@ export const LIGHT_PRESETS: Record<LightPresetId, LightPreset> = {
     hemiGround: '#0c0a08',
     pointColor: '#cfe0ff',
     fillColor: '#5a7ab0',
+    fogNear: 35,
+    fogFar: 135,
+  },
+};
+
+/** Paleta de cielo por preset: `horizon` es además el color de la niebla. */
+export const SKY_PALETTES: Record<LightPresetId, SkyPalette> = {
+  day: {
+    zenith: '#2f6fc0',
+    horizon: '#c6dcee',
+    below: '#93b6d2',
+    cloudLit: '#ffffff',
+    cloudShadow: '#a7bed6',
+    cloudCover: 0.58,
+    stars: false,
+    sunColor: '#fff3d6',
+    sunSize: 82,
+  },
+  dusk: {
+    zenith: '#2b3f74',
+    horizon: '#efa675',
+    below: '#8f6d63',
+    cloudLit: '#ffd7a6',
+    cloudShadow: '#8c6478',
+    cloudCover: 0.62,
+    stars: false,
+    sunColor: '#ffb264',
+    sunSize: 108,
+  },
+  night: {
+    zenith: '#060d1e',
+    horizon: '#16273f',
+    below: '#0a1120',
+    cloudLit: '#43566f',
+    cloudShadow: '#0d1524',
+    cloudCover: 0.38,
+    stars: true,
+    sunColor: '#cfe0ff',
+    sunSize: 54,
   },
 };
 
@@ -119,12 +179,92 @@ export function sunDistance(pos: [number, number, number]): number {
   return d > 1 ? d : 60;
 }
 
+// ---------------------------------------------------------------------------
+// Skybox procedural
+// ---------------------------------------------------------------------------
+
+const SKY_RADIUS = 450; // dentro del plano lejano de la cámara (se ve en el shell)
+
+// Un skybox por preset (se genera una vez y se reutiliza al volver).
+const skyCache = new Map<LightPresetId, CanvasTexture | null>();
+function skyTextureFor(id: LightPresetId): CanvasTexture | null {
+  if (!skyCache.has(id)) skyCache.set(id, createSkyTexture(SKY_PALETTES[id]));
+  return skyCache.get(id) ?? null;
+}
+
+const glowCache = new Map<string, CanvasTexture | null>();
+function glowTextureFor(color: string): CanvasTexture | null {
+  if (!glowCache.has(color)) glowCache.set(color, createGlowTexture(color));
+  return glowCache.get(color) ?? null;
+}
+
+/**
+ * Cúpula celeste: esfera de radio 450 vista por dentro (BackSide) con la
+ * textura procedural. Sin niebla y sin tonemapping para que los colores
+ * pintados en el canvas sean exactamente los que se ven.
+ */
+function ProceduralSky({ preset }: { preset: LightPresetId }) {
+  const texture = useMemo(() => skyTextureFor(preset), [preset]);
+  return (
+    <mesh renderOrder={-2} frustumCulled={false}>
+      <sphereGeometry args={[SKY_RADIUS, 48, 32]} />
+      <meshBasicMaterial
+        map={texture ?? undefined}
+        color={texture ? '#ffffff' : LIGHT_PRESETS[preset].bg}
+        side={BackSide}
+        fog={false}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  );
+}
+
+/**
+ * Sol / luna: sprite con halo que sigue la posición del sol configurada en el
+ * panel (la textura del cielo solo cambia de preset).
+ */
+function SunSprite({
+  color,
+  size,
+  position,
+}: {
+  color: string;
+  size: number;
+  position: [number, number, number];
+}) {
+  const texture = useMemo(() => glowTextureFor(color), [color]);
+  const p = useMemo<[number, number, number]>(() => {
+    const len = Math.hypot(position[0], position[1], position[2]) || 1;
+    const k = (SKY_RADIUS * 0.86) / len;
+    return [position[0] * k, position[1] * k, position[2] * k];
+  }, [position]);
+  if (!texture) return null;
+  return (
+    <sprite position={p} scale={[size, size, 1]} renderOrder={-1} frustumCulled={false}>
+      <spriteMaterial
+        map={texture}
+        transparent
+        depthWrite={false}
+        fog={false}
+        toneMapped={false}
+        blending={AdditiveBlending}
+      />
+    </sprite>
+  );
+}
+
 export default function LightingRig({ config }: { config: LightConfig }) {
   const preset = LIGHT_PRESETS[config.preset];
+  const palette = SKY_PALETTES[config.preset];
   return (
     <>
+      {/* color de respaldo por si algo no dibuja el skybox */}
       <color attach="background" args={[preset.bg]} />
-      <Sky distance={450000} sunPosition={config.sunPosition} turbidity={preset.turbidity} rayleigh={preset.rayleigh} />
+      {/* niebla sincronizada con el horizonte: el borde del suelo no se ve */}
+      <fog attach="fog" args={[palette.horizon, preset.fogNear, preset.fogFar]} />
+      <ProceduralSky preset={config.preset} />
+      <SunSprite color={palette.sunColor} size={palette.sunSize} position={config.sunPosition} />
       <ambientLight intensity={config.ambientIntensity} />
       <hemisphereLight args={[preset.hemiSky, preset.hemiGround, config.ambientIntensity * 1.05]} />
       <directionalLight

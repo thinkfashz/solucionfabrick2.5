@@ -744,6 +744,12 @@ function SteelRoofStructure({
   const slopeLen = Math.sqrt(run * run + roofRise * roofRise);
   const roofAngle = Math.atan2(roofRise, run);
   const midY = eaveY + roofRise / 2;
+  // X del borde de la cubierta (equivalente al halfW de Roof en MetalconLabFinishesV2).
+  const vergeX = w / 2 + eaveOverhang;
+  // Luz útil de cabios y correas: descontamos el semiespesor del perfil para que
+  // las puntas queden dentro del alero (como mucho al ras del borde de la cubierta)
+  // y no sobresalgan del volumen del techo.
+  const memberX = vergeX - 0.055;
   const trussCount = Math.max(3, Math.ceil(w / 0.8));
   const trussSpacing = w / trussCount;
   const purlinCount = Math.max(2, Math.ceil(run / 0.6));
@@ -788,15 +794,15 @@ function SteelRoofStructure({
       />
 
       <SteelBeam
-        from={[-w / 2 - eaveOverhang, eaveY, -run]}
-        to={[w / 2 + eaveOverhang, eaveY, -run]}
+        from={[-memberX, eaveY, -run]}
+        to={[memberX, eaveY, -run]}
         size={[0.055, 0.07]}
         color={beamColor}
         opacity={opacity}
       />
       <SteelBeam
-        from={[-w / 2 - eaveOverhang, eaveY, run]}
-        to={[w / 2 + eaveOverhang, eaveY, run]}
+        from={[-memberX, eaveY, run]}
+        to={[memberX, eaveY, run]}
         size={[0.055, 0.07]}
         color={beamColor}
         opacity={opacity}
@@ -811,15 +817,15 @@ function SteelRoofStructure({
         return (
           <group key={`purlin-row-${i}`}>
             <SteelBeam
-              from={[-w / 2 - eaveOverhang, y + purlinLift, zFront]}
-              to={[w / 2 + eaveOverhang, y + purlinLift, zFront]}
+              from={[-memberX, y + purlinLift, zFront]}
+              to={[memberX, y + purlinLift, zFront]}
               size={[0.04, 0.055]}
               color={purlinColor}
               opacity={opacity}
             />
             <SteelBeam
-              from={[-w / 2 - eaveOverhang, y + purlinLift, zBack]}
-              to={[w / 2 + eaveOverhang, y + purlinLift, zBack]}
+              from={[-memberX, y + purlinLift, zBack]}
+              to={[memberX, y + purlinLift, zBack]}
               size={[0.04, 0.055]}
               color={purlinColor}
               opacity={opacity}
@@ -846,8 +852,9 @@ function SteelRoofStructure({
         opacity={opacity * 0.78}
       />
 
+      {/* Cumbrera: se mantiene dentro del borde de la cubierta (bajo el tapa-cumbrera de los acabados). */}
       <mesh position={[0, ridgeY + 0.015, 0]}>
-        <boxGeometry args={[roofWidth + 0.06, 0.045, 0.14]} />
+        <boxGeometry args={[roofWidth - 0.06, 0.045, 0.14]} />
         <meshStandardMaterial color="#8a9bae" metalness={0.75} roughness={0.28} transparent={opacity < 0.99} opacity={opacity} />
       </mesh>
     </group>
@@ -885,8 +892,13 @@ function SteelTruss({
     for (const frac of fracs) {
       const z = -run + ((frac + 1) / 2) * run * 2;
       const t = Math.abs(frac);
-      const yTop = eaveY + riseH * (1 - t * t);
-      positions.push({ z, yTop: Math.min(yTop, ridgeY - 0.01) });
+      // El techo es de agua recta (cumbrera–alero): los montantes deben rematar
+      // dentro de la cuerda superior. La parábola (1−t²) queda SIEMPRE por sobre
+      // la línea recta del faldón y antes asomaba como picos a través de la
+      // cubierta (muy visibles en rojo cuando la cercha está dañada).
+      const chordY = eaveY + riseH * (1 - t);
+      const capParabolaY = eaveY + riseH * (1 - t * t);
+      positions.push({ z, yTop: Math.min(capParabolaY, chordY - 0.01, ridgeY - 0.01) });
     }
     return positions;
   }, [eaveY, riseH, ridgeY, run]);

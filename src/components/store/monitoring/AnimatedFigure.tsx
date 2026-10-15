@@ -2,13 +2,12 @@
 
 import * as THREE from 'three';
 import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { useGLTF, useAnimations } from '@react-three/drei';
-import { Group, AnimationAction, LoopRepeat, Mesh, MeshStandardMaterial, TextureLoader, RepeatWrapping, SRGBColorSpace } from 'three';
+import { useGLTF, useAnimations, Html } from '@react-three/drei';
+import { Group, AnimationAction, MeshStandardMaterial, TextureLoader, RepeatWrapping, SRGBColorSpace } from 'three';
 import { useFrame } from '@react-three/fiber';
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useEffect, useState } from 'react';
 
 import {
-  CharacterState,
   CharacterConfig,
   BehaviorState,
   createCharacterConfig,
@@ -17,6 +16,8 @@ import {
   getAnimationForState,
   getHeadRotation,
   getBodyRotation,
+  publishCharacterSnapshot,
+  readPartnerSnapshot,
 } from './CharacterBehavior';
 
 export interface AnimatedFigureProps {
@@ -25,6 +26,10 @@ export interface AnimatedFigureProps {
   shakeIntensity: number;
   index: 0 | 1;
   config?: Partial<CharacterConfig>;
+  /** Umbral de la puerta de ESTA casa [x, z]: es su resguardo durante el sismo. */
+  houseDoor?: [number, number];
+  /** Punto de resguardo alternativo (por defecto, el umbral de la puerta). */
+  shelterPoint?: [number, number];
 }
 
 const TEXTURE_LOADER = new TextureLoader();
@@ -44,8 +49,8 @@ function loadClothingMaterial(): MeshStandardMaterial {
 
   return new MeshStandardMaterial({
     map: colorMap,
-    normalMap: normalMap,
-    roughnessMap: roughnessMap,
+    normalMap,
+    roughnessMap,
     roughness: 0.85,
     metalness: 0.05,
     normalScale: new THREE.Vector2(0.5, 0.5),
@@ -60,21 +65,14 @@ function loadSkinMaterial(): MeshStandardMaterial {
   });
 }
 
-const ANIMATION_CLIPS = [
-  'Idle_Loop',
-  'Idle_Talking_Loop',
-  'Walk_Loop',
-  'Jog_Fwd_Loop',
-  'Crouch_Idle_Loop',
-  'Crouch_Fwd_Loop',
-] as const;
-
 export function AnimatedFigure({
   playing,
   visualProgress,
   shakeIntensity,
   index,
   config,
+  houseDoor,
+  shelterPoint,
 }: AnimatedFigureProps) {
   const { scene: gltfScene, animations } = useGLTF('/models/ual-mannequin.glb');
   // Clon esqueleto por instancia: useGLTF cachea el mismo scene para todos los mounts.
@@ -82,22 +80,30 @@ export function AnimatedFigure({
   const { actions, mixer } = useAnimations(animations, scene);
 
   const groupRef = useRef<Group | null>(null);
-  const headRef = useRef<Group | null>(null);
-  const spineRef = useRef<Group | null>(null);
-  const actionRefs = useRef<Record<string, AnimationAction | null>>({});
+  // Ojos y columna son HUESOS del esqueleto (Object3D), no mallas.
+  const headRef = useRef<THREE.Object3D | null>(null);
+  const spineRef = useRef<THREE.Object3D | null>(null);
   const currentClipRef = useRef<string>('');
+  const headEuler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const spineEuler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+  const tmpQuat = useRef(new THREE.Quaternion());
+
+  // Burbuja de diálogo: estado de React sólo cuando el mensaje cambia.
+  const [bubble, setBubble] = useState<string | null>(null);
+  const bubbleRef = useRef<string | null>(null);
 
   const characterConfig = useMemo(() => {
     const baseX = index === 0 ? -5.1 : 5.1;
     const baseZ = 6.5;
     const pathLength = 6 + Math.random() * 4;
-    const walkSpeed = 0.9 + Math.random() * 0.6;
-    return createCharacterConfig(
-      [baseX, -0.13, baseZ],
-      pathLength,
-      walkSpeed
-    );
-  }, [index]);
+    // Caminata humana 0.9–1.3 m/s (el sprint lo decide la FSM: 2.4–3 m/s).
+    const walkSpeed = 0.9 + Math.random() * 0.4;
+    const overrides: Partial<CharacterConfig> = { index, ...(config ?? {}) };
+    if (houseDoor) overrides.homeDoor = houseDoor;
+    if (shelterPoint) overrides.shelterPoint = shelterPoint;
+    return createCharacterConfig([baseX, -0.13, baseZ], pathLength, walkSpeed, overrides);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- los arrays inline sólo cambian por valor
+  }, [index, houseDoor?.[0], houseDoor?.[1], shelterPoint?.[0], shelterPoint?.[1]]);
 
   const behaviorStateRef = useRef<BehaviorState>(
     getInitialBehaviorState(characterConfig)
@@ -122,7 +128,22 @@ export function AnimatedFigure({
         obj.material.needsUpdate = true;
       }
     });
-  }, []);
+
+    // Localizar los huesos de cabeza y columna (son Object3D, no mallas).
+    let spineFallback: THREE.Object3D | null = null;
+    scene.traverse((obj: THREE.Object3D) => {
+      const name = obj.name.toLowerCase();
+      if (name === 'head') headRef.current = obj;
+      if (name.startsWith('spine')) {
+        if (name === 'spine_02') spineRef.current = obj;
+        else if (!spineFallback) spineFallback = obj;
+      }
+    });
+    if (!spineRef.current) spineRef.current = spineFallback;
+  }, [scene]);
+
+  // Liberar el canal de coordinación al desmontar.
+  useEffect(() => () => publishCharacterSnapshot(index, null), [index]);
 
   // --- Patrones iniciales de animación ---
   useEffect(() => {
@@ -137,40 +158,65 @@ export function AnimatedFigure({
   }, [actions]);
 
   const shakeValue = shakeIntensity || (playing ? visualProgress * 0.8 : 0);
+
+  // Transiciones urgentes (empezar/pausar el sismo) sin esperar al siguiente frame.
   behaviorStateRef.current = updateBehavior(
     behaviorStateRef.current,
     characterConfig,
-    0, // delta no usado en efecto; se actualiza en useFrame
+    0,
     playing,
     visualProgress,
     shakeValue
   );
 
-  useFrame((state, delta) => {
+  useFrame((_frame, delta) => {
     if (!groupRef.current || !mixer) return;
 
+    // dt acotado: evita saltos tras perder foco la pestaña.
+    const d = Math.min(Math.max(delta, 0), 0.1);
     const actionsMap = actions as Record<string, AnimationAction>;
     const availableAnimations = new Set(Object.keys(actionsMap));
 
-    const newState = updateBehavior(
+    // 1) Comportamiento + navegación (FSM sobre refs, sin re-renders).
+    const behaviorState = updateBehavior(
       behaviorStateRef.current,
       characterConfig,
-      delta,
+      d,
       playing,
       visualProgress,
-      shakeValue
+      shakeValue,
+      readPartnerSnapshot(index)
     );
-    behaviorStateRef.current = newState;
+    behaviorStateRef.current = behaviorState;
 
-    const { currentState, currentX, crouchAmount } = behaviorStateRef.current;
-    const animInfo = getAnimationForState(behaviorStateRef.current, availableAnimations);
+    // 2) Publicar la instantánea para que el otro personaje se coordine.
+    publishCharacterSnapshot(index, {
+      state: behaviorState.currentState,
+      x: behaviorState.position[0],
+      z: behaviorState.position[2],
+      destKey: behaviorState.destKey,
+      moving: behaviorState.moving,
+      crouch: behaviorState.crouchAmount,
+    });
+
+    // 3) Burbuja de diálogo: re-render de React sólo si el texto cambió.
+    if (behaviorState.message !== bubbleRef.current) {
+      bubbleRef.current = behaviorState.message;
+      setBubble(behaviorState.message);
+    }
+
+    // 4) Mezcla de animaciones con crossfade.
+    const animInfo = getAnimationForState(behaviorState, availableAnimations);
     const targetClip = animInfo.clip;
 
     if (targetClip !== currentClipRef.current) {
-      const newAction = actionRefs.current[targetClip];
-      const oldAction = actionRefs.current[currentClipRef.current];
+      // actions es la fuente de verdad: cada clip tiene su AnimationAction.
+      const newAction = actionsMap[targetClip] ?? null;
+      const oldAction = actionsMap[currentClipRef.current] ?? null;
       if (newAction && oldAction && oldAction !== newAction) {
-        oldAction.crossFadeTo(newAction, 0.3, true);
+        newAction.enabled = true;
+        newAction.play();
+        oldAction.crossFadeTo(newAction, animInfo.crossFadeDuration, true);
       } else if (newAction) {
         newAction.enabled = true;
         newAction.play();
@@ -179,48 +225,35 @@ export function AnimatedFigure({
       currentClipRef.current = targetClip;
     }
 
-    const currentAction = actionRefs.current[currentClipRef.current];
+    const currentAction = actionsMap[currentClipRef.current];
     if (currentAction) {
+      currentAction.enabled = true;
       currentAction.timeScale = animInfo.speed;
-      if (currentState === 'earthquake' || currentState === 'recovery') {
-        currentAction.weight = THREE.MathUtils.lerp(currentAction.weight, crouchAmount, delta * 5);
-      } else {
-        currentAction.weight = THREE.MathUtils.lerp(currentAction.weight, 1, delta * 5);
-      }
+      currentAction.weight = THREE.MathUtils.lerp(currentAction.weight, animInfo.weight, d * 5);
     }
 
-    const { targetX } = behaviorStateRef.current;
+    // 5) Avance del mixer ANTES de aplicar gestos (si no, los sobrescribe).
+    mixer.update(d);
 
-    if (currentState === 'walk') {
-      groupRef.current.position.x = currentX;
-      const direction = behaviorStateRef.current.targetX > currentX ? 1 : -1;
-      groupRef.current.rotation.y = Math.PI + (direction > 0 ? 0 : Math.PI);
-    }
+    // 6) Posición y orientación del cuerpo (2D con steering).
+    groupRef.current.position.set(
+      behaviorState.position[0] + behaviorState.sway[0],
+      characterConfig.position[1] - behaviorState.crouchAmount * 0.4,
+      behaviorState.position[2] + behaviorState.sway[1]
+    );
+    groupRef.current.rotation.y = behaviorState.yaw;
 
+    // 7) Gestos: se suman a la animación multiplicando el cuaternión.
     if (headRef.current) {
-      const [headX, headY, headZ] = getHeadRotation(behaviorStateRef.current, shakeValue);
-      headRef.current.rotation.set(headX, headY, headZ);
+      const [headX, headY, headZ] = getHeadRotation(behaviorState, shakeValue);
+      headEuler.current.set(headX, headY, headZ, 'YXZ');
+      headRef.current.quaternion.multiply(tmpQuat.current.setFromEuler(headEuler.current));
     }
 
     if (spineRef.current) {
-      const [bodyX, bodyY, bodyZ] = getBodyRotation(behaviorStateRef.current, shakeValue);
-      spineRef.current.rotation.set(bodyX, bodyY, bodyZ);
-    }
-
-    const crouchOffset = -crouchAmount * 0.4;
-    groupRef.current.position.y = characterConfig.position[1] + crouchOffset;
-
-    mixer.update(delta);
-  });
-
-  scene.traverse((obj: any) => {
-    if (obj.isMesh) {
-      if (obj.name.toLowerCase().includes('head') && !obj.name.includes('hair')) {
-        headRef.current = obj;
-      }
-      if (obj.name.toLowerCase().includes('spine') || obj.name.toLowerCase().includes('chest') || obj.name.toLowerCase().includes('torso')) {
-        spineRef.current = obj;
-      }
+      const [bodyX, bodyY, bodyZ] = getBodyRotation(behaviorState, shakeValue);
+      spineEuler.current.set(bodyX, bodyY, bodyZ, 'YXZ');
+      spineRef.current.quaternion.multiply(tmpQuat.current.setFromEuler(spineEuler.current));
     }
   });
 
@@ -232,6 +265,15 @@ export function AnimatedFigure({
       rotation={[0, Math.PI, 0]}
     >
       <primitive object={scene} dispose={null} />
+      {bubble ? (
+        // Burbuja discreta sobre la cabeza; hereda el desplazamiento del grupo
+        // (inclinación por agachado, balanceo), sin re-renders adicionales.
+        <Html center distanceFactor={9} position={[0, 2.02, 0]} zIndexRange={[40, 0]} className="pointer-events-none select-none">
+          <div className="w-max whitespace-nowrap rounded-full border border-white/10 bg-black/70 px-2 py-1 text-center text-[7px] font-bold text-white/85 shadow-lg">
+            {bubble}
+          </div>
+        </Html>
+      ) : null}
     </group>
   );
 }

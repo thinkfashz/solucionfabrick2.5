@@ -346,11 +346,9 @@ export function createAsphaltTexture(size = 512): CanvasTexture | null {
   ctx.fillRect(size * 0.052, 0, size * 0.03, size);
   ctx.fillRect(size * 0.918, 0, size * 0.03, size);
 
-  const period = size / 4; // 4 tramos por textura → patrón continuo al repetir
+  // 1 tramo por tesela: el ciclo de la discontinua queda ≈3 m (como una vía real)
   ctx.fillStyle = 'rgba(238,232,214,0.92)';
-  for (let k = 0; k < 4; k++) {
-    ctx.fillRect(size * 0.483, k * period + period * 0.08, size * 0.034, period * 0.55);
-  }
+  ctx.fillRect(size * 0.483, size * 0.06, size * 0.034, size * 0.42);
 
   // Desgaste sobre las marcas para que no se vean "recién pintadas"
   const rnd = mulberry32(97);

@@ -49,8 +49,8 @@ const OUTER_SIZE = 400;
 
 // --- camino de acceso ------------------------------------------------------
 const ROAD_HALF_W = 1.5; // calzada de 3,0 m (cabe en el hueco entre casas)
-const ROAD_Y_SOUTH = -26; // extremo sur (hacia la cámara; world z = +26)
-const ROAD_Y_NORTH = -6.3; // frente a las viviendas (world z = +6.3)
+const ROAD_Y_SOUTH = -22; // borde sur de la parcela (world z = +22)
+const ROAD_Y_NORTH = -6.9; // deja libre la pasarela de las figuras (z ≈ 6,5)
 const ROAD_LENGTH = ROAD_Y_NORTH - ROAD_Y_SOUTH;
 const ROAD_Y_CENTER = (ROAD_Y_SOUTH + ROAD_Y_NORTH) / 2;
 const ROAD_Z = 0.028; // altura de la calzada sobre el grupo

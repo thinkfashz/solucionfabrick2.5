@@ -1,49 +1,105 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
+import { ArrowRight, Calculator, Eye, Layers3, ShieldCheck, Sparkles, Waves } from 'lucide-react';
 import { MetalconCalculator } from '@/components/store/MetalconCalculator';
+import MetalconBenefits from '@/components/store/MetalconBenefits';
+import MetalconGuideSections from '@/components/store/MetalconGuideSections';
 import MetalconSpecSheet from '@/components/store/MetalconSpecSheet';
+import { StoreBottomNav, StorefrontHeader } from '@/components/store/StorefrontChrome';
 import StructuredData from '@/components/seo/StructuredData';
 import TechnicalAuthoritySection from '@/components/seo/TechnicalAuthoritySection';
-import CollapsibleMeasureControls from '@/components/tools/CollapsibleMeasureControls';
 import ImmersiveLabEntry from '@/components/tools/ImmersiveLabEntry';
 import { buildTechnicalToolJsonLd, SITE_URL } from '@/lib/seo';
 import a11y from '../../mobile-accessibility.module.css';
 
 const CANONICAL = `${SITE_URL}/herramientas/metalcon`;
 
+const ANCHORS = [
+  { href: '#por-que-metalcon', label: 'Por qué Metalcon', icon: Sparkles },
+  { href: '#sistema', label: 'El sistema', icon: Layers3 },
+  { href: '#medidas', label: 'Medidas', icon: ShieldCheck },
+  { href: '#calculadora', label: 'Calculadora', icon: Calculator },
+  { href: '#visor', label: 'Visor 4D', icon: Eye },
+  { href: '/herramientas/metalcon/lab', label: 'Laboratorio sísmico', icon: Waves },
+] as const;
+
 export const metadata: Metadata = {
-  title: 'Guía técnica Metalcon: perfiles, medidas y montaje',
-  description: 'Ficha técnica del sistema Metalcon: familias y espesores, perfiles C con peso y largos comerciales, soleras U compatibles, aplicaciones por escala, capacidad y montaje capa por capa en visor 4D.',
+  title: 'Construye con Metalcon: guía estructural, materiales y calculadora',
+  description: 'Guía completa del sistema constructivo Metalcon: beneficios, familias y perfiles, medidas comerciales, calculadora de montantes y materiales, y visor 4D del armado por capas.',
   alternates: { canonical: CANONICAL },
   openGraph: {
-    title: 'Guía técnica del Metalcon: perfiles, medidas y montaje | Soluciones Fabrick',
-    description: 'Especificaciones, medidas, pesos y aplicaciones del sistema Metalcon, con visor 4D del armado por capas y acceso al laboratorio sísmico educativo.',
+    title: 'Construye con Metalcon: guía estructural completa | Soluciones Fabrick',
+    description: 'Sistema, beneficios, medidas comerciales y calculadora de materiales Metalcon, con visor 4D del armado por capas y acceso al laboratorio sísmico.',
     url: CANONICAL,
-    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Guía técnica Metalcon Soluciones Fabrick' }],
+    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Guía estructural Metalcon Soluciones Fabrick' }],
   },
 };
 
 export default function MetalconPage() {
   const jsonLd = buildTechnicalToolJsonLd({
     path: '/herramientas/metalcon',
-    name: 'Guía técnica Metalcon: perfiles, medidas y montaje',
-    description: 'Ficha técnica del sistema constructivo Metalcon: familias y espesores, perfiles C con peso y largos comerciales, soleras U compatibles, aplicaciones por escala y montaje capa por capa en un visor 4D.',
+    name: 'Guía estructural Metalcon: sistema, materiales y cálculo',
+    description: 'Guía educativa del sistema constructivo Metalcon: beneficios, familias y espesores, perfiles C con peso y largos comerciales, calculadora de montantes y visor 4D del armado por capas.',
     category: 'DesignApplication',
-    keywords: ['Metalcon', 'ficha técnica Metalcon', 'perfiles Metalcon medidas', 'peso perfil C Metalcon', 'montantes 40 60 cm', 'Steel Frame Chile', 'panel estructural'],
+    keywords: ['Metalcon', 'guía Metalcon', 'calculadora montantes Metalcon', 'perfiles Metalcon medidas', 'peso perfil C Metalcon', 'montantes 40 60 cm', 'Steel Frame Chile', 'panel estructural'],
   });
 
   return (
     <>
       <StructuredData data={jsonLd} />
-      <div className={a11y.metalconScope}>
+      <div className={`${a11y.metalconScope} bg-[#05090C] text-white`}>
+        <StorefrontHeader />
+
+        {/* 01 · HERO guía */}
+        <section className="relative overflow-hidden border-b border-white/10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(255,230,0,.12),transparent_40%),radial-gradient(circle_at_12%_85%,rgba(87,212,255,.08),transparent_38%)]" aria-hidden />
+          <div className="relative mx-auto max-w-[1500px] px-4 py-14 sm:px-8 sm:py-24">
+            <p className="text-[11px] font-black uppercase tracking-[.25em] text-[#FFE600]">Guía estructural · Sistema constructivo Metalcon</p>
+            <h1 className="mt-4 max-w-4xl text-[clamp(2.6rem,7vw,6rem)] font-black leading-[.94] tracking-[-.05em]">Construye con Metalcon.</h1>
+            <p className="mt-4 max-w-3xl text-[clamp(1.05rem,2.4vw,1.6rem)] font-black leading-tight tracking-[-.02em] text-white/75">
+              Guía estructural completa: sistema, materiales y cálculo.
+            </p>
+            <p className="mt-5 max-w-3xl text-sm leading-7 text-white/55 sm:text-base sm:leading-8">
+              Aprende cómo funciona el acero galvanizado conformado en frío: por qué resiste sismos e incendios, qué perfil va en cada parte de la casa, con qué medidas comerciales se trabaja y cuántos montantes necesitas. Todo con datos del fabricante, sin humo.
+            </p>
+
+            <nav aria-label="Secciones de la guía" className="mt-7 flex flex-wrap gap-2">
+              {ANCHORS.map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/[.04] px-4 text-[12px] font-black text-white/70 transition hover:border-[#FFE600]/50 hover:text-[#FFE600]"
+                >
+                  <Icon size={14} aria-hidden />{label}
+                </Link>
+              ))}
+            </nav>
+
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <Link href="#calculadora" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#FFE600] px-6 text-[12px] font-black uppercase tracking-[.08em] text-black transition hover:bg-white">
+                <Calculator size={15} aria-hidden />Calcular mi casa
+              </Link>
+              <Link href="/presupuesto?servicio=metalcon" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/20 px-5 text-[12px] font-black uppercase tracking-[.08em] text-white/75 transition hover:border-white/50">
+                Pedir cotización<ArrowRight size={14} aria-hidden />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* 02 · Beneficios */}
+        <MetalconBenefits />
+
+        {/* 03 · Anatomía + 04 · Medidas comerciales */}
+        <MetalconGuideSections />
+
+        {/* 05 · Calculadora + 06 · Visor 4D */}
         <MetalconCalculator />
+
+        {/* Ficha técnica de referencia */}
         <MetalconSpecSheet />
-        <CollapsibleMeasureControls
-          targetText="Define la estructura"
-          ancestorDepth={1}
-          label="Medidas, perfiles y vanos"
-          summary="Largo, alto, modulación 40/60 cm, OSB, perfil C, espesor, puerta y ventana"
-        />
+
         <ImmersiveLabEntry href="/herramientas/metalcon/lab" label="Lab Metalcon 4D" />
+        <StoreBottomNav />
       </div>
       <TechnicalAuthoritySection
         compact

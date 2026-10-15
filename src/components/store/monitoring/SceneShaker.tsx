@@ -46,7 +46,7 @@ export default function SceneShaker({
     const amp = 0.028 * level;
     const omega = 2 * Math.PI * Math.min(3.2, Math.max(1.5, frequencyHz));
     // Dos sinusoides desfasados por eje: movimiento orgánico, no metrónomo.
-    g.position.x = Math.sin(t * omega) * amp + Math.sin(t * omega * 0.63 + 1.2) * amp * 0.5;
+    g.position.x = Math.sin(t * omega) * amp + Math.sin(t * omega * 0.63 + 1.2) * amp * 0.3;
     g.position.z = Math.sin(t * omega * 0.9 + 2.4) * amp * 0.7;
     g.position.y = Math.sin(t * omega * 1.7 + 0.6) * amp * 0.35;
     // Balanceo sutil de inclinación (rotación en rad, muy pequeño).

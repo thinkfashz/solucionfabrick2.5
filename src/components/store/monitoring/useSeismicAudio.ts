@@ -214,8 +214,7 @@ export function useSeismicAudio(playing: boolean, progress: number, intensity: n
   }, [playing, progress, intensity, muted]);
 
   // refs espejo para el scheduler
-  const playingRef = useRef(false);
-  const crackleActiveRef = useRef(false);
+  // (declarados arriba junto a los demás refs)
 
   // --- limpieza total ---
   useEffect(() => {

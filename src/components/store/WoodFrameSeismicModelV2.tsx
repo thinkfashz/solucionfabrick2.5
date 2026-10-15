@@ -2,10 +2,11 @@
 
 import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
-import { DoubleSide, Quaternion, Vector3 } from 'three';
+import { useEffect, useMemo, useRef } from 'react';
+import { BufferGeometry, DoubleSide, Float32BufferAttribute, Quaternion, Vector3 } from 'three';
 import type { Group } from 'three';
 import type { MetalconHousePreset } from '@/lib/metalconAssembly';
+import WoodGutterDetails from './WoodGutterDetails';
 import { perimeterWallOpenings, smoothstep01, wallCutSegments, type WallFace, type WallOpeningSlice } from './metalconOpeningGeometry';
 import { useTextureMaterial, useViewerTextures, usePbrMaps } from './monitoring/useViewerTextures';
 
@@ -107,6 +108,15 @@ export default function WoodFrameSeismicModelV2({
 
         {showPanels ? <WoodWallLayers preset={preset} damage={damage} /> : null}
         {showRoof ? <WoodRoofV2 preset={preset} damage={damage} showCover={showPanels} /> : null}
+        {/* Canaleta + bajantes del alero frontal/trasero (solo con cubierta montada). */}
+        {showRoof ? (
+          <WoodGutterDetails
+            eaveY={preset.heightM + 0.08}
+            run={preset.depthM / 2 + 0.42}
+            panelWidth={preset.widthM + 0.84}
+            showLabel={showLabels}
+          />
+        ) : null}
       </group>
 
       {showLabels ? (
@@ -410,6 +420,11 @@ function WoodRoofV2({
             <boxGeometry args={[panelWidth + 0.08, 0.06, 0.18]} />
             <meshStandardMaterial color={ridgeColor} roughness={0.7} />
           </mesh>
+          {/* Frontones forrados (X = ±panelWidth/2): prisma triangular opaco con
+              el siding de la casa que cierra el triángulo cumbrera–alero y tapa
+              las cerchas expuestas (mismo cierre que RoofGable en Metalcon). */}
+          <WoodGablePanel x={-panelWidth / 2} run={run} eaveY={eaveY} ridgeY={ridgeY} damage={damage} />
+          <WoodGablePanel x={panelWidth / 2} run={run} eaveY={eaveY} ridgeY={ridgeY} damage={damage} />
         </>
       ) : null}
 
@@ -439,6 +454,85 @@ function WoodFloor({ preset }: { preset: MetalconHousePreset }) {
       <boxGeometry args={[preset.widthM - 0.12, 0.03, preset.depthM - 0.12]} />
     </mesh>
   );
+}
+
+/**
+ * Frontón forrado de la casa de madera: prisma triangular opaco (~9 cm de
+ * espesor) que cierra el hueco cumbrera–alero en el borde de la cubierta
+ * (X = ±panelWidth/2), tapando las cerchas/estantes expuestos.
+ * - Base exacta en la línea de alero (z = ±run) y ápice 8 cm sobre la cumbrera
+ *   (queda oculto bajo el tapa-cumbrera, sin z-fighting con la cubierta).
+ * - Acabado con el mismo siding de listones de la casa (opaco).
+ * Misma técnica que RoofGable en MetalconLabFinishesV2.tsx.
+ */
+function WoodGablePanel({
+  x,
+  run,
+  eaveY,
+  ridgeY,
+  damage,
+}: {
+  x: number;
+  run: number;
+  eaveY: number;
+  ridgeY: number;
+  damage: number;
+}) {
+  const sign = x < 0 ? -1 : 1;
+  const halfThick = 0.045;
+  // Cara exterior 2,5 cm por dentro del borde de la cubierta para no coplanear
+  // con el canto de las planchas (evita parpadeo/z-fighting).
+  const xOuter = sign * (Math.abs(x) - 0.025);
+  const xInner = xOuter - sign * halfThick;
+  const yBase = eaveY;
+  const yApex = ridgeY + 0.08;
+  const textures = useViewerTextures();
+  const pineMaps = usePbrMaps('woodPine');
+  const material = useTextureMaterial(
+    pineMaps.color ?? textures.extMadera,
+    {
+      color: damage > 0.7 ? '#ff4438' : pineMaps.color || textures.extMadera ? '#c9b49d' : '#9b7b52',
+      roughness: 0.85,
+      metalness: 0,
+      envMapIntensity: 0.65,
+      normalMap: pineMaps.normal,
+      roughnessMap: pineMaps.roughness,
+      side: DoubleSide,
+    },
+    1,
+  );
+  const geometry = useMemo(() => {
+    const g = new BufferGeometry();
+    const outerA: [number, number, number] = [xOuter, yBase, -run];
+    const outerB: [number, number, number] = [xOuter, yBase, run];
+    const outerC: [number, number, number] = [xOuter, yApex, 0];
+    const innerA: [number, number, number] = [xInner, yBase, -run];
+    const innerB: [number, number, number] = [xInner, yBase, run];
+    const innerC: [number, number, number] = [xInner, yApex, 0];
+    const positions: number[] = [];
+    const tri = (a: [number, number, number], b: [number, number, number], c: [number, number, number]) => {
+      positions.push(...a, ...b, ...c);
+    };
+    // Caras grandes del prisma (DoubleSide cubre ambos sentidos de normal).
+    tri(outerA, outerB, outerC);
+    tri(innerB, innerA, innerC);
+    // Canto perimetral: base del alero y los dos cantos de faldón.
+    tri(innerA, outerB, innerB); tri(outerB, outerA, innerA);
+    tri(innerA, innerC, outerA); tri(innerC, outerC, outerA);
+    tri(innerB, outerC, innerC); tri(outerB, innerB, outerC);
+    g.setAttribute('position', new Float32BufferAttribute(positions, 3));
+    // UV planos: u a lo largo del alero, v desde alero hasta cumbrera.
+    const uvs: number[] = [];
+    for (let i = 0; i < positions.length; i += 3) {
+      uvs.push((positions[i + 2] + run) / (2 * run), (positions[i + 1] - yBase) / (yApex - yBase));
+    }
+    g.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
+    g.computeVertexNormals();
+    g.computeBoundingSphere();
+    return g;
+  }, [run, xOuter, xInner, yBase, yApex]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return <mesh geometry={geometry} material={material} castShadow receiveShadow />;
 }
 
 function WoodBeam({

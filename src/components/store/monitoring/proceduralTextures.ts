@@ -3,6 +3,7 @@
 import {
   CanvasTexture,
   ClampToEdgeWrapping,
+  NoColorSpace,
   RepeatWrapping,
   SRGBColorSpace,
   type Wrapping,
@@ -50,8 +51,11 @@ function clampByte(v: number): number {
   return v < 0 ? 0 : v > 255 ? 255 : v | 0;
 }
 
-/** PRNG determinista (mulberry32): mismas texturas en cada carga. */
-function mulberry32(seed: number): () => number {
+/**
+ * PRNG determinista (mulberry32): mismas texturas en cada carga.
+ * Exportado para que `NatureScatter` comparta el mismo generador.
+ */
+export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -360,6 +364,75 @@ export function createAsphaltTexture(size = 512): CanvasTexture | null {
   }
 
   return finishTexture(canvas, RepeatWrapping, RepeatWrapping);
+}
+
+/**
+ * Máscara alfa de la calzada (512×512, ClampToEdge, SIN repetición): se mapea
+ * UNA sola vez sobre todo el largo del camino (u = ancho, v = largo), de modo
+ * que sirve para "dibujar" la silueta del asfalto:
+ *
+ * - Cantos meándricos: dos fbm sobre `v` mueven cada borde hacia adentro
+ *   entre 0 y ~0,35 m, así la calzada nunca tiene cantos rectos y el césped
+ *   parece invadir los bordes.
+ * - Cabos rotos: los dos extremos se disuelven en "dedos" de asfalto (el
+ *   umbral se desplaza con ruido en `u`), por lo que el camino se pierde
+ *   entre el pasto en lugar de terminar en seco con un corte limpio.
+ *
+ * Se consume con `alphaTest` (descarte binario del material): sin capas
+ * transparentes, sin orden de render que resolver y gratis en móvil.
+ */
+export function createRoadEdgeAlphaTexture(size = 512): CanvasTexture | null {
+  const canvas = createCanvas(size, size);
+  const ctx = canvas?.getContext('2d');
+  if (!canvas || !ctx) return null;
+
+  const img = ctx.createImageData(size, size);
+  const data = img.data;
+
+  // bordes laterales: variación a lo LARGO del camino (eje y de la textura)
+  const fEdgeL = createFbmSampler(1, 6, 3, 131);
+  const fEdgeR = createFbmSampler(1, 8, 3, 137);
+  // cabos: variación a lo ANCHO (eje x de la textura)
+  const fTipSouth = createFbmSampler(9, 1, 3, 149);
+  const fTipNorth = createFbmSampler(6, 1, 3, 151);
+
+  const max = size - 1;
+  for (let py = 0; py < size; py++) {
+    const v = py / max; // 0 = cabo sur (fondo), 1 = cabo norte (viviendas)
+    for (let px = 0; px < size; px++) {
+      const u = px / max; // 0..1 a lo ancho de la calzada
+
+      // cantos irregulares (los dos lados usan ruido distinto)
+      const nL = fEdgeL(0.3, v * 6) * 0.62 + fEdgeL(0.8, v * 18) * 0.38;
+      const nR = fEdgeR(0.55, v * 8) * 0.6 + fEdgeR(0.15, v * 24) * 0.4;
+      const eL = 0.012 + nL * 0.1;
+      const eR = 0.988 - nR * 0.1;
+      let a =
+        smoothstepF(eL - 0.012, eL + 0.012, u) *
+        (1 - smoothstepF(eR - 0.012, eR + 0.012, u));
+
+      // cabo sur: el asfalto se disuelve en los últimos ~5 m
+      const south = v + (fTipSouth(u * 9, 0.5) - 0.5) * 0.13;
+      a *= smoothstepF(0.008, 0.15, south);
+
+      // cabo norte: disolución corta (~2,5 m) frente a las viviendas
+      const north = 1 - v + (fTipNorth(u * 6, 0.5) - 0.5) * 0.07;
+      a *= smoothstepF(0.006, 0.085, north);
+
+      const i = (py * size + px) * 4;
+      const val = clampByte(a * 255);
+      data[i] = val;
+      data[i + 1] = val;
+      data[i + 2] = val;
+      data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  const texture = finishTexture(canvas, ClampToEdgeWrapping, ClampToEdgeWrapping);
+  // una máscara no es color: three debe muestrearla en lineal
+  texture.colorSpace = NoColorSpace;
+  return texture;
 }
 
 // ---------------------------------------------------------------------------

@@ -166,7 +166,8 @@ function Foundation({ preset }: { preset: MetalconHousePreset }) {
         <boxGeometry args={[preset.widthM + 0.18, 0.09, preset.depthM + 0.18]} />
         <meshStandardMaterial color="#5e6468" roughness={0.9} metalness={0.06} />
       </mesh>
-      <gridHelper args={[Math.max(12, preset.widthM + preset.depthM), Math.max(20, Math.round((preset.widthM + preset.depthM) * 2)), '#7d8790', '#3c444a']} position={[0, 0.006, 0]} />
+      {/* Se eliminó el gridHelper decorativo ("plataforma de ingeniería"): flotaba
+          sobre el suelo y ya no encaja con el entorno realista. */}
       {preset.terraceDepthM ? (
         <mesh position={[0, -0.035, preset.depthM / 2 + preset.terraceDepthM / 2 + 0.1]} receiveShadow>
           <boxGeometry args={[preset.widthM, 0.07, preset.terraceDepthM]} />

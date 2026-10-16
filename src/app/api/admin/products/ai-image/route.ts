@@ -51,7 +51,7 @@ function supports(model: ImageModel, key: string) {
   return Boolean(params && typeof params === 'object' && key in params);
 }
 
-async function chooseImageModel(apiKey: string, appName: string, siteUrl: string | null, mode: Mode) {
+async function chooseImageModel(apiKey: string, appName: string, siteUrl: string | null, mode: Mode, requireReferences = mode === 'improve') {
   const configured = clean(process.env.OPENROUTER_IMAGE_MODEL, 160);
   const response = await fetch('https://openrouter.ai/api/v1/images/models', {
     headers: {
@@ -65,7 +65,7 @@ async function chooseImageModel(apiKey: string, appName: string, siteUrl: string
   if (!response.ok) throw new Error(`No se pudo consultar los modelos de imagen (HTTP ${response.status}).`);
   const json = await response.json().catch(() => ({})) as { data?: ImageModel[] };
   const models = Array.isArray(json.data) ? json.data.filter((item) => clean(item.id, 160)) : [];
-  const compatible = (model: ImageModel) => mode === 'generate' || supports(model, 'input_references');
+  const compatible = (model: ImageModel) => !requireReferences || supports(model, 'input_references');
 
   if (configured) {
     const exact = models.find((item) => item.id === configured);
@@ -76,7 +76,7 @@ async function chooseImageModel(apiKey: string, appName: string, siteUrl: string
     if (model && compatible(model)) return model;
   }
   const fallback = models.find(compatible);
-  if (!fallback?.id) throw new Error(mode === 'improve' ? 'No hay un modelo de imagen configurado que acepte una imagen de referencia.' : 'No hay modelos de imagen disponibles en OpenRouter.');
+  if (!fallback?.id) throw new Error(requireReferences ? 'No hay un modelo de imagen configurado que acepte referencias visuales.' : 'No hay modelos de imagen disponibles en OpenRouter.');
   return fallback;
 }
 
@@ -136,27 +136,52 @@ async function loadProduct(id: string, tenantId: string): Promise<ProductRow | n
   return Array.isArray(data) && data[0] ? data[0] as ProductRow : null;
 }
 
-async function persistProductImage(product: ProductRow, tenantId: string, asset: { url: string; publicId: string }, metadata: Record<string, unknown>) {
+async function persistProductImages(
+  product: ProductRow,
+  tenantId: string,
+  assets: Array<{ url: string; publicId: string; width: number; height: number; bytes: number }>,
+  metadata: Record<string, unknown>,
+  applyFirst: boolean,
+) {
   const specs = asRecord(product.specifications);
   const priorAssets = Array.isArray(specs.gallery_assets) ? specs.gallery_assets.filter((item) => item && typeof item === 'object') as Array<Record<string, unknown>> : [];
   const priorUrls = Array.isArray(specs.gallery_images) ? specs.gallery_images.map(String).filter(Boolean) : [];
-  const newAsset = { url: asset.url, public_id: asset.publicId, source: 'ai-cloudinary', ...metadata };
-  const galleryAssets = [newAsset, ...priorAssets.filter((item) => String(item.url || '') !== asset.url)].slice(0, 20);
-  const galleryImages = Array.from(new Set([asset.url, product.image_url || '', ...priorUrls])).filter(Boolean).slice(0, 20);
-  const nextSpecs = { ...specs, gallery_assets: galleryAssets, gallery_images: galleryImages, ai_image: metadata };
+  const created = assets.map((asset, index) => ({
+    url: asset.url,
+    public_id: asset.publicId,
+    source: 'ai-cloudinary',
+    candidate_index: index + 1,
+    ...metadata,
+  }));
+  const createdUrls = new Set(created.map((asset) => asset.url));
+  const galleryAssets = [...created, ...priorAssets.filter((item) => !createdUrls.has(String(item.url || '')))].slice(0, 20);
+  const galleryImages = Array.from(new Set([...assets.map((asset) => asset.url), product.image_url || '', ...priorUrls])).filter(Boolean).slice(0, 20);
+  const nextSpecs = {
+    ...specs,
+    gallery_assets: galleryAssets,
+    gallery_images: galleryImages,
+    ai_image: { ...metadata, candidates: assets.map((asset) => ({ url: asset.url, public_id: asset.publicId })) },
+  };
+  const patch: Record<string, unknown> = { specifications: nextSpecs };
+  if (applyFirst && assets[0]?.url) patch.image_url = assets[0].url;
   const client = getAdminInsforge();
-  const { error } = await client.database.from('products').update({ image_url: asset.url, specifications: nextSpecs }).eq('tenant_id', tenantId).eq('id', product.id);
-  if (error) throw new Error(error.message || 'La imagen se generó pero no se pudo asociar al producto.');
+  const { error } = await client.database.from('products').update(patch).eq('tenant_id', tenantId).eq('id', product.id);
+  if (error) throw new Error(error.message || 'Las imágenes se generaron pero no se pudieron asociar al producto.');
 }
 
 export async function POST(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'products', action: 'update' });
   if (!auth.ok) return auth.response;
 
-  const body = await request.json().catch(() => ({})) as { productId?: unknown; mode?: unknown; instructions?: unknown };
+  const body = await request.json().catch(() => ({})) as { productId?: unknown; mode?: unknown; instructions?: unknown; candidateCount?: unknown; applyFirst?: unknown; referenceUrls?: unknown };
   const productId = clean(body.productId, 140);
   const mode: Mode = body.mode === 'improve' ? 'improve' : 'generate';
   const instructions = clean(body.instructions, MAX_INSTRUCTIONS);
+  const referenceUrls = Array.isArray(body.referenceUrls)
+    ? Array.from(new Set(body.referenceUrls.map((value) => clean(value, 2000)).filter((url) => /^https:\/\//i.test(url)))).slice(0, 3)
+    : [];
+  const candidateCount = Math.min(2, Math.max(1, Math.trunc(Number(body.candidateCount || 1)) || 1));
+  const applyFirst = body.applyFirst !== false;
   if (!productId) return NextResponse.json({ error: 'Selecciona un producto guardado.' }, { status: 400 });
 
   try {
@@ -169,47 +194,84 @@ export async function POST(request: NextRequest) {
 
     const openRouter = await getOpenRouterCredentials();
     if (!openRouter) return NextResponse.json({ error: 'OpenRouter no está configurado. Añade la API en Administrador > Integraciones para habilitar generación de imágenes.' }, { status: 503 });
-    const model = await chooseImageModel(openRouter.apiKey, openRouter.appName, openRouter.siteUrl, mode);
-    const prompt = buildPrompt(product, mode, instructions);
-    const payload: Record<string, unknown> = { model: model.id, prompt, n: 1 };
-    if (supports(model, 'aspect_ratio')) payload.aspect_ratio = '1:1';
-    if (supports(model, 'resolution')) payload.resolution = '1K';
-    if (supports(model, 'output_format')) payload.output_format = 'webp';
-    if (mode === 'improve') payload.input_references = [{ type: 'image_url', image_url: { url: product.image_url } }];
+    const model = await chooseImageModel(openRouter.apiKey, openRouter.appName, openRouter.siteUrl, mode, mode === 'improve' || referenceUrls.length > 0);
+    const prompt = `${buildPrompt(product, mode, instructions)}${referenceUrls.length ? '\n\nSe adjuntan referencias visuales elegidas por el administrador. Úsalas solo para comprender identidad, forma, proporción y presentación del producto. No copies logos, marcas de agua, textos ni fondos de terceros.' : ''}`;
+    const callImages = async (count: number, suffix = '') => {
+      const payload: Record<string, unknown> = { model: model.id, prompt: suffix ? `${prompt}\n\n${suffix}` : prompt, n: count };
+      if (supports(model, 'aspect_ratio')) payload.aspect_ratio = '1:1';
+      if (supports(model, 'resolution')) payload.resolution = '1K';
+      if (supports(model, 'output_format')) payload.output_format = 'webp';
+      const inputReferences = Array.from(new Set([
+        ...(mode === 'improve' && product.image_url ? [product.image_url] : []),
+        ...referenceUrls,
+      ])).slice(0, 4);
+      if (inputReferences.length) payload.input_references = inputReferences.map((url) => ({ type: 'image_url', image_url: { url } }));
+      const response = await fetch('https://openrouter.ai/api/v1/images', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${openRouter.apiKey}`,
+          'Content-Type': 'application/json',
+          'X-Title': openRouter.appName,
+          ...(openRouter.siteUrl ? { 'HTTP-Referer': openRouter.siteUrl } : {}),
+        },
+        body: JSON.stringify(payload),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(105_000),
+      });
+      const json = await response.json().catch(() => ({})) as { data?: Array<{ b64_json?: string; media_type?: string }>; error?: { message?: string }; usage?: { cost?: number } };
+      if (!response.ok) throw new Error(json.error?.message || `El proveedor de IA rechazó la solicitud (HTTP ${response.status}).`);
+      return {
+        images: (Array.isArray(json.data) ? json.data : []).filter((item) => item?.b64_json),
+        cost: typeof json.usage?.cost === 'number' ? json.usage.cost : 0,
+      };
+    };
 
-    const response = await fetch('https://openrouter.ai/api/v1/images', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openRouter.apiKey}`,
-        'Content-Type': 'application/json',
-        'X-Title': openRouter.appName,
-        ...(openRouter.siteUrl ? { 'HTTP-Referer': openRouter.siteUrl } : {}),
-      },
-      body: JSON.stringify(payload),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(105_000),
-    });
-    const json = await response.json().catch(() => ({})) as { data?: Array<{ b64_json?: string; media_type?: string }>; error?: { message?: string }; usage?: { cost?: number } };
-    if (!response.ok) throw new Error(json.error?.message || `El proveedor de IA rechazó la solicitud (HTTP ${response.status}).`);
-    const generated = Array.isArray(json.data) ? json.data.find((item) => item?.b64_json) : undefined;
-    if (!generated?.b64_json) throw new Error('El modelo respondió sin una imagen utilizable.');
-    if (generated.b64_json.length > 22_000_000) throw new Error('La imagen generada excede el límite seguro de tamaño.');
-    const mime = clean(generated.media_type, 80) || 'image/png';
-    if (!/^image\/(png|jpeg|jpg|webp)$/i.test(mime)) throw new Error(`Formato de imagen no compatible: ${mime}.`);
+    const generated: Array<{ b64_json?: string; media_type?: string }> = [];
+    let reportedCost = 0;
+    for (let index = 0; index < candidateCount; index += 1) {
+      const run = await callImages(
+        1,
+        index === 0 ? '' : `Alternativa ${index + 1}: cambia el encuadre o la iluminación de forma visible, manteniendo exactamente la identidad del mismo producto.`,
+      );
+      reportedCost += run.cost;
+      const image = run.images[0];
+      if (image?.b64_json) generated.push(image);
+    }
+    if (!generated.length) throw new Error('El modelo respondió sin una imagen utilizable.');
 
-    const asset = await uploadToCloudinary({ dataUrl: `data:${mime};base64,${generated.b64_json}`, folder: `fabrick/productos/ia/${slug(product.category_id || 'general')}` });
+    const assets = [];
+    for (const candidate of generated.slice(0, candidateCount)) {
+      if (!candidate.b64_json) continue;
+      if (candidate.b64_json.length > 22_000_000) throw new Error('Una imagen generada excede el límite seguro de tamaño.');
+      const mime = clean(candidate.media_type, 80) || 'image/png';
+      if (!/^image\/(png|jpeg|jpg|webp)$/i.test(mime)) throw new Error(`Formato de imagen no compatible: ${mime}.`);
+      assets.push(await uploadToCloudinary({ dataUrl: `data:${mime};base64,${candidate.b64_json}`, folder: `fabrick/productos/ia/${slug(product.category_id || 'general')}` }));
+    }
+    if (!assets.length) throw new Error('No se pudo guardar ninguna alternativa de imagen.');
+
     const metadata = {
       provider: 'openrouter',
       model: model.id,
       mode,
       generated_at: new Date().toISOString(),
       instructions: instructions || null,
-      cost_usd: typeof json.usage?.cost === 'number' ? json.usage.cost : null,
-      public_id: asset.publicId,
+      cost_usd: reportedCost || null,
+      candidate_count: assets.length,
+      reference_urls: referenceUrls,
+      cover_applied: applyFirst,
     };
-    await persistProductImage(product, tenantId, asset, metadata);
+    await persistProductImages(product, tenantId, assets, metadata, applyFirst);
 
-    return NextResponse.json({ ok: true, url: asset.url, asset: { public_id: asset.publicId, width: asset.width, height: asset.height, bytes: asset.bytes }, model: model.id, mode, cost_usd: metadata.cost_usd });
+    return NextResponse.json({
+      ok: true,
+      url: assets[0].url,
+      candidates: assets.map((asset) => ({ url: asset.url, asset: { public_id: asset.publicId, width: asset.width, height: asset.height, bytes: asset.bytes } })),
+      asset: { public_id: assets[0].publicId, width: assets[0].width, height: assets[0].height, bytes: assets[0].bytes },
+      model: model.id,
+      mode,
+      applied: applyFirst,
+      cost_usd: metadata.cost_usd,
+    });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo generar la imagen.' }, { status: 500 });
   }

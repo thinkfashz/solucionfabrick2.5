@@ -34,6 +34,7 @@ export async function GET(request: Request) {
     .select('id, name, description, price, stock, image_url, specifications, featured, rating, delivery_days, discount_percentage, category_id')
     .eq('tenant_id', tenantId)
     .neq('activo', false)
+    .gt('stock', 0)
     .order('featured', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limit);

@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Cloud, FolderOpen, Image as ImageIcon, Loader2, Search, Upload, X } from 'lucide-react';
+import { Check, ChevronLeft, Cloud, FolderOpen, Image as ImageIcon, Loader2, Search, Upload, X } from 'lucide-react';
 
 type CloudinaryAsset = {
   id: string;
@@ -14,12 +14,17 @@ type CloudinaryAsset = {
   created_at: string;
   width: number;
   height: number;
+  folder?: string;
+  display_name?: string;
   source: 'cloudinary';
 };
+
+type CloudinaryFolder = { name: string; path: string; external_id?: string };
 
 type CloudinaryResponse = {
   assets?: CloudinaryAsset[];
   asset?: CloudinaryAsset;
+  folders?: CloudinaryFolder[];
   next_cursor?: string | null;
   error?: string;
   code?: string;
@@ -30,6 +35,9 @@ type FieldKind = 'Imagen' | 'Fondo' | 'Icono';
 type ActiveTarget = {
   input: HTMLInputElement;
   kind: FieldKind;
+  route: string;
+  selector: string;
+  cmsId: string;
 };
 
 const FIELD_LABELS: Record<string, FieldKind> = {
@@ -52,11 +60,34 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function cloudinaryFolderFromUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (!url.hostname.includes('cloudinary.com')) return '';
+    const parts = url.pathname.split('/').filter(Boolean);
+    const uploadIndex = parts.indexOf('upload');
+    if (uploadIndex < 0) return '';
+    let resource = parts.slice(uploadIndex + 1);
+    const versionIndex = resource.findIndex((part) => /^v\d+$/.test(part));
+    if (versionIndex >= 0) resource = resource.slice(versionIndex + 1);
+    if (resource.length <= 1) return '';
+    resource.pop();
+    return decodeURIComponent(resource.join('/'));
+  } catch {
+    return '';
+  }
+}
+
 export default function VisualCmsCloudinaryBridge() {
   const [target, setTarget] = useState<ActiveTarget | null>(null);
   const [open, setOpen] = useState(false);
   const [assets, setAssets] = useState<CloudinaryAsset[]>([]);
+  const [folders, setFolders] = useState<CloudinaryFolder[]>([]);
+  const [currentFolder, setCurrentFolder] = useState('');
+  const [assetsLoadedFor, setAssetsLoadedFor] = useState<string | null>(null);
+  const [foldersLoadedFor, setFoldersLoadedFor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [folderLoading, setFolderLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notConfigured, setNotConfigured] = useState(false);
@@ -67,12 +98,31 @@ export default function VisualCmsCloudinaryBridge() {
   const [lastApplied, setLastApplied] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const loadFolders = useCallback(async (folder = '') => {
+    setFolderLoading(true);
+    try {
+      const params = new URLSearchParams({ view: 'folders', max_results: '100' });
+      if (folder) params.set('folder', folder);
+      const response = await fetch(`/api/admin/cloudinary?${params.toString()}`, { cache: 'no-store', credentials: 'same-origin' });
+      const body = await response.json().catch(() => ({})) as CloudinaryResponse;
+      if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
+      setFolders(body.folders ?? []);
+      setFoldersLoadedFor(folder);
+    } catch (cause) {
+      setFoldersLoadedFor(folder);
+      setError(cause instanceof Error ? cause.message : 'No se pudieron cargar las carpetas de Cloudinary.');
+      setFolders([]);
+    } finally {
+      setFolderLoading(false);
+    }
+  }, []);
+
   const loadAssets = useCallback(async (cursor?: string | null, requestedPrefix?: string) => {
     setLoading(true);
     setError(null);
+    const activePrefix = requestedPrefix ?? prefix;
     try {
       const params = new URLSearchParams({ max_results: '60' });
-      const activePrefix = requestedPrefix ?? prefix;
       if (activePrefix.trim()) params.set('folder', activePrefix.trim());
       if (cursor) params.set('next_cursor', cursor);
       const response = await fetch(`/api/admin/cloudinary?${params.toString()}`, {
@@ -91,8 +141,10 @@ export default function VisualCmsCloudinaryBridge() {
       }
       setNotConfigured(false);
       setAssets((current) => cursor ? [...current, ...(body.assets ?? [])] : (body.assets ?? []));
+      setAssetsLoadedFor(activePrefix.trim());
       setNextCursor(body.next_cursor ?? null);
     } catch (cause) {
+      setAssetsLoadedFor(activePrefix.trim());
       setError(cause instanceof Error ? cause.message : 'No se pudo cargar Cloudinary.');
     } finally {
       setLoading(false);
@@ -120,7 +172,22 @@ export default function VisualCmsCloudinaryBridge() {
         button.addEventListener('click', (event) => {
           event.preventDefault();
           event.stopPropagation();
-          setTarget({ input, kind });
+          const root = label.closest<HTMLElement>('[data-visual-cms-editor-root="1"]');
+          setTarget({
+            input,
+            kind,
+            route: root?.dataset.currentRoute || '/',
+            selector: root?.dataset.selectedSelector || '',
+            cmsId: root?.dataset.selectedCmsId || '',
+          });
+          const detectedFolder = cloudinaryFolderFromUrl(input.value);
+          setCurrentFolder(detectedFolder);
+          setPrefix(detectedFolder);
+          setAssets([]);
+          setFolders([]);
+          setAssetsLoadedFor(null);
+          setFoldersLoadedFor(null);
+          setNextCursor(null);
           setLastApplied(null);
           setOpen(true);
         });
@@ -139,9 +206,10 @@ export default function VisualCmsCloudinaryBridge() {
   }, []);
 
   useEffect(() => {
-    if (!open || assets.length > 0 || loading || notConfigured) return;
-    void loadAssets(null);
-  }, [open, assets.length, loading, loadAssets, notConfigured]);
+    if (!open || notConfigured) return;
+    if (assetsLoadedFor !== currentFolder && !loading) void loadAssets(null, currentFolder);
+    if (foldersLoadedFor !== currentFolder && !folderLoading) void loadFolders(currentFolder);
+  }, [open, assetsLoadedFor, foldersLoadedFor, loading, folderLoading, loadAssets, loadFolders, notConfigured, currentFolder]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -181,12 +249,30 @@ export default function VisualCmsCloudinaryBridge() {
     }
   }
 
+  async function openFolder(folder: string) {
+    setCurrentFolder(folder);
+    setPrefix(folder);
+    setAssets([]);
+    setFolders([]);
+    setAssetsLoadedFor(null);
+    setFoldersLoadedFor(null);
+    setNextCursor(null);
+    await Promise.all([loadAssets(null, folder), loadFolders(folder)]);
+  }
+
+  function parentFolder(folder: string) {
+    const parts = folder.split('/').filter(Boolean);
+    parts.pop();
+    return parts.join('/');
+  }
+
   function applyAsset(asset: CloudinaryAsset) {
     if (!target?.input?.isConnected) {
       setError('El campo que estabas editando cambió. Vuelve a abrir Cloudinary desde el inspector.');
       return;
     }
     setNativeInputValue(target.input, asset.url);
+    window.postMessage({ type: 'cms:visual-cloudinary-apply', kind: target.kind, url: asset.url, publicId: asset.public_id, folder: asset.folder || '' }, window.location.origin);
     target.input.focus();
     target.input.blur();
     setLastApplied(asset.id);
@@ -214,6 +300,7 @@ export default function VisualCmsCloudinaryBridge() {
           <div className="min-w-0 flex-1">
             <p className="text-[8px] font-black uppercase tracking-[.18em] text-[#FFB000]">Cloudinary conectado</p>
             <h2 className="truncate text-sm font-black">Elegir {target?.kind?.toLowerCase() || 'recurso'}</h2>
+            <p className="truncate text-[8px] text-white/30">Aplicar en {target?.route || '/'}{target?.cmsId ? ` · ${target.cmsId}` : target?.selector ? ` · ${target.selector}` : ''}</p>
           </div>
           <button type="button" onClick={close} className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-white/55" aria-label="Cerrar Cloudinary"><X className="h-4 w-4" /></button>
         </header>
@@ -225,9 +312,16 @@ export default function VisualCmsCloudinaryBridge() {
           </label>
           <label className="flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-black/35 px-2.5">
             <FolderOpen className="h-3.5 w-3.5 shrink-0 text-white/30" />
-            <input value={prefix} onChange={(event) => setPrefix(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void loadAssets(null, prefix); }} placeholder="Prefijo/carpeta" className="min-w-0 flex-1 bg-transparent text-[10px] text-white outline-none placeholder:text-white/25" />
+            <input value={prefix} onChange={(event) => setPrefix(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void openFolder(prefix.trim()); }} placeholder="Prefijo/carpeta" className="min-w-0 flex-1 bg-transparent text-[10px] text-white outline-none placeholder:text-white/25" />
           </label>
-          <button type="button" onClick={() => void loadAssets(null, prefix)} disabled={loading} className="h-9 rounded-lg border border-white/10 px-3 text-[9px] font-black text-white/60 disabled:opacity-40">{loading ? 'Cargando…' : 'Filtrar'}</button>
+          <button type="button" onClick={() => void openFolder(prefix.trim())} disabled={loading} className="h-9 rounded-lg border border-white/10 px-3 text-[9px] font-black text-white/60 disabled:opacity-40">{loading ? 'Cargando…' : 'Filtrar'}</button>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-white/8 px-2.5 py-2 [scrollbar-width:none] sm:px-3">
+          <button type="button" onClick={() => void openFolder(parentFolder(currentFolder))} disabled={!currentFolder || folderLoading} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-white/10 bg-black/25 px-2.5 text-[8px] font-black text-white/50 disabled:opacity-25"><ChevronLeft className="h-3 w-3" /> Atrás</button>
+          <button type="button" onClick={() => void openFolder('')} className={`h-8 shrink-0 rounded-lg border px-2.5 text-[8px] font-black ${!currentFolder ? 'border-[#FFB000]/50 bg-[#FFB000]/10 text-[#FFB000]' : 'border-white/10 bg-black/25 text-white/45'}`}>Raíz</button>
+          {currentFolder ? <span className="max-w-[240px] shrink-0 truncate rounded-lg bg-white/5 px-2.5 py-2 text-[8px] font-bold text-white/38">{currentFolder}</span> : null}
+          {folderLoading ? <span className="inline-flex h-8 shrink-0 items-center gap-1 px-2 text-[8px] text-white/30"><Loader2 className="h-3 w-3 animate-spin" /> Carpetas</span> : folders.map((folder) => <button key={folder.path} type="button" onClick={() => void openFolder(folder.path)} className="inline-flex h-8 max-w-[210px] shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-black/25 px-2.5 text-[8px] font-black text-white/55 hover:border-[#FFB000]/35 hover:text-[#FFB000]"><FolderOpen className="h-3 w-3 shrink-0" /><span className="truncate">{folder.name}</span></button>)}
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/8 px-2.5 py-2 sm:px-3">
@@ -266,7 +360,7 @@ export default function VisualCmsCloudinaryBridge() {
                         <img src={asset.url} alt={asset.public_id} loading="lazy" className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]" />
                         {applied || current ? <span className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-[#FFB000] text-black"><Check className="h-3.5 w-3.5" /></span> : null}
                       </div>
-                      <div className="p-2"><p className="truncate text-[9px] font-bold text-white/65" title={asset.public_id}>{asset.public_id}</p><p className="mt-1 text-[8px] text-white/28">{asset.width}×{asset.height} · {formatBytes(asset.size_bytes)}</p></div>
+                      <div className="p-2"><p className="truncate text-[9px] font-bold text-white/65" title={asset.public_id}>{asset.display_name || asset.public_id.split('/').pop() || asset.public_id}</p><p className="mt-0.5 truncate text-[7px] text-[#FFB000]/55" title={asset.folder || ''}>{asset.folder || 'raíz'}</p><p className="mt-0.5 truncate text-[7px] text-white/22" title={asset.public_id}>{asset.public_id}</p><p className="mt-1 text-[8px] text-white/28">{asset.width}×{asset.height} · {formatBytes(asset.size_bytes)}</p></div>
                     </button>
                   );
                 })}

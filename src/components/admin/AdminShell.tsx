@@ -7,7 +7,7 @@ import {
   Activity, BarChart3, Bot, Boxes, Calculator, ChevronDown, ChevronRight,
   CircleDollarSign, FileText, Gauge, Globe2, Hammer, Image as ImageIcon,
   Inbox, KeyRound, LayoutDashboard, LayoutGrid, Link2, LogOut, Mail, Menu,
-  Newspaper, Package, Paintbrush, PanelLeftClose, PanelLeftOpen, Receipt,
+  MessagesSquare, Newspaper, Package, Paintbrush, PanelLeftClose, PanelLeftOpen, Receipt,
   Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Store,
   Terminal, Truck, User, Users, Wallet, X, type LucideIcon,
 } from 'lucide-react';
@@ -58,6 +58,7 @@ const NAV: NavSection[] = [
     id: 'catalog', label: 'Catálogo & inventario', icon: Package,
     items: [
       { href: '/admin/productos', label: 'Productos', description: 'Catálogo, precios y stock', icon: Package },
+      { href: '/admin/opiniones-productos', label: 'Opiniones de productos', description: 'Reseñas, respuestas y análisis IA', icon: MessagesSquare },
       { href: '/admin/inventario', label: 'Inventario', description: 'Existencias y movimientos', icon: Boxes, exact: true },
       { href: '/admin/inventario/scan', label: 'Escáner de inventario', description: 'EAN, SKU y movimientos rápidos', icon: Activity },
       { href: '/admin/materiales', label: 'Materiales', description: 'Materiales y cotización', icon: Hammer },

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Bot, Braces, Home, LayoutDashboard } from 'lucide-react';
 import HomeVisualEditorClient from './HomeVisualEditorClient';
 import UniversalVisualEditorClient from './UniversalVisualEditorClient';
+import VisualCmsCloudinaryBridge from './VisualCmsCloudinaryBridge';
+import VisualCmsCloudinaryPolish from './VisualCmsCloudinaryPolish';
 
 type Workspace = 'home' | 'site' | 'ai';
 
@@ -71,7 +73,7 @@ export default function UnifiedCmsEditorClient() {
 
       <div className="mx-auto max-w-[1800px]">
         {workspace === 'home' ? <div className="sf-home-cms [&_header]:top-[58px]"><HomeVisualEditorClient /></div> : null}
-        {workspace === 'site' ? <div className="[&_header]:top-[58px]"><UniversalVisualEditorClient /></div> : null}
+        {workspace === 'site' ? <div className="[&_header]:top-0"><UniversalVisualEditorClient /><VisualCmsCloudinaryBridge /><VisualCmsCloudinaryPolish /></div> : null}
         {workspace === 'ai' ? (
           <div className="h-[calc(100dvh-9rem)] min-h-[620px] overflow-hidden bg-[#0B0C0E] sm:m-3 sm:rounded-2xl sm:border sm:border-white/8">
             <div className="flex min-h-11 items-center justify-between gap-3 border-b border-white/8 bg-[#111214] px-4 text-[9px] font-black uppercase tracking-[.13em] text-white/40">

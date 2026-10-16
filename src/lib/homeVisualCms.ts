@@ -22,6 +22,19 @@ export interface HomeVisualSectionStyle {
   duration?: number;
 }
 
+export interface HomeVisualSectionLockState {
+  move?: boolean;
+  remove?: boolean;
+  content?: boolean;
+  style?: boolean;
+}
+
+export interface HomeVisualSectionEditorState {
+  lock?: HomeVisualSectionLockState;
+  trashed?: boolean;
+  trashedAt?: string;
+}
+
 export interface HomeVisualSection {
   id: string;
   type: HomeVisualSectionType;
@@ -30,6 +43,7 @@ export interface HomeVisualSection {
   order: number;
   style: HomeVisualSectionStyle;
   content: Record<string, unknown>;
+  editor?: HomeVisualSectionEditorState;
 }
 
 export interface HomePageContent {

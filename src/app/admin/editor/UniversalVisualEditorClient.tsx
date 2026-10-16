@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
+  ArchiveRestore,
+  ChevronDown,
   Eye,
   Globe2,
   Image as ImageIcon,
@@ -10,6 +12,7 @@ import {
   LayoutGrid,
   Link2,
   Loader2,
+  Lock,
   Monitor,
   Paintbrush,
   RotateCcw,
@@ -19,6 +22,7 @@ import {
   Tablet,
   Trash2,
   Type,
+  Unlock,
   X,
 } from 'lucide-react';
 import {
@@ -30,6 +34,7 @@ import {
   upsertVisualElement,
   type VisualCmsDevice,
   type VisualCmsElementOverride,
+  type VisualCmsLockState,
   type VisualCmsOverridesContent,
   type VisualCmsStylePatch,
 } from '@/lib/visualCmsOverrides';
@@ -54,6 +59,7 @@ const PAGE_PRESETS = [
 
 type Selection = {
   selector: string;
+  cmsId: string | null;
   similarSelector: string | null;
   similarCount: number;
   tag: string;
@@ -74,18 +80,70 @@ type ElementScope = 'page' | 'global';
 type TargetMode = 'single' | 'similar';
 type MobilePanel = 'pages' | 'inspector' | null;
 type InspectorTab = 'content' | 'appearance' | 'layout';
-type NativeInspectorControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
-const widthFor: Record<VisualCmsDevice, string> = {
-  desktop: '100%',
-  tablet: '768px',
-  mobile: '390px',
+const DEFAULT_CANVAS_WIDTH: Record<VisualCmsDevice, number> = {
+  desktop: 1440,
+  tablet: 768,
+  mobile: 390,
 };
+
+const CANVAS_WIDTH_PRESETS = [360, 390, 412, 430, 768, 1024, 1280, 1440, 1920] as const;
+
+const CONTROL_HINTS: Record<string, string> = {
+  'Abrir cualquier ruta': 'Escribe la URL interna que quieres cargar dentro del editor.',
+  'Destino del enlace': 'Define a qué página o URL llevará este botón o enlace.',
+  'URL / Cloudinary': 'Reemplaza la imagen manteniendo el mismo bloque y su posición.',
+  'Texto alternativo': 'Describe la imagen para accesibilidad y SEO.',
+  'Ajuste': 'Controla cómo se recorta o contiene la imagen dentro de su caja.',
+  'Encuadre': 'Mueve el punto visible de la imagen sin cambiar el bloque.',
+  'Reemplazar por SVG / PNG': 'Sustituye únicamente el icono seleccionado.',
+  'Descripción accesible': 'Texto que lectores de pantalla usarán para este icono.',
+  'Texto / icono': 'Cambia el color visible de letras e iconos del elemento seleccionado.',
+  'Fondo': 'Cambia el color de fondo del elemento sin alterar su contenido.',
+  'Imagen de fondo': 'Aplica una imagen detrás del contenido del elemento.',
+  'Ajuste fondo': 'Define cómo la imagen de fondo ocupa el área disponible.',
+  'Posición': 'Mueve la imagen de fondo dentro del elemento.',
+  'Tipografía': 'Cambia la familia tipográfica de este elemento.',
+  'Tamaño': 'Cambia el tamaño del texto en la capa responsive activa.',
+  'Peso': 'Ajusta el grosor visual del texto.',
+  'Interlineado': 'Controla el espacio vertical entre líneas de texto.',
+  'Tracking': 'Controla la separación horizontal entre letras.',
+  'Alineación': 'Alinea el contenido textual a izquierda, centro, derecha o justificado.',
+  'Radio': 'Redondea las esquinas del elemento.',
+  'Grosor borde': 'Define el espesor del borde.',
+  'Color borde': 'Cambia únicamente el color del borde.',
+  'Sombra': 'Añade o modifica la sombra exterior del elemento.',
+  'Padding': 'Espacio interior entre el contenido y los bordes.',
+  'Margen': 'Espacio exterior que separa este elemento de los demás.',
+  'Ancho': 'Fija el ancho del elemento en la capa activa.',
+  'Ancho máx.': 'Limita cuánto puede crecer horizontalmente.',
+  'Altura': 'Fija la altura del elemento.',
+  'Altura mín.': 'Garantiza una altura mínima aunque cambie el contenido.',
+  'Gap': 'Separa los hijos internos de layouts flex o grid.',
+  'Opacidad': 'Controla la transparencia completa del elemento.',
+  'Escala': 'Amplía o reduce visualmente el elemento sin rehacer su layout.',
+  'Origen escala': 'Define desde qué punto se aplica la ampliación o reducción.',
+};
+
+function FieldHelp({ label }: { label: string }) {
+  const hint = CONTROL_HINTS[label];
+  return hint ? <small className="block text-[8px] leading-3 text-white/28">{hint}</small> : null;
+}
+
+function cssColorInputValue(value: string) {
+  const clean = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(clean)) return clean;
+  if (/^#[0-9a-f]{3}$/i.test(clean)) return '#' + clean.slice(1).split('').map((part) => part + part).join('');
+  const rgb = clean.match(/rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)/i);
+  if (!rgb) return '#000000';
+  return '#' + [rgb[1], rgb[2], rgb[3]].map((part) => Math.max(0, Math.min(255, Math.round(Number(part)))).toString(16).padStart(2, '0')).join('');
+}
 
 function Field({ label, value, onChange, placeholder = '' }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
   return (
     <label className="grid min-w-0 gap-1">
-      <span className="truncate text-[8px] font-black uppercase tracking-[.12em] text-white/38">{label}</span>
+      <span className="text-[8px] font-black uppercase tracking-[.12em] text-white/48">{label}</span>
+      <FieldHelp label={label} />
       <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="h-9 min-w-0 rounded-lg border border-white/10 bg-black/30 px-2.5 text-[11px] text-white outline-none transition focus:border-[#FFB000]/60" />
     </label>
   );
@@ -94,7 +152,8 @@ function Field({ label, value, onChange, placeholder = '' }: { label: string; va
 function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
   return (
     <label className="grid min-w-0 gap-1">
-      <span className="truncate text-[8px] font-black uppercase tracking-[.12em] text-white/38">{label}</span>
+      <span className="text-[8px] font-black uppercase tracking-[.12em] text-white/48">{label}</span>
+      <FieldHelp label={label} />
       <select value={value} onChange={(event) => onChange(event.target.value)} className="h-9 min-w-0 rounded-lg border border-white/10 bg-black/30 px-2.5 text-[11px] text-white outline-none transition focus:border-[#FFB000]/60">
         {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
       </select>
@@ -103,12 +162,13 @@ function SelectField({ label, value, onChange, options }: { label: string; value
 }
 
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  const color = /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
+  const color = cssColorInputValue(value);
   return (
     <label className="grid min-w-0 gap-1">
-      <span className="truncate text-[8px] font-black uppercase tracking-[.12em] text-white/38">{label}</span>
+      <span className="text-[8px] font-black uppercase tracking-[.12em] text-white/48">{label}</span>
+      <FieldHelp label={label} />
       <div className="flex h-9 min-w-0 items-center gap-1.5 rounded-lg border border-white/10 bg-black/30 px-1.5">
-        <input type="color" value={color} onChange={(event) => onChange(event.target.value)} className="h-6 w-7 shrink-0 cursor-pointer border-0 bg-transparent p-0" />
+        <input type="color" value={color} onInput={(event) => onChange(event.currentTarget.value)} className="h-6 w-7 shrink-0 cursor-pointer border-0 bg-transparent p-0" />
         <input value={value} onChange={(event) => onChange(event.target.value)} className="min-w-0 flex-1 bg-transparent text-[10px] text-white outline-none" />
       </div>
     </label>
@@ -145,17 +205,18 @@ function extractBackgroundUrl(value: string): string {
   return match?.[1] || clean;
 }
 
-function normalizeCaption(value: string | null | undefined) {
-  return (value || '').replace(/\s+/g, ' ').trim();
-}
-
 export default function UniversalVisualEditorClient() {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const [published, setPublished] = useState<VisualCmsOverridesContent>(DEFAULT_VISUAL_CMS_OVERRIDES);
   const [draft, setDraft] = useState<VisualCmsOverridesContent>(DEFAULT_VISUAL_CMS_OVERRIDES);
   const [route, setRoute] = useState('/');
   const [routeInput, setRouteInput] = useState('/');
   const [device, setDevice] = useState<VisualCmsDevice>('desktop');
+  const [canvasWidth, setCanvasWidth] = useState(DEFAULT_CANVAS_WIDTH.desktop);
+  const [zoomMode, setZoomMode] = useState<'fit' | 'custom'>('fit');
+  const [canvasZoom, setCanvasZoom] = useState(1);
+  const [canvasBounds, setCanvasBounds] = useState({ width: 0, height: 0 });
   const [styleScope, setStyleScope] = useState<StyleScope>('desktop');
   const [elementScope, setElementScope] = useState<ElementScope>('page');
   const [targetMode, setTargetMode] = useState<TargetMode>('single');
@@ -213,10 +274,25 @@ export default function UniversalVisualEditorClient() {
     if (window.innerWidth < 640) {
       setDevice('mobile');
       setStyleScope('mobile');
+      setCanvasWidth(DEFAULT_CANVAS_WIDTH.mobile);
     } else if (window.innerWidth < 1180) {
       setDevice('tablet');
       setStyleScope('tablet');
+      setCanvasWidth(DEFAULT_CANVAS_WIDTH.tablet);
     }
+  }, []);
+
+  useEffect(() => {
+    const host = canvasHostRef.current;
+    if (!host || typeof ResizeObserver === 'undefined') return;
+    const update = () => {
+      const rect = host.getBoundingClientRect();
+      setCanvasBounds({ width: Math.max(0, rect.width), height: Math.max(0, rect.height) });
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(host);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -234,7 +310,7 @@ export default function UniversalVisualEditorClient() {
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; route?: string; element?: Selection; action?: string; value?: string; selector?: string; x?: number; y?: number } | null;
+      const data = event.data as { type?: string; route?: string; element?: Selection; action?: string; value?: string; selector?: string; x?: number; y?: number; kind?: 'Imagen' | 'Fondo' | 'Icono'; url?: string; publicId?: string; folder?: string } | null;
       if (data?.type === 'cms:preview-ready' || data?.type === 'cms:visual-ready') {
         setIframeReady(true);
         sendPreview(draft);
@@ -254,18 +330,39 @@ export default function UniversalVisualEditorClient() {
       if (data?.type === 'cms:visual-inline-action' && selection) {
         const value = typeof data.value === 'string' ? data.value : '';
         switch (data.action) {
-          case 'text': updateSelected({ text: value }); break;
-          case 'color': patchStyle('color', value); break;
-          case 'background': patchStyle('backgroundColor', value); break;
-          case 'font-size': patchStyle('fontSize', value); break;
-          case 'font-weight': patchStyle('fontWeight', value); break;
-          case 'text-align': patchStyle('textAlign', value); break;
-          case 'border-radius': patchStyle('borderRadius', value); break;
+          case 'text': updateSelected({ text: value }); setInspectorTab('content'); break;
+          case 'href': updateSelected({ href: value }); setInspectorTab('content'); break;
+          case 'image-url': updateSelected({ src: value }); setInspectorTab('content'); break;
+          case 'icon-url': updateSelected({ iconUrl: value }); setInspectorTab('content'); break;
+          case 'color': patchStyle('color', value); setInspectorTab('appearance'); break;
+          case 'background': patchStyle('backgroundColor', value); setInspectorTab('appearance'); break;
+          case 'background-image': patchBackgroundImage(value); setInspectorTab('appearance'); break;
+          case 'font-size': patchStyle('fontSize', value); setInspectorTab('appearance'); break;
+          case 'font-weight': patchStyle('fontWeight', value); setInspectorTab('appearance'); break;
+          case 'text-align': patchStyle('textAlign', value); setInspectorTab('appearance'); break;
+          case 'border-radius': patchStyle('borderRadius', value); setInspectorTab('appearance'); break;
+          case 'width': patchStyle('width', value); setInspectorTab('layout'); break;
+          case 'height': patchStyle('height', value); setInspectorTab('layout'); break;
+          case 'transform': patchStyle('transform', value); setInspectorTab('layout'); break;
           case 'image':
           case 'focus-text': setInspectorTab('content'); break;
           case 'advanced': setInspectorTab('appearance'); break;
           default: break;
         }
+        if (window.innerWidth < 1280) setMobilePanel('inspector');
+      }
+      if (data?.type === 'cms:visual-cloudinary-apply' && selection && typeof data.url === 'string') {
+        if (data.kind === 'Imagen') {
+          updateSelected({ src: data.url });
+          setInspectorTab('content');
+        } else if (data.kind === 'Fondo') {
+          patchBackgroundImage(data.url);
+          setInspectorTab('appearance');
+        } else if (data.kind === 'Icono') {
+          updateSelected({ iconUrl: data.url });
+          setInspectorTab('content');
+        }
+        setStatus(`Cloudinary aplicado${data.publicId ? ` · ${data.publicId}` : ''}.`);
         if (window.innerWidth < 1280) setMobilePanel('inspector');
       }
       if (data?.type === 'cms:visual-image-position' && selection?.isImage && typeof data.x === 'number' && typeof data.y === 'number') {
@@ -295,17 +392,31 @@ export default function UniversalVisualEditorClient() {
 
   function updateSelected(patch: Partial<VisualCmsElementOverride>) {
     if (!selection || !targetSelector) return;
-    setDraft((current) => upsertVisualElement(current, targetRoute, targetSelector, { label: selection.label, ...patch }));
+    const touchesContent = ['text', 'href', 'src', 'alt', 'iconUrl', 'iconAlt'].some((key) => key in patch);
+    if (touchesContent && override?.lock?.content === true) {
+      setStatus('El contenido de este elemento está bloqueado. Desbloquéalo para editarlo.');
+      return;
+    }
+    const identityPatch = targetMode === 'single' && selection.cmsId ? { cmsId: selection.cmsId } : {};
+    setDraft((current) => upsertVisualElement(current, targetRoute, targetSelector, { label: selection.label, ...identityPatch, ...patch }));
   }
 
   function patchStyle(field: keyof VisualCmsStylePatch, value: string) {
     if (!selection || !targetSelector) return;
+    if (override?.lock?.style === true) {
+      setStatus('El diseño de este elemento está bloqueado. Desbloquéalo para editar estilos.');
+      return;
+    }
     const nextStyle = { ...(override?.styles?.[styleScope] || {}), [field]: value };
     updateSelected({ styles: { [styleScope]: nextStyle } });
   }
 
   function patchBackgroundImage(value: string) {
     if (!selection || !targetSelector) return;
+    if (override?.lock?.style === true) {
+      setStatus('El diseño de este elemento está bloqueado. Desbloquéalo para cambiar el fondo.');
+      return;
+    }
     const clean = value.trim();
     const backgroundImage = clean ? `url("${clean.replace(/"/g, '\\"')}")` : 'none';
     const nextStyle = {
@@ -316,70 +427,38 @@ export default function UniversalVisualEditorClient() {
     updateSelected({ styles: { [styleScope]: nextStyle } });
   }
 
-  // The contextual quick editor lives in a sibling component and updates the
-  // advanced inspector controls programmatically. React 19 can legitimately
-  // ignore those synthetic value changes in some cases. Listen to the native
-  // input/change events as a reliability bridge so the draft remains the one
-  // source of truth even when the contextual toolbar initiated the edit.
-  useEffect(() => {
-    const handler = (event: Event) => {
-      const control = event.target;
-      if (!(control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement || control instanceof HTMLSelectElement)) return;
-      if (!control.closest('[data-visual-cms-editor-root="1"]')) return;
-      const label = control.closest('label');
-      const caption = normalizeCaption(label?.querySelector<HTMLElement>(':scope > span')?.textContent);
-      if (!caption) return;
-      const value = control.value;
-
-      switch (caption) {
-        case 'Texto': updateSelected({ text: value }); break;
-        case 'Destino del enlace': updateSelected({ href: value }); break;
-        case 'URL / Cloudinary': updateSelected({ src: value }); break;
-        case 'Texto alternativo': updateSelected({ alt: value }); break;
-        case 'Reemplazar por SVG / PNG': updateSelected({ iconUrl: value }); break;
-        case 'Descripción accesible': updateSelected({ iconAlt: value }); break;
-        case 'Texto / icono': patchStyle('color', value); break;
-        case 'Fondo': patchStyle('backgroundColor', value); break;
-        case 'Imagen de fondo': patchBackgroundImage(value); break;
-        case 'Ajuste fondo': patchStyle('backgroundSize', value); break;
-        case 'Posición': patchStyle('backgroundPosition', value); break;
-        case 'Tipografía': patchStyle('fontFamily', value); break;
-        case 'Tamaño': patchStyle('fontSize', value); break;
-        case 'Peso': patchStyle('fontWeight', value); break;
-        case 'Interlineado': patchStyle('lineHeight', value); break;
-        case 'Tracking': patchStyle('letterSpacing', value); break;
-        case 'Alineación': patchStyle('textAlign', value); break;
-        case 'Radio': patchStyle('borderRadius', value); break;
-        case 'Grosor borde': patchStyle('borderWidth', value); break;
-        case 'Color borde': patchStyle('borderColor', value); break;
-        case 'Sombra': patchStyle('boxShadow', value); break;
-        case 'Ajuste': patchStyle('objectFit', value); break;
-        case 'Encuadre': patchStyle('objectPosition', value); break;
-        case 'Padding': patchStyle('padding', value); break;
-        case 'Margen': patchStyle('margin', value); break;
-        case 'Ancho': patchStyle('width', value); break;
-        case 'Ancho máx.': patchStyle('maxWidth', value); break;
-        case 'Altura': patchStyle('height', value); break;
-        case 'Altura mín.': patchStyle('minHeight', value); break;
-        case 'Gap': patchStyle('gap', value); break;
-        case 'Opacidad': patchStyle('opacity', value); break;
-        default: break;
-      }
-    };
-
-    document.addEventListener('input', handler, true);
-    document.addEventListener('change', handler, true);
-    return () => {
-      document.removeEventListener('input', handler, true);
-      document.removeEventListener('change', handler, true);
-    };
-  }, [selection, targetSelector, targetRoute, styleScope, override]);
-
   function resetSelected() {
     if (!selection || !targetSelector) return;
+    if (override?.lock?.remove === true) {
+      setStatus('Este elemento está protegido contra eliminación/restauración.');
+      return;
+    }
     setDraft((current) => removeVisualElement(current, targetRoute, targetSelector));
     const targetLabel = targetMode === 'similar' ? `${selection.similarCount} elementos similares` : 'este elemento';
     setStatus(`Personalización de ${targetLabel} eliminada${elementScope === 'global' ? ' globalmente' : ' de esta página'}.`);
+  }
+
+  function toggleLock(field: keyof VisualCmsLockState) {
+    if (!selection || !targetSelector) return;
+    const next = override?.lock?.[field] !== true;
+    updateSelected({ lock: { [field]: next } });
+    setStatus(`${next ? 'Bloqueado' : 'Desbloqueado'}: ${field === 'content' ? 'contenido' : field === 'style' ? 'diseño' : field === 'remove' ? 'eliminación' : 'movimiento'}.`);
+  }
+
+  function trashSelected() {
+    if (!selection || !targetSelector) return;
+    if (override?.lock?.remove === true) {
+      setStatus('El elemento está protegido contra eliminación. Desbloquea “Eliminar” primero.');
+      return;
+    }
+    updateSelected({ trashed: true, trashedAt: new Date().toISOString() });
+    setStatus('Elemento enviado a la papelera del borrador. Puedes restaurarlo antes de publicar.');
+  }
+
+  function restoreTrashedSelected() {
+    if (!selection || !targetSelector) return;
+    updateSelected({ trashed: false, trashedAt: '' });
+    setStatus('Elemento restaurado desde la papelera.');
   }
 
   function navigate(nextRoute: string) {
@@ -397,6 +476,17 @@ export default function UniversalVisualEditorClient() {
   function chooseDevice(next: VisualCmsDevice) {
     setDevice(next);
     setStyleScope(next);
+    setCanvasWidth(DEFAULT_CANVAS_WIDTH[next]);
+    setZoomMode('fit');
+  }
+
+  function chooseCanvasWidth(nextWidth: number) {
+    const safe = Math.max(320, Math.min(2560, Math.round(nextWidth || DEFAULT_CANVAS_WIDTH.desktop)));
+    setCanvasWidth(safe);
+    const nextDevice: VisualCmsDevice = safe <= 640 ? 'mobile' : safe <= 1024 ? 'tablet' : 'desktop';
+    setDevice(nextDevice);
+    setStyleScope(nextDevice);
+    setZoomMode('fit');
   }
 
   async function publish() {
@@ -440,6 +530,10 @@ export default function UniversalVisualEditorClient() {
   }
 
   const previewSrc = `${route}${route.includes('?') ? '&' : '?'}cms=preview&cmsVisual=1`;
+  const fitZoom = canvasBounds.width > 0 ? Math.min(1, Math.max(0.12, canvasBounds.width / canvasWidth)) : 1;
+  const effectiveZoom = zoomMode === 'fit' ? fitZoom : Math.min(1.5, Math.max(0.12, canvasZoom));
+  const scaledCanvasWidth = Math.max(1, Math.round(canvasWidth * effectiveZoom));
+  const canvasHeight = Math.max(720, Math.round((canvasBounds.height || 720) / effectiveZoom));
   const computed = selection?.computed || {};
   const valueFor = (key: keyof VisualCmsStylePatch) => String(activeStyle[key] ?? computed[key] ?? '');
   const backgroundUrl = extractBackgroundUrl(valueFor('backgroundImage'));
@@ -487,11 +581,17 @@ export default function UniversalVisualEditorClient() {
         <div className="min-w-0 flex-1"><p className="text-[8px] font-black uppercase tracking-[.12em] text-white/30">{selection.tag}{selection.isIcon ? ' · icono' : ''}</p><h2 className="truncate text-xs font-black">{selection.label}</h2></div>
       </div>
 
-      <div className="mt-2 grid grid-cols-3 gap-1 rounded-lg bg-black/30 p-1">
-        {([['content', 'Contenido'], ['appearance', 'Apariencia'], ['layout', 'Medidas']] as Array<[InspectorTab, string]>).map(([key, label]) => (
-          <button key={key} type="button" onClick={() => setInspectorTab(key)} className={`h-8 rounded-md text-[8px] font-black ${inspectorTab === key ? 'bg-white/10 text-white' : 'text-white/35'}`}>{label}</button>
-        ))}
-      </div>
+      <label className="mt-2 grid gap-1.5 rounded-xl border border-white/9 bg-black/25 p-2.5">
+        <span className="text-[8px] font-black uppercase tracking-[.12em] text-[#FFB000]">Menú de edición</span>
+        <select value={inspectorTab} onChange={(event) => setInspectorTab(event.target.value as InspectorTab)} className="h-10 w-full rounded-lg border border-white/10 bg-[#111214] px-3 text-[10px] font-black text-white outline-none focus:border-[#FFB000]/60">
+          <option value="content">Contenido · texto, enlaces, imágenes y visibilidad</option>
+          <option value="appearance">Diseño · colores, tipografía, fondo y bordes</option>
+          <option value="layout">Medidas · tamaños, espacios, escala y responsive</option>
+        </select>
+        <p className="text-[8px] leading-3 text-white/32">
+          {inspectorTab === 'content' ? 'Modifica lo que contiene el elemento sin tocar su lógica funcional.' : inspectorTab === 'appearance' ? 'Cambia su apariencia visual; cada control explica exactamente qué modifica.' : 'Ajusta dimensiones y espaciados en PC, tablet, móvil o todos los dispositivos.'}
+        </p>
+      </label>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-2 [scrollbar-width:thin]">
         {inspectorTab === 'content' ? (
@@ -508,9 +608,35 @@ export default function UniversalVisualEditorClient() {
               <button type="button" onClick={() => setElementScope('global')} className={`inline-flex h-8 items-center justify-center gap-1 rounded-md text-[8px] font-black ${elementScope === 'global' ? 'bg-[#FFB000] text-black' : 'text-white/35'}`}><Globe2 className="h-3 w-3" /> Todo el sitio</button>
             </div>
 
-            {!editingSimilar && selection.textEditable ? <label className="grid gap-1"><span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-[.12em] text-white/38"><Type className="h-3 w-3" /> Texto</span><textarea value={override?.text ?? selection.text ?? ''} onChange={(event) => updateSelected({ text: event.target.value })} rows={3} className="min-h-20 resize-y rounded-lg border border-white/10 bg-black/30 p-2.5 text-[11px] leading-4 text-white outline-none focus:border-[#FFB000]/60" /></label> : null}
+            <div className="grid gap-2 rounded-xl border border-white/8 bg-black/25 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[8px] font-black uppercase tracking-[.12em] text-white/32">Identidad persistente</p>
+                  <p className="truncate text-[9px] font-bold text-white/58">{selection.cmsId ? `data-cms-id · ${selection.cmsId}` : 'Selector heredado · se conservará compatibilidad'}</p>
+                </div>
+                {override?.lock?.content || override?.lock?.style || override?.lock?.remove || override?.lock?.move ? <Lock className="h-3.5 w-3.5 shrink-0 text-[#FFB000]" /> : <Unlock className="h-3.5 w-3.5 shrink-0 text-white/25" />}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  ['content', 'Contenido'],
+                  ['style', 'Diseño'],
+                  ['move', 'Mover'],
+                  ['remove', 'Eliminar'],
+                ] as Array<[keyof VisualCmsLockState, string]>).map(([key, label]) => {
+                  const active = override?.lock?.[key] === true;
+                  return <button key={key} type="button" onClick={() => toggleLock(key)} className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border text-[8px] font-black ${active ? 'border-[#FFB000]/35 bg-[#FFB000]/10 text-[#FFD879]' : 'border-white/8 bg-white/[.03] text-white/42'}`}>{active ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}{label}</button>;
+                })}
+              </div>
+              {override?.trashed === true ? (
+                <button type="button" onClick={restoreTrashedSelected} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-emerald-400/20 bg-emerald-400/8 text-[9px] font-black text-emerald-200"><ArchiveRestore className="h-3.5 w-3.5" /> Restaurar desde papelera</button>
+              ) : (
+                <button type="button" onClick={trashSelected} disabled={override?.lock?.remove === true} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-red-400/15 bg-red-400/5 text-[9px] font-black text-red-200/70 disabled:opacity-30"><Trash2 className="h-3 w-3" /> Enviar a papelera</button>
+              )}
+            </div>
+
+            {!editingSimilar && selection.textEditable ? <label className="grid gap-1"><span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-[.12em] text-white/48"><Type className="h-3 w-3" /> Texto</span><small className="text-[8px] leading-3 text-white/28">Edita únicamente el texto visible del elemento seleccionado.</small><textarea value={override?.text ?? selection.text ?? ''} onChange={(event) => updateSelected({ text: event.target.value })} rows={3} className="min-h-20 resize-y rounded-lg border border-white/10 bg-black/30 p-2.5 text-[11px] leading-4 text-white outline-none focus:border-[#FFB000]/60" /></label> : null}
             {!editingSimilar && selection.isLink ? <Field label="Destino del enlace" value={override?.href ?? selection.href ?? ''} onChange={(value) => updateSelected({ href: value })} placeholder="/contacto" /> : null}
-            {!editingSimilar && selection.isImage ? <div className="grid gap-2 rounded-xl border border-[#FFB000]/15 bg-[#FFB000]/5 p-2.5"><div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[.12em] text-[#FFB000]"><ImageIcon className="h-3.5 w-3.5" /> Imagen seleccionada</div><Field label="URL / Cloudinary" value={override?.src ?? selection.src ?? ''} onChange={(value) => updateSelected({ src: value })} /><div className="grid grid-cols-2 gap-1.5"><Field label="Texto alternativo" value={override?.alt ?? selection.alt ?? ''} onChange={(value) => updateSelected({ alt: value })} /><SelectField label="Ajuste" value={valueFor('objectFit') || 'cover'} onChange={(value) => patchStyle('objectFit', value)} options={[["cover","Cubrir"],["contain","Contener"],["fill","Estirar"],["none","Original"],["scale-down","Reducir"]]} /></div><Field label="Encuadre" value={valueFor('objectPosition') || '50% 50%'} onChange={(value) => patchStyle('objectPosition', value)} placeholder="50% 50%" /><div className="grid grid-cols-3 gap-1">{[["0% 0%","↖"],["50% 0%","↑"],["100% 0%","↗"],["0% 50%","←"],["50% 50%","•"],["100% 50%","→"],["0% 100%","↙"],["50% 100%","↓"],["100% 100%","↘"]].map(([position, label]) => <button key={position} type="button" onClick={() => patchStyle('objectPosition', position)} className={`h-8 rounded-lg border text-xs ${valueFor('objectPosition') === position ? 'border-[#FFB000] bg-[#FFB000] text-black' : 'border-white/10 bg-black/20 text-white/55'}`} aria-label={`Encuadre ${position}`}>{label}</button>)}</div><p className="text-[8px] leading-4 text-white/42">Arrastra la imagen con mouse o un dedo para mover el encuadre. Ábrela o ciérrala con dos dedos para cambiar su escala sin alterar el espacio del texto.</p></div> : null}
+            {!editingSimilar && selection.isImage ? <div className="grid gap-2 rounded-xl border border-[#FFB000]/15 bg-[#FFB000]/5 p-2.5"><div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[.12em] text-[#FFB000]"><ImageIcon className="h-3.5 w-3.5" /> Imagen seleccionada</div><Field label="URL / Cloudinary" value={override?.src ?? selection.src ?? ''} onChange={(value) => updateSelected({ src: value })} /><div className="grid grid-cols-2 gap-1.5"><Field label="Texto alternativo" value={override?.alt ?? selection.alt ?? ''} onChange={(value) => updateSelected({ alt: value })} /><SelectField label="Ajuste" value={valueFor('objectFit') || 'cover'} onChange={(value) => patchStyle('objectFit', value)} options={[["cover","Cubrir"],["contain","Contener"],["fill","Estirar"],["none","Original"],["scale-down","Reducir"]]} /></div><Field label="Encuadre" value={valueFor('objectPosition') || '50% 50%'} onChange={(value) => patchStyle('objectPosition', value)} placeholder="50% 50%" /><div className="grid grid-cols-3 gap-1">{[["0% 0%","↖"],["50% 0%","↑"],["100% 0%","↗"],["0% 50%","←"],["50% 50%","•"],["100% 50%","→"],["0% 100%","↙"],["50% 100%","↓"],["100% 100%","↘"]].map(([position, label]) => <button key={position} type="button" onClick={() => patchStyle('objectPosition', position)} className={`h-8 rounded-lg border text-xs ${valueFor('objectPosition') === position ? 'border-[#FFB000] bg-[#FFB000] text-black' : 'border-white/10 bg-black/20 text-white/55'}`} aria-label={`Encuadre ${position}`}>{label}</button>)}</div><div className="grid grid-cols-4 gap-1">{[0.75, 1, 1.25, 1.5].map((scale) => <button key={scale} type="button" onClick={() => patchStyle('transform', `scale(${scale})`)} className="h-8 rounded-lg border border-white/10 bg-black/20 text-[8px] font-black text-white/55">{Math.round(scale * 100)}%</button>)}</div><p className="text-[8px] leading-4 text-white/42">Arrastra la imagen con mouse o un dedo para mover el encuadre. Ábrela o ciérrala con dos dedos para cambiar su escala con respuesta inmediata; también puedes usar 75/100/125/150%.</p></div> : null}
             {selection.isIcon ? <div className="grid gap-1.5 rounded-lg border border-[#FFB000]/12 bg-[#FFB000]/5 p-2"><div className="flex items-center gap-1 text-[8px] font-black uppercase text-[#FFB000]"><ImageIcon className="h-3 w-3" /> Icono</div><Field label="Reemplazar por SVG / PNG" value={override?.iconUrl ?? ''} onChange={(value) => updateSelected({ iconUrl: value })} placeholder="https://.../icono.svg" /><Field label="Descripción accesible" value={override?.iconAlt ?? ''} onChange={(value) => updateSelected({ iconAlt: value })} /></div> : null}
 
             <label className="flex items-center justify-between rounded-lg border border-white/8 bg-black/25 px-2.5 py-2"><span><b className="block text-[9px]">Ocultar {editingSimilar ? `${selection.similarCount} similares` : 'elemento'}</b><small className="text-[8px] text-white/30">No elimina lógica ni datos</small></span><input type="checkbox" checked={override?.hidden === true} onChange={(event) => updateSelected({ hidden: event.target.checked })} /></label>
@@ -552,13 +678,13 @@ export default function UniversalVisualEditorClient() {
   );
 
   return (
-    <div data-visual-cms-editor-root="1" className="relative flex h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden bg-[#08090A] text-white sm:rounded-xl xl:h-[calc(100dvh-6rem)] xl:min-h-[620px]">
+    <div data-visual-cms-editor-root="1" data-current-route={currentRoute} data-selected-selector={selection?.selector || ''} data-selected-cms-id={selection?.cmsId || ''} className="fixed inset-0 z-[90] flex h-[100dvh] w-screen min-h-0 flex-col overflow-hidden bg-[#08090A] text-white">
       <header className="flex min-h-12 shrink-0 items-center gap-2 border-b border-white/8 bg-[#08090A]/96 px-2.5 py-1.5 backdrop-blur-xl sm:min-h-14 sm:px-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[#FFB000]" /><p className="text-[8px] font-black uppercase tracking-[.15em] text-[#FFB000]">Visual CMS</p></div>
           <h1 className="truncate text-[11px] font-black sm:text-sm">Editor universal · <span className="text-white/45">{currentRoute}</span></h1>
         </div>
-        <Link href="/admin/editor/home-structure" className="hidden h-9 items-center gap-1.5 rounded-lg border border-white/10 px-3 text-[9px] font-black text-white/55 lg:inline-flex"><LayoutGrid className="h-3.5 w-3.5" /> Estructura Home</Link>
+        <Link href="/admin/editor/home-structure" className="inline-flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 text-[9px] font-black text-white/55 lg:w-auto lg:px-3"><LayoutGrid className="h-3.5 w-3.5" /><span className="hidden lg:inline">Estructura Home</span></Link>
         <button type="button" onClick={() => { setDraft(published); setStatus('Borrador restaurado a la versión publicada.'); }} disabled={!dirty || publishing} className="hidden h-10 shrink-0 items-center rounded-xl border border-white/10 px-3 text-[9px] font-black text-white/50 disabled:opacity-25 sm:inline-flex" title="Restaurar versión publicada"><RotateCcw className="h-3.5 w-3.5" /><span className="ml-1.5">Restaurar</span></button>
         <button type="button" onClick={publish} disabled={!dirty || publishing} className="hidden h-10 shrink-0 items-center gap-1.5 rounded-xl bg-[#FFB000] px-4 text-[9px] font-black text-black shadow-[0_8px_30px_rgba(255,176,0,.18)] disabled:opacity-35 sm:inline-flex">{publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}<span>Publicar</span></button>
       </header>
@@ -575,14 +701,26 @@ export default function UniversalVisualEditorClient() {
                 return <button key={item} type="button" onClick={() => chooseDevice(item)} className={`grid h-8 w-9 place-items-center rounded-lg transition ${device === item ? 'bg-[#FFB000] text-black shadow-sm' : 'text-white/38 hover:text-white/70'}`} title={item}><Icon className="h-3.5 w-3.5" /></button>;
               })}
             </div>
+            <select value={canvasWidth} onChange={(event) => chooseCanvasWidth(Number(event.target.value))} className="h-8 max-w-[92px] rounded-lg border border-white/10 bg-black/25 px-1.5 text-[8px] font-black text-white/65 outline-none" aria-label="Ancho del canvas">
+              {CANVAS_WIDTH_PRESETS.map((width) => <option key={width} value={width}>{width}px</option>)}
+            </select>
+            <div className="flex rounded-lg border border-white/10 bg-black/25 p-0.5">
+              <button type="button" onClick={() => setZoomMode('fit')} className={`h-8 rounded-md px-2 text-[8px] font-black ${zoomMode === 'fit' ? 'bg-[#FFB000] text-black' : 'text-white/40'}`}>Fit</button>
+              {[0.25, 0.5, 0.75, 1].map((zoom) => <button key={zoom} type="button" onClick={() => { setCanvasZoom(zoom); setZoomMode('custom'); }} className={`hidden h-8 rounded-md px-2 text-[8px] font-black sm:block ${zoomMode === 'custom' && Math.abs(canvasZoom - zoom) < 0.001 ? 'bg-white/10 text-white' : 'text-white/35'}`}>{Math.round(zoom * 100)}%</button>)}
+            </div>
             <span className="hidden max-w-[34vw] truncate text-[8px] font-bold text-white/30 sm:block">{status}</span>
             <span className={`ml-auto rounded-full px-2 py-1 text-[7px] font-black uppercase tracking-[.1em] ${dirty ? 'bg-[#FFB000]/12 text-[#FFB000]' : 'bg-emerald-500/10 text-emerald-300'}`}>{dirty ? 'Sin publicar' : 'Publicado'}</span>
             <button type="button" onClick={() => setMobilePanel('inspector')} className={`hidden h-9 items-center gap-1.5 rounded-xl border px-3 text-[8px] font-black sm:inline-flex xl:hidden ${selection ? 'border-[#FFB000]/35 bg-[#FFB000]/8 text-[#FFB000]' : 'border-white/10 text-white/45'}`}><SlidersHorizontal className="h-3.5 w-3.5" /> Inspector</button>
           </div>
 
-          <div className="flex min-h-0 flex-1 justify-center overflow-hidden bg-[radial-gradient(circle_at_top,rgba(255,176,0,.08),transparent_34%),#050506] p-0 sm:p-2.5">
-            <div className="h-full min-h-0 overflow-hidden bg-white shadow-2xl transition-[width] duration-300 sm:rounded-xl sm:ring-1 sm:ring-white/10" style={{ width: widthFor[device], maxWidth: '100%' }}>
-              <iframe ref={iframeRef} key={`${route}-${device}`} src={previewSrc} title={`Visual CMS ${route}`} className="h-full min-h-0 w-full border-0 bg-white" onLoad={() => setIframeReady(true)} />
+          <div ref={canvasHostRef} className="min-h-0 flex-1 overflow-auto bg-[#050506] p-0">
+            <div className="mx-auto min-h-full" style={{ width: `${scaledCanvasWidth}px` }}>
+              <div
+                className="origin-top-left overflow-hidden bg-white"
+                style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px`, transform: `scale(${effectiveZoom})`, transformOrigin: 'top left' }}
+              >
+                <iframe ref={iframeRef} key={`${route}-${canvasWidth}`} src={previewSrc} title={`Visual CMS ${route}`} className="h-full w-full border-0 bg-white" onLoad={() => setIframeReady(true)} />
+              </div>
             </div>
           </div>
 

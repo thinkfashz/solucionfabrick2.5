@@ -47,23 +47,39 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url);
     const folder = url.searchParams.get('folder') ?? '';
+    const view = url.searchParams.get('view') ?? 'assets';
     const maxResults = Math.min(Number(url.searchParams.get('max_results') ?? '50'), 100);
     const nextCursor = url.searchParams.get('next_cursor') ?? '';
+    const basicAuth = btoa(`${creds.api_key}:${creds.api_secret}`);
+
+    if (view === 'folders') {
+      const safePath = folder.split('/').map((part) => part.trim()).filter(Boolean).map(encodeURIComponent).join('/');
+      const foldersUrl = new URL(`https://api.cloudinary.com/v1_1/${encodeURIComponent(creds.cloud_name)}/folders${safePath ? `/${safePath}` : ''}`);
+      foldersUrl.searchParams.set('max_results', String(maxResults));
+      if (nextCursor) foldersUrl.searchParams.set('next_cursor', nextCursor);
+      const foldersRes = await fetch(foldersUrl.toString(), { headers: { Authorization: `Basic ${basicAuth}` }, cache: 'no-store' });
+      if (!foldersRes.ok) {
+        const body = await foldersRes.text().catch(() => '');
+        return NextResponse.json({ error: `Cloudinary folders error: ${foldersRes.status} ${body}`, code: 'CLOUDINARY_FOLDERS_ERROR' }, { status: 502 });
+      }
+      const foldersJson = await foldersRes.json() as { folders?: Array<{ name?: string; path?: string; external_id?: string }>; next_cursor?: string };
+      const folders = (foldersJson.folders ?? []).map((item) => ({ name: item.name || item.path?.split('/').pop() || '', path: item.path || item.name || '', external_id: item.external_id || '' })).filter((item) => item.path);
+      return NextResponse.json({ folders, next_cursor: foldersJson.next_cursor ?? null, source: 'cloudinary' });
+    }
 
     const apiUrl = new URL(`https://api.cloudinary.com/v1_1/${encodeURIComponent(creds.cloud_name)}/resources/image/upload`);
     apiUrl.searchParams.set('max_results', String(maxResults));
     if (folder) apiUrl.searchParams.set('prefix', folder);
     if (nextCursor) apiUrl.searchParams.set('next_cursor', nextCursor);
 
-    const basicAuth = btoa(`${creds.api_key}:${creds.api_secret}`);
     const res = await fetch(apiUrl.toString(), { headers: { Authorization: `Basic ${basicAuth}` }, cache: 'no-store' });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       return NextResponse.json({ error: `Cloudinary API error: ${res.status} ${body}`, code: 'CLOUDINARY_ERROR' }, { status: 502 });
     }
 
-    const json = await res.json() as { resources?: Array<{ public_id: string; secure_url: string; format: string; bytes: number; created_at: string; width: number; height: number }>; next_cursor?: string };
-    const assets = (json.resources ?? []).map((r) => ({ id: r.public_id, public_id: r.public_id, url: r.secure_url, format: r.format, size_bytes: r.bytes, created_at: r.created_at, width: r.width, height: r.height, source: 'cloudinary' as const }));
+    const json = await res.json() as { resources?: Array<{ public_id: string; secure_url: string; format: string; bytes: number; created_at: string; width: number; height: number; asset_folder?: string; folder?: string; display_name?: string }>; next_cursor?: string };
+    const assets = (json.resources ?? []).map((r) => ({ id: r.public_id, public_id: r.public_id, url: r.secure_url, format: r.format, size_bytes: r.bytes, created_at: r.created_at, width: r.width, height: r.height, folder: r.asset_folder || r.folder || r.public_id.split('/').slice(0, -1).join('/'), display_name: r.display_name || r.public_id.split('/').pop() || r.public_id, source: 'cloudinary' as const }));
     return NextResponse.json({ assets, next_cursor: json.next_cursor ?? null, source: 'cloudinary' });
   } catch (err) {
     return adminError(err, 'CLOUDINARY_LIST_FAILED');
@@ -103,9 +119,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Cloudinary upload error: ${uploadRes.status} ${body}`, code: 'CLOUDINARY_UPLOAD_ERROR' }, { status: 502 });
     }
 
-    const uploaded = await uploadRes.json() as { public_id: string; secure_url: string; format: string; bytes: number; created_at: string; width: number; height: number };
+    const uploaded = await uploadRes.json() as { public_id: string; secure_url: string; format: string; bytes: number; created_at: string; width: number; height: number; asset_folder?: string; display_name?: string };
     publishCmsEvent({ topic: 'media', action: 'upload' });
-    return NextResponse.json({ asset: { id: uploaded.public_id, public_id: uploaded.public_id, url: uploaded.secure_url, format: uploaded.format, size_bytes: uploaded.bytes, created_at: uploaded.created_at, width: uploaded.width, height: uploaded.height, source: 'cloudinary' as const }, url: uploaded.secure_url, source: 'cloudinary' });
+    return NextResponse.json({ asset: { id: uploaded.public_id, public_id: uploaded.public_id, url: uploaded.secure_url, format: uploaded.format, size_bytes: uploaded.bytes, created_at: uploaded.created_at, width: uploaded.width, height: uploaded.height, folder: uploaded.asset_folder || folder, display_name: uploaded.display_name || uploaded.public_id.split('/').pop() || uploaded.public_id, source: 'cloudinary' as const }, url: uploaded.secure_url, source: 'cloudinary' });
   } catch (err) {
     return adminError(err, 'CLOUDINARY_UPLOAD_FAILED');
   }

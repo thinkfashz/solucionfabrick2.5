@@ -64,7 +64,7 @@ function buildCreatePayload(body: Record<string, unknown>, tenantId: string) {
     stock: Math.round(stock),
     image_url: cleanText(body.image_url, 2000) || null,
     featured: body.featured === true,
-    activo: body.activo === true,
+    activo: body.activo === true && Math.round(stock) > 0,
     category_id: cleanText(body.category_id, 120) || null,
     source: cleanText(body.source, 120) || null,
     source_url: cleanText(body.source_url, 2000) || null,
@@ -198,6 +198,15 @@ export async function PATCH(request: NextRequest) {
   if (body.scan_format !== undefined) patch.scan_format = cleanFormat(body.scan_format) || null;
 
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'No hay campos válidos para actualizar.' }, { status: 400 });
+
+  if (patch.stock !== undefined && Number(patch.stock ?? 0) <= 0) {
+    patch.activo = false;
+  } else if (body.activo === true) {
+    const nextStock = patch.stock !== undefined
+      ? Number(patch.stock ?? 0)
+      : Number(((await insforgeAdmin.database.from('products').select('stock').eq('tenant_id', tenantId).eq('id', id).limit(1)).data?.[0] as { stock?: unknown } | undefined)?.stock ?? 0);
+    if (nextStock <= 0) return NextResponse.json({ error: 'Añade al menos 1 unidad de stock antes de activar el producto.' }, { status: 409 });
+  }
 
   const { data, error } = await insforgeAdmin.database
     .from('products')

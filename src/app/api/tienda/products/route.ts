@@ -38,6 +38,7 @@ export async function GET() {
         .from('products')
         .select(PRODUCT_SELECT)
         .neq('activo', false)
+        .gt('stock', 0)
         .order('featured', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(200),
@@ -63,7 +64,7 @@ export async function GET() {
     }, {});
 
     const products = ((productsResult.data ?? []) as ProductRow[])
-      .filter((product) => product.activo !== false)
+      .filter((product) => product.activo !== false && Number(product.stock ?? 0) > 0)
       .map((product) => ({
         ...product,
         category_name: resolveCatalogCategoryName(

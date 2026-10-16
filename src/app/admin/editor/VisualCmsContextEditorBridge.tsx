@@ -42,11 +42,14 @@ function normalizeText(value: string | null | undefined) {
 
 function cssColorToHex(value: string | undefined, fallback = '#171612') {
   const clean = (value || '').trim();
+  if (!clean || clean === 'transparent') return fallback;
   if (/^#[0-9a-f]{6}$/i.test(clean)) return clean;
   if (/^#[0-9a-f]{3}$/i.test(clean)) return `#${clean.slice(1).split('').map((char) => `${char}${char}`).join('')}`;
-  const rgb = clean.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  const rgb = clean.match(/rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)(?:\s*[,/]\s*(\d*\.?\d+)%?)?/i);
   if (!rgb) return fallback;
-  return `#${[rgb[1], rgb[2], rgb[3]].map((part) => Math.max(0, Math.min(255, Number(part))).toString(16).padStart(2, '0')).join('')}`;
+  const alpha = rgb[4] === undefined ? 1 : Number(rgb[4]);
+  if (Number.isFinite(alpha) && alpha <= 0.01) return fallback;
+  return `#${[rgb[1], rgb[2], rgb[3]].map((part) => Math.max(0, Math.min(255, Math.round(Number(part)))).toString(16).padStart(2, '0')).join('')}`;
 }
 
 function numberPart(value: string | undefined, fallback: string) {
@@ -55,9 +58,11 @@ function numberPart(value: string | undefined, fallback: string) {
 }
 
 function findEditorRoot() {
-  const heading = Array.from(document.querySelectorAll<HTMLHeadingElement>('main[data-admin-content] h1'))
+  const stable = document.querySelector<HTMLElement>('[data-visual-cms-editor-root="1"]');
+  if (stable) return stable;
+  const heading = Array.from(document.querySelectorAll<HTMLHeadingElement>('h1'))
     .find((node) => normalizeText(node.textContent).startsWith('Editor universal'));
-  return heading?.closest<HTMLElement>('div.relative.flex') || null;
+  return heading?.closest<HTMLElement>('[data-visual-cms-editor-root]') || heading?.parentElement?.parentElement || null;
 }
 
 function findButton(root: HTMLElement, text: string) {
@@ -97,6 +102,10 @@ function withRetry(action: () => boolean, attempts = 8) {
     window.setTimeout(run, 45);
   };
   run();
+}
+
+function sendDirectEditorAction(action: string, value = '') {
+  window.postMessage({ type: 'cms:visual-editor-direct', action, value }, window.location.origin);
 }
 
 function setInspectorField(tab: InspectorTab, caption: string, value: string) {
@@ -221,7 +230,7 @@ export default function VisualCmsContextEditorBridge() {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: string; element?: Selection } | null;
-      if (data?.type !== 'cms:visual-select' || !data.element) return;
+      if ((data?.type !== 'cms:visual-select' && data?.type !== 'cms:visual-editor-selection-sync') || !data.element) return;
       const selected = data.element;
       setSelection(selected);
       setQuick({
@@ -234,16 +243,15 @@ export default function VisualCmsContextEditorBridge() {
         textAlign: String(selected.computed?.textAlign || 'left'),
         borderRadius: numberPart(selected.computed?.borderRadius, '0'),
       });
-      setSimilar(false);
-      setSiteWide(false);
-      setExpanded(true);
-      setAdvanced(false);
 
-      window.setTimeout(() => {
-        clickInspectorAction('Contenido', 'Solo este');
-        clickInspectorAction('Contenido', 'Esta página');
-      }, 35);
-      closeAutoInspectorPanel();
+      if (data.type === 'cms:visual-select') {
+        setSimilar(false);
+        setSiteWide(false);
+        setExpanded(true);
+        setAdvanced(false);
+        window.postMessage({ type: 'cms:visual-editor-target', targetMode: 'single', elementScope: 'page' }, window.location.origin);
+        closeAutoInspectorPanel();
+      }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
@@ -270,12 +278,12 @@ export default function VisualCmsContextEditorBridge() {
     const currentSelection = selection;
     if (!currentSelection) return;
     setSimilar(next);
-    clickInspectorAction('Contenido', next ? `${currentSelection.similarCount} similares` : 'Solo este');
+    window.postMessage({ type: 'cms:visual-editor-target', targetMode: next ? 'similar' : 'single' }, window.location.origin);
   }
 
   function toggleSiteWide(next: boolean) {
     setSiteWide(next);
-    clickInspectorAction('Contenido', next ? 'Todo el sitio' : 'Esta página');
+    window.postMessage({ type: 'cms:visual-editor-target', elementScope: next ? 'global' : 'page' }, window.location.origin);
   }
 
   return (
@@ -291,7 +299,7 @@ export default function VisualCmsContextEditorBridge() {
             <button type="button" onClick={() => toggleSimilar(!similar)} className={`inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[8px] font-black ${similar ? 'bg-[#ffb000] text-black' : 'border border-black/10 bg-white/55 text-black/55'}`} title="Aplicar también a elementos similares"><Layers3 className="h-3 w-3" />{similar ? `${selection.similarCount} similares` : 'Solo este'}</button>
           ) : null}
           <button type="button" onClick={() => toggleSiteWide(!siteWide)} className={`hidden h-8 items-center gap-1 rounded-lg px-2 text-[8px] font-black sm:inline-flex ${siteWide ? 'bg-[#ffb000] text-black' : 'border border-black/10 bg-white/55 text-black/55'}`} title="Cambiar alcance"><Globe2 className="h-3 w-3" />{siteWide ? 'Todo sitio' : 'Página'}</button>
-          <button type="button" onClick={() => setAdvanced((value) => !value)} className={`grid h-8 w-8 place-items-center rounded-lg border ${advanced ? 'border-[#ffb000] bg-[#ffb000]/15 text-[#9a6200]' : 'border-black/10 bg-white/55 text-black/45'}`} title="Inspector avanzado"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={() => { setAdvanced((value) => !value); sendDirectEditorAction('advanced'); }} className={`grid h-8 w-8 place-items-center rounded-lg border ${advanced ? 'border-[#ffb000] bg-[#ffb000]/15 text-[#9a6200]' : 'border-black/10 bg-white/55 text-black/45'}`} title="Inspector avanzado"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
           <button type="button" onClick={() => setExpanded((value) => !value)} className="grid h-8 w-8 place-items-center rounded-lg border border-black/10 bg-white/55 text-black/45" title={expanded ? 'Contraer controles' : 'Mostrar controles'}><ChevronDown className={`h-3.5 w-3.5 transition ${expanded ? 'rotate-180' : ''}`} /></button>
           <button type="button" onClick={() => setSelection(null)} className="grid h-8 w-8 place-items-center rounded-lg border border-black/10 bg-white/55 text-black/45" aria-label="Cerrar editor contextual"><X className="h-3.5 w-3.5" /></button>
         </div>
@@ -301,25 +309,25 @@ export default function VisualCmsContextEditorBridge() {
             {selection.textEditable && !similar ? (
               <label className="mb-2 grid gap-1">
                 <span className="flex items-center gap-1 text-[8px] font-black uppercase tracking-[.08em] text-black/38"><Type className="h-3 w-3" /> Texto seleccionado</span>
-                <textarea value={quick.text} rows={2} onChange={(event) => { const value = event.target.value; updateQuick('text', value); setInspectorField('Contenido', 'Texto', value); }} className="min-h-12 resize-none rounded-xl border border-black/10 bg-white/75 px-3 py-2 text-[11px] leading-4 text-[#171612] outline-none focus:border-[#ffb000]" />
+                <textarea value={quick.text} rows={2} onChange={(event) => { const value = event.target.value; updateQuick('text', value); sendDirectEditorAction('text', value); }} className="min-h-12 resize-none rounded-xl border border-black/10 bg-white/75 px-3 py-2 text-[11px] leading-4 text-[#171612] outline-none focus:border-[#ffb000]" />
               </label>
             ) : null}
 
             <div className="flex min-w-0 gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
               <label className="flex h-12 min-w-[112px] items-center gap-2 rounded-xl border border-black/8 bg-white/65 px-2.5">
-                <input type="color" value={quick.color} onChange={(event) => { const value = event.target.value; updateQuick('color', value); setInspectorField('Apariencia', 'Texto / icono', value); }} className="h-7 w-8 cursor-pointer border-0 bg-transparent p-0" />
+                <input type="color" value={quick.color} onChange={(event) => { const value = event.target.value; updateQuick('color', value); sendDirectEditorAction('color', value); }} className="h-7 w-8 cursor-pointer border-0 bg-transparent p-0" />
                 <span><b className="block text-[8px]">Color</b><small className="text-[7px] text-black/35">Texto/icono</small></span>
               </label>
 
               <label className="flex h-12 min-w-[112px] items-center gap-2 rounded-xl border border-black/8 bg-white/65 px-2.5">
-                <input type="color" value={quick.backgroundColor} onChange={(event) => { const value = event.target.value; updateQuick('backgroundColor', value); setInspectorField('Apariencia', 'Fondo', value); }} className="h-7 w-8 cursor-pointer border-0 bg-transparent p-0" />
+                <input type="color" value={quick.backgroundColor} onChange={(event) => { const value = event.target.value; updateQuick('backgroundColor', value); sendDirectEditorAction('background', value); }} className="h-7 w-8 cursor-pointer border-0 bg-transparent p-0" />
                 <span><b className="block text-[8px]">Fondo</b><small className="text-[7px] text-black/35">Solo selección</small></span>
               </label>
 
               {selection.textEditable ? (
                 <label className="flex h-12 min-w-[104px] items-center gap-1.5 rounded-xl border border-black/8 bg-white/65 px-2.5">
                   <span className="text-[8px] font-black">px</span>
-                  <input type="number" min="8" max="120" step="1" value={quick.fontSize} onChange={(event) => { const value = event.target.value; updateQuick('fontSize', value); if (value) setInspectorField('Apariencia', 'Tamaño', `${value}px`); }} className="w-12 bg-transparent text-[11px] font-black outline-none" />
+                  <input type="number" min="8" max="120" step="1" value={quick.fontSize} onChange={(event) => { const value = event.target.value; updateQuick('fontSize', value); if (value) sendDirectEditorAction('font-size', `${value}px`); }} className="w-12 bg-transparent text-[11px] font-black outline-none" />
                   <small className="text-[7px] text-black/35">Tamaño</small>
                 </label>
               ) : null}
@@ -327,7 +335,7 @@ export default function VisualCmsContextEditorBridge() {
               {selection.textEditable ? (
                 <label className="grid h-12 min-w-[108px] content-center rounded-xl border border-black/8 bg-white/65 px-2.5">
                   <small className="text-[7px] font-black text-black/35">Peso</small>
-                  <select value={quick.fontWeight} onChange={(event) => { const value = event.target.value; updateQuick('fontWeight', value); setInspectorField('Apariencia', 'Peso', value); }} className="bg-transparent text-[10px] font-black outline-none">
+                  <select value={quick.fontWeight} onChange={(event) => { const value = event.target.value; updateQuick('fontWeight', value); sendDirectEditorAction('font-weight', value); }} className="bg-transparent text-[10px] font-black outline-none">
                     <option value="300">Ligera</option><option value="400">Normal</option><option value="500">Media</option><option value="600">Semi</option><option value="700">Negrita</option><option value="800">Extra</option><option value="900">Black</option>
                   </select>
                 </label>
@@ -336,14 +344,14 @@ export default function VisualCmsContextEditorBridge() {
               {selection.textEditable ? (
                 <div className="flex h-12 min-w-[118px] items-center justify-center gap-1 rounded-xl border border-black/8 bg-white/65 px-2">
                   {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([value, Icon]) => (
-                    <button key={value} type="button" onClick={() => { updateQuick('textAlign', value); setInspectorField('Apariencia', 'Alineación', value); }} className={`grid h-8 w-8 place-items-center rounded-lg ${quick.textAlign === value ? 'bg-[#ffb000] text-black' : 'text-black/42'}`} title={`Alinear ${value}`}><Icon className="h-3.5 w-3.5" /></button>
+                    <button key={value} type="button" onClick={() => { updateQuick('textAlign', value); sendDirectEditorAction('text-align', value); }} className={`grid h-8 w-8 place-items-center rounded-lg ${quick.textAlign === value ? 'bg-[#ffb000] text-black' : 'text-black/42'}`} title={`Alinear ${value}`}><Icon className="h-3.5 w-3.5" /></button>
                   ))}
                 </div>
               ) : null}
 
               <label className="flex h-12 min-w-[118px] items-center gap-1.5 rounded-xl border border-black/8 bg-white/65 px-2.5">
                 <span className="text-[8px] font-black">R</span>
-                <input type="number" min="0" max="120" step="1" value={quick.borderRadius} onChange={(event) => { const value = event.target.value; updateQuick('borderRadius', value); if (value !== '') setInspectorField('Apariencia', 'Radio', `${value}px`); }} className="w-12 bg-transparent text-[11px] font-black outline-none" />
+                <input type="number" min="0" max="120" step="1" value={quick.borderRadius} onChange={(event) => { const value = event.target.value; updateQuick('borderRadius', value); if (value !== '') sendDirectEditorAction('border-radius', `${value}px`); }} className="w-12 bg-transparent text-[11px] font-black outline-none" />
                 <small className="text-[7px] text-black/35">Radio</small>
               </label>
 
@@ -354,7 +362,7 @@ export default function VisualCmsContextEditorBridge() {
             {selection.isLink && !similar ? (
               <label className="mt-2 grid gap-1 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
                 <span className="text-[8px] font-black uppercase tracking-[.08em] text-black/38">Enlace</span>
-                <input value={quick.href} onChange={(event) => { const value = event.target.value; updateQuick('href', value); setInspectorField('Contenido', 'Destino del enlace', value); }} className="h-9 rounded-xl border border-black/10 bg-white/75 px-3 text-[10px] outline-none focus:border-[#ffb000]" placeholder="/contacto" />
+                <input value={quick.href} onChange={(event) => { const value = event.target.value; updateQuick('href', value); sendDirectEditorAction('href', value); }} className="h-9 rounded-xl border border-black/10 bg-white/75 px-3 text-[10px] outline-none focus:border-[#ffb000]" placeholder="/contacto" />
               </label>
             ) : null}
 

@@ -85,7 +85,7 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
   }, [initialConfig]);
 
   const sections = useMemo(
-    () => [...config.sections].filter((section) => section.enabled).sort((a, b) => a.order - b.order),
+    () => [...config.sections].filter((section) => section.enabled && section.editor?.trashed !== true).sort((a, b) => a.order - b.order),
     [config.sections],
   );
 

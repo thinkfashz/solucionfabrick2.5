@@ -10,8 +10,11 @@ export default function MetalconWalkRig({active,movement,bounds,spawn}:{active:b
  useEffect(()=>{
   if(!active)return;
   camera.position.y=1.62;
-  const key=spawn?`${spawn.x.toFixed(3)}|${spawn.z.toFixed(3)}`:'';
-  if(key&&lastSpawn.current!==key){lastSpawn.current=key;camera.position.x=spawn.x;camera.position.z=spawn.z;yaw.current=0}
+  if(spawn){
+   const key=`${spawn.x.toFixed(3)}|${spawn.z.toFixed(3)}`;
+   if(lastSpawn.current!==key){lastSpawn.current=key;camera.position.x=spawn.x;camera.position.z=spawn.z;yaw.current=0}
+   else{yaw.current=camera.rotation.y}
+  }
   else{yaw.current=camera.rotation.y}
  },[active,spawn,camera]);
  useFrame((_,delta)=>{if(!active)return;const k=keys.current,turn=(movement.turnLeft||k.q||k.arrowleft?-1:0)+(movement.turnRight||k.e||k.arrowright?1:0);yaw.current-=turn*delta*1.65;const f=(movement.forward||k.w||k.arrowup?1:0)-(movement.back||k.s||k.arrowdown?1:0),side=(movement.right||k.d?1:0)-(movement.left||k.a?1:0);const speed=2.25*delta,dir=new Vector3(Math.sin(yaw.current),0,-Math.cos(yaw.current)),right=new Vector3(Math.cos(yaw.current),0,Math.sin(yaw.current));camera.position.addScaledVector(dir,f*speed).addScaledVector(right,side*speed);camera.position.x=Math.max(-bounds.x,Math.min(bounds.x,camera.position.x));camera.position.z=Math.max(-bounds.z,Math.min(bounds.z,camera.position.z));camera.position.y=1.62;camera.rotation.set(0,yaw.current,0,'YXZ')});

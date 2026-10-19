@@ -5,7 +5,7 @@
  * estado: calm (sin sismo) — camina, se detiene, mira alrededor.
  */
 import { useMemo } from 'react';
-import { AnimatedFigure } from '../monitoring/AnimatedFigure';
+import { AnimatedFigure } from './monitoring/AnimatedFigure';
 import type { MetalconHousePreset } from '@/lib/metalconAssembly';
 
 export default function MetalconLabNPC({ preset }: { preset: MetalconHousePreset }) {

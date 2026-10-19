@@ -15,7 +15,7 @@ import { input } from './Plano390CameraRig';
 import Plano390Controls from './Plano390Controls';
 import Plano390UI from './Plano390UI';
 
-const INITIAL_CAM = { position: [7, PLAN.eyeH, 17.2], fov: 46, near: 0.05, far: 220 };
+const INITIAL_CAM = { position: [7, PLAN.eyeH, 17.2] as [number, number, number], fov: 46, near: 0.05, far: 220 };
 
 export default function Plano390Walkthrough() {
   const [stage, setStage] = useState<'intro' | 'ready' | 'in'>('intro');

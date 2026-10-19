@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import type { Scene } from 'three';
 
 interface EmergencyState {
   isActive: boolean;
@@ -12,7 +13,7 @@ interface EmergencyState {
 }
 
 export function EmergencySystem({ scene, onEmergencyStart }: { 
-  scene: THREE.Scene; 
+  scene: Scene;
   onEmergencyStart?: () => void;
 }) {
   const [emergencyState, setEmergencyState] = useState<EmergencyState>({

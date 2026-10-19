@@ -27,9 +27,9 @@ export function EmergencySystem({ scene, onEmergencyStart }: {
     npcState: 'normal'
   });
 
-  const sirenAudioRef = useRef<HTMLAudioElement>();
+  const sirenAudioRef = useRef<HTMLAudioElement | null>(null);
   const alarmLightsRef = useRef<NodeJS.Timeout[]>([]);
-  const vibrationIntervalRef = useRef<NodeJS.Timeout>();
+  const vibrationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Emergency trigger - starts within 5 seconds
   useEffect(() => {
@@ -99,7 +99,7 @@ export function EmergencySystem({ scene, onEmergencyStart }: {
       return () => {
         audio.pause();
         alarmLightsRef.current.forEach(clearInterval);
-        clearInterval(vibrationIntervalRef.current);
+        if (vibrationIntervalRef.current) clearInterval(vibrationIntervalRef.current);
       };
     }
   }, [emergencyState.sirenActive, emergencyState.phase, emergencyState.vibrationPattern]);

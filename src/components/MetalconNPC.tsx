@@ -36,8 +36,8 @@ export function MetalconNPC({
     isHumanLike: true
   });
 
-  const meshRef = useRef<THREE.Mesh>();
-  const walkPathRef = useRef<THREE.Vector3[]>();
+  const meshRef = useRef<THREE.Mesh | null>(null);
+  const walkPathRef = useRef<THREE.Vector3[] | null>(null);
   const lastKnownPosition = useRef<THREE.Vector3>(position.clone());
 
   // Human-like behavior and decision making

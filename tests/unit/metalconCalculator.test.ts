@@ -39,7 +39,7 @@ describe('Metalcon preliminary calculator',()=>{
   it('keeps the previous building viewer and adds reversible inspection movement', () => {
     const calculator = read('src/components/store/MetalconCalculator.tsx');
     const viewer = read('src/components/store/MetalconCinematicViewer.tsx');
-    expect(calculator).toContain('<MetalconCinematicViewer input={input}/>');
+    expect(calculator).toContain('<MetalconCinematicViewer input={viewerInput}/>');
     expect(calculator).toContain('/herramientas/metalcon/monitoreo');
     expect(viewer).toContain('Separar panel para inspección');
     expect(viewer).toContain('Mover montante C');

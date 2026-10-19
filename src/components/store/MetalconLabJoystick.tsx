@@ -14,10 +14,21 @@ export default function LabJoystick({ label, onMove }: { label: string; onMove: 
   const [thumb, setThumb] = useState({ x: 0, y: 0 });
   const [on, setOn] = useState(false);
 
+  // Zona muerta corta + curva de respuesta (afinar en centro, rápido en borde)
+  const applyCurve = (x: number, y: number): { x: number; y: number } => {
+    const dz = 0.08;
+    const mag = Math.hypot(x, y);
+    if (mag < dz) return { x: 0, y: 0 };
+    const shaped = Math.pow((mag - dz) / (1 - dz), 1.35);
+    const scale = shaped / mag;
+    return { x: x * scale, y: y * scale };
+  };
+
   const push = (x: number, y: number) => {
-    if (Math.abs(x - last.current.x) > 0.04 || Math.abs(y - last.current.y) > 0.04) {
-      last.current = { x, y };
-      onMove(x, -y); // arriba del stick = adelante
+    const c = applyCurve(x, y);
+    if (Math.abs(c.x - last.current.x) > 0.02 || Math.abs(c.y - last.current.y) > 0.02) {
+      last.current = c;
+      onMove(c.x, -c.y); // arriba del stick = adelante
     }
   };
 
@@ -39,6 +50,11 @@ export default function LabJoystick({ label, onMove }: { label: string; onMove: 
   const start = (e: React.PointerEvent) => {
     drag.current = true;
     setOn(true);
+    try {
+      navigator.vibrate?.(4);
+    } catch {
+      /* háptico opcional */
+    }
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     handle(e);
   };

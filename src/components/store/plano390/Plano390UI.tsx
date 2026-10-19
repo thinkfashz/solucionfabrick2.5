@@ -26,7 +26,7 @@ export default function Plano390UI({
   onSpotChange: (i: number) => void;
   roomLabel: string;
   onCloseSpot: () => void;
-}): ReactElement {
+}): ReactElement | null {
   const GOLD = '#F6C64A';
   const ACCENT_BLUE = '#2E6FA0';
   const ACCENT_ORANGE = '#C56A3A';

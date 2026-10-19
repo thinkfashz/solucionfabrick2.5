@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { ArrowLeft, X, Route, Footprints } from 'lucide-react';
 import { ROOMS, PHOTO_SPOTS, PLAN } from '@/lib/plano390Data';
 
@@ -26,7 +26,7 @@ export default function Plano390UI({
   onSpotChange: (i: number) => void;
   roomLabel: string;
   onCloseSpot: () => void;
-}): JSX.Element {
+}): ReactElement {
   const GOLD = '#F6C64A';
   const ACCENT_BLUE = '#2E6FA0';
   const ACCENT_ORANGE = '#C56A3A';

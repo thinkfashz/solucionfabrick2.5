@@ -184,7 +184,7 @@ export default function Plano390UI({
               </div>
               <div className="flex w-full items-center justify-between text-[8px] font-black uppercase tracking-[.22em]">
                 <span className="text-white/45 select-none touch-none">
-                  {'Cargando plano arquitectónico', 'Montando los muros', 'Mobiliario y madera', 'Calibrando el sol del sur', 'Listo'}[step]
+                  {['Cargando plano arquitectónico', 'Montando los muros', 'Mobiliario y madera', 'Calibrando el sol del sur', 'Listo'][step]}
                 </span>
                 <span style={{ color: GOLD }}>{progress}%</span>
               </div>

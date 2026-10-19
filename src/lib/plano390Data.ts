@@ -1,0 +1,143 @@
+/*
+* plano390Data.ts — datos del plano "Proyecto №390-1" (127 m², 14,00 × 11,00 m).
+* Origen en esquina NO de los muros exteriores. x → Este (0..14), z → Sur (0..11).
+* z negativo = fuera hacia el norte (terraza). Muro 2,70 m de alto.
+* Exteriores 0,25 m; tabiques 0,14 m. Contrato compartido por la escena,
+* el recorrido y el HUD de /herramientas/proyecto-390-1.
+*/
+
+export type RoomBox = {
+  id: string;
+  name: string;
+  areaM2: number;
+  x0: number;
+  z0: number;
+  x1: number;
+  z1: number;
+  floor: 'wood' | 'tile' | 'terrace' | 'corridor';
+};
+
+export type WallSeg = {
+  x0: number;
+  z0: number;
+  x1: number;
+  z1: number;
+  kind: 'ext' | 'int';
+  /** tramo de vidrio (ventana o paño corredizo) */
+  window?: boolean;
+};
+
+export type PhotoSpot = {
+  id: string;
+  label: string;
+  pos: [number, number, number];
+  look: [number, number, number];
+  color: string;
+};
+
+export type TourStop = {
+  label: string;
+  note: string;
+  pos: [number, number, number];
+  look: [number, number, number];
+};
+
+export const PLAN = {
+  widthM: 14,
+  depthM: 11,
+  wallH: 2.7,
+  extT: 0.25,
+  intT: 0.14,
+  ridgeExtra: 2.35,
+  terraceDepthM: 3.16,
+  stepH: 0.2,
+  /** sol al S a 50° → sombra = h / tan(50°) ≈ 0,84·h (diagrama del usuario) */
+  sunElevationDeg: 50,
+  sunSombraFactor: 0.84,
+  eyeH: 1.65,
+} as const;
+
+/** Habitaciones del plano con nombres y superficies (lista 1..11 del proyecto). */
+export const ROOMS: RoomBox[] = [
+  { id: '1', name: 'Recibidor', areaM2: 7.17, x0: 3.62, z0: 6.85, x1: 6.34, z1: 10.75, floor: 'tile' },
+  { id: '2', name: 'Vestidor', areaM2: 7.53, x0: 0.25, z0: 8.65, x1: 3.62, z1: 10.75, floor: 'wood' },
+  { id: '3', name: 'Cocina · Comedor', areaM2: 44.21, x0: 0.25, z0: 0.25, x1: 8.4, z1: 5.55, floor: 'wood' },
+  { id: '4', name: 'Pasillo', areaM2: 8.73, x0: 3.62, z0: 5.69, x1: 11.7, z1: 6.85, floor: 'corridor' },
+  { id: '5', name: 'Dormitorio 2', areaM2: 14.0, x0: 6.48, z0: 6.99, x1: 10.3, z1: 10.75, floor: 'wood' },
+  { id: '6', name: 'Dormitorio 3', areaM2: 14.0, x0: 10.44, z0: 6.99, x1: 13.75, z1: 10.75, floor: 'wood' },
+  { id: '7', name: 'Dormitorio principal', areaM2: 16.0, x0: 11.09, z0: 0.25, x1: 13.75, z1: 5.55, floor: 'wood' },
+  { id: '8', name: 'Clóset', areaM2: 3.96, x0: 11.7, z0: 5.69, x1: 13.75, z1: 6.85, floor: 'wood' },
+  { id: '9', name: 'Baño', areaM2: 5.32, x0: 8.54, z0: 0.25, x1: 10.95, z1: 2.42, floor: 'tile' },
+  { id: '10', name: 'Sauna', areaM2: 5.6, x0: 8.54, z0: 2.56, x1: 10.95, z1: 4.86, floor: 'wood' },
+  { id: '11', name: 'Terraza', areaM2: 21.45, x0: 0.25, z0: -2.91, x1: 6.4, z1: 0, floor: 'terrace' },
+];
+
+/**
+ * Muros como cajas (x0,z0 → x1,z1). Los vanos quedan como saltos entre cajas.
+ * window: el tramo se pinta como vidrio de piso a 2,1 m.
+ */
+export const WALLS: WallSeg[] = [
+  // ── Exteriores ──────────────────────────────────────────────────
+  { x0: 0, z0: 10.75, x1: 4.6, z1: 11, kind: 'ext' },   // S oeste
+  { x0: 5.6, z0: 10.75, x1: 14, z1: 11, kind: 'ext' },  // S este (gap 4,6..5,6 = puerta principal)
+  { x0: 0, z0: 0, x1: 0.25, z1: 11, kind: 'ext' },      // O
+  { x0: 13.75, z0: 0, x1: 14, z1: 11, kind: 'ext' },    // E
+  { x0: 6.4, z0: 0, x1: 11.9, z1: 0.25, kind: 'ext' },  // N centro sólido
+  { x0: 13.3, z0: 0, x1: 14, z1: 0.25, kind: 'ext' },   // N este
+  { x0: 0.25, z0: 0, x1: 6.4, z1: 0.25, kind: 'ext', window: true },  // paño corredizo living↔terraza
+  { x0: 11.9, z0: 0, x1: 13.3, z1: 0.25, kind: 'ext', window: true }, // ventana dorm. principal (sofá bajo ella)
+  // ── Tabiques ───────────────────────────────────────────────────
+  { x0: 8.4, z0: 0.25, x1: 8.54, z1: 5.55, kind: 'int' },                      // living | baño+sauna
+  { x0: 8.54, z0: 2.42, x1: 10.95, z1: 2.56, kind: 'int' },                    // baño | sauna
+  { x0: 8.54, z0: 4.86, x1: 10.95, z1: 5.0, kind: 'int' },                     // sauna | pasillo
+  { x0: 10.95, z0: 0.25, x1: 11.09, z1: 3.9, kind: 'int' },                    // dorm7 | baño (sin puerta)
+  { x0: 10.95, z0: 5.0, x1: 11.09, z1: 5.55, kind: 'int' },                    // (gap 3,9..5,0 puerta dorm7)
+  { x0: 10.95, z0: 5.55, x1: 11.7, z1: 5.69, kind: 'int' },                    // pasillo | clóset oeste
+  { x0: 12.2, z0: 5.55, x1: 13.75, z1: 5.69, kind: 'int' },                    // este (gap 11,7..12,2 puerta clóset)
+  { x0: 11.7, z0: 6.81, x1: 12.35, z1: 6.95, kind: 'int' },                    // clóset | dorm3 arriba
+  { x0: 13.05, z0: 6.81, x1: 13.75, z1: 6.95, kind: 'int' },
+  { x0: 3.62, z0: 5.55, x1: 6.5, z1: 5.69, kind: 'int' },                      // living | pasillo oeste
+  { x0: 7.5, z0: 5.55, x1: 8.4, z1: 5.69, kind: 'int' },                       // este (gap 6,5..7,5 paso living)
+  { x0: 6.34, z0: 6.85, x1: 7.35, z1: 6.99, kind: 'int' },                     // pasillo | dorm2 oeste
+  { x0: 8.45, z0: 6.85, x1: 10.3, z1: 6.99, kind: 'int' },                     // este (gaps: puerta dorm2 7,35..8,45)
+  { x0: 10.44, z0: 6.85, x1: 11.7, z1: 6.99, kind: 'int' },                    // pasillo | dorm3 oeste (gap 10,3..10,44 puerta dorm3)
+  { x0: 6.34, z0: 6.99, x1: 6.48, z1: 9.3, kind: 'int' },                      // recibidor | dorm2
+  { x0: 6.34, z0: 10.2, x1: 6.48, z1: 10.75, kind: 'int' },
+  { x0: 10.44, z0: 6.99, x1: 10.58, z1: 9.6, kind: 'int' },                    // dorm2 | dorm3
+  { x0: 10.44, z0: 10.5, x1: 10.58, z1: 10.75, kind: 'int' },                  // (gap 9,6..10,5)
+  { x0: 3.62, z0: 8.65, x1: 3.76, z1: 9.5, kind: 'int' },                      // recibidor | vestidor
+  { x0: 3.62, z0: 10.3, x1: 3.76, z1: 10.75, kind: 'int' },                    // (gap 9,5..10,3)
+  { x0: 0.25, z0: 8.65, x1: 3.62, z1: 8.79, kind: 'int' },                     // vestidor | recibidor-oeste abierto
+];
+
+/**
+ * Puntos de foto con cuña/dirección (como los diagramas del usuario):
+ * cada spot tiene posición, blanco de mirada y color (naranja/azul).
+ */
+export const PHOTO_SPOTS: PhotoSpot[] = [
+  { id: '41', label: 'Foto 41 · sala desde el SO', pos: [1.5, 1.5, 4.2], look: [4.2, 1.05, 1.6], color: '#C56A3A' },
+  { id: '44', label: 'Foto 44 · sala desde el SE', pos: [6.9, 1.5, 4.2], look: [4.2, 1.05, 1.6], color: '#2E6FA0' },
+  { id: '50', label: 'Foto 50 · recibidor', pos: [5.0, 1.5, 10.4], look: [5.0, 1.3, 7.6], color: '#2E6FA0' },
+  { id: '58', label: 'Foto 58 · dormitorio bajo la ventana', pos: [12.4, 1.5, 4.9], look: [12.4, 1.05, 1.2], color: '#C56A3A' },
+];
+
+/** Recorrido guiado (walkthrough): cámara en primera persona suavizada por parada. */
+export const TOUR_STOPS: TourStop[] = [
+  { label: 'Fachada sur', note: 'Presentación de la casa y su entrada', pos: [7, 1.7, 16.2], look: [7, 1.6, 11] },
+  { label: 'Puerta principal', note: 'El umbral del recibidor', pos: [5.1, 1.65, 12.2], look: [5.1, 1.4, 10] },
+  { label: 'Recibidor', note: 'Circulación que reparte la casa', pos: [4.9, 1.65, 9.2], look: [5.4, 1.35, 7.3] },
+  { label: 'Cocina · Comedor', note: '44,2 m² de estar con paño corredizo a la terraza', pos: [2.3, 1.65, 4.6], look: [4.4, 1.15, 1.4] },
+  { label: 'Terraza', note: '21,5 m² al norte, con escalerilla de 20 cm', pos: [3.2, 1.65, -1.6], look: [3.4, 1.2, 2.2] },
+  { label: 'Baño y sauna', note: 'Sanitarios más sauna de 5,6 m²', pos: [9.7, 1.65, 3.6], look: [9.2, 1.25, 1.1] },
+  { label: 'Dormitorio principal', note: '16 m² con sofá frente a la ventana norte', pos: [12.4, 1.65, 3.6], look: [12.4, 1.1, 1.2] },
+  { label: 'Pasillo', note: 'Repartidor hacia los dormitorios', pos: [9.4, 1.65, 6.25], look: [5.4, 1.35, 6.2] },
+  { label: 'Dormitorio 2', note: '14 m² al sur oriente', pos: [8.3, 1.65, 9.7], look: [8.3, 1.1, 7.4] },
+  { label: 'Dormitorio 3', note: '14 m² al sur poniente', pos: [12.1, 1.65, 9.7], look: [12.1, 1.1, 7.4] },
+  { label: 'Vista aérea', note: 'Cierre del recorrido desde el aire', pos: [7, 7.2, 17.5], look: [7, 1.8, 7] },
+];
+
+/** Spots de patrulla para los personajes (AnimatedFigure del simulador sísmico). */
+export const NPC_SPOTS: { pos: [number, number, number]; door: [number, number] }[] = [
+  { pos: [3.0, 0, 7.6], door: [3.0, 6.4] },   // recibidor/pasillo
+  { pos: [6.3, 0, 3.4], door: [6.0, 0.8] },   // living
+];

@@ -20,9 +20,16 @@ Bitácora de trabajo (se actualiza al cierre de cada hito).
 - Import de `AnimatedFigure` es **named**: `{ AnimatedFigure } from '../monitoring/AnimatedFigure'`.
 
 ### Estado del deploy
-- Se subieron fixes hasta `dd03e82e`; esperando build de Vercel (proyecto `solucionfabrick`, team `think-fastzs-projects`).
+- Deploy **Ready** en producción (`https://www.solucionesfabrick.com/herramientas/proyecto-390-1`).
+
+### Sesión 2 — mejoras HD + CCTV
+- **Texturas reales de los visores** en `Plano3903D`: `useViewerTextures` (`/flow/fabrick-tex-*`), PBR oak/pine (`/materials/wood-*`), césped `pastoCalle`; cerámica queda procedural. Cielorraso interior + puerta de entrada + marco de vidrio con reflejos.
+- **Iluminación**: `RoomEnvironment` + PMREM (entorno de estudio), ACES Filmic + PCFSoft en el Canvas, sol con sombras y bias, 6 lámparas interiores cálidas con emisivo, hemisférica y fondo/fog por hora (día/atardecer/noche).
+- **Controles**: suavizado de aceleración/giro, pitch (mirar arriba/abajo) con joystick derecho, sprint con Shift, bobbing sutil, colisiones AABB iguales.
+- **CCTV / Cine**: `CCTV_CAMERAS` (Sala, Pasillo, Terraza, Fachada exterior, Dormitorio) con carcasas visibles (carcasa+lente+LED, poste en exterior), modo `cctv` en el rig con corte suave 1,1 s, sway y FOV propio; cada 7 s cambia y se puede saltar con "Siguiente cámara". HUD con scanlines, REC, reloj, contador y cámaras en el minimapa.
+- **Fixes UI**: link `/herramientas` (typo), colores SVG, chips de foto con estilo real, `ReactElement | null`.
 
 ### Pendiente / ideas
-- Verificar producción `https://www.solucionesfabrick.com/herramientas/proyecto-390-1`.
-- Iterar si el jugador pide: más muebles, mejor colisión en puerta principal, sonidos, video de intro.
+- Validar en móvil real: rendimiento con 6 point lights + sombras 2048 (bajar a 1024 si calienta).
+- Ideas: sonido ambiente por estancia, más cámaras (baño/sauna), exportar captura del modo Cine.
 - housefabrick (`/app/`): NO tocar (olvidado a petición del jugador).

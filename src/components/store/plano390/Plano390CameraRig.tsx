@@ -54,10 +54,10 @@ export function nextCctv(): void {
 }
 
 const PLAYER_R = 0.3;
-const WALK_SPEED = 2.9; // m/s
+const WALK_SPEED = 3.1; // m/s
 const SPRINT_MULT = 1.6;
 const TURN_SPEED = 2.1; // rad/s a giro completo
-const PITCH_MAX = 0.52; // rad (~30°)
+const PITCH_MAX = 0.9; // rad (~51°): permite mirar el cielo y el piso
 const TOUR_SPEED = 2.0;
 const TOUR_WAIT = 1.8;
 const SPOT_DURATION = 1.4;
@@ -67,10 +67,25 @@ const CCTV_TIME = 7; // s por cámara
 const CCTV_BLEND = 1.1; // s de transición entre cámaras
 /** La cámara virtual se adelanta fuera de la carcasa para no ver el lente. */
 const CCTV_OFFSET = 0.36;
-const BASE_FOV = 46;
-const TOUR_FOV = 49;
+const BASE_FOV = 62;
+const TOUR_FOV = 64;
+/** FOV horizontal objetivo por modo; se convierte a vertical según el aspect. */
+const FREE_HFOV = 74;
+const TOUR_HFOV = 78;
 const BOUNDS = { x0: -3.2, x1: 18.2, z0: -4.8, z1: 20.5 };
 const TAU = Math.PI * 2;
+
+/**
+ * FOV vertical que mantiene una amplitud horizontal estable en vertical y
+ * horizontal. En un teléfono en retrato el FOV vertical se abre hasta 94°
+ * para no dejar la vista en un túnel; al girar a horizontal vuelve a ~50°.
+ */
+function fovForAspect(camera: PerspectiveCamera, hFovDeg: number): number {
+  const aspect = Math.max(0.35, camera.aspect || 1);
+  const h = (hFovDeg * Math.PI) / 180;
+  const v = 2 * Math.atan(Math.tan(h / 2) / aspect);
+  return Math.max(50, Math.min(94, (v * 180) / Math.PI));
+}
 
 type SpotTween = { idx: number; t: number; pos0: Vector3; look0: Vector3 };
 type CellBox = { x0: number; z0: number; x1: number; z1: number };
@@ -87,12 +102,15 @@ const clamp1 = (v: number): number => Math.max(-1, Math.min(1, v));
 
 export default function Plano390CameraRig({
   initialScene,
+  planView = false,
   onRoom,
   onCctv,
   onTour,
 }: {
   /** Escena pedida por enlace directo; se aplica cuando el rig ya está montado. */
   initialScene?: SceneView | null;
+  /** Plano elevado: congela la cámara alta; el walking la bajaría a 1,62 m. */
+  planView?: boolean;
   onRoom?: (room: string) => void;
   onCctv?: (index: number) => void;
   onTour?: (index: number) => void;
@@ -208,7 +226,7 @@ export default function Plano390CameraRig({
         input.spot = null;
       }
       if (prev === 'cctv' || prev === 'tour') {
-        setFov(BASE_FOV);
+        setFov(camera instanceof PerspectiveCamera ? fovForAspect(camera, FREE_HFOV) : BASE_FOV);
         pitch.current = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, camera.rotation.x));
       }
       if (mode === 'free') {
@@ -220,7 +238,7 @@ export default function Plano390CameraRig({
         const first = TOUR_STOPS[0];
         stopIndex.current = 0;
         wait.current = 0;
-        setFov(TOUR_FOV);
+        setFov(camera instanceof PerspectiveCamera ? fovForAspect(camera, TOUR_HFOV) : TOUR_FOV);
         // Corte cinematográfico al inicio: arranca ya en la primera parada.
         if (first) {
           camera.position.set(first.pos[0], first.pos[1], first.pos[2]);
@@ -233,6 +251,12 @@ export default function Plano390CameraRig({
         startCctv(0);
       }
       prevMode.current = mode;
+    }
+
+    // ── FOV adaptativo: al girar el teléfono se mantiene la amplitud ──
+    if ((mode === 'free' || mode === 'tour') && camera instanceof PerspectiveCamera) {
+      const target = fovForAspect(camera, mode === 'tour' ? TOUR_HFOV : FREE_HFOV);
+      if (Math.abs(camera.fov - target) > 0.15) setFov(target);
     }
 
     // ── Salto a escena desde el selector inferior ──
@@ -377,8 +401,10 @@ export default function Plano390CameraRig({
             startCctv((cine.index + 1) % n);
           }
         }
-      } else {
+      } else if (!planView) {
         // ── Modo libre: teclado + joysticks, suavizado y sprint ──
+        // En plano elevado no se camina: cualquier movimiento bajaría la cámara
+        // a la altura de ojos y rompería la vista de planta.
         const k = keys.current;
         const kF = (k.w || k.arrowup ? 1 : 0) - (k.s || k.arrowdown ? 1 : 0);
         const kS = (k.d ? 1 : 0) - (k.a ? 1 : 0);

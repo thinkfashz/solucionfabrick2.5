@@ -83,18 +83,20 @@ export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode
               Arrastra para mirar · joystick para moverte
             </span>
           </div>
-          <div className="absolute bottom-[98px] left-4 z-30">
+          <div className="absolute left-3 z-30" style={{ bottom: 'calc(104px + env(safe-area-inset-bottom))' }}>
             <LabJoystick
               label="Caminar"
+              size={112}
               onMove={(x, y) => {
                 input.move.x = x;
                 input.move.y = y;
               }}
             />
           </div>
-          <div className="absolute bottom-[98px] right-4 z-30">
+          <div className="absolute right-3 z-30" style={{ bottom: 'calc(104px + env(safe-area-inset-bottom))' }}>
             <LabJoystick
               label="Mirar"
+              size={104}
               onMove={(x, y) => {
                 input.turn = x;
                 input.pitch = y;
@@ -102,7 +104,7 @@ export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode
             />
           </div>
           {/* Ayuda de teclado, solo escritorio */}
-          <div className="pointer-events-none absolute bottom-[98px] left-1/2 z-20 hidden -translate-x-1/2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[8px] font-black uppercase tracking-[.18em] text-white/45 backdrop-blur-md md:block">
+          <div className="pointer-events-none absolute bottom-[108px] left-1/2 z-20 hidden -translate-x-1/2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[8px] font-black uppercase tracking-[.18em] text-white/45 backdrop-blur-md md:block">
             WASD mover · Q/E girar · Shift correr
           </div>
         </>

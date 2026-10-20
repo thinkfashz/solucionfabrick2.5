@@ -7,12 +7,26 @@
  */
 import { useRef, useState } from 'react';
 
-export default function LabJoystick({ label, onMove }: { label: string; onMove: (x: number, y: number) => void }) {
+export default function LabJoystick({
+  label,
+  onMove,
+  size = 96,
+  accent = '#F6C64A',
+}: {
+  label: string;
+  onMove: (x: number, y: number) => void;
+  /** Diámetro táctil en px (96 por defecto; 112–120 en el visor 390-1). */
+  size?: number;
+  /** Color del pulgar activo. */
+  accent?: string;
+}) {
   const base = useRef<HTMLDivElement | null>(null);
   const drag = useRef(false);
   const last = useRef({ x: 0, y: 0 });
   const [thumb, setThumb] = useState({ x: 0, y: 0 });
   const [on, setOn] = useState(false);
+  const thumbSize = Math.round(size * 0.46);
+  const travel = Math.round((size - thumbSize) / 2 - 6);
 
   // Zona muerta corta + curva de respuesta (afinar en centro, rápido en borde)
   const applyCurve = (x: number, y: number): { x: number; y: number } => {
@@ -71,7 +85,13 @@ export default function LabJoystick({ label, onMove }: { label: string; onMove: 
     <div
       role="application"
       aria-label={label}
-      className="grid h-24 w-24 touch-none select-none place-items-center rounded-full border border-white/15 bg-black/55 backdrop-blur-xl"
+      className="grid touch-none select-none place-items-center rounded-full border bg-black/55 backdrop-blur-xl transition-colors"
+      style={{
+        width: size,
+        height: size,
+        borderColor: on ? `${accent}99` : 'rgba(255,255,255,.15)',
+        boxShadow: on ? `0 0 0 4px ${accent}14, 0 12px 32px rgba(0,0,0,.4)` : undefined,
+      }}
     >
       <div
         ref={base}
@@ -81,18 +101,27 @@ export default function LabJoystick({ label, onMove }: { label: string; onMove: 
         onPointerCancel={end}
         onLostPointerCapture={end}
         onContextMenu={e => e.preventDefault()}
-        className="relative grid h-24 w-24 place-items-center rounded-full"
+        className="relative grid touch-none select-none place-items-center rounded-full"
+        style={{ width: size, height: size }}
       >
         <span className="pointer-events-none absolute top-1/2 -translate-y-1/2 text-[7px] font-black uppercase tracking-[.2em] text-white/25">
           {label}
         </span>
+        {/* Cruz direccional tenue */}
+        <span className="pointer-events-none absolute left-1/2 top-2 h-2 w-px -translate-x-1/2 bg-white/15" />
+        <span className="pointer-events-none absolute bottom-2 left-1/2 h-2 w-px -translate-x-1/2 bg-white/15" />
+        <span className="pointer-events-none absolute left-2 top-1/2 h-px w-2 -translate-y-1/2 bg-white/15" />
+        <span className="pointer-events-none absolute right-2 top-1/2 h-px w-2 -translate-y-1/2 bg-white/15" />
         <span
-          className={`grid h-11 w-11 place-items-center rounded-full shadow-lg transition-colors duration-150 ${
-            on ? 'bg-[#F6C64A]' : 'bg-white/80'
-          }`}
-          style={{ transform: `translate(${thumb.x * 27}px, ${thumb.y * 27}px)` }}
+          className="grid place-items-center rounded-full shadow-lg transition-colors duration-150"
+          style={{
+            width: thumbSize,
+            height: thumbSize,
+            background: on ? accent : 'rgba(255,255,255,.82)',
+            transform: `translate(${thumb.x * travel}px, ${thumb.y * travel}px)`,
+          }}
         >
-          <span className={`h-1.5 w-1.5 rounded-full ${on ? 'bg-black/60' : 'bg-black/40'}`} />
+          <span className={`rounded-full ${on ? 'bg-black/60' : 'bg-black/40'}`} style={{ width: 6, height: 6 }} />
         </span>
       </div>
     </div>

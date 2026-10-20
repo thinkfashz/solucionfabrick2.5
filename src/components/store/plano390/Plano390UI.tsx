@@ -592,9 +592,22 @@ export default function Plano390UI({
               <p className="text-[8px] font-black uppercase tracking-[.22em] text-[#F6C64A]">Planta · vista desde arriba</p>
               <h2 className="mt-0.5 text-base font-black">Casa 390-1 · 148 m²</h2>
             </div>
-            <button onClick={() => setShowPlan(false)} className="grid h-10 w-10 place-items-center rounded-full bg-white/[.08]" aria-label="Cerrar plano">
-              <X size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const planScene = SCENES.find((s) => s.id === 'plano');
+                  if (planScene) onScene(planScene);
+                  setShowPlan(false);
+                }}
+                className="inline-flex h-10 items-center gap-1.5 rounded-full border border-[#c9ef63]/40 bg-[#c9ef63]/12 px-3 text-[9px] font-black uppercase tracking-[.12em] text-[#d8ff8a] transition active:scale-95"
+              >
+                <MapIcon size={13} />
+                Ver 3D
+              </button>
+              <button onClick={() => setShowPlan(false)} className="grid h-10 w-10 place-items-center rounded-full bg-white/[.08]" aria-label="Cerrar plano">
+                <X size={16} />
+              </button>
+            </div>
           </header>
           <div className="flex-1 overflow-y-auto px-3 pb-6">
             <Plano390Map2D
@@ -609,7 +622,7 @@ export default function Plano390UI({
               <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
                 <p className="text-[8px] font-black uppercase tracking-[.16em] text-white/40">Leyenda</p>
                 <ul className="mt-2 space-y-1 text-[9px] text-white/65">
-                  <li><span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#e8e2d4]" />Muro</li>
+                  <li><span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#c9ef63]" />Muro</li>
                   <li><span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#7fd3ff]" />Ventana / corredera</li>
                   <li><span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#f0c46a]" />Puerta / portón</li>
                   <li><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-[#F6C64A]" />Cámara y cono de visión</li>
@@ -677,7 +690,7 @@ export default function Plano390UI({
               </div>
             </div>
             <p className="text-[9px] leading-5 text-white/50">
-              Casa mediterránea de una planta sobre el plano del cliente: muros crema, porcelanato blanco brillante y franja blanca con portal de piedra. Tres dormitorios y dos baños (baño 1,80 × 2,20 m con ducha de 0,90 m y vanitorio de 0,80 m). Living de 28,2 m² con muro de TV de 3,80 m (TV 1,40 × 0,79 m y mueble flotante de 2,60 m), cocina abierta con isla de 2,40 × 1,00 m y barra de 1,05 m, despensa/café de 6,5 m², garaje de 25,6 m² con portón seccional de 3,60 m y porche de acceso. Puertas y ventanas animadas, luces encendidas/apagadas, interruptores y enchufes a la vista, vegetación en movimiento y circuito de 12 cámaras.
+              Casa mediterránea de una planta sobre el plano del cliente: muros verde limón, porcelanato blanco brillante y franja blanca con portal de piedra. Tres dormitorios y dos baños (baño 1,80 × 2,20 m con ducha de 0,90 m y vanitorio de 0,80 m). Living de 28,2 m² con muro de TV de 3,80 m (TV 1,40 × 0,79 m y mueble flotante de 2,60 m), cocina abierta con isla de 2,40 × 1,00 m y barra de 1,05 m, despensa/café de 6,5 m², garaje de 25,6 m² con portón seccional de 3,60 m y porche de acceso. Puertas y ventanas animadas, luces encendidas/apagadas, interruptores y enchufes a la vista, vegetación en movimiento y circuito de 12 cámaras. Vista de plano 3D elevada y recorrido con sugerencia de orientación horizontal.
             </p>
             <div>
               <p className="text-[8px] font-black uppercase tracking-[.18em] text-white/40">

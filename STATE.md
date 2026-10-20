@@ -2,6 +2,31 @@
 
 Bitácora de trabajo (se actualiza al cierre de cada hito).
 
+## Última sesión — 2026-10-20 (2): corrección de 12 capturas + plano 3D + giro horizontal
+
+### Hecho
+- **12 capturas verticales revisadas** (03:39–04:41): cámaras pegadas a isla/muebles, FOV de túnel, muros/piso sin contraste, paneles y cojines flotantes, armarios girados, NPC en tour y baño apuntando a una pared.
+- **FOV adaptativo**: objetivo horizontal 74° libre / 78° tour convertido a vertical con el aspect, límites 50–94°, recalculado cada frame. `BASE_FOV`/`TOUR_FOV` pasaron a 62/64 solo como arranque.
+- **16 paradas del tour recolocadas** con ≥ 0,6 m al mueble y ≥ 0,25 m al muro; isla desde el comedor (z 4,0), cocina desde z 4,05, porche z 14,2, fachada en 3/4, baño desde la esquina SE, pasillo mirando a dormitorio 2. NPC ocultos en tour/CCTV/plano.
+- **Muros verde limón**: interior `#c9ef63`, fachada `#c9e77a`; porcelanato blanco, cielo raso blanco, portal de piedra y franja blanca. Plano 2D, leyenda y ficha sincronizados.
+- **Mobiliario**: `Desk` con panel de corcho pegado al muro, lámpara, cuaderno y `rot`; `Chair` con patas/respaldo; armarios 2/3 girados −90° contra el muro oriente; dormitorios 1/3 con escritorio al oriente; huellas `FURNITURE_2D` actualizadas; sin cojines flotantes.
+- **Cocina**: orden ventana/lavaplatos (x 4,6) → placa/campana (5,7) → horno (6,05) → refri al ras (6,9) → isla/barra; tabla de picar y frutero; se descartó despensa alta que dejaba 0,34 m de paso.
+- **Plano 3D elevado**: escena `plano` `[7.3, 16.5, 11.2]` → `[7.3, 0, 5.5]`; `planView` oculta cielo, techo, cielo del porche, downlights (conserva sus luces), CCTV, manos, NPC y joysticks; el rig saltea la caminata para que la cámara no baje a 1,62 m. Botón **Ver 3D** en el panel Plano, chip “Plano 3D” y `?vista=plano`.
+- **Táctil**: joysticks 112/104 px con recorrido escalado, cruz direccional y `env(safe-area-inset-bottom)`; `LabJoystick` acepta `size`/`accent`.
+- **Onboarding horizontal**: `Plano390RotateHint` anima un teléfono 90°, ofrece fullscreen + orientation lock y “Seguir en vertical”; descarte por sesión, oculto en horizontal y en plano 3D.
+- **CCTV**: CAM-07 y CAM-12 separadas de la cara del muro; carcasa de 0,16 m libre.
+- **Skill**: errores **026–038** documentados en `references/errores.md` y reglas nuevas en `SKILL.md` (FOV, retiro de cámara, actores, plano 3D, joysticks, orientación).
+
+### Validación
+- `esbuild` sobre los 9 archivos tocados: sin errores de sintaxis.
+- Sin `node_modules` local: typecheck/lint real corre en Vercel (`ignoreBuildErrors: false`).
+- Deploy: **pendiente de commit/push** al momento de escribir esta sección.
+
+### Próximo
+- Validar con capturas del teléfono en retrato y horizontal; revisar plano 3D y hint.
+- Si el verde limón exterior resulta demasiado fuerte, volver `matWallExt` a crema y dejar solo interiores lime.
+- Pendientes de producto: miniaturas de video en vivo, texturas nuevas de personajes, tour POV de NPC, sonido ambiente y HUD de medición en vivo.
+
 ## Última sesión — 2026-10-20: Plano v2 "Mediterránea 148 m²" + skill del visor
 
 ### Hecho

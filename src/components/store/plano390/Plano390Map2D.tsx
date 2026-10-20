@@ -144,7 +144,7 @@ export default function Plano390Map2D({
             y={z}
             width={ww}
             height={hh}
-            fill={w.window ? 'rgba(232,226,212,.18)' : '#e8e2d4'}
+            fill={w.window ? 'rgba(201,239,99,.18)' : '#c9ef63'}
           />
         );
       })}

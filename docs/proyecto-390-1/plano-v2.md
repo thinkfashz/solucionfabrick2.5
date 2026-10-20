@@ -108,3 +108,36 @@ Garaje. Garaje al **oriente**, porche al **centro**, jardín al frente.
 - **Controles**: dock inferior de 6 botones de 48 px con etiqueta (Libre, Tour,
   Cámaras, Luces, Abrir, Manos), escenas de 44 px, botón de iluminación
   Día/Atardecer/Noche en el header y `?vista=` para abrir una escena directa.
+
+## Iteración 4 (2026-10-20) — cámaras, muros limón, mobiliario y plano elevado
+
+Revisión de 12 capturas verticales del teléfono (03:39–04:41).
+
+- **FOV adaptativo**: el FOV vertical fijo (46/49°) daba un horizontal de ~24°
+  en retrato. Ahora `fovForAspect()` parte de un objetivo horizontal de 74°
+  (libre) y 78° (tour), límites 50–94°, recalculado cada frame. En horizontal
+  el lente vuelve a ~50° vertical.
+- **Tour recolocado**: las 16 paradas se retiraron de muros y muebles (cocina
+  z 4,05, isla z 4,0, porche z 14,2, fachada en 3/4, dormitorios desde las
+  esquinas libres). El baño se mira desde la esquina SE al vanitorio/espejo;
+  el pasillo mira a la puerta del dormitorio 2. Los NPC se ocultan en tour,
+  CCTV y plano.
+- **Muros verde limón**: interior `#c9ef63`, fachada `#c9e77a`, con portal de
+  piedra y franja blanca. El porcelanato sigue blanco; el plano 2D, la leyenda
+  y la ficha usan el mismo color.
+- **Mobiliario**: se eliminó el panel de 1,21 m que flotaba sobre el escritorio
+  y los cojines-silla de 6 cm; el escritorio lleva panel de corcho pegado al
+  muro, lámpara y silla con patas. Dormitorios 1 y 3 mueven el escritorio al
+  muro oriente; el 2 lo deja como consola. Armarios 2/3 girados 90° contra el
+  muro oriente y huellas 2D actualizadas.
+- **Cocina**: secuencia ventana/lavaplatos (x 4,6) → placa/campana (5,7) →
+  horno (6,05) → refri (6,9) → isla/barra; tabla de picar y frutero. Se descartó
+  una despensa alta que dejaba 0,34 m de paso.
+- **Plano 3D elevado**: escena `plano` (`[7.3, 16.5, 11.2]` → `[7.3, 0, 5.5]`),
+  `planView` oculta cielo, techo, cielo del porche, downlights y CCTV; botón
+  **Ver 3D** en el panel Plano y `?vista=plano`.
+- **Táctil**: joysticks de 112/104 px con recorrido escalado, cruz direccional
+  y safe-area; aviso animado “Gira el teléfono” con fullscreen/orientation lock
+  y opción de seguir en vertical.
+- **CCTV**: CAM-07 y CAM-12 se separaron de la cara del muro para que la
+  carcasa no quede embebida.

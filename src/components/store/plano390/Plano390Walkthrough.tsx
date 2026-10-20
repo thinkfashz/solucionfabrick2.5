@@ -16,8 +16,9 @@ import Plano390CameraRig, { cine, input } from './Plano390CameraRig';
 import type { Plano390Mode } from './Plano390CameraRig';
 import Plano390Controls from './Plano390Controls';
 import Plano390UI from './Plano390UI';
+import Plano390RotateHint from './Plano390RotateHint';
 
-const INITIAL_CAM = { position: [7, PLAN.eyeH, 17.2] as [number, number, number], fov: 46, near: 0.05, far: 220 };
+const INITIAL_CAM = { position: [7, PLAN.eyeH, 17.2] as [number, number, number], fov: 62, near: 0.05, far: 220 };
 
 // La cámara se configura UNA vez dentro del Canvas. Si se pasa la prop
 // `camera` al Canvas, R3F la reaplica en cada render y cualquier cambio de
@@ -61,6 +62,7 @@ export default function Plano390Walkthrough() {
   const [cctvIndex, setCctvIndex] = useState(0);
   const [tourIndex, setTourIndex] = useState(0);
   const [initialScene, setInitialScene] = useState<SceneView | null>(null);
+  const [planView, setPlanView] = useState(false);
 
   /**
    * Enlace directo para revisión visual y para compartir una vista:
@@ -82,6 +84,7 @@ export default function Plano390Walkthrough() {
     input.mode = 'free';
     input.spot = null;
     setInitialScene(scene ?? null);
+    setPlanView(scene?.id === 'plano');
     setMode('free');
     setStage('in');
   }, []);
@@ -94,10 +97,12 @@ export default function Plano390Walkthrough() {
     input.lookDx = 0;
     input.move.x = 0;
     input.move.y = 0;
+    setPlanView(false);
     setStage('in');
   };
 
   const changeMode = (m: Plano390Mode) => {
+    setPlanView(false);
     input.mode = m;
     input.spot = null;
     input.turn = 0;
@@ -114,6 +119,7 @@ export default function Plano390Walkthrough() {
   const goSpot = (i: number) => {
     input.mode = 'free';
     input.jump = null;
+    setPlanView(false);
     setMode('free');
     input.spot = i;
     setSpot(i);
@@ -126,6 +132,7 @@ export default function Plano390Walkthrough() {
 
   /** Salto directo a una cámara desde el panel de miniaturas. */
   const goCctv = (i: number) => {
+    setPlanView(false);
     if (mode !== 'cctv') {
       input.mode = 'cctv';
       input.spot = null;
@@ -151,6 +158,7 @@ export default function Plano390Walkthrough() {
     input.move.x = 0;
     input.move.y = 0;
     input.jump = { pos: scene.pos, look: scene.look };
+    setPlanView(scene.id === 'plano');
     setSpot(null);
     setMode('free');
   };
@@ -161,14 +169,28 @@ export default function Plano390Walkthrough() {
         <Canvas shadows="soft" dpr={[1, 1.6]} onCreated={setupCanvas}>
           <CameraBootstrap scene={initialScene} />
           <Suspense fallback={null}>
-            <Plano3903D light={light} lightsOn={lightsOn} openHouse={openHouse} showHands={showHands && mode !== 'cctv'} autoDoors={mode === 'tour'} />
-            <Plano390CameraRig initialScene={initialScene} onRoom={setRoomLabel} onCctv={setCctvIndex} onTour={setTourIndex} />
+            <Plano3903D
+              light={light}
+              lightsOn={lightsOn}
+              openHouse={openHouse}
+              showHands={showHands && mode !== 'cctv' && !planView}
+              showNpc={mode === 'free' && !planView}
+              planView={planView}
+              autoDoors={mode === 'tour'}
+            />
+            <Plano390CameraRig
+              initialScene={initialScene}
+              planView={planView}
+              onRoom={setRoomLabel}
+              onCctv={setCctvIndex}
+              onTour={setTourIndex}
+            />
           </Suspense>
         </Canvas>
       </div>
       {/* Gradiente cinematográfico superior/inferior (liviano, no tapa la vista) */}
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,.38),transparent_15%,transparent_80%,rgba(0,0,0,.58))]" />
-      <Plano390Controls mode={mode} onReset={() => setMode('free')} />
+      {!planView ? <Plano390Controls mode={mode} onReset={() => setMode('free')} /> : null}
       <Plano390UI
         stage={stage}
         onEnter={enter}
@@ -176,7 +198,7 @@ export default function Plano390Walkthrough() {
         onModeChange={changeMode}
         activeSpot={spot}
         onSpotChange={goSpot}
-        roomLabel={roomLabel}
+        roomLabel={planView ? 'Plano 3D' : roomLabel}
         onCloseSpot={closeSpot}
         onScene={goScene}
         cctvIndex={cctvIndex}
@@ -191,6 +213,7 @@ export default function Plano390Walkthrough() {
         light={light}
         onLightChange={setLight}
       />
+      <Plano390RotateHint enabled={stage === 'in' && !planView} />
     </div>
   );
 }

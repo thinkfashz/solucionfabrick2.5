@@ -665,22 +665,81 @@ function Bed({
   );
 }
 
-function Desk({ x, z, w = 1.2, matWood, matWall }: { x: number; z: number; w?: number; matWood: Material; matWall: Material }) {
+function Desk({
+  x,
+  z,
+  w = 1.2,
+  rot = 0,
+  matWood,
+  matWall,
+}: {
+  x: number;
+  z: number;
+  w?: number;
+  /** 0 = contra muro sur; +90° = contra muro oriente. */
+  rot?: number;
+  matWood: Material;
+  matWall: Material;
+}) {
   return (
-    <group position={[x, 0, z]}>
+    <group position={[x, 0, z]} rotation={[0, rot, 0]}>
       <B p={[0, 0.78, 0]} s={[w, 0.05, 0.55]} m={matWood} cast />
       <B p={[-w / 2 + 0.05, 0.4, 0]} s={[0.05, 0.76, 0.5]} m={matWood} />
       <B p={[w / 2 - 0.05, 0.4, 0]} s={[0.05, 0.76, 0.5]} m={matWood} />
-      <B p={[0, 2.0, -0.06]} s={[w, 1.21, 0.05]} m={matWall} cast />
-      <B p={[0, 1.35, -0.02]} s={[w - 0.3, 0.2, 0.3]} m={matWood} />
-      <B p={[0, 1.2, 0.02]} s={[w - 0.5, 0.03, 0.03]} m={matWood} />
+      {/* Panel de corcho pegado al muro, no una pared flotante sobre el escritorio. */}
+      <B p={[0, 1.55, 0.32]} s={[w - 0.28, 0.62, 0.03]} m={matWall} cast />
+      <B p={[0, 1.55, 0.332]} s={[w - 0.38, 0.52, 0.012]} m={matWood} />
+      {/* Lámpara de escritorio y cuaderno. */}
+      <B p={[-w / 2 + 0.22, 0.83, 0.02]} s={[0.16, 0.03, 0.16]} m={matWood} />
+      <B p={[-w / 2 + 0.22, 1.08, 0.02]} s={[0.025, 0.5, 0.025]} m={matWood} />
+      <B p={[-w / 2 + 0.22, 1.25, 0.02]} s={[0.16, 0.1, 0.16]} m={matWall} />
+      <B p={[w / 2 - 0.27, 0.82, 0.02]} s={[0.34, 0.02, 0.24]} m={matWall} />
     </group>
   );
 }
 
-function Wardrobe({ x, z, w, h = 2.2, mat }: { x: number; z: number; w: number; h?: number; mat: Material }) {
+function Chair({
+  x,
+  z,
+  rot = 0,
+  matWood,
+  matLinen,
+}: {
+  x: number;
+  z: number;
+  rot?: number;
+  matWood: Material;
+  matLinen: Material;
+}) {
   return (
-    <group position={[x, 0, z]}>
+    <group position={[x, 0, z]} rotation={[0, rot, 0]}>
+      <B p={[0, 0.46, 0]} s={[0.45, 0.06, 0.45]} m={matLinen} cast />
+      <B p={[0, 0.7, -0.21]} s={[0.45, 0.5, 0.05]} m={matLinen} cast />
+      {[[-0.17, -0.17], [-0.17, 0.17], [0.17, -0.17], [0.17, 0.17]].map(([dx, dz], i) => (
+        <B key={i} p={[dx, 0.22, dz]} s={[0.035, 0.44, 0.035]} m={matWood} />
+      ))}
+    </group>
+  );
+}
+
+function Wardrobe({
+  x,
+  z,
+  w,
+  h = 2.2,
+  rot = 0,
+  mat,
+}: {
+  x: number;
+  z: number;
+  w: number;
+  h?: number;
+  /** 0 = frente al sur; -90° = frente al poniente, respaldo al muro oriente. */
+  rot?: number;
+  mat: Material;
+}) {
+  return (
+    <group position={[x, 0, z]} rotation={[0, rot, 0]}>
       <B p={[0, h / 2, 0]} s={[w, h, 0.58]} m={mat} cast />
       {[0, 1, 2].map((i) => (
         <mesh key={i} position={[-w / 2 + (w / 3) * (i + 0.5), h / 2, 0.3]}>
@@ -820,6 +879,8 @@ export default function Plano3903D({
   lightsOn = true,
   openHouse = false,
   showHands = true,
+  showNpc = true,
+  planView = false,
   autoDoors = false,
 }: {
   light: 'day' | 'sunset' | 'night';
@@ -827,6 +888,10 @@ export default function Plano3903D({
   openHouse?: boolean;
   /** Cuerpo en primera persona (manos/antebrazos). */
   showHands?: boolean;
+  /** Personajes de escala; se ocultan en tour/CCTV para no tapar el encuadre. */
+  showNpc?: boolean;
+  /** Vista de plano elevada: oculta cielo raso, techo, downlights y cámaras. */
+  planView?: boolean;
   /** Abre las puertas al acercarse la cámara (recorrido POV). */
   autoDoors?: boolean;
 }) {
@@ -843,8 +908,12 @@ export default function Plano3903D({
   const grassMap = useMemo(() => viewerTextureVariant('pastoCalle', 16, 12), [textures]);
 
   const matWood = useTextureMaterial(woodMap, { color: '#ffffff', roughness: 0.6, metalness: 0.03, envMapIntensity: 0.7 });
-  const matWallInt = useTextureMaterial(wallMap, { color: '#e7d8c1', roughness: 0.92, envMapIntensity: 0.28 });
-  const matWallExt = useTextureMaterial(stuccoCanvas, { color: '#e6d6bf', roughness: 0.88, envMapIntensity: 0.32 });
+  // Paredes en verde limón: separan muro, piso y cielo raso de un vistazo.
+  // El portal de piedra y la franja blanca mantienen el acento mediterráneo.
+  const matWallInt = useTextureMaterial(wallMap, { color: '#c9ef63', roughness: 0.9, envMapIntensity: 0.3 });
+  // Fachada en verde limón suave: la misma familia cromática que el interior,
+  // con el portal de piedra y la franja blanca como acentos mediterráneos.
+  const matWallExt = useTextureMaterial(stuccoCanvas, { color: '#c9e77a', roughness: 0.88, envMapIntensity: 0.32 });
   const matBand = useTextureMaterial(stuccoCanvas, { color: '#fbf8f1', roughness: 0.8, envMapIntensity: 0.4 });
   const matCeil = useTextureMaterial(wallMap, { color: '#fbf7ef', roughness: 0.95, envMapIntensity: 0.25 });
   const matPorcelain = useTextureMaterial(porcelainCanvas, { color: '#f7f5f0', roughness: 0.08, metalness: 0.04, envMapIntensity: 1.45 });
@@ -974,17 +1043,18 @@ export default function Plano3903D({
         </mesh>
       ))}
 
-      {/* ── Cielorraso ── */}
-      {ROOMS.filter((r) => r.id !== '11' && r.id !== '12').map((room) => (
-        <mesh
-          key={`c${room.id}`}
-          position={[(room.x0 + room.x1) / 2, WALL_H - 0.04, (room.z0 + room.z1) / 2]}
-          receiveShadow
-          material={matCeil}
-        >
-          <boxGeometry args={[room.x1 - room.x0, 0.06, room.z1 - room.z0]} />
-        </mesh>
-      ))}
+      {/* ── Cielorraso (oculto en la vista de plano elevado) ── */}
+      {!planView &&
+        ROOMS.filter((r) => r.id !== '11' && r.id !== '12').map((room) => (
+          <mesh
+            key={`c${room.id}`}
+            position={[(room.x0 + room.x1) / 2, WALL_H - 0.04, (room.z0 + room.z1) / 2]}
+            receiveShadow
+            material={matCeil}
+          >
+            <boxGeometry args={[room.x1 - room.x0, 0.06, room.z1 - room.z0]} />
+          </mesh>
+        ))}
 
       {/* ── Muros ── */}
       {wallsRender.map((seg, i) => {
@@ -1032,7 +1102,7 @@ export default function Plano3903D({
       ))}
 
       {/* ── Techo plano + franja blanca + portal de piedra ── */}
-      <B p={[7.3, WALL_H + 0.16, 5.5]} s={[15.2, 0.28, 11.9]} m={matFrame} cast recv />
+      {!planView ? <B p={[7.3, WALL_H + 0.16, 5.5]} s={[15.2, 0.28, 11.9]} m={matFrame} cast recv /> : null}
       <B p={[7.3, WALL_H + 0.02, 11.12]} s={[15.0, 0.34, 0.34]} m={matBand} cast />
       <B p={[7.3, WALL_H + 0.02, -0.12]} s={[15.0, 0.34, 0.34]} m={matBand} cast />
       <B p={[-0.12, WALL_H + 0.02, 5.5]} s={[0.34, 0.34, 11.3]} m={matBand} cast />
@@ -1043,7 +1113,7 @@ export default function Plano3903D({
       <B p={[7.2, 2.72, 11.16]} s={[3.3, 0.56, 0.42]} m={matStone} cast />
       <B p={[7.2, 3.03, 11.16]} s={[3.5, 0.14, 0.52]} m={matBand} cast />
       {/* porche: cielo y escalones */}
-      <B p={[7.35, 2.86, 11.72]} s={[3.9, 0.12, 1.96]} m={matBand} cast />
+      {!planView ? <B p={[7.35, 2.86, 11.72]} s={[3.9, 0.12, 1.96]} m={matBand} cast /> : null}
       <B p={[7.35, 0.09, 12.7]} s={[3.9, 0.18, 0.42]} m={matPaver} recv />
       <B p={[7.35, 0.05, 13.02]} s={[4.2, 0.1, 0.34]} m={matPaver} recv />
 
@@ -1302,6 +1372,18 @@ export default function Plano3903D({
           m={matPine}
           cast
         />
+        {/* tabla de picar + frutero: rompen la gran superficie blanca de la isla */}
+        <B p={[5.95, 0.955, 2.38]} s={[0.46, 0.025, 0.28]} m={matPine} r={[0, -0.12, 0]} />
+        <mesh position={[5.08, 0.96, 2.6]}>
+          <cylinderGeometry args={[0.16, 0.13, 0.08, 18]} />
+          <meshStandardMaterial color="#d8cbb6" roughness={0.8} />
+        </mesh>
+        {[[5.03, 2.56], [5.12, 2.63], [5.07, 2.68]].map(([fx, fz], i) => (
+          <mesh key={`fruit${i}`} position={[fx, 1.03 + (i % 2) * 0.015, fz]}>
+            <sphereGeometry args={[0.045, 10, 8]} />
+            <meshStandardMaterial color={i === 1 ? '#c9b24d' : '#9b4f35'} roughness={0.7} />
+          </mesh>
+        ))}
         {/* LED bajo la barra */}
         <mesh position={[KITCHEN.island.x, 0.975, 3.37]} material={matLed}>
           <boxGeometry args={[KITCHEN.island.w, 0.018, 0.02]} />
@@ -1478,8 +1560,8 @@ export default function Plano3903D({
       <group>
         <Bed x={11.6} z={1.55} w={1.8} head={-1} matWood={matPine} matLinen={matLinen} />
         <Wardrobe x={13.55} z={0.62} w={1.5} mat={matBand} />
-        <Desk x={11.0} z={3.2} w={1.2} matWood={matPine} matWall={matBand} />
-        <B p={[12.2, 0.55, 3.25]} s={[0.5, 0.06, 0.5]} m={matLinen} />
+        <Desk x={14.02} z={2.3} w={1.2} rot={Math.PI / 2} matWood={matPine} matWall={matBand} />
+        <Chair x={13.35} z={2.3} rot={Math.PI / 2} matWood={matPine} matLinen={matLinen} />
         <mesh position={[11.8, 0.04, 1.7]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[2.6, 2.2]} />
           <meshStandardMaterial color="#d9cfc0" roughness={0.95} />
@@ -1503,9 +1585,8 @@ export default function Plano3903D({
       {/* ── Dormitorio 2 ── */}
       <group>
         <Bed x={1.55} z={1.55} w={1.6} head={-1} matWood={matWood} matLinen={matLinen} />
-        <Wardrobe x={2.85} z={2.35} w={0.95} mat={matBand} />
+        <Wardrobe x={3.0} z={2.35} w={0.95} rot={-Math.PI / 2} mat={matBand} />
         <Desk x={1.15} z={3.15} w={1.2} matWood={matPine} matWall={matBand} />
-        <B p={[2.35, 0.55, 3.2]} s={[0.5, 0.06, 0.5]} m={matLinen} />
         {[0.52, 2.58].map((x) => (
           <group key={x} position={[x, 0, 0.72]}>
             <B p={[0, 0.26, 0]} s={[0.42, 0.52, 0.42]} m={matPine} cast />
@@ -1525,9 +1606,9 @@ export default function Plano3903D({
       {/* ── Dormitorio 3 ── */}
       <group>
         <Bed x={1.55} z={7.55} w={1.6} head={-1} matWood={matWood} matLinen={matLinen} />
-        <Wardrobe x={2.85} z={8.6} w={0.95} mat={matBand} />
-        <Desk x={1.2} z={10.35} w={1.2} matWood={matPine} matWall={matBand} />
-        <B p={[2.4, 0.55, 10.35]} s={[0.5, 0.06, 0.5]} m={matLinen} />
+        <Wardrobe x={3.0} z={8.6} w={0.95} rot={-Math.PI / 2} mat={matBand} />
+        <Desk x={3.015} z={10.1} w={1.2} rot={Math.PI / 2} matWood={matPine} matWall={matBand} />
+        <Chair x={2.35} z={10.1} rot={Math.PI / 2} matWood={matPine} matLinen={matLinen} />
         <mesh position={[1.7, 0.04, 8.8]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[2.4, 2.2]} />
           <meshStandardMaterial color="#d9cfc0" roughness={0.95} />
@@ -1618,13 +1699,18 @@ export default function Plano3903D({
         [8.4, 1.8],
       ].map(([x, z], i) => (
         <group key={`dl${i}`} position={[x, WALL_H - 0.06, z]}>
-          <mesh>
-            <cylinderGeometry args={[0.075, 0.075, 0.02, 14]} />
-            <meshStandardMaterial color="#fdf8ee" emissive="#fff1d6" emissiveIntensity={lightsOn ? 2.2 : 0.04} />
-          </mesh>
-          <mesh position={[0, -0.013, 0]} material={matLedGlow}>
-            <cylinderGeometry args={[0.13, 0.13, 0.004, 16]} />
-          </mesh>
+          {/* En plano 3D se oculta la luminaria, pero se conserva la luz. */}
+          {!planView ? (
+            <>
+              <mesh>
+                <cylinderGeometry args={[0.075, 0.075, 0.02, 14]} />
+                <meshStandardMaterial color="#fdf8ee" emissive="#fff1d6" emissiveIntensity={lightsOn ? 2.2 : 0.04} />
+              </mesh>
+              <mesh position={[0, -0.013, 0]} material={matLedGlow}>
+                <cylinderGeometry args={[0.13, 0.13, 0.004, 16]} />
+              </mesh>
+            </>
+          ) : null}
           {lightsOn && [0, 1, 6, 8, 10, 12].includes(i) ? (
             <pointLight
               position={[0, -0.25, 0]}
@@ -1637,8 +1723,8 @@ export default function Plano3903D({
         </group>
       ))}
 
-      {/* ── Cámaras CCTV ── */}
-      {CCTV_CAMERAS.map((cam) => (
+      {/* ── Cámaras CCTV (ocultas en la vista de plano) ── */}
+      {!planView && CCTV_CAMERAS.map((cam) => (
         <group key={cam.id}>
           {cam.zone === 'Exterior' ? (
             <mesh position={[cam.pos[0], cam.pos[1] / 2, cam.pos[2]]} castShadow>
@@ -1668,7 +1754,7 @@ export default function Plano3903D({
       ))}
 
       {/* ── Personajes ── */}
-      {NPC_SPOTS.map((npc, i) => (
+      {showNpc && NPC_SPOTS.map((npc, i) => (
         <AnimatedFigure
           key={`npc${i}`}
           playing

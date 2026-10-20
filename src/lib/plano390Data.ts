@@ -141,3 +141,25 @@ export const NPC_SPOTS: { pos: [number, number, number]; door: [number, number] 
   { pos: [3.0, 0, 7.6], door: [3.0, 6.4] },   // recibidor/pasillo
   { pos: [6.3, 0, 3.4], door: [6.0, 0.8] },   // living
 ];
+
+/**
+ * Circuito de cámaras CCTV (modo Cine). Cada cámara tiene su montaje real en la
+ * escena (Plano3903D dibuja carcasa + lente + LED) y su encuadre para el rig.
+ */
+export type CctvCamera = {
+  id: string;
+  name: string;
+  zone: string;
+  pos: [number, number, number];
+  look: [number, number, number];
+  fov: number;
+};
+
+export const CCTV_CAMERAS: CctvCamera[] = [
+  { id: 'CAM-01', name: 'Sala · cocina-comedor', zone: 'Sala', pos: [7.85, 2.4, 0.62], look: [2.2, 0.9, 3.9], fov: 63 },
+  { id: 'CAM-02', name: 'Pasillo · distribución', zone: 'Pasillo', pos: [10.95, 2.36, 6.08], look: [4.3, 1.15, 6.35], fov: 58 },
+  { id: 'CAM-03', name: 'Terraza · pérgola', zone: 'Terraza', pos: [5.85, 2.32, -2.5], look: [1.6, 1.0, 0.6], fov: 66 },
+  { id: 'CAM-04', name: 'Fachada · acceso principal', zone: 'Exterior', pos: [1.3, 3.05, 15.1], look: [7.0, 1.7, 10.6], fov: 52 },
+  { id: 'CAM-05', name: 'Dormitorio principal', zone: 'Dormitorio', pos: [13.3, 2.38, 0.9], look: [11.9, 1.05, 4.7], fov: 60 },
+];
+

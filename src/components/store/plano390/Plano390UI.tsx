@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
-import { ArrowLeft, X, Route, Footprints } from 'lucide-react';
-import { ROOMS, PHOTO_SPOTS, PLAN } from '@/lib/plano390Data';
+import { ArrowLeft, X, Route, Footprints, Clapperboard, Video } from 'lucide-react';
+import { ROOMS, PHOTO_SPOTS, PLAN, CCTV_CAMERAS } from '@/lib/plano390Data';
 
 type Stage = 'intro' | 'ready' | 'in';
-type Mode = 'free' | 'tour';
+type Mode = 'free' | 'tour' | 'cctv';
 
 export default function Plano390UI({
   stage,
@@ -17,6 +17,7 @@ export default function Plano390UI({
   onSpotChange,
   roomLabel,
   onCloseSpot,
+  cctvIndex = 0,
 }: {
   stage: Stage;
   onEnter: () => void;
@@ -26,6 +27,7 @@ export default function Plano390UI({
   onSpotChange: (i: number) => void;
   roomLabel: string;
   onCloseSpot: () => void;
+  cctvIndex?: number;
 }): ReactElement | null {
   const GOLD = '#F6C64A';
   const ACCENT_BLUE = '#2E6FA0';
@@ -35,6 +37,7 @@ export default function Plano390UI({
   const [ready, setReady] = useState(false);
   const [showFiche, setShowFiche] = useState(false);
   const [prevRoomLabel, setPrevRoomLabel] = useState(roomLabel);
+  const [clock, setClock] = useState('');
 
   // Intro loading steps
   useEffect(() => {
@@ -78,12 +81,22 @@ export default function Plano390UI({
     setPrevRoomLabel(roomLabel);
   }, [roomLabel]);
 
+  // Reloj del circuito CCTV (solo se pinta en modo cine; client-only).
+  useEffect(() => {
+    if (mode !== 'cctv' || stage !== 'in') return;
+    const tick = () => {
+      const d = new Date();
+      setClock(
+        `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`,
+      );
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [mode, stage]);
+
   const handleEnter = () => {
     onEnter();
-  };
-
-  const handleModeToggle = () => {
-    onModeChange(mode === 'tour' ? 'free' : 'tour');
   };
 
   const handleSpotClick = (index: number) => {
@@ -93,6 +106,8 @@ export default function Plano390UI({
   const handleCloseSpot = () => {
     onCloseSpot();
   };
+
+  const activeCam = CCTV_CAMERAS[cctvIndex] ?? CCTV_CAMERAS[0];
 
   // Helper to determine room fill color based on floor type
   const getRoomFill = (floor: string): string => {
@@ -205,15 +220,15 @@ export default function Plano390UI({
     <>
       {/* Top bar */}
       <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 p-3 sm:p-4">
-        <Link href="/herramientos" className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-black/62 px-4 text-[10px] font-black backdrop-blur-xl">
-          <ArrowLeft size={15} />← Herramientas
+        <Link href="/herramientas" className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-black/62 px-4 text-[10px] font-black backdrop-blur-xl">
+          <ArrowLeft size={15} />Herramientas
         </Link>
         {/* Center chip */}
         <div className="hidden rounded-full border border-white/10 bg-black/58 px-4 py-2 text-center backdrop-blur-xl sm:block">
           <span className="block text-[8px] font-black uppercase tracking-[.18em] text-[#F6C64A]">
-            Proyecto 390-1
+            {mode === 'cctv' ? 'Cine CCTV · En directo' : 'Proyecto 390-1'}
           </span>
-          <b className="text-[10px]">{roomLabel}</b>
+          <b className="text-[10px]">{mode === 'cctv' && activeCam ? `${activeCam.id} · ${activeCam.zone}` : roomLabel}</b>
         </div>
         {/* Ficha button */}
         <button
@@ -237,35 +252,100 @@ export default function Plano390UI({
       </div>
 
       {/* Bottom chips */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex flex-row gap-2 overflow-x-auto px-4 select-none touch-none">
-        {/* Mode chip */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex max-w-[96vw] flex-row gap-2 overflow-x-auto px-4 select-none touch-none">
+        {/* Modos de cámara */}
         <button
-          onClick={handleModeToggle}
-          className={`inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-2 text-[9px] font-black ${
+          onClick={() => onModeChange('free')}
+          className={`inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-2 text-[9px] font-black ${
+            mode === 'free' ? 'bg-[#F6C64A] text-black' : ''
+          }`}
+        >
+          <Footprints size={14} />
+          <span>Libre</span>
+        </button>
+        <button
+          onClick={() => onModeChange('tour')}
+          className={`inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-2 text-[9px] font-black ${
             mode === 'tour' ? 'bg-[#F6C64A] text-black' : ''
           }`}
         >
           <Route size={14} />
-          <Footprints size={14} />
-          <span>{mode === 'tour' ? 'Recorrido guiado' : 'Libre'}</span>
+          <span>Recorrido guiado</span>
+        </button>
+        <button
+          onClick={() => onModeChange('cctv')}
+          className={`inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-2 text-[9px] font-black ${
+            mode === 'cctv' ? 'bg-[#F6C64A] text-black' : ''
+          }`}
+        >
+          <Clapperboard size={14} />
+          <span>Cine CCTV</span>
         </button>
         {/* Photo spots chips */}
         {PHOTO_SPOTS.map((spot, idx) => (
           <button
             key={spot.id}
             onClick={() => handleSpotClick(idx)}
-            className={`inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-2 text-[9px] font-black ${
-              activeSpot === idx ? 'bg-[${spot.color}]/20 text-[${spot.color}]' : ''
-            }`}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-2 text-[9px] font-black"
+            style={
+              activeSpot === idx
+                ? { borderColor: spot.color, color: spot.color, background: `${spot.color}22` }
+                : undefined
+            }
           >
             <span
               className="h-[6px] w-[6px] rounded-full"
-              style={{ background: spot.color, border: `2px solid ${spot.color}` }}
+              style={{ background: spot.color }}
             />
-            <span>{spot.label.split('·')[0].trim()}</span> {/* e.g., "Foto 41" */}
+            <span>{spot.label.split('·')[0].trim()}</span>
           </button>
         ))}
       </div>
+
+      {/* ── Overlay de Cine CCTV (scanlines + REC + reloj) ── */}
+      {mode === 'cctv' && (
+        <div className="pointer-events-none absolute inset-0 z-20">
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,.045)_0px,rgba(255,255,255,.045)_1px,transparent_1px,transparent_4px)] opacity-60" />
+          <div className="absolute inset-0 shadow-[inset_0_0_190px_rgba(0,0,0,.85)]" />
+          {/* Esquinas de encuadre */}
+          {[
+            'left-3 top-3 border-l-2 border-t-2',
+            'right-3 top-3 border-r-2 border-t-2',
+            'left-3 bottom-3 border-l-2 border-b-2',
+            'right-3 bottom-3 border-r-2 border-b-2',
+          ].map((cls) => (
+            <span key={cls} className={`absolute h-7 w-7 border-white/35 ${cls}`} />
+          ))}
+          {/* REC + cámara */}
+          <div className="absolute left-6 top-20 flex items-center gap-2 rounded-md bg-black/55 px-2.5 py-1.5 backdrop-blur-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-70" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            </span>
+            <span className="text-[9px] font-black tracking-[.2em] text-white">REC</span>
+            <span className="text-[9px] font-bold text-white/55">{activeCam?.id}</span>
+          </div>
+          <div className="absolute left-6 top-28 max-w-[240px] text-[9px] font-black uppercase tracking-[.18em] text-white/70">
+            {activeCam?.name}
+          </div>
+          {/* Contador de cámaras */}
+          <div className="absolute right-6 top-20 flex items-center gap-1.5">
+            {CCTV_CAMERAS.map((cam, i) => (
+              <span
+                key={cam.id}
+                className={`h-1.5 rounded-full transition-all duration-500 ${
+                  i === cctvIndex ? 'w-5 bg-[#F6C64A]' : 'w-1.5 bg-white/30'
+                }`}
+              />
+            ))}
+          </div>
+          <div className="absolute bottom-20 left-6 flex items-center gap-2 text-[9px] font-black tracking-[.14em] text-white/60">
+            <Video size={12} />
+            <span>{clock}</span>
+            <span className="text-white/25">CAM {String(cctvIndex + 1).padStart(2, '0')}/{String(CCTV_CAMERAS.length).padStart(2, '0')}</span>
+          </div>
+        </div>
+      )}
 
       {/* Minimap (hidden on mobile) */}
       <div className="absolute right-3 top-16 z-20 hidden sm:block select-none touch-none pointer-events-none">
@@ -278,9 +358,9 @@ export default function Plano390UI({
             height="14.6"
             rx="0.5"
             fill="none"
-            stroke="{GOLD}"
+            stroke={GOLD}
             strokeWidth="0.15"
-            filter="drop-shadow(0 0 2px {GOLD})"
+            opacity="0.7"
           />
           {/* Rooms */}
           {ROOMS.map((room) => (
@@ -310,6 +390,17 @@ export default function Plano390UI({
               #{room.id}
             </text>
           ))}
+          {/* Cámaras CCTV */}
+          {CCTV_CAMERAS.map((cam, i) => (
+            <circle
+              key={cam.id}
+              cx={cam.pos[0]}
+              cy={cam.pos[2]}
+              r={mode === 'cctv' && i === cctvIndex ? 0.38 : 0.24}
+              fill={mode === 'cctv' && i === cctvIndex ? GOLD : '#ffffff'}
+              opacity={mode === 'cctv' && i === cctvIndex ? 1 : 0.55}
+            />
+          ))}
         </svg>
       </div>
 
@@ -319,7 +410,8 @@ export default function Plano390UI({
           className={`absolute bottom-[92px] left-1/2 -translate-x-1/2 z-40 flex items-center justify-center px-4 pt-2 select-none`}
         >
           <div
-            className={`relative max-w-[360px] w-full bg-[#0b0f13]/95 border border-[${PHOTO_SPOTS[activeSpot].color}]/40 rounded-xl p-4 backdrop-blur-sm`}
+            className="relative w-full max-w-[360px] rounded-xl border bg-[#0b0f13]/95 p-4 backdrop-blur-sm"
+            style={{ borderColor: `${PHOTO_SPOTS[activeSpot].color}66` }}
           >
             <h3 className="mb-2 text-balance text-[12px] font-black text-center">
               {PHOTO_SPOTS[activeSpot].label}

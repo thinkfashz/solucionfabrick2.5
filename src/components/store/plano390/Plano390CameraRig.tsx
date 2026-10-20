@@ -1,39 +1,54 @@
 'use client';
 /*
- * Plano390CameraRig — cámara primera persona del plano "Proyecto №390-1".
- * • Modo libre: WASD/flechas + Q/E combinados con el estado táctil `input`
- *   (mismo patrón que MetalconWalkRig), con colisiones eje a eje contra WALLS
- *   (incluye tramos window:true = vidrio) y límites del lote.
- * • Modo tour: sigue TOUR_STOPS en bucle, lerp de posición hacia cada parada
- *   (1,6 m/s, smoothstep) + look suavizado, espera 1,5 s entre paradas.
- * • Spot de foto: si `input.spot` está activo, tween one-shot (~1,4 s) hacia
- *   PHOTO_SPOTS[spot] y luego libera `input.spot`.
- * • `input` es estado de módulo mutable compartido con Plano390Controls:
- *   se muta, jamás se reemplaza.
+ * Plano390CameraRig — cámara del recorrido "Proyecto №390-1".
+ * • Modo libre: WASD/flechas + joysticks analógicos con suavizado (aceleración
+ *   y giro), pitch (mirar arriba/abajo), Sprint con Shift y colisiones AABB
+ *   eje a eje contra WALLS (los tramos de vidrio también bloquean).
+ * • Modo tour: sigue TOUR_STOPS en bucle (lerp 1,6 m/s + espera 1,5 s).
+ * • Modo CCTV (Cine): recorre el circuito CCTV_CAMERAS cada 7 s con corte
+ *   suavizado, ligero sway de cámara de seguridad y FOV propio.
+ * • Spot de foto: tween one-shot hacia PHOTO_SPOTS[spot].
+ * `input` y `cine` son estado de módulo mutable compartido con los controles.
  */
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
-import { Vector3 } from 'three';
-import { PHOTO_SPOTS, PLAN, ROOMS, TOUR_STOPS, WALLS } from '@/lib/plano390Data';
-import type { PhotoSpot, WallSeg } from '@/lib/plano390Data';
+import { PerspectiveCamera, Vector3 } from 'three';
+import { CCTV_CAMERAS, PHOTO_SPOTS, PLAN, ROOMS, TOUR_STOPS, WALLS } from '@/lib/plano390Data';
+import type { CctvCamera, PhotoSpot, WallSeg } from '@/lib/plano390Data';
+
+export type Plano390Mode = 'free' | 'tour' | 'cctv';
 
 export type Plano390Input = {
   move: { x: number; y: number };
   turn: number;
-  mode: 'free' | 'tour';
+  pitch: number;
+  mode: Plano390Mode;
   spot: number | null;
 };
 
 /** Estado compartido rig ↔ controls (mutar campos, no reasignar). */
-export const input: Plano390Input = { move: { x: 0, y: 0 }, turn: 0, mode: 'free', spot: null };
+export const input: Plano390Input = { move: { x: 0, y: 0 }, turn: 0, pitch: 0, mode: 'free', spot: null };
+
+/** Estado del circuito CCTV (índice visible + salto manual). */
+export const cine = { index: 0, jump: false };
+
+export function nextCctv(): void {
+  cine.index = (cine.index + 1) % CCTV_CAMERAS.length;
+  cine.jump = true;
+}
 
 const PLAYER_R = 0.3;
-const WALK_SPEED = 2.6; // m/s
-const TURN_SPEED = 2.0; // rad/s a giro completo
-const TOUR_SPEED = 1.6; // m/s entre paradas
-const TOUR_WAIT = 1.5; // s de espera por parada
-const SPOT_DURATION = 1.4; // s del tween de foto
-const ROOM_TICK = 0.5; // s entre chequeos de habitación
+const WALK_SPEED = 2.9; // m/s
+const SPRINT_MULT = 1.6;
+const TURN_SPEED = 2.1; // rad/s a giro completo
+const PITCH_MAX = 0.52; // rad (~30°)
+const TOUR_SPEED = 1.6;
+const TOUR_WAIT = 1.5;
+const SPOT_DURATION = 1.4;
+const ROOM_TICK = 0.5;
+const CCTV_TIME = 7; // s por cámara
+const CCTV_BLEND = 1.1; // s de transición entre cámaras
+const BASE_FOV = 46;
 const BOUNDS = { x0: -3.2, x1: 17.2, z0: -4.6, z1: 15.6 };
 const TAU = Math.PI * 2;
 
@@ -50,22 +65,35 @@ const wrapAngle = (a: number): number => {
 const smooth = (u: number): number => u * u * (3 - 2 * u);
 const clamp1 = (v: number): number => Math.max(-1, Math.min(1, v));
 
-export default function Plano390CameraRig({ onRoom }: { onRoom?: (room: string) => void }) {
+export default function Plano390CameraRig({
+  onRoom,
+  onCctv,
+}: {
+  onRoom?: (room: string) => void;
+  onCctv?: (index: number) => void;
+}) {
   const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
   const yaw = useRef(0);
+  const pitch = useRef(0);
+  const moveSm = useRef({ x: 0, y: 0 });
+  const turnSm = useRef(0);
+  const bob = useRef(0);
   const stopIndex = useRef(0);
   const wait = useRef(0);
-  const prevMode = useRef<'free' | 'tour' | null>(null);
+  const prevMode = useRef<Plano390Mode | null>(null);
   const spotTween = useRef<SpotTween | null>(null);
   const lookPt = useRef(new Vector3());
-  const vA = useRef(new Vector3()); // posición objetivo (tour / spot)
-  const vB = useRef(new Vector3()); // mirada objetivo (tour / spot)
-  const vC = useRef(new Vector3()); // scratch: dirección o look interpolado
+  const vA = useRef(new Vector3());
+  const vB = useRef(new Vector3());
+  const vC = useRef(new Vector3());
   const roomTimer = useRef(0);
   const lastRoom = useRef<string | null>(null);
+  const cctvTimer = useRef(0);
+  const cctvBlend = useRef(0);
+  const cctvPrevPos = useRef(new Vector3());
+  const cctvPrevLook = useRef(new Vector3());
 
-  // Cajas de colisión: cada muro (ventana incluida) expandido por el radio del jugador.
   const boxes = useMemo<CellBox[]>(
     () =>
       WALLS.map((w: WallSeg) => ({
@@ -100,23 +128,52 @@ export default function Plano390CameraRig({ onRoom }: { onRoom?: (room: string) 
     return false;
   };
 
+  const setFov = (fov: number) => {
+    if (camera instanceof PerspectiveCamera) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
+  };
+
+  const startCctv = (idx: number) => {
+    const cam: CctvCamera | undefined = CCTV_CAMERAS[idx % CCTV_CAMERAS.length];
+    if (!cam) return;
+    camera.getWorldDirection(vC.current);
+    cctvPrevPos.current.copy(camera.position);
+    cctvPrevLook.current.copy(camera.position).addScaledVector(vC.current, 2.5);
+    cctvTimer.current = 0;
+    cctvBlend.current = 0;
+    cine.index = idx % CCTV_CAMERAS.length;
+    cine.jump = false;
+    setFov(cam.fov);
+    onCctv?.(cine.index);
+  };
+
   useFrame((_, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
-    const mode: 'free' | 'tour' = input.mode === 'tour' ? 'tour' : 'free';
+    const mode: Plano390Mode = input.mode;
+    const prev = prevMode.current;
 
-    // Transición de modo: parte desde la pose actual (el lerp lleva al primer stop).
-    if (prevMode.current !== mode) {
-      prevMode.current = mode;
+    if (prev !== mode) {
+      if (prev === 'cctv') {
+        setFov(BASE_FOV);
+        pitch.current = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, camera.rotation.x));
+      }
       if (mode === 'free') {
         yaw.current = wrapAngle(camera.rotation.y);
-      } else {
+        pitch.current = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, camera.rotation.x));
+        turnSm.current = 0;
+      } else if (mode === 'tour') {
         camera.getWorldDirection(vC.current);
         lookPt.current.copy(camera.position).addScaledVector(vC.current, 2);
         wait.current = 0;
+      } else {
+        startCctv(0);
       }
+      prevMode.current = mode;
     }
 
-    // ── Spot de foto (one-shot, ignora move/turn mientras anima) ──
+    // ── Spot de foto (one-shot) ──
     const idx = input.spot;
     const spot: PhotoSpot | undefined = idx !== null ? PHOTO_SPOTS[idx] : undefined;
     if (idx !== null) {
@@ -143,12 +200,13 @@ export default function Plano390CameraRig({ onRoom }: { onRoom?: (room: string) 
             camera.position.copy(vA.current);
             camera.lookAt(vB.current);
             yaw.current = wrapAngle(camera.rotation.y);
+            pitch.current = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, camera.rotation.x));
             input.spot = null;
             spotTween.current = null;
           }
         }
       } else {
-        input.spot = null; // índice fuera de rango: limpiar
+        input.spot = null;
         spotTween.current = null;
       }
     }
@@ -177,34 +235,80 @@ export default function Plano390CameraRig({ onRoom }: { onRoom?: (room: string) 
           lookPt.current.lerp(vB.current, Math.min(1, delta * 3));
           camera.lookAt(lookPt.current);
         }
+      } else if (mode === 'cctv') {
+        // ── Circuito CCTV (Cine) ──
+        if (cine.jump && cctvBlend.current > 0.35) {
+          startCctv(cine.index);
+        }
+        const n = CCTV_CAMERAS.length;
+        const cam: CctvCamera | undefined = CCTV_CAMERAS[cine.index % n];
+        if (cam) {
+          cctvTimer.current += delta;
+          cctvBlend.current = Math.min(1, cctvBlend.current + delta / CCTV_BLEND);
+          const t = cctvTimer.current;
+          // Sway sutil de cámara de seguridad (posición y encuadre).
+          vA.current.set(
+            cam.pos[0] + Math.sin(t * 0.53) * 0.006,
+            cam.pos[1] + Math.sin(t * 0.71 + 1.3) * 0.004,
+            cam.pos[2] + Math.cos(t * 0.43) * 0.005,
+          );
+          vB.current.set(
+            cam.look[0] + Math.sin(t * 0.37 + 0.7) * 0.03,
+            cam.look[1] + Math.cos(t * 0.49) * 0.02,
+            cam.look[2] + Math.sin(t * 0.31 + 2.1) * 0.03,
+          );
+          const k = smooth(cctvBlend.current);
+          camera.position.lerpVectors(cctvPrevPos.current, vA.current, k);
+          lookPt.current.lerpVectors(cctvPrevLook.current, vB.current, k);
+          camera.lookAt(lookPt.current);
+          if (cctvTimer.current >= CCTV_TIME) {
+            startCctv((cine.index + 1) % n);
+          }
+        }
       } else {
-        // ── Modo libre: teclado + joystick analógico, colisión eje a eje ──
+        // ── Modo libre: teclado + joysticks, suavizado y sprint ──
         const k = keys.current;
         const kF = (k.w || k.arrowup ? 1 : 0) - (k.s || k.arrowdown ? 1 : 0);
         const kS = (k.d ? 1 : 0) - (k.a ? 1 : 0);
         const kT = (k.q || k.arrowleft ? -1 : 0) + (k.e || k.arrowright ? 1 : 0);
-        const f = clamp1(kF + input.move.y);
-        const side = clamp1(kS + input.move.x);
-        const turn = clamp1(kT + input.turn);
+        const targetF = clamp1(kF + input.move.y);
+        const targetS = clamp1(kS + input.move.x);
+        const targetT = clamp1(kT + input.turn);
+        const sprint = k.shift ? SPRINT_MULT : 1;
 
-        yaw.current = wrapAngle(yaw.current - turn * delta * TURN_SPEED);
-        const speed = WALK_SPEED * delta;
+        // Suavizado de entrada (aceleración/deceleración de juego).
+        const accel = Math.min(1, delta * 11);
+        moveSm.current.x += (targetS - moveSm.current.x) * accel;
+        moveSm.current.y += (targetF - moveSm.current.y) * accel;
+        turnSm.current += (targetT - turnSm.current) * Math.min(1, delta * 9);
+
+        yaw.current = wrapAngle(yaw.current - turnSm.current * delta * TURN_SPEED);
+        const pitchTarget = clamp1(input.pitch) * PITCH_MAX;
+        pitch.current += (pitchTarget - pitch.current) * Math.min(1, delta * 8);
+
+        const speed = WALK_SPEED * sprint * delta;
         const sy = Math.sin(yaw.current);
         const cy = Math.cos(yaw.current);
         const px = camera.position.x;
         const pz = camera.position.z;
-        const mx = (sy * f + cy * side) * speed; // dir·f + right·side
+        const f = moveSm.current.y;
+        const side = moveSm.current.x;
+        const mx = (sy * f + cy * side) * speed;
         const mz = (-cy * f + sy * side) * speed;
 
         let nx = px;
         let nz = pz;
-        if (mx !== 0 && !blocked(px + mx, pz)) nx = px + mx; // eje X primero (desliza)
-        if (mz !== 0 && !blocked(nx, pz + mz)) nz = pz + mz; // luego eje Z
+        if (mx !== 0 && !blocked(px + mx, pz)) nx = px + mx;
+        if (mz !== 0 && !blocked(nx, pz + mz)) nz = pz + mz;
 
         camera.position.x = Math.max(BOUNDS.x0, Math.min(BOUNDS.x1, nx));
         camera.position.z = Math.max(BOUNDS.z0, Math.min(BOUNDS.z1, nz));
-        camera.position.y = PLAN.eyeH;
-        camera.rotation.set(0, yaw.current, 0, 'YXZ');
+
+        // Bobbing de caminata muy sutil (sensación de primera persona).
+        const bobAmt = Math.min(1, Math.hypot(mx, mz) * 24);
+        bob.current += rawDelta * (sprint > 1 ? 12 : 9.5) * bobAmt;
+        camera.position.y = PLAN.eyeH + Math.sin(bob.current) * 0.016 * bobAmt;
+        camera.rotation.set(pitch.current, yaw.current, 0, 'YXZ');
       }
     }
 

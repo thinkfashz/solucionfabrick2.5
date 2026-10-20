@@ -259,7 +259,10 @@ export default function Plano390UI({
 
       {/* ── Controles inferiores: modo + selector de escena ── */}
       <div className="absolute inset-x-0 bottom-0 z-30 select-none">
-        <div className="mx-auto flex max-w-[860px] flex-col gap-1 px-2 pb-2">
+        <div
+          className="mx-auto flex max-w-[860px] flex-col gap-1 px-2"
+          style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
+        >
           <div className="flex items-center justify-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             <span className="shrink-0 pl-1 pr-1.5 text-[7px] font-black uppercase tracking-[.22em] text-white/40">
               Modo
@@ -296,15 +299,23 @@ export default function Plano390UI({
             <span className="shrink-0 pl-1 pr-1.5 text-[7px] font-black uppercase tracking-[.22em] text-white/40">
               Escena
             </span>
-            {SCENES.map((scene) => (
-              <button
-                key={scene.id}
-                onClick={() => onScene(scene)}
-                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-white/10 bg-black/62 px-3 text-[9px] font-black text-white/85 active:bg-white/15"
-              >
-                {scene.label}
-              </button>
-            ))}
+            {SCENES.map((scene) => {
+              const sceneActive =
+                scene.label === roomLabel || (scene.id === 'sala' && roomLabel === 'Cocina · Comedor');
+              return (
+                <button
+                  key={scene.id}
+                  onClick={() => onScene(scene)}
+                  className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-[9px] font-black active:bg-white/15 ${
+                    sceneActive
+                      ? 'border-[#F6C64A]/45 bg-[#F6C64A]/15 text-[#F6C64A]'
+                      : 'border-white/10 bg-black/62 text-white/85'
+                  }`}
+                >
+                  {scene.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

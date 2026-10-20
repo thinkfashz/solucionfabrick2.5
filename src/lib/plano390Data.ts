@@ -115,6 +115,9 @@ export const ROOMS: RoomBox[] = [
   { id: '10', name: 'Dormitorio 3', areaM2: 14.46, x0: 0.25, z0: 6.07, x1: 3.34, z1: 10.75, floor: 'wood' },
   { id: '11', name: 'Garaje', areaM2: 25.57, x0: 9.46, z0: 5.52, x1: 14.35, z1: 10.75, floor: 'concrete' },
   { id: '12', name: 'Porche', areaM2: 6.12, x0: 5.65, z0: 10.75, x1: 9.05, z1: 12.55, floor: 'terrace' },
+  // Despensa abierta entre la cocina y el dormitorio 1: cierra el piso y el
+  // cielorraso del volumen que el plano deja sin rotular (x 7,40…9,34).
+  { id: '13', name: 'Despensa', areaM2: 6.51, x0: 7.4, z0: 0.25, x1: 9.34, z1: 3.61, floor: 'porcelain' },
 ];
 
 /**
@@ -136,9 +139,9 @@ export const WALLS: WallSeg[] = [
   // ── Fachada norte (z 0…0,25) ────────────────────────────────────
   { x0: 0, z0: 0, x1: 1.1, z1: 0.25, kind: 'ext' },
   { x0: 1.1, z0: 0, x1: 2.5, z1: 0.25, kind: 'ext', window: true },       // dorm. 2
-  { x0: 2.5, z0: 0, x1: 4.4, z1: 0.25, kind: 'ext' },
-  { x0: 4.4, z0: 0, x1: 6.0, z1: 0.25, kind: 'ext', window: true },       // cocina
-  { x0: 6.0, z0: 0, x1: 11.2, z1: 0.25, kind: 'ext' },
+  { x0: 2.5, z0: 0, x1: 4.05, z1: 0.25, kind: 'ext' },
+  { x0: 4.05, z0: 0, x1: 5.05, z1: 0.25, kind: 'ext', window: true },    // cocina
+  { x0: 5.05, z0: 0, x1: 11.2, z1: 0.25, kind: 'ext' },
   { x0: 11.2, z0: 0, x1: 13.0, z1: 0.25, kind: 'ext', window: true },     // dorm. 1
   { x0: 13.0, z0: 0, x1: 14.6, z1: 0.25, kind: 'ext' },
   // ── Poniente (x 0…0,25) ─────────────────────────────────────────
@@ -189,7 +192,7 @@ export const OPENINGS: Opening[] = [
   { id: 'd-garage', kind: 'garage', axis: 'z', x: 11.95, z: 10.875, width: 3.6, height: 2.35, ext: true },
   // Fachada norte
   { id: 'w-d2', kind: 'window', axis: 'z', x: 1.8, z: 0.125, width: 1.4, height: 1.3, sill: 0.95, ext: true, glass: true },
-  { id: 'w-kitchen', kind: 'window', axis: 'z', x: 5.2, z: 0.125, width: 1.6, height: 1.1, sill: 1.05, ext: true, glass: true },
+  { id: 'w-kitchen', kind: 'window', axis: 'z', x: 4.55, z: 0.125, width: 1.0, height: 1.1, sill: 1.05, ext: true, glass: true },
   { id: 'w-d1', kind: 'window', axis: 'z', x: 12.1, z: 0.125, width: 1.8, height: 1.35, sill: 0.95, ext: true, glass: true },
   // Poniente
   { id: 'w-d2w', kind: 'window', axis: 'x', x: 0.125, z: 2.1, width: 1.4, height: 1.3, sill: 0.95, ext: true, glass: true },
@@ -254,7 +257,7 @@ export const SCONCES: { x: number; y: number; z: number; rot: number }[] = [
 
 /** Interruptores y enchufes: placa 0,09 × 0,12 m. y 1,10 / 0,30. */
 export const SWITCHES: { x: number; y: number; z: number; rot: number; outlet?: boolean }[] = [
-  { x: 6.6, y: 1.1, z: 10.69, rot: Math.PI },           // entrada (junto a la puerta)
+  { x: 7.9, y: 1.1, z: 10.69, rot: Math.PI },           // entrada (al oriente de la puerta)
   { x: 3.6, y: 1.1, z: 10.69, rot: Math.PI },           // living, muro sur
   { x: 9.28, y: 1.1, z: 10.0, rot: -Math.PI / 2 },      // living, muro oriente
   { x: 3.55, y: 0.3, z: 10.2, rot: Math.PI / 2, outlet: true },
@@ -276,14 +279,19 @@ export const SWITCHES: { x: number; y: number; z: number; rot: number; outlet?: 
 /** Volúmenes que bloquean el paso (muebles grandes y auto). */
 export const BLOCKERS: { x0: number; z0: number; x1: number; z1: number }[] = [
   { x0: 4.25, z0: 2.0, x1: 6.75, z1: 3.1 },    // isla
-  { x0: 7.35, z0: 7.9, x1: 8.95, z1: 10.3 },   // sofá
+  { x0: 7.75, z0: 7.95, x1: 8.65, z1: 10.25 }, // sofá
+  { x0: 4.78, z0: 9.5, x1: 5.62, z1: 10.3 },   // sillón
+  { x0: 7.85, z0: 10.36, x1: 9.25, z1: 10.68 },// consola sur
+  { x0: 5.45, z0: 8.75, x1: 6.75, z1: 9.45 },  // mesa de centro
+  { x0: 7.5, z0: 0.3, x1: 9.0, z1: 0.9 },      // mueble de café
+  { x0: 8.95, z0: 0.45, x1: 9.34, z1: 3.25 },  // despensa
   { x0: 5.6, z0: 4.1, x1: 7.4, z1: 5.4 },      // mesa de comedor
   { x0: 10.6, z0: 7.6, x1: 13.0, z1: 10.1 },   // auto
 ];
 
 /** Puntos de foto con cuña/dirección. */
 export const PHOTO_SPOTS: PhotoSpot[] = [
-  { id: '41', label: 'Foto 41 · living y muro de TV', pos: [8.7, 1.55, 9.8], look: [3.7, 1.2, 8.9], color: '#C56A3A' },
+  { id: '41', label: 'Foto 41 · living y muro de TV', pos: [8.9, 1.55, 7.3], look: [3.7, 1.2, 8.9], color: '#C56A3A' },
   { id: '44', label: 'Foto 44 · cocina e isla', pos: [7.0, 1.55, 3.4], look: [4.4, 1.0, 1.2], color: '#2E6FA0' },
   { id: '50', label: 'Foto 50 · comedor', pos: [8.6, 1.55, 5.6], look: [5.6, 1.0, 4.5], color: '#2E6FA0' },
   { id: '58', label: 'Foto 58 · dormitorio 1', pos: [13.9, 1.55, 3.2], look: [11.0, 1.0, 0.9], color: '#C56A3A' },
@@ -294,7 +302,7 @@ export const TOUR_STOPS: TourStop[] = [
   { label: 'Fachada sur', note: 'Casa mediterránea de una planta, 148 m²', meta: '3 dorm · 2 baños · garaje · porche · 148 m²', pos: [7.2, 1.7, 17.6], look: [7.2, 2.4, 11.3] },
   { label: 'Porche de acceso', note: 'Paso cubierto y puerta de doble vidrio', meta: 'Porche 3,40 × 1,80 m · puerta 1,40 m', pos: [7.05, 1.68, 13.1], look: [7.05, 1.95, 10.9] },
   { label: 'Recibidor', note: 'El living se abre en doble altura hacia el jardín', meta: 'Living 27,52 m² · frente de 3,95 m', pos: [7.05, 1.62, 10.15], look: [7.0, 1.55, 6.6] },
-  { label: 'Muro de TV', note: 'Panel de piedra de 2,20 m y mueble flotante de 2,60 m', meta: 'Muro 3,80 m · TV 1,40 × 0,79 m · mueble 2,60 m', pos: [8.7, 1.6, 9.7], look: [3.7, 1.25, 8.85] },
+  { label: 'Muro de TV', note: 'Panel de piedra de 2,20 m y mueble flotante de 2,60 m', meta: 'Muro 3,80 m · TV 1,40 × 0,79 m · mueble 2,60 m', pos: [8.9, 1.6, 7.2], look: [3.7, 1.25, 8.85] },
   { label: 'Comedor', note: 'Mesa para seis junto a la cocina abierta', meta: 'Comedor 13,76 m² · mesa 1,80 × 0,90 m', pos: [8.55, 1.62, 5.75], look: [5.9, 1.0, 4.55] },
   { label: 'Cocina', note: 'Línea de muebles de 0,90 m y alacenas a 1,40 m', meta: 'Cocina 12,77 m² · alacenas 0,70 m a 1,40 m', pos: [6.7, 1.62, 3.4], look: [4.7, 1.15, 0.7] },
   { label: 'Isla de cocina', note: 'Encimera 0,90 m y barra de 1,05 m con tres taburetes', meta: 'Isla 2,40 × 1,00 m · barra 1,05 m · overhang 0,30', pos: [6.95, 1.55, 3.35], look: [5.3, 0.95, 2.3] },
@@ -311,11 +319,12 @@ export const TOUR_STOPS: TourStop[] = [
 
 /** Selector de escena: salto directo con tween corto desde el HUD. */
 export const SCENES: SceneView[] = [
-  { id: 'living', label: 'Living', pos: [8.4, 1.62, 9.9], look: [3.7, 1.15, 9.0] },
-  { id: 'tv', label: 'Muro TV', pos: [6.6, 1.55, 8.9], look: [3.5, 1.2, 8.85] },
+  { id: 'living', label: 'Living', pos: [8.8, 1.62, 7.4], look: [4.0, 1.2, 9.4] },
+  { id: 'tv', label: 'Muro TV', pos: [7.0, 1.55, 7.4], look: [3.5, 1.2, 8.85] },
   { id: 'comedor', label: 'Comedor', pos: [8.4, 1.62, 5.8], look: [5.9, 1.0, 4.6] },
   { id: 'cocina', label: 'Cocina', pos: [6.6, 1.62, 3.4], look: [4.5, 1.1, 0.7] },
   { id: 'isla', label: 'Isla', pos: [6.9, 1.55, 3.35], look: [5.3, 0.95, 2.3] },
+  { id: 'despensa', label: 'Despensa', pos: [8.62, 1.6, 3.15], look: [8.45, 1.15, 0.55] },
   { id: 'dorm1', label: 'Dorm. 1', pos: [13.9, 1.62, 3.3], look: [10.9, 1.0, 0.8] },
   { id: 'dorm2', label: 'Dorm. 2', pos: [2.9, 1.62, 3.3], look: [1.0, 1.0, 0.8] },
   { id: 'dorm3', label: 'Dorm. 3', pos: [2.9, 1.62, 10.1], look: [1.0, 1.0, 6.7] },
@@ -382,16 +391,20 @@ export const FURNITURE_2D: Furniture2D[] = [
   { kind: 'wardrobe', x0: 2.37, z0: 8.31, x1: 3.32, z1: 8.89 },
   { kind: 'desk', x0: 0.6, z0: 10.07, x1: 1.8, z1: 10.63 },
   // Living
-  { kind: 'tv', x0: 3.46, z0: 7.0, x1: 3.62, z1: 10.8 },
-  { kind: 'rug', x0: 5.0, z0: 7.8, x1: 8.2, z1: 10.4 },
-  { kind: 'sofa', x0: 7.7, z0: 7.95, x1: 8.6, z1: 10.25 },
-  { kind: 'table', x0: 6.0, z0: 8.55, x1: 6.7, z1: 9.65 },
-  { kind: 'table', x0: 6.35, z0: 7.75, x1: 7.55, z1: 8.65 },
+  { kind: 'tv', x0: 3.46, z0: 7.0, x1: 3.64, z1: 10.8 },
+  { kind: 'rug', x0: 4.65, z0: 7.7, x1: 8.05, z1: 10.5 },
+  { kind: 'sofa', x0: 7.75, z0: 7.95, x1: 8.65, z1: 10.25 },
+  { kind: 'table', x0: 5.45, z0: 8.75, x1: 6.75, z1: 9.45 },
+  { kind: 'sofa', x0: 4.78, z0: 9.5, x1: 5.62, z1: 10.3 },
+  { kind: 'table', x0: 7.85, z0: 10.36, x1: 9.25, z1: 10.68 },
+  // Despensa
+  { kind: 'counter', x0: 7.55, z0: 0.31, x1: 8.95, z1: 0.85 },
+  { kind: 'wardrobe', x0: 9.0, z0: 0.5, x1: 9.34, z1: 3.2 },
   // Comedor
   { kind: 'table', x0: 5.6, z0: 4.3, x1: 7.4, z1: 5.2 },
   // Cocina
   { kind: 'counter', x0: 3.65, z0: 0.31, x1: 6.35, z1: 0.93 },
-  { kind: 'counter', x0: 6.45, z0: 0.37, x1: 7.35, z1: 1.07 },
+  { kind: 'counter', x0: 6.45, z0: 0.27, x1: 7.35, z1: 0.97 },
   { kind: 'island', x0: 4.3, z0: 2.05, x1: 6.7, z1: 3.05 },
   // Baño
   { kind: 'bath', x0: 0.25, z0: 3.61, x1: 1.15, z1: 4.8 },

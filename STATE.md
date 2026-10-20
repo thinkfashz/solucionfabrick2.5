@@ -91,3 +91,26 @@ Bitácora de trabajo (se actualiza al cierre de cada hito).
   color de fondo como respaldo.
 - **Errores nuevos documentados**: 012 (capturas headless con WebGL matan el server),
   013 (manija a 5 cm), 014 (`axis` es la normal del muro).
+
+### Sesión 6 — correcciones visuales del cliente (2026-10-20)
+- **Hueco de 6,29 m²** entre cocina y dormitorio 1 (x 7,40…9,34) sin piso ni cielo:
+  se agregó el ambiente 13 **Despensa / café** (1,94 × 3,36; 6,51 m²), abierto, con
+  mueble de café, repisas, alacena alta y luz de trabajo. El borde con el comedor
+  quedó en z 3,61 (antes 3,49, dejaba una franja de 12 cm sin terminar).
+- **Zócalos**: `trimRuns()` recorta cada borde contra `WALLS` y descuenta puertas/pasos;
+  guardapolvo de 0,14 m + remate, material satinado. Antes se dibujaban los 4 lados
+  del ambiente y flotaban en los pasos abiertos, y solo 4 cm se veían sobre el piso.
+- **Cocina**: ventana a 1,00 m sobre el lavaplatos (x 4,05…5,05); alacena de 0,50 m a
+  la izquierda; peto + paños laterales (no tapan el vano); se eliminó la torre de
+  hornos que atravesaba la encimera (horno empotrado); refri al ras del muro.
+- **Living**: sofá al oriente (7,75…8,65) para liberar la puerta; consola y arte en el
+  muro sur libre (7,85…9,25); sillón, mesa de centro, alfombra, lámpara de pie y
+  plantas; se quitó el tríptico sobre el ventanal.
+- **LED**: núcleo `MeshBasicMaterial` + halo aditivo; marco de luz del panel de TV,
+  tira bajo la barra, luz de despensa, downlight nuevo; noche más contrastada.
+- **Materiales**: muro `#e7d8c1`, porcelanato `envMapIntensity 1,45`, exposición 1,00.
+- **Controles**: dock de 6 botones de 48 px con etiqueta; escenas de 44 px; luz
+  Día/Atardecer/Noche en el header; `?vista=living|cocina|tv|despensa&luz=night&manos=0`.
+- **Errores nuevos**: 015–023 en la skill `visor-casa-fabrick`.
+- **Pendiente**: validación visual en teléfono (o captura remota); type-check real en
+  Vercel; revisar rendimiento con 7 point lights + sombras 2048.

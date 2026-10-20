@@ -6,9 +6,9 @@
  * en modo Cine + HUD con minimapa y puntos de foto.
  */
 import { Canvas } from '@react-three/fiber';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { ACESFilmicToneMapping, PCFSoftShadowMap } from 'three';
-import { PLAN } from '@/lib/plano390Data';
+import { PLAN, SCENES } from '@/lib/plano390Data';
 import type { SceneView } from '@/lib/plano390Data';
 import Plano3903D from './Plano3903D';
 import Plano390CameraRig, { cine, input } from './Plano390CameraRig';
@@ -29,6 +29,30 @@ export default function Plano390Walkthrough() {
   const [roomLabel, setRoomLabel] = useState('Exterior');
   const [cctvIndex, setCctvIndex] = useState(0);
   const [tourIndex, setTourIndex] = useState(0);
+
+  /**
+   * Enlace directo para revisión visual y para compartir una vista:
+   *   ?vista=living | cocina | tv | despensa …   (entra sin pasar por la intro)
+   *   &luz=night | sunset                       (estado de iluminación)
+   *   &manos=0                                  (oculta el cuerpo en primera persona)
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const vista = params.get('vista');
+    if (!vista) return;
+    const scene = SCENES.find(
+      (s) => s.id === vista || s.label.toLowerCase() === vista.toLowerCase(),
+    );
+    const luz = params.get('luz');
+    if (luz === 'sunset' || luz === 'night' || luz === 'day') setLight(luz);
+    if (params.get('manos') === '0') setShowHands(false);
+    input.mode = 'free';
+    input.spot = null;
+    if (scene) input.jump = { pos: scene.pos, look: scene.look };
+    setMode('free');
+    setStage('in');
+  }, []);
 
   const enter = () => {
     input.mode = 'free';
@@ -109,7 +133,7 @@ export default function Plano390Walkthrough() {
           camera={{ position: INITIAL_CAM.position, fov: INITIAL_CAM.fov, near: INITIAL_CAM.near, far: INITIAL_CAM.far }}
           onCreated={({ gl }) => {
             gl.toneMapping = ACESFilmicToneMapping;
-            gl.toneMappingExposure = 1.06;
+            gl.toneMappingExposure = 1.0;
             gl.shadowMap.type = PCFSoftShadowMap;
           }}
         >
@@ -122,20 +146,6 @@ export default function Plano390Walkthrough() {
       {/* Gradiente cinematográfico superior/inferior (liviano, no tapa la vista) */}
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,.38),transparent_15%,transparent_80%,rgba(0,0,0,.58))]" />
       <Plano390Controls mode={mode} onReset={() => setMode('free')} />
-      {/* Selector de luz */}
-      {stage === 'in' ? (
-        <div className="absolute right-3 top-[70px] z-30 grid grid-cols-3 gap-1 rounded-2xl border border-white/10 bg-black/58 p-1 backdrop-blur-xl">
-          {(['day', 'sunset', 'night'] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setLight(m)}
-              className={`rounded-xl px-2 py-1.5 text-[8px] font-black ${light === m ? 'bg-[#F6C64A] text-black' : 'text-white/55'}`}
-            >
-              {m === 'day' ? 'Día' : m === 'sunset' ? 'Atardecer' : 'Noche'}
-            </button>
-          ))}
-        </div>
-      ) : null}
       <Plano390UI
         stage={stage}
         onEnter={enter}
@@ -155,6 +165,8 @@ export default function Plano390Walkthrough() {
         showHands={showHands}
         onToggleHands={() => setShowHands((v) => !v)}
         onCctvSelect={goCctv}
+        light={light}
+        onLightChange={setLight}
       />
     </div>
   );

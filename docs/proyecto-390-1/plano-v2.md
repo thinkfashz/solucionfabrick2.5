@@ -25,10 +25,11 @@ Reemplaza por completo la distribución anterior de 127 m² (terraza norte + qui
 | 6 | Pasillo | 1,02 × 2,34 | 2,39 | porcelanato |
 | 7 | Ensuite | 1,74 × 1,79 | 3,11 | porcelanato |
 | 8 | Vestíbulo | 3,03 × 1,79 | 5,42 | porcelanato |
-| 9 | Living (doble altura) | 5,88 × 4,80 | 28,22 | porcelanato |
+| 9 | Living | 5,88 × 4,80 | 28,22 | porcelanato |
 | 10 | Dormitorio 3 | 3,09 × 4,68 | 14,46 | madera |
 | 11 | Garaje | 4,89 × 5,23 | 25,57 | hormigón |
 | 12 | Porche | 3,40 × 1,80 | 6,12 | adoquín |
+| 13 | Despensa / café | 1,94 × 3,36 | 6,51 | porcelanato |
 
 Posición relativa (igual a la captura): norte = Dorm. 2 · Cocina · Dorm. 1;
 centro = Baño · Pasillo · Comedor · Ensuite · Vestíbulo; sur = Dorm. 3 · Living ·
@@ -39,7 +40,7 @@ Garaje. Garaje al **oriente**, porche al **centro**, jardín al frente.
 - Puerta principal doble de vidrio (1,40 × 2,25 m) en el porche → Living.
 - Ventanal corredizo del living (1,80 × 2,15 m, alféizar 0,35 m).
 - Ventanas: dormitorio 1 (1,80), dormitorio 2 (1,40 norte + 1,40 poniente),
-  dormitorio 3 (1,60), cocina (1,60), baño (0,90 × 0,60 a 1,60), ensuite
+  dormitorio 3 (1,60), cocina (1,00 a 1,05, sobre el lavaplatos), baño (0,90 × 0,60 a 1,60), ensuite
   (0,80 × 0,65 a 1,55).
 - Puertas interiores de 0,75–0,85 × 2,05 m: dorm. 2, dorm. 3, baño, dorm. 1,
   ensuite y garaje. Pasos sin hoja: pasillo→living y comedor→vestíbulo.
@@ -75,3 +76,35 @@ Garaje. Garaje al **oriente**, porche al **centro**, jardín al frente.
 - **Mobiliario**: mesas de luz y lámparas en dormitorios, arte, textiles, sillas de
   cabecera y plantas.
 - **Cielo**: `Sky`/`Stars` de drei según la hora.
+
+
+## Iteración 3 (2026-10-20) — correcciones visuales del cliente
+
+- **Volumen sin ambiente**: el plano dejaba un hueco de 6,29 m² entre la cocina
+  y el dormitorio 1 (x 7,40…9,34; z 0,25…3,49) sin piso ni cielo. Se incorporó
+  como **Despensa / café abierta** (1,94 × 3,36 m; 6,51 m²), con mueble de café,
+  repisas y alacena alta; el piso y el cielorraso cierran a ras del comedor.
+- **Zócalos**: antes se dibujaban los cuatro lados de cada rectángulo, incluso
+  en los pasos abiertos cocina→comedor→living, y a 0,05 m de altura (solo 4 cm
+  visibles sobre el piso). Ahora `trimRuns()` recorta contra `WALLS`, descuenta
+  puertas y pasos, y dibuja guardapolvo de 0,14 m + capa de remate. La cornisa
+  de recepción sigue por encima de las puertas.
+- **Cocina**: la alacena de 1,20 m tapaba la ventana; el backsplash de 0,50 m
+  también. La ventana pasó a 1,00 m sobre el lavaplatos (x 4,05…5,05), la
+  alacena a 0,50 m a su izquierda y el peto se partió alrededor del vano. Se
+  eliminó la torre de hornos que atravesaba la encimera y se reemplazó por un
+  horno empotrado bajo la encimera; el refrigerador quedó al ras del muro.
+- **Living**: el sofá bloqueaba la puerta de entrada y el tríptico se montaba
+  sobre el ventanal. El sofá se movió al oriente (x 7,75…8,65), la consola y el
+  arte pasaron al muro sur libre (x 7,85…9,25), se sumó un sillón de lectura,
+  una mesa de centro más baja, alfombra centrada, lámpara de pie y plantas.
+- **Iluminación LED**: las tiras pasaron de `meshStandardMaterial` con emisivo
+  bajo a un núcleo `MeshBasicMaterial` + halo aditivo; se sumaron el marco de
+  luz del panel de TV, la tira bajo la barra de la isla, la luz de la despensa
+  y un downlight nuevo; la noche quedó más contrastada (hemisférica 0,22,
+  ambiental 0,09).
+- **Materiales**: muro interior más cálido (`#e7d8c1`), porcelanato menos
+  sobreexpuesto (`envMapIntensity 1,45`, exposición 1,00).
+- **Controles**: dock inferior de 6 botones de 48 px con etiqueta (Libre, Tour,
+  Cámaras, Luces, Abrir, Manos), escenas de 44 px, botón de iluminación
+  Día/Atardecer/Noche en el header y `?vista=` para abrir una escena directa.

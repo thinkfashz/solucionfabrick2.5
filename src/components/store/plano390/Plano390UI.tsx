@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
-import { ArrowLeft, X, Route, Footprints, Clapperboard, Video, Map as MapIcon, Lightbulb, DoorOpen, Hand } from 'lucide-react';
+import { ArrowLeft, X, Route, Footprints, Clapperboard, Video, Map as MapIcon, Lightbulb, DoorOpen, Hand, Sun, Sunset, Moon } from 'lucide-react';
 import { ROOMS, PHOTO_SPOTS, PLAN, CCTV_CAMERAS, TOUR_STOPS, SCENES } from '@/lib/plano390Data';
 import type { SceneView } from '@/lib/plano390Data';
 import Plano390Map2D from './Plano390Map2D';
@@ -29,6 +29,8 @@ export default function Plano390UI({
   showHands = true,
   onToggleHands,
   onCctvSelect,
+  light = 'day',
+  onLightChange,
 }: {
   stage: Stage;
   onEnter: () => void;
@@ -48,6 +50,8 @@ export default function Plano390UI({
   showHands?: boolean;
   onToggleHands?: () => void;
   onCctvSelect?: (i: number) => void;
+  light?: 'day' | 'sunset' | 'night';
+  onLightChange?: (l: 'day' | 'sunset' | 'night') => void;
 }): ReactElement | null {
   const GOLD = '#F6C64A';
   const ACCENT_BLUE = '#2E6FA0';
@@ -130,6 +134,13 @@ export default function Plano390UI({
 
   const activeCam = CCTV_CAMERAS[cctvIndex] ?? CCTV_CAMERAS[0];
   const activeStop = TOUR_STOPS[tourIndex] ?? TOUR_STOPS[0];
+  const lightLabel = light === 'day' ? 'Día' : light === 'sunset' ? 'Atardecer' : 'Noche';
+  const LightIcon = light === 'day' ? Sun : light === 'sunset' ? Sunset : Moon;
+  const cycleLight = () => {
+    const order = ['day', 'sunset', 'night'] as const;
+    const next = order[(order.indexOf(light) + 1) % order.length];
+    onLightChange?.(next);
+  };
 
   // Helper to determine room fill color based on floor type
   const getRoomFill = (floor: string): string => {
@@ -255,15 +266,23 @@ export default function Plano390UI({
         {/* Plano + ficha */}
         <div className="flex items-center gap-1">
           <button
+            onClick={cycleLight}
+            aria-label={`Iluminación: ${lightLabel}. Cambiar a la siguiente`}
+            title={`Iluminación: ${lightLabel}`}
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-black/62 text-[#F6C64A] backdrop-blur-xl transition active:scale-95"
+          >
+            <LightIcon size={16} />
+          </button>
+          <button
             onClick={() => setShowPlan(true)}
-            className="inline-flex h-11 items-center gap-1.5 rounded-full border border-white/12 bg-black/62 px-3 text-[10px] font-black backdrop-blur-xl"
+            className="inline-flex h-11 items-center gap-1.5 rounded-full border border-white/12 bg-black/62 px-3 text-[10px] font-black backdrop-blur-xl transition active:scale-95"
           >
             <MapIcon size={14} />
             <span>Plano</span>
           </button>
           <button
             onClick={() => setShowFiche(true)}
-            className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-black/62 px-3 text-[10px] font-black backdrop-blur-xl"
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-black/62 px-3 text-[10px] font-black backdrop-blur-xl transition active:scale-95"
           >
             Ficha
           </button>
@@ -282,85 +301,22 @@ export default function Plano390UI({
         </span>
       </div>
 
-      {/* ── Controles inferiores: modo + selector de escena ── */}
+      {/* ── Controles inferiores: escenas + dock táctil ── */}
       <div className="absolute inset-x-0 bottom-0 z-30 select-none">
         <div
-          className="mx-auto flex max-w-[860px] flex-col gap-1 px-2"
+          className="mx-auto flex max-w-[560px] flex-col gap-1.5 px-2"
           style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
         >
-          <div className="flex items-center justify-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-            <span className="shrink-0 pl-1 pr-1.5 text-[7px] font-black uppercase tracking-[.22em] text-white/40">
-              Modo
-            </span>
-            <button
-              onClick={() => onModeChange('free')}
-              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-black/62 px-3 text-[9px] font-black ${
-                mode === 'free' ? 'bg-[#F6C64A] text-black' : ''
-              }`}
-            >
-              <Footprints size={13} />
-              <span>Libre</span>
-            </button>
-            <button
-              onClick={() => onModeChange('tour')}
-              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-black/62 px-3 text-[9px] font-black ${
-                mode === 'tour' ? 'bg-[#F6C64A] text-black' : ''
-              }`}
-            >
-              <Route size={13} />
-              <span>Tour cine</span>
-            </button>
-            <button
-              onClick={() => onModeChange('cctv')}
-              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-black/62 px-3 text-[9px] font-black ${
-                mode === 'cctv' ? 'bg-[#F6C64A] text-black' : ''
-              }`}
-            >
-              <Clapperboard size={13} />
-              <span>Cámaras</span>
-            </button>
-            <span className="mx-0.5 h-5 w-px shrink-0 bg-white/15" />
-            <button
-              onClick={onToggleLights}
-              aria-label="Encender o apagar las luces"
-              className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 ${
-                lightsOn ? 'bg-[#F6C64A] text-black' : 'bg-black/62 text-white/55'
-              }`}
-            >
-              <Lightbulb size={14} />
-            </button>
-            <button
-              onClick={onToggleOpen}
-              aria-label="Abrir o cerrar puertas y ventanas"
-              className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 ${
-                openHouse ? 'bg-[#F6C64A] text-black' : 'bg-black/62 text-white/55'
-              }`}
-            >
-              <DoorOpen size={14} />
-            </button>
-            <button
-              onClick={onToggleHands}
-              aria-label="Mostrar u ocultar el cuerpo en primera persona"
-              className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 ${
-                showHands ? 'bg-[#F6C64A] text-black' : 'bg-black/62 text-white/55'
-              }`}
-            >
-              <Hand size={14} />
-            </button>
-          </div>
-          <div className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-            <span className="shrink-0 pl-1 pr-1.5 text-[7px] font-black uppercase tracking-[.22em] text-white/40">
-              Escena
-            </span>
+          <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             {SCENES.map((scene) => {
               const sceneActive = scene.label === roomLabel;
               return (
                 <button
                   key={scene.id}
                   onClick={() => onScene(scene)}
-                  className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-[9px] font-black active:bg-white/15 ${
+                  className={`inline-flex h-11 shrink-0 items-center rounded-full border px-3 text-[9px] font-black transition active:scale-95 ${
                     sceneActive
-                      ? 'border-[#F6C64A]/45 bg-[#F6C64A]/15 text-[#F6C64A]'
+                      ? 'border-[#F6C64A]/50 bg-[#F6C64A]/18 text-[#F6C64A]'
                       : 'border-white/10 bg-black/62 text-white/85'
                   }`}
                 >
@@ -368,6 +324,60 @@ export default function Plano390UI({
                 </button>
               );
             })}
+          </div>
+
+          <div className="flex items-center gap-1.5 rounded-[1.5rem] border border-white/10 bg-black/62 p-1.5 backdrop-blur-xl">
+            {([
+              { key: 'free' as const, label: 'Libre', Icon: Footprints },
+              { key: 'tour' as const, label: 'Tour', Icon: Route },
+              { key: 'cctv' as const, label: 'Cámaras', Icon: Clapperboard },
+            ]).map(({ key, label, Icon }) => (
+              <button
+                key={key}
+                onClick={() => onModeChange(key)}
+                aria-pressed={mode === key}
+                className={`flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-[7px] font-black uppercase tracking-[.08em] transition active:scale-95 ${
+                  mode === key ? 'bg-[#F6C64A] text-black' : 'text-white/65'
+                }`}
+              >
+                <Icon size={16} />
+                <span className="truncate">{label}</span>
+              </button>
+            ))}
+            <span className="mx-0.5 h-8 w-px shrink-0 bg-white/15" />
+            <button
+              onClick={onToggleLights}
+              aria-label="Encender o apagar las luces"
+              aria-pressed={lightsOn}
+              className={`flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-[7px] font-black uppercase tracking-[.08em] transition active:scale-95 ${
+                lightsOn ? 'bg-[#F6C64A]/18 text-[#F6C64A]' : 'text-white/55'
+              }`}
+            >
+              <Lightbulb size={16} />
+              <span>Luces</span>
+            </button>
+            <button
+              onClick={onToggleOpen}
+              aria-label="Abrir o cerrar puertas y ventanas"
+              aria-pressed={openHouse}
+              className={`flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-[7px] font-black uppercase tracking-[.08em] transition active:scale-95 ${
+                openHouse ? 'bg-[#F6C64A]/18 text-[#F6C64A]' : 'text-white/55'
+              }`}
+            >
+              <DoorOpen size={16} />
+              <span>Abrir</span>
+            </button>
+            <button
+              onClick={onToggleHands}
+              aria-label="Mostrar u ocultar el cuerpo en primera persona"
+              aria-pressed={showHands}
+              className={`flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-[7px] font-black uppercase tracking-[.08em] transition active:scale-95 ${
+                showHands ? 'bg-[#F6C64A]/18 text-[#F6C64A]' : 'text-white/55'
+              }`}
+            >
+              <Hand size={16} />
+              <span>Manos</span>
+            </button>
           </div>
         </div>
       </div>
@@ -539,7 +549,7 @@ export default function Plano390UI({
       {/* Foto card */}
       {activeSpot !== null && (
         <div
-          className={`absolute bottom-[92px] left-1/2 -translate-x-1/2 z-40 flex items-center justify-center px-4 pt-2 select-none`}
+          className={`absolute bottom-[132px] left-1/2 -translate-x-1/2 z-40 flex items-center justify-center px-4 pt-2 select-none`}
         >
           <div
             className="relative w-full max-w-[360px] rounded-xl border bg-[#0b0f13]/95 p-4 backdrop-blur-sm"
@@ -610,6 +620,7 @@ export default function Plano390UI({
                 <ul className="mt-2 space-y-1 text-[9px] text-white/65">
                   <li className="flex justify-between"><span>Living</span><b>28,22 m²</b></li>
                   <li className="flex justify-between"><span>Cocina</span><b>13,24 m²</b></li>
+                  <li className="flex justify-between"><span>Despensa / café</span><b>6,51 m²</b></li>
                   <li className="flex justify-between"><span>Garaje</span><b>25,57 m²</b></li>
                   <li className="flex justify-between"><span>Dormitorios</span><b>40,31 m²</b></li>
                 </ul>
@@ -625,7 +636,7 @@ export default function Plano390UI({
       {/* Ficha drawer */}
       {showFiche && (
         <aside
-          className="absolute bottom-[112px] left-3 right-3 z-40 max-h-[50dvh] overflow-y-auto rounded-[1.5rem] border border-white/12 bg-[#071017]/96 p-4 shadow-2xl backdrop-blur-2xl"
+          className="absolute bottom-[128px] left-3 right-3 z-40 max-h-[50dvh] overflow-y-auto rounded-[1.5rem] border border-white/12 bg-[#071017]/96 p-4 shadow-2xl backdrop-blur-2xl"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -666,7 +677,7 @@ export default function Plano390UI({
               </div>
             </div>
             <p className="text-[9px] leading-5 text-white/50">
-              Casa mediterránea de una planta sobre el plano del cliente: muros crema, porcelanato blanco brillante y franja blanca con portal de piedra. Tres dormitorios y dos baños (baño 1,80 × 2,20 m con ducha de 0,90 m y vanitorio de 0,80 m). Living de 28,2 m² con muro de TV de 3,80 m (TV 1,40 × 0,79 m y mueble flotante de 2,60 m), cocina abierta con isla de 2,40 × 1,00 m y barra de 1,05 m, garaje de 25,6 m² con portón seccional de 3,60 m y porche de acceso. Puertas y ventanas animadas, luces encendidas/apagadas, interruptores y enchufes a la vista, vegetación en movimiento y circuito de 12 cámaras.
+              Casa mediterránea de una planta sobre el plano del cliente: muros crema, porcelanato blanco brillante y franja blanca con portal de piedra. Tres dormitorios y dos baños (baño 1,80 × 2,20 m con ducha de 0,90 m y vanitorio de 0,80 m). Living de 28,2 m² con muro de TV de 3,80 m (TV 1,40 × 0,79 m y mueble flotante de 2,60 m), cocina abierta con isla de 2,40 × 1,00 m y barra de 1,05 m, despensa/café de 6,5 m², garaje de 25,6 m² con portón seccional de 3,60 m y porche de acceso. Puertas y ventanas animadas, luces encendidas/apagadas, interruptores y enchufes a la vista, vegetación en movimiento y circuito de 12 cámaras.
             </p>
             <div>
               <p className="text-[8px] font-black uppercase tracking-[.18em] text-white/40">

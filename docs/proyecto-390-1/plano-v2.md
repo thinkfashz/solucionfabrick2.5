@@ -177,3 +177,63 @@ modos y el botón gigante de salida tapaban la casa. Se prioriza la escena.
 - **Plano 2D**: dibuja el quincho, acepta `marker` y `showCams` para la ficha y
   omite el rectángulo genérico del quincho.
 - **Errores nuevos**: 039–047 en la skill `visor-casa-fabrick`.
+
+## Iteración 6 (2026-10-20) — la raíz del plano: hall, ensuite, lavandería y orden
+
+Segunda revisión de capturas. Los defectos visibles no eran de mobiliario sino de
+**circulación**: el ambiente rotulado “ensuite” era en realidad el paso entre el
+comedor y el vestíbulo, y estaba amueblado como baño.
+
+### Diagnóstico
+- El hueco del tabique x 9,34…9,46 / z 3,80…5,20 (`p-vest`) es el **paso** del
+  comedor al vestíbulo. El “Ensuite” (x 9,46…11,20 / z 3,61…5,40) estaba dentro
+  de ese paso: por eso se veía un baño abierto al comedor y el vestíbulo solo se
+  alcanzaba cruzando el baño.
+- Las camas de los tres dormitorios se habían colocado con el mismo criterio:
+  cabecera al norte. Dorm. 1 y 2 quedaban bajo la ventana; Dorm. 3 flotaba a
+  0,46 m del muro.
+- La lavandería era un mesón dentro del garaje, con el auto a la vista.
+- El techo del garaje salía negro: el filtro del cielorraso excluía los ids 11
+  (garaje) y 12 (porche).
+- La consola del living terminaba a 9 cm del tabique y se leía cortada.
+- Las sillas laterales del comedor estaban a 0,45 m del centro (borde de la
+  mesa) y con el respaldo en el eje X; las de cabecera miraban hacia adentro.
+- El grupo de estar del living cerraba el paso al muro de TV.
+
+### Cambios
+- **Distribuidor**: el antiguo “ensuite” pasa a hall con consola volada, espejo
+  retroiluminado y planta. El paso del comedor queda como paso sin hoja.
+- **Ensuite real** dentro del dormitorio 1: 1,74 × 2,10 m al noroeste, con muro
+  oriente x 11,20…11,32 y puerta de 0,70 m; ducha 0,90 × 1,20, vanitorio de
+  0,80 m y WC. Dorm. 1 baja a 12,19 m² netos + 3,65 m² de ensuite.
+- **Camas**: `Bed` acepta `rot`; Dorm. 1 y 2 giran la cabecera al oriente (muro
+  sólido, sin ventana); Dorm. 3 se ancla al muro norte contra el pasillo. Se
+  movieron veladores, alfombras, clósets, escritorios y `FURNITURE_2D`.
+- **Lavandería cerrada**: 1,44 × 2,45 m en la esquina suroeste del garaje
+  (x 9,46…10,90 / z 8,30…10,75), con muro oriente, muro norte y puerta de
+  0,70 m que abre hacia el garaje; lavadora, secadora, mesón y estante adentro.
+  El auto se corrió al oriente (x 11,20…12,98).
+- **Baño principal**: ducha 1,20 × 1,20 al norte, WC al poniente y vanitorio
+  de 0,80 m al sur; la puerta abre hacia adentro y ya no barre el inodoro.
+- **Living**: dos butacas enfrentadas al norte y al sur de la mesa de centro, con
+  un corredor libre de 1,8 m contra el muro de TV; mesa auxiliar junto al brazo
+  del sofá; consola del muro sur acortada a 0,90 m (centro 8,40).
+- **Comedor**: sillas laterales a ±0,75 m con respaldo en Z hacia afuera;
+  cabeceras a ±1,12 m con la rotación corregida.
+- **Cielorraso**: solo se excluye el porche; garaje, lavandería y ensuite lo
+  reciben. Piso del ensuite y la lavandería con 5 mm de offset para evitar
+  z-fighting.
+- **Exterior**: muro exterior a arena cálida `#d8c6a4` (contrasta con el limón
+  interior y combina con el nogal).
+- **Plano elevado táctil**: en `planView` el rig orbita alrededor de
+  (7,3 · 0 · 5,5) — arrastre de un dedo para girar, pinza de dos dedos y rueda
+  para el radio (7–30 m). El tween de entrada se conserva y la órbita toma el
+  control al terminar.
+- **Tour**: 62 paradas (21 informativas); la ruta bordea el auto por el norte
+  para entrar a la lavandería y vuelve por el pasillo oriental, y el living se
+  recorre por el corredor del muro de TV.
+- **CCTV**: CAM-05 y CAM-08 salen de encima de las camas; CAM-14 pasa a la
+  lavandería; CAM-07 se renombra a Distribuidor.
+- **Skill**: errores **048–055** en `visor-casa-fabrick/references/errores.md` y
+  nueva skill hermana `arquitectura-fabrick` con
+  `references/checklist-geometria.md`.

@@ -115,7 +115,7 @@ export default function Plano390CameraRig({
   onCctv?: (index: number) => void;
   onTour?: (index: number) => void;
 }) {
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const keys = useRef<Record<string, boolean>>({});
   const yaw = useRef(0);
   const pitch = useRef(0);
@@ -138,6 +138,68 @@ export default function Plano390CameraRig({
   const cctvPrevLook = useRef(new Vector3());
   const cctvDir = useRef(new Vector3(0, 0, -1));
   const jumpTarget = useRef<{ pos: [number, number, number]; look: [number, number, number] } | null>(null);
+  // Vista elevada: órbita y zoom con los dedos (arrastre / pinza / rueda).
+  const planOrbit = useRef({ yaw: 0, pitch: 1.24, radius: 17.5 });
+  const planPointers = useRef(new Map<number, { x: number; y: number }>());
+  useEffect(() => {
+    if (!planView) return;
+    const el = gl.domElement;
+    const pts = planPointers.current;
+    const onDown = (e: PointerEvent) => {
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        /* puntero sintético */
+      }
+    };
+    const onMove = (e: PointerEvent) => {
+      const prev = pts.get(e.pointerId);
+      if (!prev) return;
+      const cur = { x: e.clientX, y: e.clientY };
+      if (pts.size === 1) {
+        const o = planOrbit.current;
+        o.yaw -= (cur.x - prev.x) * 0.006;
+        o.pitch = Math.max(0.35, Math.min(1.5, o.pitch - (cur.y - prev.y) * 0.004));
+      } else if (pts.size === 2) {
+        const [a, b] = [...pts.values()];
+        const before = Math.hypot(a.x - b.x, a.y - b.y);
+        pts.set(e.pointerId, cur);
+        const [c, d] = [...pts.values()];
+        const after = Math.hypot(c.x - d.x, c.y - d.y);
+        if (before > 0 && after > 0) {
+          planOrbit.current.radius = Math.max(7, Math.min(30, planOrbit.current.radius * (before / after)));
+        }
+        return;
+      }
+      pts.set(e.pointerId, cur);
+    };
+    const onUp = (e: PointerEvent) => {
+      pts.delete(e.pointerId);
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ya liberado */
+      }
+    };
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      planOrbit.current.radius = Math.max(7, Math.min(30, planOrbit.current.radius * (1 + e.deltaY * 0.0012)));
+    };
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+      el.removeEventListener('wheel', onWheel);
+      pts.clear();
+    };
+  }, [planView, gl]);
 
   const boxes = useMemo<CellBox[]>(() => {
     const house = WALLS.map((w: WallSeg) => ({
@@ -403,6 +465,18 @@ export default function Plano390CameraRig({
           if (cctvTimer.current >= CCTV_TIME) {
             startCctv((cine.index + 1) % n);
           }
+        }
+      } else if (planView) {
+        // ── Plano elevado: órbita/zoom táctil alrededor del centro de la casa ──
+        if (!jumpTarget.current) {
+          const o = planOrbit.current;
+          const cp = Math.cos(o.pitch);
+          camera.position.set(
+            7.3 + o.radius * cp * Math.sin(o.yaw),
+            o.radius * Math.sin(o.pitch),
+            5.5 + o.radius * cp * Math.cos(o.yaw),
+          );
+          camera.lookAt(7.3, 0.35, 5.5);
         }
       } else if (!planView) {
         // ── Modo libre: teclado + joysticks, suavizado y sprint ──

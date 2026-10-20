@@ -2,6 +2,31 @@
 
 Bitácora de trabajo (se actualiza al cierre de cada hito).
 
+## Última sesión — 2026-10-20 (3): geometría del plano v2 y plano elevado táctil
+
+### Hecho
+- **Causa raíz del “baño sin muro”**: el ambiente x 9,46…11,20 / z 3,61…5,40 estaba rotulado “Ensuite” pero es el **paso** del comedor al vestíbulo (hueco del tabique x 9,34…9,46 / z 3,80…5,20, `p-vest`). Se convirtió en **Distribuidor** y el baño privado se mudó al noroeste del Dorm. 1 (1,74 × 2,10 m, muro oriente con puerta de 0,70 m, ducha 0,90 × 1,20, vanitorio 0,80 y WC).
+- **Camas**: `Bed` acepta `rot`; Dorm. 1 y 2 giran la cabecera al oriente (muro sólido, fuera de la ventana); Dorm. 3 se ancla al muro norte (ya no flota). Veladores, alfombras, clósets, escritorios y `FURNITURE_2D` recolocados. Dorm. 1 queda en 12,19 m² netos + 3,65 m² de ensuite.
+- **Lavandería cerrada** de 1,44 × 2,45 m en la esquina SW del garaje (muro oriente, muro norte y puerta de 0,70 m que abre al garaje). Lavadora, secadora, mesón y estante adentro; el auto corrió al oriente.
+- **Baño principal** reordenado: ducha al norte, WC al poniente, vanitorio al sur; la puerta abre hacia adentro y no barre el inodoro.
+- **Living**: butacas enfrentadas al norte y al sur de la mesa; corredor libre de 1,8 m al muro de TV; consola del muro sur acortada a 0,90 m.
+- **Comedor**: respaldos de sillas laterales en Z hacia afuera (±0,75 m) y cabeceras con la rotación corregida.
+- **Cielorraso**: solo se excluye el porche; garaje, lavandería y ensuite lo reciben (fin del “techo negro”). Pisos superpuestos con 5 mm de offset.
+- **Exterior** a arena cálida `#d8c6a4`; luz extra de cocina sobre la línea de muebles; apliques e interruptores flotantes pegados a su muro; cámaras CCTV fuera de camas/muebles.
+- **Plano elevado táctil**: en `planView` el rig orbita alrededor de (7,3 · 0 · 5,5) con arrastre de un dedo (yaw/pitch), pinza de dos dedos y rueda para el radio (7–30 m), conservando el tween de entrada.
+- **Tour**: 62 paradas (21 informativas); bordea el auto por el norte para entrar a la lavandería y vuelve por el pasillo oriental.
+- **Skills**: errores 048–055 en `visor-casa-fabrick/references/errores.md`; nueva skill hermana `arquitectura-fabrick` (medidas de baño, cocina, dormitorio, estructura Metalcon, paleta y `checklist-geometria.md`).
+
+### Validación
+- `esbuild` sobre los 3 archivos tocados: sin errores de sintaxis.
+- Auditoría estática (`node` sobre el contrato): vanos calzan con tramos de muro; muebles 2D dentro de su ambiente y sin solapes; ninguna cama bajo ventana; ningún interruptor, aplique o cámara dentro de muro o mueble; **ruta del tour sin choques** con muros ni blockers.
+- Sin `node_modules` local: el typecheck real corre en Vercel (`ignoreBuildErrors: false`); el gate es el build.
+
+### Próximo
+- Capturas del teléfono: retrato y horizontal; `?vista=plano&manos=0`, `?vista=cocina`, `?vista=baño`, `?vista=quincho`.
+- Si el build de Vercel falla, revisar tipos de `Bed`/`Wardrobe` (`rot`) y el array de butacas.
+- Pendientes de producto: césped exterior más realista, tocar una habitación del plano para entrar y transiciones de escena.
+
 ## Última sesión — 2026-10-20 (2): corrección de 12 capturas + plano 3D + giro horizontal
 
 ### Hecho

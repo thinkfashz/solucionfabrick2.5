@@ -685,6 +685,7 @@ function Bed({
   z,
   w = 1.6,
   head,
+  rot = 0,
   matWood,
   matLinen,
 }: {
@@ -692,11 +693,13 @@ function Bed({
   z: number;
   w?: number;
   head: 1 | -1;
+  /** 0 = cabecera al norte; ±90° = cabecera al poniente/oriente. */
+  rot?: number;
   matWood: Material;
   matLinen: Material;
 }) {
   return (
-    <group position={[x, 0, z]}>
+    <group position={[x, 0, z]} rotation={[0, rot, 0]}>
       <B p={[0, 0.2, 0]} s={[w, 0.28, 2.0]} m={matWood} cast recv />
       <B p={[0, 0.42, 0.05]} s={[w - 0.08, 0.22, 1.94]} m={matLinen} cast />
       <B p={[0, 0.62, head * -0.62]} s={[w - 0.2, 0.1, 0.6]} m={matLinen} />
@@ -955,7 +958,7 @@ export default function Plano3903D({
   const matWallInt = useTextureMaterial(wallMap, { color: '#c8db8a', roughness: 0.92, envMapIntensity: 0.26 });
   // Fachada en verde limón suave: la misma familia cromática que el interior,
   // con el portal de piedra y la franja blanca como acentos mediterráneos.
-  const matWallExt = useTextureMaterial(stuccoCanvas, { color: '#c7d88d', roughness: 0.9, envMapIntensity: 0.28 });
+  const matWallExt = useTextureMaterial(stuccoCanvas, { color: '#d8c6a4', roughness: 0.9, envMapIntensity: 0.28 });
   const matBand = useTextureMaterial(stuccoCanvas, { color: '#fbf8f1', roughness: 0.8, envMapIntensity: 0.4 });
   const matCeil = useTextureMaterial(wallMap, { color: '#fbf7ef', roughness: 0.95, envMapIntensity: 0.25 });
   // Porcelanato cálido tipo piedra clara: combina con el limón sin blanquear la escena.
@@ -1085,7 +1088,7 @@ export default function Plano3903D({
       {ROOMS.map((room) => (
         <mesh
           key={room.id}
-          position={[(room.x0 + room.x1) / 2, 0.03, (room.z0 + room.z1) / 2]}
+          position={[(room.x0 + room.x1) / 2, 0.03 + (room.id === '14' || room.id === '15' ? 0.005 : 0), (room.z0 + room.z1) / 2]}
           receiveShadow
           material={
             room.floor === 'porcelain'
@@ -1105,7 +1108,7 @@ export default function Plano3903D({
 
       {/* ── Cielorraso (oculto en la vista de plano elevado) ── */}
       {!planView &&
-        ROOMS.filter((r) => r.id !== '11' && r.id !== '12').map((room) => (
+        ROOMS.filter((r) => r.id !== '12' && r.id !== '14' && r.id !== '15').map((room) => (
           <mesh
             key={`c${room.id}`}
             position={[(room.x0 + room.x1) / 2, WALL_H - 0.04, (room.z0 + room.z1) / 2]}
@@ -1243,8 +1246,8 @@ export default function Plano3903D({
       </group>
 
       {/* ── Living: sofá, mesa, alfombra ── */}
-      <mesh position={[6.35, 0.062, 9.1]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[3.4, 2.8]} />
+      <mesh position={[6.6, 0.062, 9.0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[3.2, 3.1]} />
         <meshStandardMaterial color="#d6cbb9" roughness={0.96} />
       </mesh>
       <group position={[8.2, 0, 9.1]}>
@@ -1265,21 +1268,21 @@ export default function Plano3903D({
         <B p={[0.03, 0.44, -0.15]} s={[0.62, 0.05, 0.7]} m={matTerracotta} r={[0, 0.06, 0]} />
       </group>
 
-      {/* dos butacas de lectura, enfrentando el muro de TV */}
-      {[9.9, 8.15].map((z) => (
-        <group key={`chair${z}`} position={[5.2, 0, z]} rotation={[0, Math.PI / 2, 0]}>
+      {/* dos butacas de lectura enfrentadas, al norte y al sur de la mesa */}
+      {[[5.95, 7.5, Math.PI], [5.95, 10.2, 0]].map(([cx, cz, rot]) => (
+        <group key={`chair${cz}`} position={[cx, 0, cz]} rotation={[0, rot, 0]}>
           <B p={[0, 0.32, 0]} s={[0.85, 0.26, 0.8]} m={matLinen} cast />
           <B p={[0, 0.6, 0.34]} s={[0.85, 0.62, 0.16]} m={matLinen} cast />
           <B p={[-0.38, 0.49, 0]} s={[0.12, 0.36, 0.8]} m={matLinen} cast />
           <B p={[0.38, 0.49, 0]} s={[0.12, 0.36, 0.8]} m={matLinen} cast />
-          <B p={[0, 0.62, 0.22]} s={[0.36, 0.28, 0.12]} m={z > 9 ? matSage : matTerracotta} r={[0.08, 0, 0.1]} cast />
+          <B p={[0, 0.62, 0.22]} s={[0.36, 0.28, 0.12]} m={cz > 9 ? matSage : matTerracotta} r={[0.08, 0, 0.1]} cast />
           {[[-0.33, -0.32], [-0.33, 0.32], [0.33, -0.32], [0.33, 0.32]].map(([dx, dz], i) => (
             <B key={`al${i}`} p={[dx, 0.09, dz]} s={[0.05, 0.18, 0.05]} m={matPine} />
           ))}
         </group>
       ))}
-      {/* mesa auxiliar entre la butaca y el sofá */}
-      <group position={[4.62, 0, 8.95]}>
+      {/* mesa auxiliar junto al brazo norte del sofá */}
+      <group position={[8.3, 0, 7.55]}>
         <RB p={[0, 0.48, 0]} s={[0.38, 0.04, 0.38]} m={matPine} radius={0.02} cast />
         <B p={[0, 0.23, 0]} s={[0.035, 0.46, 0.035]} m={matFrame} />
         <B p={[0, 0.02, 0]} s={[0.22, 0.03, 0.22]} m={matFrame} />
@@ -1299,11 +1302,11 @@ export default function Plano3903D({
       <B p={[6.37, 0.44, 9.0]} s={[0.26, 0.04, 0.18]} m={matTerracotta} r={[0, -0.15, 0]} />
 
       {/* consola baja en el muro sur (al oriente de la puerta) + arte */}
-      <B p={[8.55, 0.38, 10.52]} s={[1.4, 0.72, 0.32]} m={matPine} cast />
-      <B p={[8.55, 0.76, 10.52]} s={[1.44, 0.04, 0.36]} m={matBand} />
-      <B p={[8.25, 0.4, 10.35]} s={[0.55, 0.56, 0.02]} m={matBand} />
-      <B p={[8.85, 0.4, 10.35]} s={[0.55, 0.56, 0.02]} m={matBand} />
-      <group position={[9.12, 0.78, 10.5]}>
+      <B p={[8.4, 0.38, 10.52]} s={[0.9, 0.72, 0.32]} m={matPine} cast />
+      <B p={[8.4, 0.76, 10.52]} s={[0.94, 0.04, 0.36]} m={matBand} />
+      <B p={[8.15, 0.4, 10.35]} s={[0.38, 0.56, 0.02]} m={matBand} />
+      <B p={[8.65, 0.4, 10.35]} s={[0.38, 0.56, 0.02]} m={matBand} />
+      <group position={[8.7, 0.78, 10.5]}>
         <B p={[0, 0.02, 0]} s={[0.18, 0.04, 0.18]} m={matFrame} />
         <mesh position={[0, 0.22, 0]}>
           <cylinderGeometry args={[0.018, 0.018, 0.4, 8]} />
@@ -1314,11 +1317,11 @@ export default function Plano3903D({
           <meshStandardMaterial color="#f6e7c8" emissive="#ffd9a0" emissiveIntensity={lightsOn ? 1.5 : 0.02} side={DoubleSide} />
         </mesh>
       </group>
-      <group position={[8.55, 1.9, 10.72]}>
-        <B p={[0, 0, 0]} s={[1.4, 0.9, 0.06]} m={matPine} cast />
-        <B p={[0, 0, -0.035]} s={[1.28, 0.78, 0.012]} m={matBrass} />
-        <B p={[-0.3, 0.1, -0.042]} s={[0.42, 0.38, 0.008]} m={matTerracotta} />
-        <B p={[0.26, -0.08, -0.042]} s={[0.52, 0.46, 0.008]} m={matSage} />
+      <group position={[8.4, 1.9, 10.72]}>
+        <B p={[0, 0, 0]} s={[0.9, 0.7, 0.06]} m={matPine} cast />
+        <B p={[0, 0, -0.035]} s={[0.8, 0.6, 0.012]} m={matBrass} />
+        <B p={[-0.18, 0.06, -0.042]} s={[0.28, 0.28, 0.008]} m={matTerracotta} />
+        <B p={[0.18, -0.05, -0.042]} s={[0.34, 0.34, 0.008]} m={matSage} />
       </group>
 
       {/* lámpara de pie + vegetación */}
@@ -1343,11 +1346,11 @@ export default function Plano3903D({
         {[[-0.75, -0.35], [-0.75, 0.35], [0.75, -0.35], [0.75, 0.35]].map(([dx, dz], i) => (
           <B key={i} p={[dx, 0.36, dz]} s={[0.06, 0.72, 0.06]} m={matPine} />
         ))}
-        {[-0.45, 0.45].map((dz) =>
+        {[-0.75, 0.75].map((dz) =>
           [-0.55, 0.55].map((dx) => (
             <group key={`${dx}-${dz}`} position={[dx, 0, dz]}>
               <B p={[0, 0.45, 0]} s={[0.42, 0.05, 0.42]} m={matLinen} cast />
-              <B p={[dx > 0 ? 0.19 : -0.19, 0.72, 0]} s={[0.05, 0.5, 0.42]} m={matLinen} cast />
+              <B p={[0, 0.72, dz > 0 ? 0.19 : -0.19]} s={[0.42, 0.5, 0.05]} m={matLinen} cast />
               {[[-0.16, -0.16], [-0.16, 0.16], [0.16, -0.16], [0.16, 0.16]].map(([lx, lz], j) => (
                 <B key={j} p={[lx, 0.22, lz]} s={[0.035, 0.44, 0.035]} m={matPine} />
               ))}
@@ -1356,7 +1359,7 @@ export default function Plano3903D({
         )}
       </group>
       {[[-1.12, 0], [1.12, 0]].map(([dx, dz]) => (
-        <group key={`end${dx}`} position={[6.5 + dx, 0, 4.75 + dz]} rotation={[0, dx > 0 ? -Math.PI / 2 : Math.PI / 2, 0]}>
+        <group key={`end${dx}`} position={[6.5 + dx, 0, 4.75 + dz]} rotation={[0, dx > 0 ? Math.PI / 2 : -Math.PI / 2, 0]}>
           <B p={[0, 0.45, 0]} s={[0.44, 0.05, 0.44]} m={matLinen} cast />
           <B p={[0, 0.72, 0.2]} s={[0.44, 0.5, 0.05]} m={matLinen} cast />
           {[[-0.17, -0.17], [-0.17, 0.17], [0.17, -0.17], [0.17, 0.17]].map(([lx, lz], j) => (
@@ -1540,13 +1543,22 @@ export default function Plano3903D({
           <boxGeometry args={[KITCHEN.island.w, 0.06, 0.035]} />
         </mesh>
         {lightsOn ? (
-          <pointLight
-            position={[KITCHEN.island.x, 1.85, KITCHEN.island.z]}
-            intensity={night ? 0.85 : 0.3}
-            color="#ffd9a0"
-            distance={5}
-            decay={2}
-          />
+          <>
+            <pointLight
+              position={[KITCHEN.island.x, 1.85, KITCHEN.island.z]}
+              intensity={night ? 1.1 : 0.38}
+              color="#ffd9a0"
+              distance={5.5}
+              decay={2}
+            />
+            <pointLight
+              position={[5.2, 2.55, 1.35]}
+              intensity={night ? 0.75 : 0.24}
+              color="#ffe6c2"
+              distance={4.5}
+              decay={2}
+            />
+          </>
         ) : null}
         {[-0.75, 0, 0.75].map((dx) => (
           <group key={dx} position={[KITCHEN.island.x + dx, 0, KITCHEN.island.z + 0.95]}>
@@ -1632,134 +1644,119 @@ export default function Plano3903D({
         </mesh>
       </group>
 
-      {/* ── Baño (1,95 × 2,34) ── */}
+      {/* ── Baño (1,95 × 2,34): ducha al norte, WC al poniente, vanitorio al sur ── */}
       <group>
-        {/* ducha 0,90 × 1,20 */}
-        <B p={[0.7, 0.04, 4.2]} s={[0.9, 0.08, 1.2]} m={matStone} recv />
-        <mesh position={[1.15, 1.0, 4.2]}>
+        <B p={[0.85, 0.04, 4.2]} s={[1.2, 0.08, 1.2]} m={matStone} recv />
+        <mesh position={[1.45, 1.0, 4.2]}>
           <boxGeometry args={[0.02, 2.0, 1.2]} />
           <meshStandardMaterial color="#dcecf4" transparent opacity={0.2} metalness={0.4} roughness={0.05} />
         </mesh>
-        <mesh position={[1.15, 2.0, 4.2]}>
+        <mesh position={[1.45, 2.0, 4.2]}>
           <boxGeometry args={[0.03, 0.03, 1.2]} />
           <meshStandardMaterial color="#22282c" metalness={0.6} roughness={0.3} />
         </mesh>
-        <mesh position={[0.7, 2.1, 3.78]} rotation={[Math.PI / 2, 0, 0]}>
+        <mesh position={[0.85, 2.1, 3.72]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.12, 0.12, 0.03, 16]} />
           <meshStandardMaterial color="#c9ced2" metalness={0.9} roughness={0.2} />
         </mesh>
-        <mesh position={[0.7, 1.55, 3.72]}>
+        <mesh position={[0.85, 1.55, 3.66]}>
           <cylinderGeometry args={[0.015, 0.015, 0.9, 8]} />
           <meshStandardMaterial color="#c9ced2" metalness={0.9} roughness={0.2} />
         </mesh>
-        {/* nicho de ducha */}
         <B p={[0.34, 1.25, 4.2]} s={[0.06, 0.4, 0.4]} m={matWallInt} />
-        {/* puerta de mampara con manilla */}
-        <mesh position={[1.15, 0.98, 3.75]}>
+        <mesh position={[1.45, 0.98, 3.75]}>
           <boxGeometry args={[0.02, 1.9, 0.42]} />
           <meshStandardMaterial color="#dcecf4" transparent opacity={0.22} metalness={0.4} roughness={0.05} />
         </mesh>
-        <mesh position={[1.185, 1.0, 3.62]} material={matBrass}>
+        <mesh position={[1.485, 1.0, 3.62]} material={matBrass}>
           <boxGeometry args={[0.02, 0.24, 0.02]} />
         </mesh>
-        {/* toallero */}
-        <mesh position={[0.3, 1.1, 5.15]} rotation={[0, 0, Math.PI / 2]} material={matBrass}>
+        <mesh position={[2.14, 1.15, 4.15]} rotation={[Math.PI / 2, 0, 0]} material={matBrass}>
           <cylinderGeometry args={[0.012, 0.012, 0.6, 8]} />
         </mesh>
-        <mesh position={[0.3, 1.02, 5.15]}>
+        <mesh position={[2.15, 1.05, 4.15]}>
           <boxGeometry args={[0.02, 0.5, 0.28]} />
           <meshStandardMaterial color="#e8dccb" roughness={0.9} />
         </mesh>
-        {/* vanitorio 0,80 × 0,85 × 0,50 */}
-        <B p={[0.8, 0.43, 5.62]} s={[0.8, 0.86, 0.5]} m={matPine} cast />
-        <RB p={[0.8, 0.885, 5.62]} s={[0.86, 0.05, 0.54]} m={matBand} radius={0.016} />
-        {/* dos cajones con olgura y herraje */}
-        {[5.44, 5.8].map((z) => (
-          <group key={`bd${z}`}>
-            <mesh position={[0.8, 0.62, z]}>
-              <boxGeometry args={[0.74, 0.24, 0.014]} />
+        <B p={[1.65, 0.43, 5.7]} s={[0.8, 0.86, 0.5]} m={matPine} cast />
+        <RB p={[1.65, 0.885, 5.7]} s={[0.86, 0.05, 0.54]} m={matBand} radius={0.016} />
+        {[1.5, 1.8].map((x) => (
+          <group key={`bd${x}`}>
+            <mesh position={[x, 0.62, 5.44]}>
+              <boxGeometry args={[0.24, 0.24, 0.014]} />
               <meshStandardMaterial color="#d8d2c6" roughness={0.5} />
             </mesh>
-            <mesh position={[0.8, 0.68, z + 0.014]} material={matBrass}>
-              <boxGeometry args={[0.3, 0.014, 0.014]} />
+            <mesh position={[x, 0.68, 5.432]} material={matBrass}>
+              <boxGeometry args={[0.014, 0.014, 0.014]} />
             </mesh>
           </group>
         ))}
-        <mesh position={[0.8, 0.93, 5.6]}>
+        <mesh position={[1.65, 0.93, 5.68]}>
           <cylinderGeometry args={[0.19, 0.15, 0.12, 20]} />
           <meshStandardMaterial color="#fbfaf6" roughness={0.15} />
         </mesh>
-        <mesh position={[0.8, 1.05, 5.42]}>
+        <mesh position={[1.65, 1.05, 5.86]}>
           <cylinderGeometry args={[0.012, 0.012, 0.24, 8]} />
           <meshStandardMaterial color="#3b3f42" metalness={0.85} roughness={0.2} />
         </mesh>
-        {/* espejo 1,00 × 0,70 a 1,40 */}
-        <mesh position={[0.8, 1.45, 5.9]} material={matMirror}>
+        <mesh position={[1.65, 1.45, 5.93]} material={matMirror}>
           <boxGeometry args={[0.7, 1.0, 0.03]} />
         </mesh>
-        <mesh position={[0.8, 1.45, 5.87]}>
+        <mesh position={[1.65, 1.45, 5.95]}>
           <boxGeometry args={[0.76, 1.06, 0.02]} />
           <meshStandardMaterial color="#fff2d8" emissive="#ffe6bd" emissiveIntensity={lightsOn ? 1.4 : 0.02} />
         </mesh>
-        {/* inodoro 0,60 × 0,40 */}
-        <B p={[1.82, 0.2, 4.6]} s={[0.6, 0.4, 0.55]} m={matBand} cast />
-        <mesh position={[1.82, 0.44, 4.5]}>
-          <boxGeometry args={[0.4, 0.06, 0.44]} />
+        <B p={[0.62, 0.2, 5.3]} s={[0.55, 0.4, 0.45]} m={matBand} cast />
+        <mesh position={[0.62, 0.44, 5.18]}>
+          <boxGeometry args={[0.42, 0.06, 0.42]} />
           <meshStandardMaterial color="#fbfaf7" roughness={0.25} />
         </mesh>
-        <B p={[2.1, 0.9, 4.6]} s={[0.12, 0.16, 0.42]} m={matBand} />
-        {/* placa de descarga en el muro y alfombra de baño */}
-        <mesh position={[2.09, 1.15, 4.6]} rotation={[0, Math.PI / 2, 0]} material={matBrass}>
+        <B p={[0.31, 0.9, 5.3]} s={[0.12, 0.42, 0.44]} m={matBand} />
+        <mesh position={[0.37, 1.15, 5.3]} rotation={[0, Math.PI / 2, 0]} material={matBrass}>
           <boxGeometry args={[0.18, 0.12, 0.012]} />
         </mesh>
-        <mesh position={[1.55, 0.058, 5.35]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[1.0, 0.058, 5.15]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[0.6, 0.9]} />
           <meshStandardMaterial color="#e6ded0" roughness={0.95} />
         </mesh>
       </group>
 
-      {/* ── Ensuite ── */}
+      {/* ── Distribuidor: hall entre comedor, vestíbulo y garaje ── */}
       <group>
-        <B p={[9.85, 0.04, 4.05]} s={[0.8, 0.08, 0.9]} m={matStone} recv />
-        <mesh position={[10.25, 1.0, 4.05]}>
-          <boxGeometry args={[0.02, 2.0, 0.9]} />
-          <meshStandardMaterial color="#dcecf4" transparent opacity={0.2} metalness={0.4} roughness={0.05} />
+        <B p={[10.35, 0.4, 3.74]} s={[0.9, 0.72, 0.22]} m={matPine} cast />
+        <B p={[10.35, 0.78, 3.74]} s={[0.94, 0.04, 0.26]} m={matBand} />
+        <mesh position={[10.35, 1.35, 3.62]} material={matMirror}>
+          <boxGeometry args={[0.85, 0.9, 0.03]} />
         </mesh>
-        <B p={[9.78, 0.44, 4.85]} s={[0.72, 0.86, 0.48]} m={matPine} cast />
-        <RB p={[9.78, 0.885, 4.85]} s={[0.78, 0.05, 0.52]} m={matBand} radius={0.016} />
-        <mesh position={[9.78, 0.62, 4.68]}>
-          <boxGeometry args={[0.66, 0.24, 0.014]} />
-          <meshStandardMaterial color="#d8d2c6" roughness={0.5} />
+        <mesh position={[10.35, 1.35, 3.6]}>
+          <boxGeometry args={[0.91, 0.96, 0.02]} />
+          <meshStandardMaterial color="#fff2d8" emissive="#ffe6bd" emissiveIntensity={lightsOn ? 1.1 : 0.02} />
         </mesh>
-        <mesh position={[9.78, 0.68, 4.695]} material={matBrass}>
-          <boxGeometry args={[0.28, 0.014, 0.014]} />
+        <mesh position={[9.8, 0.22, 4.9]}>
+          <cylinderGeometry args={[0.16, 0.13, 0.44, 16]} />
+          <meshStandardMaterial color="#c9a76a" roughness={0.7} />
         </mesh>
-        <mesh position={[9.78, 0.94, 4.85]}>
-          <cylinderGeometry args={[0.16, 0.13, 0.1, 18]} />
-          <meshStandardMaterial color="#fbfaf6" roughness={0.15} />
+        <mesh position={[9.8, 0.62, 4.9]}>
+          <sphereGeometry args={[0.22, 10, 8]} />
+          <meshStandardMaterial color="#5d7f45" roughness={0.9} />
         </mesh>
-        <mesh position={[9.51, 1.42, 4.85]} material={matMirror}>
-          <boxGeometry args={[0.03, 0.9, 0.62]} />
+        <mesh position={[11.26, 1.05, 4.72]} material={matBrass}>
+          <boxGeometry args={[0.03, 0.05, 0.18]} />
         </mesh>
-        <mesh position={[9.49, 1.42, 4.85]}>
-          <boxGeometry args={[0.02, 0.96, 0.68]} />
-          <meshStandardMaterial color="#fff2d8" emissive="#ffe6bd" emissiveIntensity={lightsOn ? 1.3 : 0.02} />
-        </mesh>
-        <B p={[10.8, 0.2, 3.95]} s={[0.55, 0.4, 0.5]} m={matBand} cast />
       </group>
 
-      {/* ── Dormitorio 1 ── */}
+      {/* ── Dormitorio 1 (cabecera al oriente, ensuite al poniente) ── */}
       <group>
-        <Bed x={11.6} z={1.55} w={1.8} head={-1} matWood={matPine} matLinen={matLinen} />
-        <Wardrobe x={13.55} z={0.62} w={1.5} mat={matBand} />
-        <Desk x={14.02} z={2.3} w={1.2} rot={Math.PI / 2} matWood={matPine} matWall={matBand} />
-        <Chair x={13.35} z={2.3} rot={Math.PI / 2} matWood={matPine} matLinen={matLinen} />
-        <mesh position={[11.8, 0.04, 1.7]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[2.6, 2.2]} />
+        <Bed x={13.3} z={1.5} w={1.8} head={-1} rot={-Math.PI / 2} matWood={matPine} matLinen={matLinen} />
+        <Wardrobe x={11.62} z={2.97} w={0.95} rot={Math.PI / 2} mat={matBand} />
+        <Desk x={14.07} z={3.0} w={0.8} rot={Math.PI / 2} matWood={matPine} matWall={matBand} />
+        <Chair x={13.45} z={3.0} rot={Math.PI / 2} matWood={matPine} matLinen={matLinen} />
+        <mesh position={[13.1, 0.04, 1.5]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[2.6, 2.4]} />
           <meshStandardMaterial color="#d9cfc0" roughness={0.95} />
         </mesh>
-        {[10.42, 12.78].map((x) => (
-          <group key={x} position={[x, 0, 0.72]}>
+        {[[14.1, 0.35], [14.1, 2.65]].map(([x, z]) => (
+          <group key={`d1n${z}`} position={[x, 0, z]}>
             <B p={[0, 0.26, 0]} s={[0.44, 0.52, 0.44]} m={matPine} cast />
             <B p={[0, 0.54, 0]} s={[0.48, 0.04, 0.48]} m={matBand} />
             <mesh position={[0, 0.66, 0]}>
@@ -1769,24 +1766,74 @@ export default function Plano3903D({
           </group>
         ))}
         {/* banco al pie de la cama */}
-        <B p={[11.6, 0.42, 2.94]} s={[1.0, 0.08, 0.36]} m={matPine} cast />
-        <RB p={[11.6, 0.5, 2.94]} s={[0.94, 0.09, 0.32]} m={matTerracotta} radius={0.03} cast />
-        {[11.2, 12.0].map((x) => (
-          <B key={`d1b${x}`} p={[x, 0.21, 2.94]} s={[0.05, 0.42, 0.3]} m={matFrame} />
+        <B p={[12.1, 0.42, 1.5]} s={[0.32, 0.08, 1.0]} m={matPine} cast />
+        <RB p={[12.1, 0.5, 1.5]} s={[0.28, 0.09, 0.94]} m={matTerracotta} radius={0.03} cast />
+        {[1.1, 1.9].map((z) => (
+          <B key={`d1b${z}`} p={[12.1, 0.21, z]} s={[0.26, 0.42, 0.05]} m={matFrame} />
         ))}
-        <group position={[11.6, 1.8, 0.27]}>
+        {/* arte sobre la cama */}
+        <group position={[14.31, 1.8, 1.5]} rotation={[0, -Math.PI / 2, 0]}>
           <B p={[0, 0, 0]} s={[1.15, 0.66, 0.04]} m={matPine} />
           <B p={[0, 0, 0.024]} s={[1.05, 0.56, 0.01]} m={matSage} />
         </group>
+        {/* Ensuite privado 1,74 × 2,10 */}
+        <B p={[10.0, 0.04, 0.9]} s={[0.9, 0.08, 1.2]} m={matStone} recv />
+        <mesh position={[10.45, 1.0, 0.9]}>
+          <boxGeometry args={[0.02, 2.0, 1.2]} />
+          <meshStandardMaterial color="#dcecf4" transparent opacity={0.2} metalness={0.4} roughness={0.05} />
+        </mesh>
+        <mesh position={[10.45, 2.0, 0.9]}>
+          <boxGeometry args={[0.03, 0.03, 1.2]} />
+          <meshStandardMaterial color="#22282c" metalness={0.6} roughness={0.3} />
+        </mesh>
+        <mesh position={[10.0, 2.1, 0.38]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.12, 0.12, 0.03, 16]} />
+          <meshStandardMaterial color="#c9ced2" metalness={0.9} roughness={0.2} />
+        </mesh>
+        <mesh position={[10.0, 1.55, 0.32]}>
+          <cylinderGeometry args={[0.015, 0.015, 0.9, 8]} />
+          <meshStandardMaterial color="#c9ced2" metalness={0.9} roughness={0.2} />
+        </mesh>
+        {/* vanitorio sur del ensuite */}
+        <B p={[10.0, 0.43, 2.05]} s={[0.8, 0.86, 0.5]} m={matPine} cast />
+        <RB p={[10.0, 0.885, 2.05]} s={[0.86, 0.05, 0.54]} m={matBand} radius={0.016} />
+        <mesh position={[10.0, 0.62, 1.88]}>
+          <boxGeometry args={[0.74, 0.24, 0.014]} />
+          <meshStandardMaterial color="#d8d2c6" roughness={0.5} />
+        </mesh>
+        <mesh position={[10.0, 0.68, 1.894]} material={matBrass}>
+          <boxGeometry args={[0.3, 0.014, 0.014]} />
+        </mesh>
+        <mesh position={[10.0, 0.93, 2.02]}>
+          <cylinderGeometry args={[0.19, 0.15, 0.12, 20]} />
+          <meshStandardMaterial color="#fbfaf6" roughness={0.15} />
+        </mesh>
+        <mesh position={[10.0, 1.42, 2.33]} material={matMirror}>
+          <boxGeometry args={[0.7, 0.9, 0.03]} />
+        </mesh>
+        <mesh position={[10.0, 1.42, 2.32]}>
+          <boxGeometry args={[0.76, 0.96, 0.02]} />
+          <meshStandardMaterial color="#fff2d8" emissive="#ffe6bd" emissiveIntensity={lightsOn ? 1.4 : 0.02} />
+        </mesh>
+        {/* WC al oriente del ensuite */}
+        <B p={[10.8, 0.2, 0.7]} s={[0.55, 0.4, 0.5]} m={matBand} cast />
+        <mesh position={[10.8, 0.44, 0.62]}>
+          <boxGeometry args={[0.4, 0.06, 0.44]} />
+          <meshStandardMaterial color="#fbfaf7" roughness={0.25} />
+        </mesh>
+        <B p={[11.15, 0.9, 0.7]} s={[0.12, 0.16, 0.42]} m={matBand} />
+        <mesh position={[11.14, 1.15, 0.7]} rotation={[0, Math.PI / 2, 0]} material={matBrass}>
+          <boxGeometry args={[0.18, 0.12, 0.012]} />
+        </mesh>
       </group>
 
-      {/* ── Dormitorio 2 ── */}
+      {/* ── Dormitorio 2 (cabecera al oriente, clóset al poniente) ── */}
       <group>
-        <Bed x={1.55} z={1.55} w={1.6} head={-1} matWood={matWood} matLinen={matLinen} />
-        <Wardrobe x={3.0} z={2.35} w={0.95} rot={-Math.PI / 2} mat={matBand} />
+        <Bed x={2.32} z={1.55} w={1.6} head={-1} rot={-Math.PI / 2} matWood={matWood} matLinen={matLinen} />
+        <Wardrobe x={0.55} z={0.87} w={0.95} rot={Math.PI / 2} mat={matBand} />
         <Desk x={1.15} z={3.15} w={1.2} matWood={matPine} matWall={matBand} />
-        {[0.52, 2.58].map((x) => (
-          <group key={x} position={[x, 0, 0.72]}>
+        {[[3.05, 0.35], [3.05, 2.65]].map(([x, z]) => (
+          <group key={`d2n${z}`} position={[x, 0, z]}>
             <B p={[0, 0.26, 0]} s={[0.42, 0.52, 0.42]} m={matPine} cast />
             <B p={[0, 0.54, 0]} s={[0.46, 0.04, 0.46]} m={matBand} />
             <mesh position={[0, 0.66, 0]}>
@@ -1795,12 +1842,11 @@ export default function Plano3903D({
             </mesh>
           </group>
         ))}
-        <mesh position={[1.55, 0.04, 2.0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[2.1, 0.04, 1.55]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[2.2, 2.0]} />
           <meshStandardMaterial color="#d9cfc0" roughness={0.95} />
         </mesh>
-        <RB p={[1.55, 0.28, 2.85]} s={[0.72, 0.34, 0.46]} m={matSage} radius={0.06} cast />
-        <group position={[1.55, 1.8, 0.27]}>
+        <group position={[3.31, 1.8, 1.55]} rotation={[0, -Math.PI / 2, 0]}>
           <B p={[0, 0, 0]} s={[1.05, 0.6, 0.04]} m={matPine} />
           <B p={[0, 0, 0.024]} s={[0.95, 0.5, 0.01]} m={matTerracotta} />
         </group>
@@ -1808,16 +1854,16 @@ export default function Plano3903D({
 
       {/* ── Dormitorio 3 ── */}
       <group>
-        <Bed x={1.55} z={7.55} w={1.6} head={-1} matWood={matWood} matLinen={matLinen} />
+        <Bed x={1.55} z={7.19} w={1.6} head={-1} matWood={matWood} matLinen={matLinen} />
         <Wardrobe x={3.0} z={8.6} w={0.95} rot={-Math.PI / 2} mat={matBand} />
         <Desk x={3.015} z={10.1} w={1.2} rot={Math.PI / 2} matWood={matPine} matWall={matBand} />
         <Chair x={2.35} z={10.1} rot={Math.PI / 2} matWood={matPine} matLinen={matLinen} />
-        <mesh position={[1.7, 0.04, 8.8]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[1.7, 0.04, 7.9]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[2.4, 2.2]} />
           <meshStandardMaterial color="#d9cfc0" roughness={0.95} />
         </mesh>
         {[0.52, 2.58].map((x) => (
-          <group key={x} position={[x, 0, 6.72]}>
+          <group key={x} position={[x, 0, 6.4]}>
             <B p={[0, 0.26, 0]} s={[0.42, 0.52, 0.42]} m={matPine} cast />
             <B p={[0, 0.54, 0]} s={[0.46, 0.04, 0.46]} m={matBand} />
             <mesh position={[0, 0.66, 0]}>
@@ -1826,14 +1872,14 @@ export default function Plano3903D({
             </mesh>
           </group>
         ))}
-        <group position={[1.55, 1.8, 6.09]}>
+        <group position={[1.55, 1.8, 6.075]}>
           <B p={[0, 0, 0]} s={[1.05, 0.6, 0.04]} m={matPine} />
           <B p={[0, 0, 0.024]} s={[0.95, 0.5, 0.01]} m={matSage} />
         </group>
       </group>
 
       {/* ── Garaje: auto + estantes ── */}
-      <group position={[11.85, 0, 8.75]}>
+      <group position={[12.09, 0, 8.65]}>
         <B p={[0, 0.55, 0]} s={[1.78, 0.5, 4.2]} m={matBand} cast />
         <B p={[0, 0.98, 0.05]} s={[1.62, 0.42, 2.24]} m={matBand} cast />
         <mesh position={[0, 1.02, 0.05]}>
@@ -1855,9 +1901,9 @@ export default function Plano3903D({
           </mesh>
         ))}
       </group>
-      {/* lavandería: lavadora y secadora contra el muro poniente, con mesón */}
-      {[6.9, 7.6].map((z, i) => (
-        <group key={`laundry${z}`} position={[9.82, 0, z]}>
+      {/* lavandería cerrada: lavadora y secadora contra el muro poniente, con mesón */}
+      {[9.0, 9.7].map((z, i) => (
+        <group key={`laundry${z}`} position={[9.9, 0, z]}>
           <B p={[0, 0.45, 0]} s={[0.62, 0.9, 0.62]} m={i === 0 ? matBand : matFrame} cast />
           <mesh position={[0.32, 0.58, 0]} rotation={[0, Math.PI / 2, 0]}>
             <circleGeometry args={[0.22, 20]} />
@@ -1872,8 +1918,18 @@ export default function Plano3903D({
           </mesh>
         </group>
       ))}
-      <RB p={[9.86, 1.03, 7.25]} s={[0.72, 0.06, 1.42]} m={matBand} radius={0.016} cast />
-      <B p={[9.79, 0.03, 7.25]} s={[0.6, 0.06, 1.42]} m={matFrame} />
+      <RB p={[9.91, 1.03, 9.55]} s={[0.72, 0.06, 2.0]} m={matBand} radius={0.016} cast />
+      <B p={[9.79, 0.03, 9.55]} s={[0.6, 0.06, 2.0]} m={matFrame} />
+      {/* estante de lavandería en el muro oriente */}
+      {[1.15, 1.55].map((y) => (
+        <B key={`ls${y}`} p={[10.76, y, 9.55]} s={[0.16, 0.04, 1.8]} m={matPine} cast />
+      ))}
+      <mesh position={[10.35, 2.55, 9.55]} material={matLed}>
+        <boxGeometry args={[0.9, 0.02, 0.12]} />
+      </mesh>
+      <mesh position={[10.35, 2.55, 9.55]} material={matLedGlow}>
+        <boxGeometry args={[1.0, 0.06, 0.22]} />
+      </mesh>
       {/* estantería y banco de trabajo al oriente */}
       <group position={[14.02, 0, 9.5]}>
         {[0.45, 0.95, 1.45].map((y) => (

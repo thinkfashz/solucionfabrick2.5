@@ -8,6 +8,7 @@
 import { Canvas } from '@react-three/fiber';
 import { Suspense, useEffect, useState } from 'react';
 import { ACESFilmicToneMapping, PCFSoftShadowMap } from 'three';
+import type { WebGLRenderer } from 'three';
 import { PLAN, SCENES } from '@/lib/plano390Data';
 import type { SceneView } from '@/lib/plano390Data';
 import Plano3903D from './Plano3903D';
@@ -17,6 +18,23 @@ import Plano390Controls from './Plano390Controls';
 import Plano390UI from './Plano390UI';
 
 const INITIAL_CAM = { position: [7, PLAN.eyeH, 17.2] as [number, number, number], fov: 46, near: 0.05, far: 220 };
+
+// Props estables: si se pasan literales nuevos en cada render, R3F puede
+// recrear cámara/renderer y la cámara vuelve a la posición inicial (rompe
+// el salto de ?vista= y el tour). Ver error 025 de la skill.
+const CANVAS_CAMERA = {
+  position: INITIAL_CAM.position,
+  fov: INITIAL_CAM.fov,
+  near: INITIAL_CAM.near,
+  far: INITIAL_CAM.far,
+};
+const CANVAS_GL = { antialias: true, powerPreference: 'high-performance' as const };
+
+const setupCanvas = ({ gl }: { gl: WebGLRenderer }) => {
+  gl.toneMapping = ACESFilmicToneMapping;
+  gl.toneMappingExposure = 1.0;
+  gl.shadowMap.type = PCFSoftShadowMap;
+};
 
 export default function Plano390Walkthrough() {
   const [stage, setStage] = useState<'intro' | 'ready' | 'in'>('intro');
@@ -130,13 +148,9 @@ export default function Plano390Walkthrough() {
         <Canvas
           shadows="soft"
           dpr={[1, 1.6]}
-          gl={{ antialias: true, powerPreference: 'high-performance' }}
-          camera={{ position: INITIAL_CAM.position, fov: INITIAL_CAM.fov, near: INITIAL_CAM.near, far: INITIAL_CAM.far }}
-          onCreated={({ gl }) => {
-            gl.toneMapping = ACESFilmicToneMapping;
-            gl.toneMappingExposure = 1.0;
-            gl.shadowMap.type = PCFSoftShadowMap;
-          }}
+          gl={CANVAS_GL}
+          camera={CANVAS_CAMERA}
+          onCreated={setupCanvas}
         >
           <Suspense fallback={null}>
             <Plano3903D light={light} lightsOn={lightsOn} openHouse={openHouse} showHands={showHands && mode !== 'cctv'} autoDoors={mode === 'tour'} />

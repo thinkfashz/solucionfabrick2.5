@@ -117,3 +117,6 @@ Bitácora de trabajo (se actualiza al cierre de cada hito).
 - **Enlace directo corregido**: `?vista=` ahora se pasa como `initialScene` al rig y
   el salto se encola cuando el Canvas ya está montado (antes se perdía por el Suspense;
   `?luz=` sí funcionaba). Documentado como error 024 en la skill.
+- **Cámara estable**: `camera`/`gl` del `<Canvas>` pasaron a constantes de módulo.
+  Los literales inline hacían que R3F recreara la cámara en cada render y el salto
+  de `?vista=` volvía al exterior. Documentado como error 025.

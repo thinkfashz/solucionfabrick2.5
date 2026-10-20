@@ -1,9 +1,28 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, type ReactElement } from 'react';
-import { ArrowLeft, X, Route, Footprints, Clapperboard, Video, Map as MapIcon, Lightbulb, DoorOpen, Hand, Sun, Sunset, Moon } from 'lucide-react';
-import { ROOMS, PHOTO_SPOTS, PLAN, CCTV_CAMERAS, TOUR_STOPS, SCENES } from '@/lib/plano390Data';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
+import {
+  ArrowLeft,
+  X,
+  Route,
+  Footprints,
+  Clapperboard,
+  Video,
+  Map as MapIcon,
+  Lightbulb,
+  DoorOpen,
+  Hand,
+  Sun,
+  Sunset,
+  Moon,
+  SlidersHorizontal,
+  Eye,
+  EyeOff,
+  ChevronRight,
+  Info,
+} from 'lucide-react';
+import { PHOTO_SPOTS, CCTV_CAMERAS, TOUR_STOPS, SCENES } from '@/lib/plano390Data';
 import type { SceneView } from '@/lib/plano390Data';
 import Plano390Map2D from './Plano390Map2D';
 
@@ -54,14 +73,13 @@ export default function Plano390UI({
   onLightChange?: (l: 'day' | 'sunset' | 'night') => void;
 }): ReactElement | null {
   const GOLD = '#F6C64A';
-  const ACCENT_BLUE = '#2E6FA0';
-  const ACCENT_ORANGE = '#C56A3A';
   const [progress, setProgress] = useState(0);
   const [step, setStep] = useState(0);
   const [ready, setReady] = useState(false);
   const [showFiche, setShowFiche] = useState(false);
   const [showPlan, setShowPlan] = useState(false);
-  const [prevRoomLabel, setPrevRoomLabel] = useState(roomLabel);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showTourInfo, setShowTourInfo] = useState(true);
   const [clock, setClock] = useState('');
 
   // Intro loading steps
@@ -101,10 +119,28 @@ export default function Plano390UI({
     return () => clearTimeout(t);
   }, [progress]);
 
-  // Reset banner animation when roomLabel changes
+  // Al entrar al recorrido la ficha vuelve a aparecer aunque se haya ocultado.
   useEffect(() => {
-    setPrevRoomLabel(roomLabel);
-  }, [roomLabel]);
+    if (mode === 'tour') setShowTourInfo(true);
+  }, [mode]);
+
+  // El menú plegable se cierra solo al cambiar de modo o de escena.
+  useEffect(() => {
+    setShowMenu(false);
+  }, [mode, activeSpot]);
+
+  // ESC cierra el menú, el plano y la ficha.
+  useEffect(() => {
+    if (stage !== 'in') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setShowMenu(false);
+      setShowPlan(false);
+      setShowFiche(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [stage]);
 
   // Reloj del circuito CCTV (solo se pinta en modo cine; client-only).
   useEffect(() => {
@@ -133,7 +169,6 @@ export default function Plano390UI({
   };
 
   const activeCam = CCTV_CAMERAS[cctvIndex] ?? CCTV_CAMERAS[0];
-  const activeStop = TOUR_STOPS[tourIndex] ?? TOUR_STOPS[0];
   const lightLabel = light === 'day' ? 'Día' : light === 'sunset' ? 'Atardecer' : 'Noche';
   const LightIcon = light === 'day' ? Sun : light === 'sunset' ? Sunset : Moon;
   const cycleLight = () => {
@@ -142,12 +177,22 @@ export default function Plano390UI({
     onLightChange?.(next);
   };
 
-  // Helper to determine room fill color based on floor type
-  const getRoomFill = (floor: string): string => {
-    if (floor === 'terrace') return 'rgba(255,205,120,0.06)'; // terrace
-    if (floor === 'tile' || floor === 'porcelain') return 'rgba(78,205,196,0.08)'; // wetrooms / porcelanato
-    return 'rgba(255,255,255,0.05)'; // chambers (wood, corridor)
-  };
+  // Paradas informativas: los puntos de paso no cuentan para el progreso.
+  const infoStops = useMemo(() => TOUR_STOPS.filter((s) => s.info !== false), []);
+  const lastInfo = useMemo(() => {
+    const upto = Math.min(tourIndex, TOUR_STOPS.length - 1);
+    for (let i = upto; i >= 0; i--) {
+      if (TOUR_STOPS[i].info !== false) return TOUR_STOPS[i];
+    }
+    return TOUR_STOPS[0];
+  }, [tourIndex]);
+  const infoIndex = Math.max(0, infoStops.indexOf(lastInfo));
+  const mapMarker: [number, number] = [
+    Math.min(14.2, Math.max(0.4, lastInfo.pos[0])),
+    Math.min(12.4, Math.max(0.4, lastInfo.pos[2])),
+  ];
+
+  const exitTour = () => onModeChange('free');
 
   if (stage === 'intro') {
     return (
@@ -248,169 +293,123 @@ export default function Plano390UI({
     return null;
   }
 
-  // stage === 'in' -> HUD
+  // stage === 'in' -> HUD con controles ocultos tras un botón sutil
   return (
     <>
-      {/* Top bar */}
-      <header className="absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 p-3 sm:p-4">
-        <Link href="/herramientas" className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-black/62 px-4 text-[10px] font-black backdrop-blur-xl">
-          <ArrowLeft size={15} />Herramientas
+      {/* ── Barra superior mínima ── */}
+      <header className="absolute inset-x-0 top-0 z-40 flex items-center justify-between gap-2 p-3 sm:p-4">
+        <Link
+          href="/herramientas"
+          className="inline-flex h-10 items-center gap-2 rounded-full border border-white/12 bg-black/55 px-3.5 text-[10px] font-black backdrop-blur-xl transition active:scale-95"
+        >
+          <ArrowLeft size={15} />
+          <span className="hidden sm:inline">Herramientas</span>
         </Link>
-        {/* Center chip */}
-        <div className="hidden rounded-full border border-white/10 bg-black/58 px-4 py-2 text-center backdrop-blur-xl sm:block">
+
+        <div className="pointer-events-none rounded-full border border-white/10 bg-black/50 px-4 py-2 text-center backdrop-blur-xl">
           <span className="block text-[8px] font-black uppercase tracking-[.18em] text-[#F6C64A]">
-            {mode === 'cctv' ? 'Cine CCTV · En directo' : 'Proyecto 390-1'}
+            {mode === 'cctv' ? 'Cine CCTV · En directo' : mode === 'tour' ? 'Recorrido guiado' : 'Proyecto 390-1'}
           </span>
-          <b className="text-[10px]">{mode === 'cctv' && activeCam ? `${activeCam.id} · ${activeCam.zone}` : roomLabel}</b>
+          <b className="text-[10px]">
+            {mode === 'cctv' && activeCam ? `${activeCam.id} · ${activeCam.zone}` : roomLabel}
+          </b>
         </div>
-        {/* Plano + ficha */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={cycleLight}
-            aria-label={`Iluminación: ${lightLabel}. Cambiar a la siguiente`}
-            title={`Iluminación: ${lightLabel}`}
-            className="grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-black/62 text-[#F6C64A] backdrop-blur-xl transition active:scale-95"
-          >
-            <LightIcon size={16} />
-          </button>
-          <button
-            onClick={() => setShowPlan(true)}
-            className="inline-flex h-11 items-center gap-1.5 rounded-full border border-white/12 bg-black/62 px-3 text-[10px] font-black backdrop-blur-xl transition active:scale-95"
-          >
-            <MapIcon size={14} />
-            <span>Plano</span>
-          </button>
-          <button
-            onClick={() => setShowFiche(true)}
-            className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-black/62 px-3 text-[10px] font-black backdrop-blur-xl transition active:scale-95"
-          >
-            Ficha
-          </button>
-        </div>
+
+        <button
+          onClick={() => setShowMenu((v) => !v)}
+          aria-label="Mostrar controles"
+          aria-expanded={showMenu}
+          className={`grid h-10 w-10 place-items-center rounded-full border backdrop-blur-xl transition active:scale-95 ${
+            showMenu ? 'border-[#F6C64A]/60 bg-[#F6C64A] text-black' : 'border-white/12 bg-black/55 text-white/85'
+          }`}
+        >
+          <SlidersHorizontal size={16} />
+        </button>
       </header>
 
-      {/* Room label banner (fade-in on change) */}
-      <div
-        className={`absolute inset-x-0 top-16 z-30 flex justify-center px-4 pointer-events-none transition-opacity duration-500 ${
-          roomLabel !== prevRoomLabel ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-1 text-[9px] font-black">
-          <span className="h-[6px] w-[6px] rounded-full" style={{ background: GOLD }} />
-          <span>{roomLabel}</span>
-        </span>
-      </div>
+      {/* ── Recorrido: barras de cine + ficha lateral con miniatura ── */}
+      {mode === 'tour' ? (
+        <>
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[3vh] bg-black/80" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[3vh] bg-black/80" />
 
-      {/* ── Controles inferiores: escenas + dock táctil ── */}
-      <div className="absolute inset-x-0 bottom-0 z-30 select-none">
-        <div
-          className="mx-auto flex max-w-[560px] flex-col gap-1.5 px-2"
-          style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
-        >
-          <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-            {SCENES.map((scene) => {
-              const sceneActive = scene.label === roomLabel;
-              return (
-                <button
-                  key={scene.id}
-                  onClick={() => onScene(scene)}
-                  className={`inline-flex h-11 shrink-0 items-center rounded-full border px-3 text-[9px] font-black transition active:scale-95 ${
-                    sceneActive
-                      ? 'border-[#F6C64A]/50 bg-[#F6C64A]/18 text-[#F6C64A]'
-                      : 'border-white/10 bg-black/62 text-white/85'
-                  }`}
-                >
-                  {scene.label}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center gap-1.5 rounded-[1.5rem] border border-white/10 bg-black/62 p-1.5 backdrop-blur-xl">
-            {([
-              { key: 'free' as const, label: 'Libre', Icon: Footprints },
-              { key: 'tour' as const, label: 'Tour', Icon: Route },
-              { key: 'cctv' as const, label: 'Cámaras', Icon: Clapperboard },
-            ]).map(({ key, label, Icon }) => (
-              <button
-                key={key}
-                onClick={() => onModeChange(key)}
-                aria-pressed={mode === key}
-                className={`flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-[7px] font-black uppercase tracking-[.08em] transition active:scale-95 ${
-                  mode === key ? 'bg-[#F6C64A] text-black' : 'text-white/65'
-                }`}
-              >
-                <Icon size={16} />
-                <span className="truncate">{label}</span>
-              </button>
-            ))}
-            <span className="mx-0.5 h-8 w-px shrink-0 bg-white/15" />
-            <button
-              onClick={onToggleLights}
-              aria-label="Encender o apagar las luces"
-              aria-pressed={lightsOn}
-              className={`flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-[7px] font-black uppercase tracking-[.08em] transition active:scale-95 ${
-                lightsOn ? 'bg-[#F6C64A]/18 text-[#F6C64A]' : 'text-white/55'
-              }`}
-            >
-              <Lightbulb size={16} />
-              <span>Luces</span>
-            </button>
-            <button
-              onClick={onToggleOpen}
-              aria-label="Abrir o cerrar puertas y ventanas"
-              aria-pressed={openHouse}
-              className={`flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-[7px] font-black uppercase tracking-[.08em] transition active:scale-95 ${
-                openHouse ? 'bg-[#F6C64A]/18 text-[#F6C64A]' : 'text-white/55'
-              }`}
-            >
-              <DoorOpen size={16} />
-              <span>Abrir</span>
-            </button>
-            <button
-              onClick={onToggleHands}
-              aria-label="Mostrar u ocultar el cuerpo en primera persona"
-              aria-pressed={showHands}
-              className={`flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-[7px] font-black uppercase tracking-[.08em] transition active:scale-95 ${
-                showHands ? 'bg-[#F6C64A]/18 text-[#F6C64A]' : 'text-white/55'
-              }`}
-            >
-              <Hand size={16} />
-              <span>Manos</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Panel de cámaras con miniaturas del plano ── */}
-      {mode === 'cctv' ? (
-        <div className="absolute inset-x-0 bottom-[150px] z-30 px-2">
-          <div
-            className="mx-auto flex max-w-[860px] gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-black/55 p-2 backdrop-blur-xl"
-            style={{ scrollbarWidth: 'none' }}
+          <aside
+            className={`absolute left-3 right-3 z-40 transition-all duration-500 sm:right-auto sm:w-[344px] ${
+              showTourInfo ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'
+            }`}
+            style={{ bottom: 'max(14px, env(safe-area-inset-bottom))' }}
           >
-            {CCTV_CAMERAS.map((cam, i) => (
-              <button
-                key={cam.id}
-                onClick={() => onCctvSelect?.(i)}
-                aria-label={`Ver ${cam.id} ${cam.name}`}
-                className={`w-[104px] shrink-0 rounded-xl border p-1 text-left ${
-                  i === cctvIndex ? 'border-[#F6C64A] bg-[#F6C64A]/10' : 'border-white/10 bg-white/[.03]'
-                }`}
-              >
-                <Plano390Map2D compact onlyCam={i} focus={[cam.pos[0], cam.pos[2]]} className="h-[70px] w-full rounded-md" selectedCam={i} />
-                <p className="mt-1 text-[7px] font-black text-white/85">{cam.id} · {cam.zone}</p>
-                <p className="truncate text-[7px] text-white/40">{cam.name}</p>
-              </button>
-            ))}
-          </div>
-        </div>
+            <div className="overflow-hidden rounded-2xl border border-white/12 bg-[#071017]/84 shadow-2xl backdrop-blur-2xl">
+              <div className="flex gap-3 p-3">
+                <div className="relative h-[86px] w-[104px] shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#0a1218]">
+                  <Plano390Map2D
+                    compact
+                    showCams={false}
+                    marker={mapMarker}
+                    className="h-full w-full"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1 text-[8px] font-black uppercase tracking-[.2em] text-[#F6C64A]">
+                    <Info size={10} />
+                    Recorrido · {infoIndex + 1}/{infoStops.length}
+                  </p>
+                  <h2 className="mt-0.5 text-[15px] font-black leading-tight text-white">{lastInfo.label}</h2>
+                  {lastInfo.note ? (
+                    <p className="mt-1 line-clamp-3 text-[10px] leading-4 text-white/60">{lastInfo.note}</p>
+                  ) : null}
+                  {lastInfo.meta ? (
+                    <p className="mt-1 truncate text-[8px] font-bold tracking-wide text-[#c9ef63]/80">{lastInfo.meta}</p>
+                  ) : null}
+                </div>
+                <button
+                  onClick={() => setShowTourInfo(false)}
+                  aria-label="Ocultar información"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/[.06] text-white/70 transition active:scale-95"
+                >
+                  <EyeOff size={14} />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 px-3 pb-3">
+                <div className="flex flex-1 flex-wrap items-center gap-1">
+                  {infoStops.map((s, i) => (
+                    <span
+                      key={s.label}
+                      className={`h-1 rounded-full transition-all duration-500 ${
+                        i === infoIndex
+                          ? 'w-4 bg-[#F6C64A]'
+                          : i < infoIndex
+                            ? 'w-1.5 bg-[#F6C64A]/50'
+                            : 'w-1.5 bg-white/20'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={exitTour}
+                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-white/15 bg-white/[.04] px-3 text-[9px] font-black uppercase tracking-[.12em] text-white/80 transition active:scale-95"
+                >
+                  <X size={12} /> Salir
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          {!showTourInfo ? (
+            <button
+              onClick={() => setShowTourInfo(true)}
+              className="absolute left-3 z-40 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-black/60 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-white/80 backdrop-blur-xl transition active:scale-95"
+              style={{ bottom: 'max(14px, env(safe-area-inset-bottom))' }}
+            >
+              <Eye size={13} /> Info
+            </button>
+          ) : null}
+        </>
       ) : null}
 
       {/* ── Overlay de Cine CCTV (marco fino + REC + reloj) ── */}
-      {mode === 'cctv' && (
+      {mode === 'cctv' ? (
         <div className="pointer-events-none absolute inset-0 z-20">
-          {/* Esquinas de encuadre */}
           {[
             'left-3 top-3 border-l-2 border-t-2',
             'right-3 top-3 border-r-2 border-t-2',
@@ -419,8 +418,7 @@ export default function Plano390UI({
           ].map((cls) => (
             <span key={cls} className={`absolute h-7 w-7 border-white/30 ${cls}`} />
           ))}
-          {/* REC + cámara */}
-          <div className="absolute left-6 top-6 flex items-center gap-2 rounded-md bg-black/55 px-2.5 py-1.5 backdrop-blur-sm">
+          <div className="absolute left-6 top-16 flex items-center gap-2 rounded-md bg-black/55 px-2.5 py-1.5 backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-70" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
@@ -428,163 +426,222 @@ export default function Plano390UI({
             <span className="text-[9px] font-black tracking-[.2em] text-white">REC</span>
             <span className="text-[9px] font-bold text-white/55">{activeCam?.id}</span>
           </div>
-          <div className="absolute left-6 top-[54px] max-w-[260px] text-[9px] font-black uppercase tracking-[.18em] text-white/70">
+          <div className="absolute left-6 top-[96px] max-w-[260px] text-[9px] font-black uppercase tracking-[.18em] text-white/70">
             {activeCam?.name}
           </div>
-          {/* Contador compacto (no depende del número de cámaras) */}
-          <div className="absolute right-6 top-6 rounded-md bg-black/55 px-2.5 py-1.5 text-[9px] font-black tracking-[.14em] text-white/70 backdrop-blur-sm">
+          <div className="absolute right-6 top-16 rounded-md bg-black/55 px-2.5 py-1.5 text-[9px] font-black tracking-[.14em] text-white/70 backdrop-blur-sm">
             {String(cctvIndex + 1).padStart(2, '0')}
             <span className="text-white/35"> / {String(CCTV_CAMERAS.length).padStart(2, '0')}</span>
           </div>
-          <div className="absolute bottom-[272px] left-6 flex items-center gap-2 text-[9px] font-black tracking-[.14em] text-white/60">
+          <div className="absolute left-6 bottom-6 flex items-center gap-2 text-[9px] font-black tracking-[.14em] text-white/60">
             <Video size={12} />
             <span>{clock}</span>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* ── Overlay de recorrido cinematográfico (barras + rótulo + ficha) ── */}
-      {mode === 'tour' && (
-        <>
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[3.5vh] bg-black/85" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[3.5vh] bg-black/85" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-[150px] z-30 flex flex-col items-center gap-1 px-6 text-center">
-            <span className="text-[8px] font-black uppercase tracking-[.3em] text-[#F6C64A]">
-              Recorrido cinematográfico
-            </span>
-            <h2 className="text-balance text-lg font-black leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,.8)]">
-              {activeStop?.label}
-            </h2>
-            <p className="max-w-[420px] text-balance text-[10px] leading-4 text-white/70">
-              {activeStop?.note}
-            </p>
-            {activeStop?.meta ? (
-              <span className="mt-0.5 rounded-full border border-white/12 bg-black/45 px-2.5 py-1 text-[8px] font-bold tracking-wide text-white/65 backdrop-blur-sm">
-                {activeStop.meta}
-              </span>
-            ) : null}
-            <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
-              {TOUR_STOPS.map((stop, i) => (
-                <span
-                  key={stop.label}
-                  className={`h-1 rounded-full transition-all duration-500 ${
-                    i === tourIndex ? 'w-5 bg-[#F6C64A]' : 'w-1 bg-white/30'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Minimap (hidden on mobile) */}
-      <div className="absolute right-3 top-16 z-20 hidden sm:block select-none touch-none pointer-events-none">
-        <svg width="224" height="186" viewBox="-1 -1 16.6 13.8" aria-label="Minimapa del plano">
-          {/* Contorno de la casa */}
-          <rect
-            x="0"
-            y="0"
-            width="14.6"
-            height="11"
-            rx="0.5"
-            fill="none"
-            stroke={GOLD}
-            strokeWidth="0.15"
-            opacity="0.7"
-          />
-          {/* Porche */}
-          <rect
-            x="5.65"
-            y="10.75"
-            width="3.4"
-            height="1.8"
-            rx="0.2"
-            fill="rgba(246,198,74,.13)"
-            stroke={GOLD}
-            strokeWidth="0.1"
-            opacity="0.9"
-          />
-          {/* Rooms */}
-          {ROOMS.map((room) => (
-            <rect
-              key={room.id}
-              x={room.x0}
-              y={room.z0}
-              width={room.x1 - room.x0}
-              height={room.z1 - room.z0}
-              fill={getRoomFill(room.floor)}
-              stroke="none"
-            />
-          ))}
-          {/* Room labels */}
-          {ROOMS.map((room) => (
-            <text
-              key={room.id + '-label'}
-              x={(room.x0 + room.x1) / 2}
-              y={(room.z0 + room.z1) / 2}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize="0.4"
-              fill="#fff"
-              letterSpacing="-0.02"
-              pointerEvents="none"
-            >
-              #{room.id}
-            </text>
-          ))}
-          {/* Cámaras CCTV */}
-          {CCTV_CAMERAS.map((cam, i) => (
-            <circle
-              key={cam.id}
-              cx={cam.pos[0]}
-              cy={cam.pos[2]}
-              r={mode === 'cctv' && i === cctvIndex ? 0.38 : 0.24}
-              fill={mode === 'cctv' && i === cctvIndex ? GOLD : '#ffffff'}
-              opacity={mode === 'cctv' && i === cctvIndex ? 1 : 0.55}
-            />
-          ))}
-        </svg>
-      </div>
-
-      {/* Foto card */}
-      {activeSpot !== null && (
+      {/* ── Foto card (puntos de foto) ── */}
+      {activeSpot !== null && !showMenu ? (
         <div
-          className={`absolute bottom-[132px] left-1/2 -translate-x-1/2 z-40 flex items-center justify-center px-4 pt-2 select-none`}
+          className="absolute left-3 right-3 z-40 sm:left-auto sm:right-3 sm:w-[300px]"
+          style={{ bottom: 'calc(84px + env(safe-area-inset-bottom))' }}
         >
           <div
-            className="relative w-full max-w-[360px] rounded-xl border bg-[#0b0f13]/95 p-4 backdrop-blur-sm"
+            className="relative rounded-xl border bg-[#0b0f13]/95 p-3.5 backdrop-blur-sm"
             style={{ borderColor: `${PHOTO_SPOTS[activeSpot].color}66` }}
           >
-            <h3 className="mb-2 text-balance text-[12px] font-black text-center">
-              {PHOTO_SPOTS[activeSpot].label}
-            </h3>
-            {/* Wedge SVG */}
-            <div className="w-16 h-16 mx-auto mb-2">
-              <svg width="100" height="100" viewBox="0 0 100 100" aria-label="Cuña de visión">
-                {/* Simple triangle representing cone */}
-                <polygon
-                  points="50,10 30,90 70,90"
-                  fill={PHOTO_SPOTS[activeSpot].color}
-                  opacity="0.18"
-                />
-                {/* Mini plan placeholder */}
+            <div className="flex items-center gap-2">
+              <svg width="34" height="34" viewBox="0 0 100 100" aria-label="Cuña de visión" className="shrink-0">
+                <polygon points="50,10 30,90 70,90" fill={PHOTO_SPOTS[activeSpot].color} opacity="0.18" />
                 <rect x="20" y="20" width="60" height="60" fill="none" stroke="#fff" strokeWidth="0.5" opacity="0.2" />
               </svg>
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-[11px] font-black text-white">{PHOTO_SPOTS[activeSpot].label}</h3>
+                <p className="text-[9px] leading-4 text-white/55">Quedate en el objetivo para clavar la foto</p>
+              </div>
+              <button
+                onClick={handleCloseSpot}
+                aria-label="Cerrar punto de foto"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/[.08] transition active:scale-95"
+              >
+                <X size={15} />
+              </button>
             </div>
-            <p className="text-center text-[9px] leading-4 text-white/60">
-              Manténte en el objetivo para clavar la foto
-            </p>
-            <button
-              onClick={handleCloseSpot}
-              className="absolute top-2 right-2 p-1 rounded-full bg-white/[.1] hover:bg-white/[.2] transition-colors"
-            >
-              <X size={18} />
-            </button>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Plano 2D (panel completo) */}
+      {/* ── Menú plegable de controles ── */}
+      {showMenu ? (
+        <div className="absolute inset-0 z-[80]" onClick={() => setShowMenu(false)}>
+          <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" aria-hidden />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-x-2 bottom-2 max-h-[80dvh] overflow-y-auto rounded-[1.6rem] border border-white/12 bg-[#071017]/97 p-3.5 shadow-2xl backdrop-blur-2xl sm:inset-x-auto sm:right-3 sm:w-[392px]"
+            style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-[.2em] text-[#F6C64A]">Controles</p>
+                <h2 className="text-[13px] font-black text-white">Casa 390-1 · 148 m²</h2>
+              </div>
+              <button
+                onClick={() => setShowMenu(false)}
+                aria-label="Cerrar controles"
+                className="grid h-9 w-9 place-items-center rounded-full bg-white/[.07] transition active:scale-95"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Modo */}
+            <div className="flex items-center gap-1.5 rounded-2xl border border-white/10 bg-white/[.03] p-1.5">
+              {([
+                { key: 'free' as const, label: 'Libre', Icon: Footprints },
+                { key: 'tour' as const, label: 'Recorrido', Icon: Route },
+                { key: 'cctv' as const, label: 'Cámaras', Icon: Clapperboard },
+              ]).map(({ key, label, Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => onModeChange(key)}
+                  aria-pressed={mode === key}
+                  className={`flex h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl text-[8px] font-black uppercase tracking-[.06em] transition active:scale-95 ${
+                    mode === key ? 'bg-[#F6C64A] text-black' : 'text-white/65'
+                  }`}
+                >
+                  <Icon size={16} />
+                  <span className="truncate">{label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Interruptores */}
+            <div className="mt-2 grid grid-cols-4 gap-1.5">
+              <button
+                onClick={onToggleLights}
+                aria-pressed={lightsOn}
+                className={`flex h-14 flex-col items-center justify-center gap-1 rounded-xl border text-[8px] font-black uppercase tracking-[.05em] transition active:scale-95 ${
+                  lightsOn ? 'border-[#F6C64A]/45 bg-[#F6C64A]/15 text-[#F6C64A]' : 'border-white/10 bg-white/[.03] text-white/55'
+                }`}
+              >
+                <Lightbulb size={15} /> Luces
+              </button>
+              <button
+                onClick={onToggleOpen}
+                aria-pressed={openHouse}
+                className={`flex h-14 flex-col items-center justify-center gap-1 rounded-xl border text-[8px] font-black uppercase tracking-[.05em] transition active:scale-95 ${
+                  openHouse ? 'border-[#F6C64A]/45 bg-[#F6C64A]/15 text-[#F6C64A]' : 'border-white/10 bg-white/[.03] text-white/55'
+                }`}
+              >
+                <DoorOpen size={15} /> Puertas
+              </button>
+              <button
+                onClick={onToggleHands}
+                aria-pressed={showHands}
+                className={`flex h-14 flex-col items-center justify-center gap-1 rounded-xl border text-[8px] font-black uppercase tracking-[.05em] transition active:scale-95 ${
+                  showHands ? 'border-[#F6C64A]/45 bg-[#F6C64A]/15 text-[#F6C64A]' : 'border-white/10 bg-white/[.03] text-white/55'
+                }`}
+              >
+                <Hand size={15} /> Manos
+              </button>
+              <button
+                onClick={cycleLight}
+                aria-label={`Iluminación: ${lightLabel}. Cambiar`}
+                className="flex h-14 flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[.03] text-[8px] font-black uppercase tracking-[.05em] text-white/70 transition active:scale-95"
+              >
+                <LightIcon size={15} /> {lightLabel}
+              </button>
+            </div>
+
+            {/* Cámaras (solo modo CCTV) */}
+            {mode === 'cctv' ? (
+              <div className="mt-3">
+                <p className="mb-2 text-[8px] font-black uppercase tracking-[.16em] text-white/40">
+                  Circuito · {CCTV_CAMERAS.length} cámaras
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {CCTV_CAMERAS.map((cam, i) => (
+                    <button
+                      key={cam.id}
+                      onClick={() => onCctvSelect?.(i)}
+                      aria-label={`Ver ${cam.id} ${cam.name}`}
+                      className={`rounded-xl border p-1 text-left transition active:scale-95 ${
+                        i === cctvIndex ? 'border-[#F6C64A] bg-[#F6C64A]/10' : 'border-white/10 bg-white/[.03]'
+                      }`}
+                    >
+                      <Plano390Map2D
+                        compact
+                        onlyCam={i}
+                        focus={[cam.pos[0], cam.pos[2]]}
+                        className="h-[58px] w-full rounded-md"
+                        selectedCam={i}
+                      />
+                      <p className="mt-1 truncate text-[7px] font-black text-white/85">{cam.id}</p>
+                      <p className="truncate text-[7px] text-white/40">{cam.zone}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Escenas */}
+            <div className="mt-3">
+              <p className="mb-2 text-[8px] font-black uppercase tracking-[.16em] text-white/40">
+                Ir a un ambiente
+              </p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {SCENES.map((scene) => {
+                  const sceneActive = scene.label === roomLabel;
+                  return (
+                    <button
+                      key={scene.id}
+                      onClick={() => {
+                        onScene(scene);
+                        setShowMenu(false);
+                      }}
+                      className={`inline-flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl border px-2 text-[9px] font-black transition active:scale-95 ${
+                        sceneActive
+                          ? 'border-[#F6C64A]/50 bg-[#F6C64A]/18 text-[#F6C64A]'
+                          : 'border-white/10 bg-white/[.03] text-white/80'
+                      }`}
+                    >
+                      <span className="truncate">{scene.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Plano y ficha */}
+            <div className="mt-3 grid grid-cols-2 gap-1.5">
+              <button
+                onClick={() => {
+                  setShowPlan(true);
+                  setShowMenu(false);
+                }}
+                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[.04] text-[10px] font-black text-white/85 transition active:scale-95"
+              >
+                <MapIcon size={14} /> Plano 2D
+              </button>
+              <button
+                onClick={() => {
+                  setShowFiche(true);
+                  setShowMenu(false);
+                }}
+                className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[.04] text-[10px] font-black text-white/85 transition active:scale-95"
+              >
+                Ficha técnica <ChevronRight size={13} />
+              </button>
+            </div>
+
+            <p className="mt-3 text-center text-[8px] uppercase tracking-[.16em] text-white/30">
+              Arrastrá para mirar · joystick para caminar
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Plano 2D (panel completo) ── */}
       {showPlan ? (
         <div className="absolute inset-0 z-[90] flex flex-col bg-[#050b0e]/97 backdrop-blur-xl">
           <header className="flex items-center justify-between gap-2 px-4 pt-4">
@@ -604,7 +661,11 @@ export default function Plano390UI({
                 <MapIcon size={13} />
                 Ver 3D
               </button>
-              <button onClick={() => setShowPlan(false)} className="grid h-10 w-10 place-items-center rounded-full bg-white/[.08]" aria-label="Cerrar plano">
+              <button
+                onClick={() => setShowPlan(false)}
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/[.08]"
+                aria-label="Cerrar plano"
+              >
                 <X size={16} />
               </button>
             </div>
@@ -622,20 +683,47 @@ export default function Plano390UI({
               <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
                 <p className="text-[8px] font-black uppercase tracking-[.16em] text-white/40">Leyenda</p>
                 <ul className="mt-2 space-y-1 text-[9px] text-white/65">
-                  <li><span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#c9ef63]" />Muro</li>
-                  <li><span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#7fd3ff]" />Ventana / corredera</li>
-                  <li><span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#f0c46a]" />Puerta / portón</li>
-                  <li><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-[#F6C64A]" />Cámara y cono de visión</li>
+                  <li>
+                    <span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#c9ef63]" />
+                    Muro
+                  </li>
+                  <li>
+                    <span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#7fd3ff]" />
+                    Ventana / corredera
+                  </li>
+                  <li>
+                    <span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#f0c46a]" />
+                    Puerta / portón
+                  </li>
+                  <li>
+                    <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-[#F6C64A]" />
+                    Cámara y cono de visión
+                  </li>
                 </ul>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
                 <p className="text-[8px] font-black uppercase tracking-[.16em] text-white/40">Superficies</p>
                 <ul className="mt-2 space-y-1 text-[9px] text-white/65">
-                  <li className="flex justify-between"><span>Living</span><b>28,22 m²</b></li>
-                  <li className="flex justify-between"><span>Cocina</span><b>13,24 m²</b></li>
-                  <li className="flex justify-between"><span>Despensa / café</span><b>6,51 m²</b></li>
-                  <li className="flex justify-between"><span>Garaje</span><b>25,57 m²</b></li>
-                  <li className="flex justify-between"><span>Dormitorios</span><b>40,31 m²</b></li>
+                  <li className="flex justify-between">
+                    <span>Living</span>
+                    <b>28,22 m²</b>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Cocina</span>
+                    <b>13,24 m²</b>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Despensa / café</span>
+                    <b>6,51 m²</b>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Garaje</span>
+                    <b>25,57 m²</b>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Dormitorios</span>
+                    <b>40,31 m²</b>
+                  </li>
                 </ul>
               </div>
             </div>
@@ -646,19 +734,21 @@ export default function Plano390UI({
         </div>
       ) : null}
 
-      {/* Ficha drawer */}
-      {showFiche && (
-        <aside
-          className="absolute bottom-[128px] left-3 right-3 z-40 max-h-[50dvh] overflow-y-auto rounded-[1.5rem] border border-white/12 bg-[#071017]/96 p-4 shadow-2xl backdrop-blur-2xl"
+      {/* ── Ficha técnica ── */}
+      {showFiche ? (
+        <aside className="absolute inset-x-3 z-[85] max-h-[62dvh] overflow-y-auto rounded-[1.5rem] border border-white/12 bg-[#071017]/97 p-4 shadow-2xl backdrop-blur-2xl sm:inset-x-auto sm:right-3 sm:w-[400px]"
+          style={{ bottom: 'calc(16px + env(safe-area-inset-bottom))' }}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[8px] font-black uppercase tracking-[.18em] text-[#F6C64A]">
-                Ficha técnica
-              </p>
+              <p className="text-[8px] font-black uppercase tracking-[.18em] text-[#F6C64A]">Ficha técnica</p>
               <h2 className="mt-1 text-sm font-black">Casa 390-1 · Mediterránea 148 m²</h2>
             </div>
-            <button onClick={() => setShowFiche(false)} className="grid h-9 w-9 place-items-center rounded-full bg-white/[.06]">
+            <button
+              onClick={() => setShowFiche(false)}
+              className="grid h-9 w-9 place-items-center rounded-full bg-white/[.06]"
+              aria-label="Cerrar ficha"
+            >
               <X size={15} />
             </button>
           </div>
@@ -690,12 +780,17 @@ export default function Plano390UI({
               </div>
             </div>
             <p className="text-[9px] leading-5 text-white/50">
-              Casa mediterránea de una planta sobre el plano del cliente: muros verde limón, porcelanato blanco brillante y franja blanca con portal de piedra. Tres dormitorios y dos baños (baño 1,80 × 2,20 m con ducha de 0,90 m y vanitorio de 0,80 m). Living de 28,2 m² con muro de TV de 3,80 m (TV 1,40 × 0,79 m y mueble flotante de 2,60 m), cocina abierta con isla de 2,40 × 1,00 m y barra de 1,05 m, despensa/café de 6,5 m², garaje de 25,6 m² con portón seccional de 3,60 m y porche de acceso. Puertas y ventanas animadas, luces encendidas/apagadas, interruptores y enchufes a la vista, vegetación en movimiento y circuito de 12 cámaras. Vista de plano 3D elevada y recorrido con sugerencia de orientación horizontal.
+              Casa mediterránea de una planta sobre el plano del cliente: muros verde limón, porcelanato cálido
+              tipo piedra clara y franja blanca con portal de piedra. Tres dormitorios y dos baños (baño 1,80 × 2,20 m
+              útil con ducha de 0,90 × 1,20 m y vanitorio de 0,80 m). Living de 28,2 m² con muro de TV de 3,80 m
+              (TV 1,40 × 0,79 m y mueble flotante de 2,60 m), cocina abierta con isla de 2,40 × 1,00 m y barra de
+              1,05 m, despensa/café de 6,5 m², garaje de 25,6 m² con lavadora y secadora, portón seccional de 3,60 m,
+              porche de acceso y quincho exterior con parrilla. Puertas y ventanas animadas, luces
+              encendidas/apagadas, interruptores y enchufes a la vista, vegetación en movimiento y circuito de 14 cámaras.
+              Vista de plano 3D elevada y recorrido humano con ficha que se desvanece.
             </p>
             <div>
-              <p className="text-[8px] font-black uppercase tracking-[.18em] text-white/40">
-                Puntos de foto
-              </p>
+              <p className="text-[8px] font-black uppercase tracking-[.18em] text-white/40">Puntos de foto</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {PHOTO_SPOTS.map((spot, idx) => (
                   <button
@@ -715,7 +810,7 @@ export default function Plano390UI({
             </div>
           </div>
         </aside>
-      )}
+      ) : null}
     </>
   );
 }

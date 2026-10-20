@@ -4,7 +4,7 @@
  * de datos que la escena 3D: ROOMS, WALLS, OPENINGS, FURNITURE_2D y CCTV_CAMERAS.
  * Se usa como panel "Plano 2D" y como miniatura en el panel de cámaras.
  */
-import { CCTV_CAMERAS, FURNITURE_2D, OPENINGS, ROOMS, WALLS } from '@/lib/plano390Data';
+import { CCTV_CAMERAS, FURNITURE_2D, OPENINGS, QUINCHO, ROOMS, WALLS } from '@/lib/plano390Data';
 import type { Furniture2D, Opening } from '@/lib/plano390Data';
 
 const FLOOR_FILL: Record<string, string> = {
@@ -53,6 +53,8 @@ function doorGlyph(o: Opening) {
 }
 
 function Furniture({ f }: { f: Furniture2D }) {
+  // El quincho se dibuja aparte, con su propia pérgola y etiqueta.
+  if (f.kind === 'quincho') return null;
   const isRug = f.kind === 'rug';
   return (
     <rect
@@ -76,6 +78,8 @@ export default function Plano390Map2D({
   focus,
   onlyCam,
   className,
+  marker,
+  showCams = true,
 }: {
   compact?: boolean;
   selectedCam?: number;
@@ -85,8 +89,13 @@ export default function Plano390Map2D({
   /** En miniaturas: dibujar solo el cono de esta cámara (menos nodos). */
   onlyCam?: number;
   className?: string;
+  /** Posición [x,z] de la cámara del recorrido en la miniatura. */
+  marker?: [number, number];
+  /** Las fichas de recorrido usan un plano limpio, sin 14 conos. */
+  showCams?: boolean;
 }) {
-  const cams = typeof onlyCam === 'number' ? CCTV_CAMERAS.slice(onlyCam, onlyCam + 1) : CCTV_CAMERAS;
+  const allCams = typeof onlyCam === 'number' ? CCTV_CAMERAS.slice(onlyCam, onlyCam + 1) : CCTV_CAMERAS;
+  const cams = showCams ? allCams : [];
   const labelSize = compact ? 0.42 : 0.3;
   const vb =
     compact && focus
@@ -113,8 +122,21 @@ export default function Plano390Map2D({
           <text x="7.35" y="11.9" textAnchor="middle" fontSize="0.24" fill="#c9bfa9">
             PORCHE
           </text>
-          <text x="11.65" y="13.4" textAnchor="middle" fontSize="0.24" fill="#6f7c81">
+          <text x="11.65" y="12.15" textAnchor="middle" fontSize="0.24" fill="#6f7c81">
             ADOQUÍN
+          </text>
+          <rect
+            x={QUINCHO.x0}
+            y={QUINCHO.z0}
+            width={QUINCHO.x1 - QUINCHO.x0}
+            height={QUINCHO.z1 - QUINCHO.z0}
+            rx="0.12"
+            fill="rgba(198,136,74,.16)"
+            stroke="#c6884a"
+            strokeWidth="0.045"
+          />
+          <text x={(QUINCHO.x0 + QUINCHO.x1) / 2} y={QUINCHO.z0 + 0.42} textAnchor="middle" fontSize="0.24" fill="#e0b07c">
+            QUINCHO
           </text>
         </>
       ) : null}
@@ -261,6 +283,15 @@ export default function Plano390Map2D({
             );
           })
         : null}
+
+      {/* ── Posición de la cámara del recorrido ── */}
+      {marker ? (
+        <g pointerEvents="none">
+          <circle cx={marker[0]} cy={marker[1]} r={compact ? 0.62 : 0.48} fill="rgba(201,239,99,.16)" />
+          <circle cx={marker[0]} cy={marker[1]} r={compact ? 0.3 : 0.24} fill="#c9ef63" stroke="#071017" strokeWidth="0.06" />
+          <circle cx={marker[0]} cy={marker[1]} r={compact ? 0.12 : 0.09} fill="#071017" />
+        </g>
+      ) : null}
 
       {/* ── Cotas generales ── */}
       {!compact ? (

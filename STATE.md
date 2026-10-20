@@ -149,3 +149,22 @@ Bitácora de trabajo (se actualiza al cierre de cada hito).
 - **Cámara, fix definitivo**: se quitaron `camera` y `gl` del `<Canvas>`; un
   `CameraBootstrap` dentro del Canvas fija posición/lookAt/fov una sola vez. R3F
   reaplicaba la prop `camera` en cada render y devolvía la vista al exterior.
+
+## Iteración 5 — ruta humana y HUD oculto (2026-10-20)
+
+- **HUD**: se eliminó el dock persistente, la tira de escenas, el minimapa y el
+  botón gigante de salida. Queda un botón de 40 px que abre un menú plegable
+  (modos, luces, puertas, manos, luz, ambientes, plano, ficha y cámaras).
+- **Ficha del tour**: tarjeta con miniatura + marcador, desvanecimiento y botón
+  para ocultar; el progreso cuenta solo paradas informativas.
+- **Tour**: ~47 waypoints `info:false` y 19 paradas; ruta fachada → living →
+  comedor/cocina → pasillo → baño → dormitorios → garaje/lavandería → jardín →
+  quincho → lateral poniente → aérea. El portón del garaje abre en el tour.
+- **Interiores**: TV centrado en z 9,00; cocina con herrajes y cajones; baños con
+  vanitorio, mampara, descarga y toallero; recibidor amueblado; lavandería en el
+  garaje; quincho con pérgola, parrilla y mesón de piedra.
+- **Materiales**: porcelanato cálido `#e7dfd2`, muros `#c8db8a`, exposición 0,92,
+  sol 2,45 / atardecer 1,9 / noche 0,2, hemisférica 0,5.
+- **Errores nuevos**: 039–047 documentados en `visor-casa-fabrick`.
+- **Pendiente**: build de Vercel (gate real), capturas del usuario y confirmar
+  el origen del panel CCTV de 12 miniaturas de su captura.

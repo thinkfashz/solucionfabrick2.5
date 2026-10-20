@@ -3,7 +3,7 @@
  * Plano390Walkthrough — recorrido 3D del "Proyecto №390-1" (148 m²):
  * intro estilo videojuego + escena HD (texturas reales de los visores) +
  * cámara primera persona con colisiones + recorrido guiado + Circuito CCTV
- * en modo Cine + HUD con minimapa y puntos de foto.
+ * en modo Cine + menú plegable, ficha del tour con miniatura y puntos de foto.
  */
 import { Canvas, useThree } from '@react-three/fiber';
 import { Suspense, useEffect, useLayoutEffect, useState } from 'react';
@@ -46,7 +46,7 @@ function CameraBootstrap({ scene }: { scene: SceneView | null }) {
 
 const setupCanvas = ({ gl }: { gl: WebGLRenderer }) => {
   gl.toneMapping = ACESFilmicToneMapping;
-  gl.toneMappingExposure = 1.0;
+  gl.toneMappingExposure = 0.92;
   gl.shadowMap.type = PCFSoftShadowMap;
 };
 
@@ -197,7 +197,15 @@ export default function Plano390Walkthrough() {
       </div>
       {/* Gradiente cinematográfico superior/inferior (liviano, no tapa la vista) */}
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,.38),transparent_15%,transparent_80%,rgba(0,0,0,.58))]" />
-      {!planView ? <Plano390Controls mode={mode} onReset={() => setMode('free')} /> : null}
+      {!planView ? (
+        <Plano390Controls
+          mode={mode}
+          onReset={() => {
+            const livingScene = SCENES.find((s) => s.id === 'living');
+            if (livingScene) input.jump = livingScene;
+          }}
+        />
+      ) : null}
       <Plano390UI
         stage={stage}
         onEnter={enter}

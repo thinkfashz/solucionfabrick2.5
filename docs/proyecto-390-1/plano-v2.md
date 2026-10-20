@@ -141,3 +141,39 @@ Revisión de 12 capturas verticales del teléfono (03:39–04:41).
   y opción de seguir en vertical.
 - **CCTV**: CAM-07 y CAM-12 se separaron de la cara del muro para que la
   carcasa no quede embebida.
+
+## Iteración 5 (2026-10-20) — ruta humana, HUD oculto y interiores reales
+
+Revisión de la captura 1920×887: el panel CCTV de 12 miniaturas, el dock de
+modos y el botón gigante de salida tapaban la casa. Se prioriza la escena.
+
+- **HUD oculto por defecto**: barra superior mínima (volver, rótulo y un botón
+  de 40 px) y menú plegable con modos, luces, puertas, manos, iluminación,
+  ambientes, plano 2D y ficha. Se retiraron dock, chips y minimapa persistentes.
+- **Ficha del tour**: tarjeta lateral con miniatura del plano, marcador de
+  cámara, rótulo, nota, meta, progreso solo sobre paradas informativas y botón
+  de ocultar; al ocultarla queda una píldora “Info” de 36 px. Salida discreta.
+- **Recorrido humano**: ~47 waypoints con `info:false` en puertas, pasillos y
+  esquinas; 19 paradas informativas desde la fachada hasta el quincho, pasando
+  por baño, dormitorios, garaje/lavandería, jardín y lateral poniente. El tour
+  ya no corta muros ni muebles y el portón del garaje abre al aproximarse.
+- **Living**: TV, soundbar y mueble centrados en z 9,00 con el sofá; panel de
+  piedra de 7,90 a 10,10; mesa de centro redondeada, dos butacas, mesa auxiliar
+  con lámpara y alfombra.
+- **Cocina**: frentes con 1 mm de holgura, herrajes de latón, alacena a la
+  derecha de la ventana con LED, isla con cajones en tres filas y faldón de
+  piedra, taburetes con respaldo y comedor con lámpara lineal.
+- **Baños**: vanitorio de 0,80 m con dos cajones y herrajes, mampara con puerta
+  y manilla, placa de descarga, toallero, espejo retroiluminado y alfombra.
+- **Recibidor**: consola volada, espejo retroiluminado, banco con cojín,
+  perchero y planta; perchero y cuadro junto a la puerta principal.
+- **Garaje**: lavadora y secadora con mesón, panel de herramientas, estantería
+  y dos luces de trabajo; portón seccional de 3,60 m.
+- **Quincho**: pérgola de madera, parrilla, mesón de piedra, lavadero, taburetes,
+  muro de piedra, maceta y tres luces colgantes sobre el adoquín oriental.
+- **Materiales y luz**: porcelanato cálido `#e7dfd2`, muros lima suavizados,
+  sol 2,45 / atardecer 1,9 / noche 0,2, hemisférica 0,5, exposición 0,92 y
+  sombras con `radius 4`. Espejos con material propio.
+- **Plano 2D**: dibuja el quincho, acepta `marker` y `showCams` para la ficha y
+  omite el rectángulo genérico del quincho.
+- **Errores nuevos**: 039–047 en la skill `visor-casa-fabrick`.

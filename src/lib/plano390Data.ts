@@ -52,6 +52,12 @@ export type TourStop = {
   meta: string;
   pos: [number, number, number];
   look: [number, number, number];
+  /**
+   * Punto de paso: la cámara no se detiene ni muestra ficha.
+   * Sirve para recorrer la casa como un humano, doblando en puertas y pasillos
+   * en vez de atravesar tabiques en línea recta.
+   */
+  info?: boolean;
 };
 
 /** Vista directa a una escena (selector inferior "Escena"). */
@@ -217,12 +223,20 @@ export const TV_WALL = {
   x: 3.46,
   z0: 7.0,
   z1: 10.8,
-  /** panel de piedra central de 2,20 m */
-  panelZ0: 7.75,
-  panelZ1: 9.95,
-  tv: { w: 1.4, h: 0.79, y: 1.2, z: 8.85 },
-  unit: { len: 2.6, h: 0.45, d: 0.5, y: 0.45, z: 8.85 },
+  /** panel de piedra central de 2,20 m, centrado con el sofá */
+  panelZ0: 7.9,
+  panelZ1: 10.1,
+  tv: { w: 1.4, h: 0.79, y: 1.2, z: 9.0 },
+  unit: { len: 2.6, h: 0.45, d: 0.5, y: 0.45, z: 9.0 },
   panelH: 1.8,
+} as const;
+
+/** Quincho exterior sobre el adoquín, al oriente del porche. */
+export const QUINCHO = {
+  x0: 10.75,
+  z0: 13.0,
+  x1: 14.2,
+  z1: 15.8,
 } as const;
 
 /** Cocina: isla 2,40 × 1,00 × 0,90 + barra 1,05 (captura de alturas). */
@@ -283,54 +297,102 @@ export const BLOCKERS: { x0: number; z0: number; x1: number; z1: number }[] = [
   { x0: 4.78, z0: 9.5, x1: 5.62, z1: 10.3 },   // sillón
   { x0: 7.85, z0: 10.36, x1: 9.25, z1: 10.68 },// consola sur
   { x0: 5.45, z0: 8.75, x1: 6.75, z1: 9.45 },  // mesa de centro
+  { x0: 4.8, z0: 7.85, x1: 5.45, z1: 8.55 },   // butaca norte
   { x0: 7.5, z0: 0.3, x1: 9.0, z1: 0.9 },      // mueble de café
   { x0: 8.95, z0: 0.45, x1: 9.34, z1: 3.25 },  // despensa
   { x0: 5.6, z0: 4.1, x1: 7.4, z1: 5.4 },      // mesa de comedor
+  { x0: 9.55, z0: 6.55, x1: 10.25, z1: 8.25 }, // lavadora + secadora garaje
+  { x0: 13.72, z0: 3.95, x1: 14.22, z1: 5.05 },// consola recibidor
+  { x0: 11.9, z0: 4.95, x1: 12.9, z1: 5.32 },  // banco recibidor
+  { x0: 10.8, z0: 13.15, x1: 13.9, z1: 15.7 }, // quincho exterior
   { x0: 10.6, z0: 7.6, x1: 13.0, z1: 10.1 },   // auto
 ];
 
 /** Puntos de foto con cuña/dirección. */
 export const PHOTO_SPOTS: PhotoSpot[] = [
-  { id: '41', label: 'Foto 41 · living y muro de TV', pos: [8.9, 1.55, 7.3], look: [3.6, 1.25, 8.85], color: '#C56A3A' },
+  { id: '41', label: 'Foto 41 · living y muro de TV', pos: [8.9, 1.55, 7.3], look: [3.6, 1.25, 9.0], color: '#C56A3A' },
   { id: '44', label: 'Foto 44 · cocina e isla', pos: [7.1, 1.55, 4.0], look: [4.8, 1.0, 1.1], color: '#2E6FA0' },
   { id: '50', label: 'Foto 50 · comedor', pos: [8.85, 1.55, 6.1], look: [5.7, 1.0, 4.5], color: '#2E6FA0' },
   { id: '58', label: 'Foto 58 · dormitorio 1', pos: [13.3, 1.55, 3.25], look: [11.1, 1.0, 1.0], color: '#C56A3A' },
 ];
 
-/** Recorrido guiado: cámara a 1,62 m, 16 paradas. */
+/**
+ * Recorrido guiado: cámara a 1,62 m y ruta humana.
+ * Las paradas con `info: false` son puntos de paso: no esperan ni muestran
+ * ficha, pero obligan a la cámara a doblar por puertas, pasillos y esquinas.
+ */
 export const TOUR_STOPS: TourStop[] = [
-  { label: 'Fachada sur', note: 'Casa mediterránea de una planta, 148 m²', meta: '3 dorm · 2 baños · garaje · porche · 148 m²', pos: [8.9, 1.75, 20.0], look: [7.2, 2.1, 11.0] },
-  { label: 'Porche de acceso', note: 'Paso cubierto y puerta de doble vidrio', meta: 'Porche 3,40 × 1,80 m · puerta 1,40 m', pos: [7.05, 1.68, 14.2], look: [7.05, 1.9, 10.9] },
-  { label: 'Recibidor', note: 'El living se abre hacia el jardín y el muro de TV', meta: 'Living 28,22 m² · frente de 3,80 m', pos: [7.05, 1.62, 10.45], look: [4.6, 1.25, 7.6] },
-  { label: 'Muro de TV', note: 'Panel de piedra de 2,20 m y mueble flotante de 2,60 m', meta: 'Muro 3,80 m · TV 1,40 × 0,79 m · mueble 2,60 m', pos: [8.9, 1.6, 7.3], look: [3.6, 1.25, 8.85] },
-  { label: 'Comedor', note: 'Mesa para seis junto a la cocina abierta', meta: 'Comedor 13,76 m² · mesa 1,80 × 0,90 m', pos: [8.85, 1.62, 6.1], look: [5.7, 1.0, 4.5] },
-  { label: 'Cocina', note: 'Línea de muebles de 0,90 m y alacenas a 1,40 m', meta: 'Cocina 13,24 m² · alacenas 0,70 m a 1,40 m', pos: [7.15, 1.62, 4.05], look: [4.8, 1.1, 1.1] },
-  { label: 'Isla de cocina', note: 'Encimera 0,90 m y barra de 1,05 m con tres taburetes', meta: 'Isla 2,40 × 1,00 m · barra 1,05 m · overhang 0,30', pos: [7.1, 1.55, 4.0], look: [5.3, 0.95, 2.5] },
-  { label: 'Pasillo poniente', note: 'Distribución a los dormitorios y el baño', meta: 'Pasillo 2,39 m² · ancho 1,02 m', pos: [2.83, 1.62, 5.72], look: [2.83, 1.35, 3.7] },
-  { label: 'Dormitorio 3', note: 'Cama de 1,60 m, clóset y escritorio', meta: 'Dorm. 3 · 14,46 m² · cama 1,60 × 2,00 m', pos: [0.75, 1.62, 9.35], look: [2.7, 1.1, 7.0] },
-  { label: 'Baño', note: 'Ducha de 0,90 m, vanitorio de 0,80 m y espejo retroiluminado', meta: 'Baño 1,95 × 2,34 m · ducha 0,90 · vanitorio 0,80', pos: [2.0, 1.6, 5.55], look: [0.7, 1.1, 5.55] },
-  { label: 'Dormitorio 2', note: 'Cama de 1,60 m, clóset y escritorio', meta: 'Dorm. 2 · 10,01 m² · cama 1,60 × 2,00 m', pos: [0.65, 1.62, 2.68], look: [2.6, 1.1, 1.2] },
-  { label: 'Dormitorio 1', note: '15,8 m² con clóset y salida a la ensuite', meta: 'Dorm. 1 · 15,84 m² · cama 1,80 × 2,00 m', pos: [13.3, 1.62, 3.25], look: [11.1, 1.05, 1.0] },
-  { label: 'Ensuite', note: 'Ducha, vanitorio y espejo de 1,00 m a 1,40 m', meta: 'Ensuite 1,74 × 1,79 m · espejo 1,00 m', pos: [11.0, 1.55, 5.05], look: [9.8, 1.1, 3.9] },
-  { label: 'Garaje', note: 'Un auto, 4,89 × 5,23 m y portón seccional de 3,60 m', meta: 'Garaje 25,57 m² · portón 3,60 × 2,35 m', pos: [13.9, 1.62, 10.35], look: [10.4, 1.0, 6.2] },
-  { label: 'Jardín y fachada', note: 'Apliques, adoquín y vegetación mediterránea', meta: 'Adoquín 4,90 m · apliques de muro · césped', pos: [14.2, 1.7, 16.2], look: [8.6, 2.0, 11.2] },
-  { label: 'Vista aérea', note: 'Cierre: casa, porche, garaje y jardín', meta: 'Casa + porche + garaje · 148 m²', pos: [10.6, 9.5, 19.5], look: [6.8, 1.0, 5.5] },
+  { label: 'Fachada sur', note: 'Casa mediterránea de una planta, 148 m²', meta: '3 dorm · 2 baños · garaje · porche · quincho · 148 m²', pos: [8.9, 1.75, 20.0], look: [7.2, 2.1, 11.0] },
+  { label: 'Jardín de acceso', note: '', meta: '', info: false, pos: [7.6, 1.7, 16.8], look: [7.05, 1.9, 11.2] },
+  { label: 'Porche de acceso', note: 'Paso cubierto, puerta de doble vidrio y recibidor', meta: 'Porche 3,40 × 1,80 m · puerta 1,40 m', pos: [7.05, 1.68, 14.0], look: [7.05, 1.9, 11.0] },
+  { label: 'Umbral de entrada', note: '', meta: '', info: false, pos: [7.05, 1.64, 12.4], look: [7.05, 1.75, 11.0] },
+  { label: 'Recibidor', note: 'El living se abre al jardín, con consola, espejo y coat hooks', meta: 'Living 28,22 m² · frente de TV 3,80 m', pos: [7.05, 1.62, 10.35], look: [4.8, 1.3, 8.4] },
+  { label: 'Paso al living', note: '', meta: '', info: false, pos: [7.0, 1.62, 9.7], look: [5.0, 1.3, 8.5] },
+  { label: 'Living', note: 'Sofá de tres cuerpos, butacas, mesa de centro y alfombra de lana', meta: 'Living 28,22 m² · sofá 2,30 m · mesa 1,30 × 0,70 m', pos: [7.0, 1.62, 8.55], look: [4.0, 1.3, 9.0] },
+  { label: 'Frente al sofá', note: '', meta: '', info: false, pos: [6.9, 1.62, 8.15], look: [4.5, 1.3, 8.7] },
+  { label: 'Paso al muro de TV', note: '', meta: '', info: false, pos: [5.0, 1.62, 8.2], look: [3.7, 1.25, 8.8] },
+  { label: 'Muro de TV', note: 'Panel de piedra de 2,20 m, TV de 1,40 m y mueble flotante con LED', meta: 'Muro 3,80 m · TV 1,40 × 0,79 m · mueble 2,60 m', pos: [4.85, 1.58, 9.15], look: [3.55, 1.25, 9.0] },
+  { label: 'Vuelta al living', note: '', meta: '', info: false, pos: [5.0, 1.62, 8.25], look: [6.0, 1.3, 7.2] },
+  { label: 'Paso al comedor', note: '', meta: '', info: false, pos: [6.9, 1.62, 7.9], look: [8.2, 1.2, 6.2] },
+  { label: 'Antesala del comedor', note: '', meta: '', info: false, pos: [8.5, 1.62, 6.8], look: [8.6, 1.2, 5.4] },
+  { label: 'Comedor', note: 'Mesa para seis, lámpara lineal y vajilla al alcance de la cocina', meta: 'Comedor 13,76 m² · mesa 1,80 × 0,90 m · 6 sillas', pos: [8.8, 1.62, 5.65], look: [5.9, 1.0, 4.6] },
+  { label: 'Paso a cocina', note: '', meta: '', info: false, pos: [8.8, 1.62, 5.1], look: [7.2, 1.1, 3.8] },
+  { label: 'Rincón de cocina', note: '', meta: '', info: false, pos: [8.4, 1.62, 4.0], look: [6.8, 1.1, 2.8] },
+  { label: 'Frente a la isla', note: '', meta: '', info: false, pos: [7.15, 1.62, 3.5], look: [5.8, 1.1, 1.8] },
+  { label: 'Cocina', note: 'Línea de muebles de 0,90 m, alacenas, campana y electrodomésticos', meta: 'Cocina 13,24 m² · alacenas 0,70 m a 1,40 m', pos: [6.95, 1.62, 2.4], look: [4.8, 1.05, 1.0] },
+  { label: 'Paso sur de la isla', note: '', meta: '', info: false, pos: [7.25, 1.62, 3.55], look: [6.0, 1.1, 3.6] },
+  { label: 'Isla de cocina', note: 'Encimera 0,90 m, barra de 1,05 m, cajones con herrajes y tres taburetes', meta: 'Isla 2,40 × 1,00 m · barra 1,05 m · overhang 0,30', pos: [3.95, 1.62, 3.35], look: [5.5, 0.98, 2.55] },
+  { label: 'Paso al pasillo', note: '', meta: '', info: false, pos: [3.95, 1.62, 5.55], look: [2.85, 1.4, 5.4] },
+  { label: 'Pasillo poniente', note: 'Distribución a los dormitorios y el baño, con luz de paso', meta: 'Pasillo 2,39 m² · ancho 1,02 m', pos: [2.82, 1.62, 5.45], look: [2.82, 1.35, 3.8] },
+  { label: 'Paso al baño', note: '', meta: '', info: false, pos: [2.15, 1.62, 4.6], look: [1.0, 1.1, 4.3] },
+  { label: 'Baño', note: 'Ducha de 0,90 × 1,20 m con mampara, vanitorio de 0,80 m y WC', meta: 'Baño 1,80 × 2,20 m útil · ducha 0,90 · vanitorio 0,80', pos: [1.95, 1.6, 5.2], look: [0.75, 1.05, 4.35] },
+  { label: 'Salida del baño', note: '', meta: '', info: false, pos: [1.95, 1.62, 4.6], look: [2.6, 1.4, 4.9] },
+  { label: 'Paso al pasillo', note: '', meta: '', info: false, pos: [2.5, 1.62, 4.6], look: [2.82, 1.45, 5.2] },
+  { label: 'Pasillo a dormitorios', note: '', meta: '', info: false, pos: [2.82, 1.62, 4.0], look: [2.82, 1.35, 3.3] },
+  { label: 'Puerta dormitorio 2', note: '', meta: '', info: false, pos: [2.82, 1.62, 3.25], look: [1.8, 1.2, 2.9] },
+  { label: 'Dormitorio 2', note: 'Cama de 1,60 m, veladores, clóset, escritorio y alfombra', meta: 'Dorm. 2 · 10,01 m² · cama 1,60 × 2,00 m', pos: [2.1, 1.62, 2.9], look: [0.9, 1.15, 0.9] },
+  { label: 'Vuelta al pasillo', note: '', meta: '', info: false, pos: [2.82, 1.62, 3.1], look: [2.82, 1.4, 4.3] },
+  { label: 'Pasillo a dormitorio 3', note: '', meta: '', info: false, pos: [2.82, 1.62, 5.7], look: [2.82, 1.35, 6.3] },
+  { label: 'Puerta dormitorio 3', note: '', meta: '', info: false, pos: [2.82, 1.62, 6.3], look: [1.2, 1.2, 7.4] },
+  { label: 'Dormitorio 3', note: 'Cama de 1,60 m, clóset, escritorio y salida al living', meta: 'Dorm. 3 · 14,46 m² · cama 1,60 × 2,00 m', pos: [2.95, 1.62, 7.0], look: [1.2, 1.15, 7.4] },
+  { label: 'Salida dormitorio 3', note: '', meta: '', info: false, pos: [2.95, 1.62, 6.3], look: [3.9, 1.35, 5.6] },
+  { label: 'Paso al living', note: '', meta: '', info: false, pos: [3.9, 1.62, 5.55], look: [5.4, 1.3, 6.4] },
+  { label: 'Living hacia el vestíbulo', note: '', meta: '', info: false, pos: [6.6, 1.62, 6.4], look: [8.2, 1.2, 5.2] },
+  { label: 'Paso al vestíbulo', note: '', meta: '', info: false, pos: [8.6, 1.62, 5.7], look: [9.6, 1.2, 4.8] },
+  { label: 'Ensuite', note: 'Ducha, vanitorio de 1,00 m, espejo retroiluminado y WC suspendido', meta: 'Ensuite 1,74 × 1,79 m · espejo 1,00 m', pos: [10.45, 1.6, 4.2], look: [9.55, 1.05, 4.3] },
+  { label: 'Vestíbulo', note: 'Recibidor con consola, espejo, banco y coat hooks', meta: 'Vestíbulo 5,42 m² · consola 1,20 m', pos: [11.55, 1.62, 4.55], look: [13.6, 1.3, 4.2] },
+  { label: 'Paso a dormitorio 1', note: '', meta: '', info: false, pos: [12.9, 1.62, 4.4], look: [12.9, 1.35, 3.3] },
+  { label: 'Dormitorio 1', note: 'Cama de 1,80 m, veladores, clóset, escritorio y banco al pie', meta: 'Dorm. 1 · 15,84 m² · cama 1,80 × 2,00 m', pos: [12.7, 1.62, 2.75], look: [11.0, 1.1, 1.1] },
+  { label: 'Vuelta al vestíbulo', note: '', meta: '', info: false, pos: [12.9, 1.62, 3.4], look: [13.6, 1.4, 4.8] },
+  { label: 'Paso al garaje', note: '', meta: '', info: false, pos: [13.6, 1.62, 5.0], look: [13.6, 1.4, 5.8] },
+  { label: 'Garaje y lavandería', note: 'Auto, lavadora y secadora, estantes y portón seccional de 3,60 m', meta: 'Garaje 25,57 m² · portón 3,60 × 2,35 m', pos: [13.35, 1.62, 7.2], look: [9.9, 1.0, 7.4] },
+  { label: 'Fondo del garaje', note: '', meta: '', info: false, pos: [13.3, 1.62, 9.9], look: [12.0, 1.1, 10.9] },
+  { label: 'Umbral del garaje', note: '', meta: '', info: false, pos: [13.3, 1.62, 11.0], look: [12.0, 1.3, 11.4] },
+  { label: 'Salida al jardín', note: '', meta: '', info: false, pos: [12.0, 1.62, 11.4], look: [12.2, 1.4, 13.0] },
+  { label: 'Quincho', note: 'Parrilla, mesón de piedra, lavadero y taburetes bajo pérgola', meta: 'Quincho 3,45 × 2,80 m · parrilla 1,10 m', pos: [12.2, 1.65, 13.2], look: [12.4, 1.2, 15.0] },
+  { label: 'Jardín oriente', note: '', meta: '', info: false, pos: [10.4, 1.65, 13.8], look: [8.0, 1.6, 12.5] },
+  { label: 'Lateral poniente', note: 'Fachada, ventanas del baño y dormitorios, y vegetación de borde', meta: 'Lateral 11,00 m · jardín y adoquín', pos: [5.4, 1.65, 12.4], look: [2.0, 1.5, 10.0] },
+  { label: 'Vista aérea', note: 'Cierre: casa, porche, garaje, quincho y jardín', meta: 'Casa + porche + garaje + quincho · 148 m²', pos: [10.6, 9.5, 19.5], look: [6.8, 1.0, 5.5] },
 ];
 
 /** Selector de escena: salto directo con tween corto desde el HUD. */
 export const SCENES: SceneView[] = [
   { id: 'living', label: 'Living', pos: [8.9, 1.62, 7.1], look: [4.8, 1.2, 9.1] },
-  { id: 'tv', label: 'Muro TV', pos: [8.9, 1.55, 7.3], look: [3.6, 1.25, 8.85] },
+  { id: 'tv', label: 'Muro TV', pos: [8.9, 1.55, 7.3], look: [3.6, 1.25, 9.0] },
   { id: 'comedor', label: 'Comedor', pos: [8.85, 1.62, 6.1], look: [5.7, 1.0, 4.5] },
   { id: 'cocina', label: 'Cocina', pos: [7.15, 1.62, 4.05], look: [4.8, 1.1, 1.1] },
   { id: 'isla', label: 'Isla', pos: [7.1, 1.55, 4.0], look: [5.3, 0.95, 2.5] },
   { id: 'despensa', label: 'Despensa', pos: [8.62, 1.6, 3.15], look: [8.45, 1.15, 0.55] },
+  { id: 'recibidor', label: 'Recibidor', pos: [12.4, 1.62, 4.8], look: [14.0, 1.3, 4.5] },
   { id: 'dorm1', label: 'Dorm. 1', pos: [13.3, 1.62, 3.25], look: [11.1, 1.05, 1.0] },
   { id: 'dorm2', label: 'Dorm. 2', pos: [0.65, 1.62, 2.68], look: [2.6, 1.1, 1.2] },
   { id: 'dorm3', label: 'Dorm. 3', pos: [0.75, 1.62, 9.35], look: [2.7, 1.1, 7.0] },
   { id: 'bano', label: 'Baño', pos: [2.0, 1.6, 5.55], look: [0.7, 1.1, 5.55] },
   { id: 'ensuite', label: 'Ensuite', pos: [11.0, 1.55, 5.05], look: [9.8, 1.1, 3.9] },
   { id: 'garaje', label: 'Garaje', pos: [13.9, 1.62, 10.35], look: [10.4, 1.0, 6.2] },
+  { id: 'lavanderia', label: 'Lavandería', pos: [13.25, 1.62, 7.15], look: [9.8, 1.0, 7.45] },
+  { id: 'quincho', label: 'Quincho', pos: [12.2, 1.65, 13.0], look: [12.4, 1.2, 15.0] },
+  { id: 'jardin', label: 'Jardín', pos: [5.6, 1.7, 13.6], look: [7.1, 2.0, 11.1] },
   { id: 'fachada', label: 'Fachada', pos: [8.9, 1.75, 20.0], look: [7.2, 2.1, 11.0] },
   { id: 'plano', label: 'Plano 3D', pos: [7.3, 16.5, 11.2], look: [7.3, 0, 5.5] },
 ];
@@ -350,7 +412,7 @@ export type CctvCamera = {
   fov: number;
 };
 
-/** Circuito CCTV: 12 cámaras interiores/exteriores. */
+/** Circuito CCTV: 14 cámaras interiores/exteriores (incluye quincho y jardín). */
 export const CCTV_CAMERAS: CctvCamera[] = [
   { id: 'CAM-01', name: 'Living · muro de TV', zone: 'Living', pos: [9.1, 2.55, 10.4], look: [4.2, 1.2, 8.6], fov: 62 },
   { id: 'CAM-02', name: 'Cocina · isla', zone: 'Cocina', pos: [7.0, 2.55, 3.3], look: [4.2, 1.1, 1.0], fov: 60 },
@@ -364,6 +426,8 @@ export const CCTV_CAMERAS: CctvCamera[] = [
   { id: 'CAM-10', name: 'Garaje', zone: 'Garaje', pos: [13.9, 2.55, 10.4], look: [10.2, 0.9, 6.0], fov: 64 },
   { id: 'CAM-11', name: 'Jardín · acceso', zone: 'Exterior', pos: [11.0, 1.9, 18.6], look: [6.0, 2.0, 11.0], fov: 52 },
   { id: 'CAM-12', name: 'Pasillo poniente', zone: 'Pasillo', pos: [2.9, 2.5, 5.7], look: [2.9, 1.1, 3.6], fov: 58 },
+  { id: 'CAM-13', name: 'Quincho · parrilla', zone: 'Exterior', pos: [13.7, 2.45, 15.55], look: [11.9, 1.1, 13.9], fov: 58 },
+  { id: 'CAM-14', name: 'Garaje · lavandería', zone: 'Garaje', pos: [10.35, 2.55, 6.35], look: [9.7, 0.9, 8.1], fov: 60 },
 ];
 
 /**
@@ -371,7 +435,7 @@ export const CCTV_CAMERAS: CctvCamera[] = [
  * kind → color/símbolo en `Plano390Map2D`.
  */
 export type Furniture2D = {
-  kind: 'bed' | 'sofa' | 'table' | 'counter' | 'island' | 'wardrobe' | 'tv' | 'car' | 'desk' | 'bath' | 'rug';
+  kind: 'bed' | 'sofa' | 'table' | 'counter' | 'island' | 'wardrobe' | 'tv' | 'car' | 'desk' | 'bath' | 'rug' | 'quincho';
   x0: number;
   z0: number;
   x1: number;
@@ -397,6 +461,7 @@ export const FURNITURE_2D: Furniture2D[] = [
   { kind: 'sofa', x0: 7.75, z0: 7.95, x1: 8.65, z1: 10.25 },
   { kind: 'table', x0: 5.45, z0: 8.75, x1: 6.75, z1: 9.45 },
   { kind: 'sofa', x0: 4.78, z0: 9.5, x1: 5.62, z1: 10.3 },
+  { kind: 'sofa', x0: 4.8, z0: 7.85, x1: 5.45, z1: 8.55 },
   { kind: 'table', x0: 7.85, z0: 10.36, x1: 9.25, z1: 10.68 },
   // Despensa
   { kind: 'counter', x0: 7.55, z0: 0.31, x1: 8.95, z1: 0.85 },
@@ -417,4 +482,10 @@ export const FURNITURE_2D: Furniture2D[] = [
   { kind: 'bath', x0: 10.52, z0: 3.65, x1: 11.07, z1: 4.15 },
   // Garaje
   { kind: 'car', x0: 10.96, z0: 6.65, x1: 12.74, z1: 10.85 },
+  { kind: 'counter', x0: 9.55, z0: 6.55, x1: 10.25, z1: 8.25 },
+  // Recibidor / vestíbulo
+  { kind: 'counter', x0: 13.72, z0: 3.95, x1: 14.22, z1: 5.05 },
+  { kind: 'sofa', x0: 11.9, z0: 4.95, x1: 12.9, z1: 5.32 },
+  // Quincho exterior
+  { kind: 'quincho', x0: 10.75, z0: 13.0, x1: 14.2, z1: 15.8 },
 ];

@@ -58,8 +58,8 @@ const WALK_SPEED = 3.1; // m/s
 const SPRINT_MULT = 1.6;
 const TURN_SPEED = 2.1; // rad/s a giro completo
 const PITCH_MAX = 0.9; // rad (~51°): permite mirar el cielo y el piso
-const TOUR_SPEED = 2.0;
-const TOUR_WAIT = 1.8;
+const TOUR_SPEED = 1.8;
+const TOUR_WAIT = 1.7;
 const SPOT_DURATION = 1.4;
 const SCENE_DURATION = 1.15;
 const ROOM_TICK = 0.5;
@@ -355,7 +355,10 @@ export default function Plano390CameraRig({
           } else {
             camera.position.copy(vA.current);
             wait.current += delta;
-            if (wait.current >= TOUR_WAIT) {
+            // Los puntos de paso no se detienen: la cámara sigue caminando
+            // por el pasillo o la puerta sin cortar el encuadre.
+            const waitFor = stop.info === false ? 0 : TOUR_WAIT;
+            if (wait.current >= waitFor) {
               wait.current = 0;
               stopIndex.current = (stopIndex.current + 1) % n;
               onTour?.(stopIndex.current);

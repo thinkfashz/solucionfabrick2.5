@@ -1016,6 +1016,13 @@ export default function Plano3903D({
       <mesh position={[7.3, -0.03, 9]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow material={matGrass}>
         <planeGeometry args={[64, 52]} />
       </mesh>
+      {/* En planta el césped procedural se lee como rayas: base neutra para el plano. */}
+      {planView ? (
+        <mesh position={[7.3, -0.025, 9]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[64, 52]} />
+          <meshStandardMaterial color="#e8ecdd" roughness={1} />
+        </mesh>
+      ) : null}
       <B p={[12.0, 0.01, 15.6]} s={[5.4, 0.06, 9.2]} m={matPaver} recv />
       <B p={[7.05, 0.01, 16.2]} s={[1.9, 0.06, 7.4]} m={matPaver} recv />
       <B p={[2.8, 0.01, 14.2]} s={[5.2, 0.06, 2.4]} m={matPaver} recv />

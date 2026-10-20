@@ -29,7 +29,17 @@ Bitácora de trabajo (se actualiza al cierre de cada hito).
 - **CCTV / Cine**: `CCTV_CAMERAS` (Sala, Pasillo, Terraza, Fachada exterior, Dormitorio) con carcasas visibles (carcasa+lente+LED, poste en exterior), modo `cctv` en el rig con corte suave 1,1 s, sway y FOV propio; cada 7 s cambia y se puede saltar con "Siguiente cámara". HUD con scanlines, REC, reloj, contador y cámaras en el minimapa.
 - **Fixes UI**: link `/herramientas` (typo), colores SVG, chips de foto con estilo real, `ReactElement | null`.
 
+### Sesión 3 — tour cinematográfico, touch-look, porcelanato, cocina y quincho
+- **Tour cinematográfico** (`TOUR_STOPS` de 15 paradas, ahora con cocina, isla, quincho, barra y vista aérea): avance a 1,25 m/s, pausa 2,4 s, mirada con adelanto (lerp 2,2), FOV 49 en tour, micro-movimiento de cámara humana (rotateX/Y/Z) y overlay en el HUD con barras cinematográficas, rótulo por parada y puntos de progreso (`onTour` → `tourIndex`).
+- **Touch-look**: capa de arrastre en `Plano390Controls` (funciona con dedo y mouse) que acumula `input.lookDx` (giro) y ajusta `input.pitch`; el rig consume `lookDx` una vez por frame. Hint "Arrastra para mirar · joystick para moverte".
+- **Piso porcelanato brillante**: textura procedural `makePorcelainTexture()` (losas 1,20 m + vetas) con `roughness 0.08` y `envMapIntensity 1.7`; recibidor, cocina-comedor, pasillo, clóset y baño en porcelanato; dormitorios en madera real.
+- **Luz fría HDR**: sol `#eef6ff` a 3,1, relleno cenital frío, ambiente/hemisférica azuladas, `environmentIntensity 0.9`, sombras 2048 con `normalBias 0.02`; lámparas frías de día y cálidas de noche; tira LED continua en el pasillo.
+- **Cocina completa según referencia** (4,50 × 3,50 m): L de muebles bajos 0,90 m + encimera 0,05 m, alacenas 0,90 m desde 1,50 m con LED, refri de acero 1,94 m, torre de doble horno, placa + campana + ducto, lavaplatos, isla 1,80 × 0,90 × 0,95 m con 3 taburetes. El comedor se movió al este y la alfombra se reubicó.
+- **Quincho nuevo** (al oriente de la casa, `x 14,90…20,90` · `z 1,90…5,10`): muro de piedra procedural (`makeStoneTexture()`), lateral este, postes negros, cielo de listones + cubierta 2,70 m, mesón 5,60 m con parrilla + campana + ducto, horno de barro en domo, lavaplatos, repisa con plantas, barra de 3,60 × 1,00 × 1,05 m con 5 taburetes de mimbre, 3 colgantes y 2 luces cálidas reales. Colisiones propias y `CAM-06 Quincho` en el circuito.
+- **Fix "punto negro" de CCTV**: se eliminó la viñeta `inset 0 0 190px rgba(0,0,0,.85)` que tapaba la vista en móvil; scanlines bajadas a 40 %.
+- **Documentación nueva**: `docs/proyecto-390-1/` con `README.md`, `escena.md` (inventario completo con coordenadas), `cocina.md`, `quincho.md`, `cocina.svg` y `quincho.svg` (planos cotados).
+
 ### Pendiente / ideas
-- Validar en móvil real: rendimiento con 6 point lights + sombras 2048 (bajar a 1024 si calienta).
+- Validar en móvil real: rendimiento con 8 point lights + sombras 2048 (bajar a 1024 si calienta).
 - Ideas: sonido ambiente por estancia, más cámaras (baño/sauna), exportar captura del modo Cine.
 - housefabrick (`/app/`): NO tocar (olvidado a petición del jugador).

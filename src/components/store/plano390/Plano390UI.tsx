@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
 import { ArrowLeft, X, Route, Footprints, Clapperboard, Video } from 'lucide-react';
-import { ROOMS, PHOTO_SPOTS, PLAN, CCTV_CAMERAS } from '@/lib/plano390Data';
+import { ROOMS, PHOTO_SPOTS, PLAN, CCTV_CAMERAS, TOUR_STOPS, QUINCHO } from '@/lib/plano390Data';
 
 type Stage = 'intro' | 'ready' | 'in';
 type Mode = 'free' | 'tour' | 'cctv';
@@ -18,6 +18,7 @@ export default function Plano390UI({
   roomLabel,
   onCloseSpot,
   cctvIndex = 0,
+  tourIndex = 0,
 }: {
   stage: Stage;
   onEnter: () => void;
@@ -28,6 +29,7 @@ export default function Plano390UI({
   roomLabel: string;
   onCloseSpot: () => void;
   cctvIndex?: number;
+  tourIndex?: number;
 }): ReactElement | null {
   const GOLD = '#F6C64A';
   const ACCENT_BLUE = '#2E6FA0';
@@ -108,11 +110,12 @@ export default function Plano390UI({
   };
 
   const activeCam = CCTV_CAMERAS[cctvIndex] ?? CCTV_CAMERAS[0];
+  const activeStop = TOUR_STOPS[tourIndex] ?? TOUR_STOPS[0];
 
   // Helper to determine room fill color based on floor type
   const getRoomFill = (floor: string): string => {
     if (floor === 'terrace') return 'rgba(255,205,120,0.06)'; // terrace
-    if (floor === 'tile') return 'rgba(78,205,196,0.08)'; // wetrooms
+    if (floor === 'tile' || floor === 'porcelain') return 'rgba(78,205,196,0.08)'; // wetrooms / porcelanato
     return 'rgba(255,255,255,0.05)'; // chambers (wood, corridor)
   };
 
@@ -270,7 +273,7 @@ export default function Plano390UI({
           }`}
         >
           <Route size={14} />
-          <span>Recorrido guiado</span>
+          <span>Tour cine</span>
         </button>
         <button
           onClick={() => onModeChange('cctv')}
@@ -305,8 +308,7 @@ export default function Plano390UI({
       {/* ── Overlay de Cine CCTV (scanlines + REC + reloj) ── */}
       {mode === 'cctv' && (
         <div className="pointer-events-none absolute inset-0 z-20">
-          <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,.045)_0px,rgba(255,255,255,.045)_1px,transparent_1px,transparent_4px)] opacity-60" />
-          <div className="absolute inset-0 shadow-[inset_0_0_190px_rgba(0,0,0,.85)]" />
+          <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,.035)_0px,rgba(255,255,255,.035)_1px,transparent_1px,transparent_4px)] opacity-40" />
           {/* Esquinas de encuadre */}
           {[
             'left-3 top-3 border-l-2 border-t-2',
@@ -347,9 +349,38 @@ export default function Plano390UI({
         </div>
       )}
 
+      {/* ── Overlay de recorrido cinematográfico (barras + rótulo + progreso) ── */}
+      {mode === 'tour' && (
+        <>
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[6vh] bg-black/85" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[6vh] bg-black/85" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-[132px] z-30 flex flex-col items-center gap-1.5 px-6 text-center">
+            <span className="text-[8px] font-black uppercase tracking-[.3em] text-[#F6C64A]">
+              Recorrido cinematográfico
+            </span>
+            <h2 className="text-balance text-lg font-black leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,.8)]">
+              {activeStop?.label}
+            </h2>
+            <p className="max-w-[420px] text-balance text-[10px] leading-4 text-white/70">
+              {activeStop?.note}
+            </p>
+            <div className="mt-1 flex items-center gap-1.5">
+              {TOUR_STOPS.map((stop, i) => (
+                <span
+                  key={stop.label}
+                  className={`h-1 rounded-full transition-all duration-500 ${
+                    i === tourIndex ? 'w-5 bg-[#F6C64A]' : 'w-1 bg-white/30'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Minimap (hidden on mobile) */}
       <div className="absolute right-3 top-16 z-20 hidden sm:block select-none touch-none pointer-events-none">
-        <svg width="200" height="176" viewBox="0 -3.2 14 14.4" aria-label="Minimapa del plano">
+        <svg width="224" height="148" viewBox="-0.4 -3.4 22.8 15" aria-label="Minimapa del plano">
           {/* Exterior border glow */}
           <rect
             x="-0.1"
@@ -362,6 +393,28 @@ export default function Plano390UI({
             strokeWidth="0.15"
             opacity="0.7"
           />
+          {/* Quincho */}
+          <rect
+            x={QUINCHO.x0}
+            y={QUINCHO.z0}
+            width={QUINCHO.x1 - QUINCHO.x0}
+            height={QUINCHO.z1 - QUINCHO.z0}
+            rx="0.2"
+            fill="rgba(246,198,74,.13)"
+            stroke={GOLD}
+            strokeWidth="0.1"
+            opacity="0.9"
+          />
+          <text
+            x={(QUINCHO.x0 + QUINCHO.x1) / 2}
+            y={(QUINCHO.z0 + QUINCHO.z1) / 2}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="0.36"
+            fill="#F6C64A"
+          >
+            Quincho
+          </text>
           {/* Rooms */}
           {ROOMS.map((room) => (
             <rect
@@ -480,9 +533,13 @@ export default function Plano390UI({
                 <p className="text-[9px] font-black text-white/60">Terraza</p>
                 <p className="text-[11px] font-black text-white">21,5 m²</p>
               </div>
+              <div>
+                <p className="text-[9px] font-black text-white/60">Quincho</p>
+                <p className="text-[11px] font-black text-white">19,2 m²</p>
+              </div>
             </div>
             <p className="text-[9px] leading-5 text-white/50">
-              Casa unifamiliar de acero ligero con terminaciones en madera estructural, cubierta a dos aguas y terraza norte. Orientación sur para máximo ganancia solar.
+              Casa unifamiliar de acero ligero con terminaciones en madera estructural, cubierta a dos aguas y terraza norte. Cocina en L de 4,50 x 3,50 m con isla de 1,80 m; quincho cubierto de 6,00 x 3,20 m con parrilla, horno de barro y barra de 3,60 m. Orientación sur para máximo ganancia solar.
             </p>
           </div>
         </aside>

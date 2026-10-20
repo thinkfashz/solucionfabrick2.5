@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="720" viewBox="0 0 980 720" role="img" aria-label="Planta cotada de la cocina 4,50 x 3,50 m">
+  <title>Cocina 390-1 — planta cotada (4,50 × 3,50 m)</title>
+  <style>
+    .bg { fill: #0f1418; }
+    .room { fill: #f6f3ec; stroke: #1d2429; stroke-width: 3; }
+    .case { fill: #c9a173; stroke: #6d4f2e; stroke-width: 2; }
+    .top { fill: #efece4; stroke: #9a9489; stroke-width: 1.5; }
+    .upper { fill: none; stroke: #4a5560; stroke-width: 2; stroke-dasharray: 9 6; }
+    .appl { fill: #b8bec3; stroke: #5d666c; stroke-width: 1.5; }
+    .dark { fill: #2a3034; stroke: #11161a; stroke-width: 1.5; }
+    .wood { fill: #dcbc8d; stroke: #7a5a34; stroke-width: 2; }
+    .dim { stroke: #f6c64a; stroke-width: 1.6; }
+    .dim2 { stroke: #8fd0ff; stroke-width: 1.4; stroke-dasharray: 7 5; }
+    .t { fill: #e8eef3; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 700; }
+    .t2 { fill: #a9b6c1; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; }
+    .tk { fill: #f6c64a; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 800; }
+    .tb { fill: #8fd0ff; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 700; }
+    .h { fill: #ffffff; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 19px; font-weight: 800; }
+  </style>
+
+  <rect class="bg" x="0" y="0" width="980" height="720" rx="18" />
+  <text class="h" x="40" y="46">Cocina · Proyecto 390-1 — planta cotada</text>
+  <text class="t2" x="40" y="70">Escala gráfica · medidas en metros · cocina en L de 4,50 × 3,50 m con isla de 1,80 × 0,90 m</text>
+
+  <!-- Marco de la cocina: 4,50 x 3,50 a 130 px/m -->
+  <g transform="translate(150, 130)">
+    <rect class="room" x="0" y="0" width="585" height="455" />
+
+    <!-- Muebles bajos ala oeste (0,60 x 3,00) -->
+    <rect class="case" x="0" y="156" width="78" height="390" />
+    <text class="t2" x="8" y="176" transform="rotate(90 8 176)">muebles bajos 0,90 m</text>
+
+    <!-- Muebles bajos ala sur (3,10 x 0,60) -->
+    <rect class="case" x="78" y="533" width="403" height="78" />
+
+    <!-- Refrigerador 0,66 x 0,70 -->
+    <rect class="appl" x="0" y="0" width="91" height="91" />
+    <text class="t2" x="10" y="50">refri</text>
+
+    <!-- Torre de hornos 0,66 x 0,70 -->
+    <rect class="appl" x="0" y="91" width="91" height="65" />
+    <text class="t2" x="8" y="128">hornos</text>
+
+    <!-- Alacenas (línea de trazos) -->
+    <rect class="upper" x="0" y="156" width="47" height="338" />
+    <rect class="upper" x="182" y="533" width="325" height="47" />
+
+    <!-- Encimera/campana -->
+    <rect class="dark" x="6" y="266" width="68" height="98" />
+    <text class="t2" x="14" y="320" transform="rotate(90 14 320)">placa</text>
+
+    <!-- Lavaplatos del mesón sur -->
+    <rect class="dark" x="266" y="547" width="72" height="55" />
+    <text class="t2" x="264" y="620">lavaplatos</text>
+
+    <!-- Isla 1,80 x 0,90 -->
+    <rect class="wood" x="234" y="299" width="234" height="117" />
+    <rect class="top" x="228" y="293" width="246" height="129" />
+    <rect class="dark" x="266" y="325" width="66" height="65" />
+    <text class="t2" x="268" y="400">isla 1,80 × 0,90 · alto 0,95</text>
+
+    <!-- 3 taburetes -->
+    <circle class="wood" cx="520" cy="325" r="25" />
+    <circle class="wood" cx="520" cy="357" r="25" />
+    <circle class="wood" cx="520" cy="390" r="25" />
+    <text class="t2" x="556" y="362">3 taburetes</text>
+  </g>
+
+  <!-- Cotas horizontales: 4,50 m -->
+  <g transform="translate(150, 130)">
+    <line class="dim" x1="0" y1="-46" x2="585" y2="-46" />
+    <line class="dim" x1="0" y1="-54" x2="0" y2="-38" />
+    <line class="dim" x1="585" y1="-54" x2="585" y2="-38" />
+    <text class="tk" x="248" y="-56">4,50 m</text>
+
+    <!-- Cota parcial 0,60 + 3,10 + 0,80 -->
+    <line class="dim" x1="0" y1="-18" x2="78" y2="-18" />
+    <text class="tk" x="14" y="-24">0,60</text>
+    <line class="dim" x1="78" y1="-18" x2="481" y2="-18" />
+    <text class="tk" x="240" y="-24">3,10</text>
+    <line class="dim" x1="481" y1="-18" x2="585" y2="-18" />
+    <text class="tk" x="500" y="-24">1,04</text>
+  </g>
+
+  <!-- Cotas verticales: 3,50 m -->
+  <g transform="translate(150, 130)">
+    <line class="dim" x1="631" y1="0" x2="631" y2="455" />
+    <line class="dim" x1="623" y1="0" x2="639" y2="0" />
+    <line class="dim" x1="623" y1="455" x2="639" y2="455" />
+    <text class="tk" x="644" y="212">3,50 m</text>
+
+    <line class="dim" x1="605" y1="0" x2="605" y2="156" />
+    <text class="tk" x="560" y="84">1,20</text>
+    <line class="dim" x1="605" y1="156" x2="605" y2="533" />
+    <text class="tk" x="566" y="352">2,90</text>
+    <line class="dim" x1="605" y1="533" x2="605" y2="611" />
+    <text class="tk" x="566" y="580">0,60</text>
+  </g>
+
+  <!-- Pasos de trabajo -->
+  <g transform="translate(150, 130)">
+    <line class="dim2" x1="78" y1="240" x2="228" y2="240" />
+    <text class="tb" x="96" y="234">paso 1,20</text>
+    <line class="dim2" x1="474" y1="357" x2="585" y2="357" />
+    <text class="tb" x="486" y="350">paso 1,00</text>
+  </g>
+
+  <!-- Leyenda -->
+  <g transform="translate(820, 150)">
+    <rect class="room" x="0" y="0" width="34" height="20" />
+    <text class="t2" x="44" y="15">piso porcelanato</text>
+    <rect class="case" x="0" y="34" width="34" height="20" />
+    <text class="t2" x="44" y="49">muebles bajos 0,90 m</text>
+    <rect class="upper" x="0" y="68" width="34" height="20" />
+    <text class="t2" x="44" y="83">alacenas 0,90 m</text>
+    <rect class="wood" x="0" y="102" width="34" height="20" />
+    <text class="t2" x="44" y="117">madera / isla</text>
+    <rect class="appl" x="0" y="136" width="34" height="20" />
+    <text class="t2" x="44" y="151">acero / electro</text>
+    <rect class="dark" x="0" y="170" width="34" height="20" />
+    <text class="t2" x="44" y="185">vidrio negro</text>
+  </g>
+
+  <text class="t2" x="40" y="690">Encimera 0,05 m · profundidad 0,60 m · isla alto 0,95 m · alacenas desde 1,50 m · cielo 2,60 m</text>
+</svg>

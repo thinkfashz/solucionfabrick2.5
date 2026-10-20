@@ -14,7 +14,7 @@ export type RoomBox = {
   z0: number;
   x1: number;
   z1: number;
-  floor: 'wood' | 'tile' | 'terrace' | 'corridor';
+  floor: 'wood' | 'tile' | 'porcelain' | 'terrace' | 'corridor';
 };
 
 export type WallSeg = {
@@ -59,15 +59,15 @@ export const PLAN = {
 
 /** Habitaciones del plano con nombres y superficies (lista 1..11 del proyecto). */
 export const ROOMS: RoomBox[] = [
-  { id: '1', name: 'Recibidor', areaM2: 7.17, x0: 3.62, z0: 6.85, x1: 6.34, z1: 10.75, floor: 'tile' },
+  { id: '1', name: 'Recibidor', areaM2: 7.17, x0: 3.62, z0: 6.85, x1: 6.34, z1: 10.75, floor: 'porcelain' },
   { id: '2', name: 'Vestidor', areaM2: 7.53, x0: 0.25, z0: 8.65, x1: 3.62, z1: 10.75, floor: 'wood' },
-  { id: '3', name: 'Cocina · Comedor', areaM2: 44.21, x0: 0.25, z0: 0.25, x1: 8.4, z1: 5.55, floor: 'wood' },
-  { id: '4', name: 'Pasillo', areaM2: 8.73, x0: 3.62, z0: 5.69, x1: 11.7, z1: 6.85, floor: 'corridor' },
+  { id: '3', name: 'Cocina · Comedor', areaM2: 44.21, x0: 0.25, z0: 0.25, x1: 8.4, z1: 5.55, floor: 'porcelain' },
+  { id: '4', name: 'Pasillo', areaM2: 8.73, x0: 3.62, z0: 5.69, x1: 11.7, z1: 6.85, floor: 'porcelain' },
   { id: '5', name: 'Dormitorio 2', areaM2: 14.0, x0: 6.48, z0: 6.99, x1: 10.3, z1: 10.75, floor: 'wood' },
   { id: '6', name: 'Dormitorio 3', areaM2: 14.0, x0: 10.44, z0: 6.99, x1: 13.75, z1: 10.75, floor: 'wood' },
   { id: '7', name: 'Dormitorio principal', areaM2: 16.0, x0: 11.09, z0: 0.25, x1: 13.75, z1: 5.55, floor: 'wood' },
-  { id: '8', name: 'Clóset', areaM2: 3.96, x0: 11.7, z0: 5.69, x1: 13.75, z1: 6.85, floor: 'wood' },
-  { id: '9', name: 'Baño', areaM2: 5.32, x0: 8.54, z0: 0.25, x1: 10.95, z1: 2.42, floor: 'tile' },
+  { id: '8', name: 'Clóset', areaM2: 3.96, x0: 11.7, z0: 5.69, x1: 13.75, z1: 6.85, floor: 'porcelain' },
+  { id: '9', name: 'Baño', areaM2: 5.32, x0: 8.54, z0: 0.25, x1: 10.95, z1: 2.42, floor: 'porcelain' },
   { id: '10', name: 'Sauna', areaM2: 5.6, x0: 8.54, z0: 2.56, x1: 10.95, z1: 4.86, floor: 'wood' },
   { id: '11', name: 'Terraza', areaM2: 21.45, x0: 0.25, z0: -2.91, x1: 6.4, z1: 0, floor: 'terrace' },
 ];
@@ -123,18 +123,38 @@ export const PHOTO_SPOTS: PhotoSpot[] = [
 
 /** Recorrido guiado (walkthrough): cámara en primera persona suavizada por parada. */
 export const TOUR_STOPS: TourStop[] = [
-  { label: 'Fachada sur', note: 'Presentación de la casa y su entrada', pos: [7, 1.7, 16.2], look: [7, 1.6, 11] },
-  { label: 'Puerta principal', note: 'El umbral del recibidor', pos: [5.1, 1.65, 12.2], look: [5.1, 1.4, 10] },
-  { label: 'Recibidor', note: 'Circulación que reparte la casa', pos: [4.9, 1.65, 9.2], look: [5.4, 1.35, 7.3] },
-  { label: 'Cocina · Comedor', note: '44,2 m² de estar con paño corredizo a la terraza', pos: [2.3, 1.65, 4.6], look: [4.4, 1.15, 1.4] },
-  { label: 'Terraza', note: '21,5 m² al norte, con escalerilla de 20 cm', pos: [3.2, 1.65, -1.6], look: [3.4, 1.2, 2.2] },
-  { label: 'Baño y sauna', note: 'Sanitarios más sauna de 5,6 m²', pos: [9.7, 1.65, 3.6], look: [9.2, 1.25, 1.1] },
-  { label: 'Dormitorio principal', note: '16 m² con sofá frente a la ventana norte', pos: [12.4, 1.65, 3.6], look: [12.4, 1.1, 1.2] },
-  { label: 'Pasillo', note: 'Repartidor hacia los dormitorios', pos: [9.4, 1.65, 6.25], look: [5.4, 1.35, 6.2] },
-  { label: 'Dormitorio 2', note: '14 m² al sur oriente', pos: [8.3, 1.65, 9.7], look: [8.3, 1.1, 7.4] },
-  { label: 'Dormitorio 3', note: '14 m² al sur poniente', pos: [12.1, 1.65, 9.7], look: [12.1, 1.1, 7.4] },
-  { label: 'Vista aérea', note: 'Cierre del recorrido desde el aire', pos: [7, 7.2, 17.5], look: [7, 1.8, 7] },
+  { label: 'Fachada sur', note: 'Presentación de la casa y su acceso principal', pos: [7, 1.72, 18.4], look: [7, 2.2, 11.2] },
+  { label: 'Acceso principal', note: 'Umbral del recibidor, 7,17 m²', pos: [5.1, 1.68, 13.1], look: [5.1, 1.5, 10.8] },
+  { label: 'Recibidor', note: 'Circulación que reparte la casa', pos: [4.95, 1.65, 9.5], look: [5.6, 1.4, 7.2] },
+  { label: 'Sala de estar', note: '44,2 m² de cocina-comedor con paño corredizo a la terraza', pos: [7.6, 1.65, 4.4], look: [3.2, 1.15, 1.5] },
+  { label: 'Cocina', note: 'L de 4,50 × 3,50 m con isla de 1,80 × 0,90 m', pos: [4.6, 1.62, 3.2], look: [0.8, 1.0, 2.7] },
+  { label: 'Isla de cocina', note: 'Encimera de 0,95 m y tres taburetes', pos: [3.95, 1.55, 4.55], look: [2.9, 0.9, 2.8] },
+  { label: 'Terraza', note: '21,5 m² al norte con pérgola y paso de 20 cm', pos: [3.2, 1.65, -1.8], look: [3.6, 1.3, 2.1] },
+  { label: 'Pasillo', note: 'Luz fría continua hacia los dormitorios', pos: [10.7, 1.65, 6.3], look: [4.6, 1.35, 6.25] },
+  { label: 'Dormitorio 3', note: '14 m² al sur oriente', pos: [12.1, 1.65, 9.9], look: [12.1, 1.05, 7.3] },
+  { label: 'Dormitorio 2', note: '14 m² al sur poniente', pos: [8.3, 1.65, 9.9], look: [8.3, 1.05, 7.3] },
+  { label: 'Baño y sauna', note: 'Sanitarios y sauna de 5,6 m²', pos: [9.7, 1.65, 3.4], look: [9.3, 1.1, 1.0] },
+  { label: 'Dormitorio principal', note: '16 m² con ventana norte y sofá', pos: [12.6, 1.65, 4.6], look: [12.4, 1.05, 1.0] },
+  { label: 'Quincho', note: '6,00 × 3,20 m con parrilla, horno y barra de 3,60 m', pos: [15.9, 1.62, 7.9], look: [18.6, 1.35, 3.4] },
+  { label: 'Barra del quincho', note: 'Barra de 1,05 m y cinco taburetes, 5,40 m de espacio libre', pos: [17.4, 1.55, 6.6], look: [18.3, 1.05, 2.5] },
+  { label: 'Vista aérea', note: 'Cierre del recorrido: casa, terraza y quincho', pos: [7.5, 7.8, 20.5], look: [9.0, 1.5, 6.5] },
 ];
+
+/**
+ * Quincho exterior (cubierto) — medidas de la referencia del cliente:
+ * 6,00 m de largo × 3,20 m de fondo × 2,70 m de alto de cubierta,
+ * barra de 3,60 × 1,00 × 1,05 m y 5,40 m de espacio útil al frente.
+ */
+export const QUINCHO = {
+  x0: 14.9,
+  x1: 20.9,
+  z0: 1.9,
+  z1: 5.1,
+  height: 2.7,
+  bar: { x0: 15.6, x1: 19.2, z0: 3.95, z1: 4.95, h: 1.05 },
+  stools: 5,
+  frontSpaceM: 5.4,
+} as const;
 
 /** Spots de patrulla para los personajes (AnimatedFigure del simulador sísmico). */
 export const NPC_SPOTS: { pos: [number, number, number]; door: [number, number] }[] = [
@@ -161,5 +181,6 @@ export const CCTV_CAMERAS: CctvCamera[] = [
   { id: 'CAM-03', name: 'Terraza · pérgola', zone: 'Terraza', pos: [5.85, 2.32, -2.5], look: [1.6, 1.0, 0.6], fov: 66 },
   { id: 'CAM-04', name: 'Fachada · acceso principal', zone: 'Exterior', pos: [1.3, 3.05, 15.1], look: [7.0, 1.7, 10.6], fov: 52 },
   { id: 'CAM-05', name: 'Dormitorio principal', zone: 'Dormitorio', pos: [13.3, 2.38, 0.9], look: [11.9, 1.05, 4.7], fov: 60 },
+  { id: 'CAM-06', name: 'Quincho · barra y parrilla', zone: 'Quincho', pos: [20.4, 2.42, 2.15], look: [16.5, 1.15, 4.35], fov: 64 },
 ];
 

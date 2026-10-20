@@ -24,12 +24,14 @@ export default function Plano390Walkthrough() {
   const [light, setLight] = useState<'day' | 'sunset' | 'night'>('day');
   const [roomLabel, setRoomLabel] = useState('Exterior');
   const [cctvIndex, setCctvIndex] = useState(0);
+  const [tourIndex, setTourIndex] = useState(0);
 
   const enter = () => {
     input.mode = 'free';
     input.spot = null;
     input.turn = 0;
     input.pitch = 0;
+    input.lookDx = 0;
     input.move.x = 0;
     input.move.y = 0;
     setStage('in');
@@ -40,11 +42,13 @@ export default function Plano390Walkthrough() {
     input.spot = null;
     input.turn = 0;
     input.pitch = 0;
+    input.lookDx = 0;
     input.move.x = 0;
     input.move.y = 0;
     setSpot(null);
     setMode(m);
     if (m !== 'cctv') setCctvIndex(0);
+    if (m === 'tour') setTourIndex(0);
   };
 
   const goSpot = (i: number) => {
@@ -75,7 +79,7 @@ export default function Plano390Walkthrough() {
         >
           <Suspense fallback={null}>
             <Plano3903D light={light} />
-            <Plano390CameraRig onRoom={setRoomLabel} onCctv={setCctvIndex} />
+            <Plano390CameraRig onRoom={setRoomLabel} onCctv={setCctvIndex} onTour={setTourIndex} />
           </Suspense>
         </Canvas>
       </div>
@@ -106,6 +110,7 @@ export default function Plano390Walkthrough() {
         roomLabel={roomLabel}
         onCloseSpot={closeSpot}
         cctvIndex={cctvIndex}
+        tourIndex={tourIndex}
       />
     </div>
   );

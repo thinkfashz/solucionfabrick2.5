@@ -2,21 +2,29 @@
 /*
  * Plano390Controls — overlay DOM (fuera del <Canvas>) del plano 390-1.
  * • Modo libre: joystick izquierdo camina; derecho gira (X) y mira arriba/abajo (Y).
+ *   Además, arrastrar el dedo/ratón sobre la escena gira la vista (touch-look).
  * • Modo tour: botón para salir del recorrido guiado.
  * • Modo CCTV (Cine): "Siguiente cámara" + "Salir de Cine".
  * Cualquier pointerup / desmontaje resetea el input para no dejar la cámara andando.
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import LabJoystick from '../MetalconLabJoystick';
 import { input, nextCctv } from './Plano390CameraRig';
 import type { Plano390Mode } from './Plano390CameraRig';
 
+const LOOK_SENS = 0.0032; // rad por px de arrastre horizontal
+const PITCH_SENS = 0.0026; // rad normalizado por px vertical
+
 export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode; onReset?: () => void }) {
+  const drag = useRef<{ id: number; x: number; y: number } | null>(null);
+
   useEffect(() => {
     const reset = () => {
       input.move.x = 0;
       input.move.y = 0;
       input.turn = 0;
+      input.lookDx = 0;
+      drag.current = null;
     };
     window.addEventListener('pointerup', reset);
     window.addEventListener('pointercancel', reset);
@@ -40,6 +48,41 @@ export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode
     <>
       {mode === 'free' ? (
         <>
+          {/* Touch-look: arrastrar sobre la escena para girar la vista. */}
+          <div
+            aria-hidden
+            className="absolute inset-0 z-20 touch-none cursor-grab active:cursor-grabbing"
+            onPointerDown={(e) => {
+              if (e.pointerType === 'mouse' && e.button !== 0) return;
+              drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              const d = drag.current;
+              if (!d || d.id !== e.pointerId) return;
+              const dx = e.clientX - d.x;
+              const dy = e.clientY - d.y;
+              d.x = e.clientX;
+              d.y = e.clientY;
+              // Arrastrar a la derecha gira a la derecha (yaw negativo).
+              input.lookDx -= dx * LOOK_SENS;
+              input.pitch = Math.max(-1, Math.min(1, input.pitch - dy * PITCH_SENS));
+            }}
+            onPointerUp={() => {
+              drag.current = null;
+            }}
+            onPointerCancel={() => {
+              drag.current = null;
+            }}
+            onLostPointerCapture={() => {
+              drag.current = null;
+            }}
+          />
+          <div className="pointer-events-none absolute inset-x-0 top-[92px] z-20 flex justify-center">
+            <span className="rounded-full border border-white/15 bg-black/45 px-3 py-1.5 text-[8px] font-black uppercase tracking-[.18em] text-white/70 backdrop-blur-md">
+              Arrastra para mirar · joystick para moverte
+            </span>
+          </div>
           <div className="absolute bottom-[86px] left-4 z-30">
             <LabJoystick
               label="Caminar"

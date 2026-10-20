@@ -4,16 +4,18 @@
  * • Modo libre: WASD/flechas + joysticks analógicos con suavizado (aceleración
  *   y giro), pitch (mirar arriba/abajo), Sprint con Shift y colisiones AABB
  *   eje a eje contra WALLS (los tramos de vidrio también bloquean).
- * • Modo tour: sigue TOUR_STOPS en bucle (lerp 1,6 m/s + espera 1,5 s).
+ * • Modo tour: dolly cinematográfico por TOUR_STOPS en bucle (1,25 m/s,
+ *   espera 2,4 s, mirada suavizada, respiración de cámara y roll sutil).
  * • Modo CCTV (Cine): recorre el circuito CCTV_CAMERAS cada 7 s con corte
  *   suavizado, ligero sway de cámara de seguridad y FOV propio.
  * • Spot de foto: tween one-shot hacia PHOTO_SPOTS[spot].
+ * • Touch: `lookDx` lo escribe el overlay de arrastre y se consume 1 vez/frame.
  * `input` y `cine` son estado de módulo mutable compartido con los controles.
  */
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import { PerspectiveCamera, Vector3 } from 'three';
-import { CCTV_CAMERAS, PHOTO_SPOTS, PLAN, ROOMS, TOUR_STOPS, WALLS } from '@/lib/plano390Data';
+import { CCTV_CAMERAS, PHOTO_SPOTS, PLAN, QUINCHO, ROOMS, TOUR_STOPS, WALLS } from '@/lib/plano390Data';
 import type { CctvCamera, PhotoSpot, WallSeg } from '@/lib/plano390Data';
 
 export type Plano390Mode = 'free' | 'tour' | 'cctv';
@@ -22,12 +24,21 @@ export type Plano390Input = {
   move: { x: number; y: number };
   turn: number;
   pitch: number;
+  /** Giro acumulado por arrastre táctil (rad); el rig lo consume y lo pone a 0. */
+  lookDx: number;
   mode: Plano390Mode;
   spot: number | null;
 };
 
 /** Estado compartido rig ↔ controls (mutar campos, no reasignar). */
-export const input: Plano390Input = { move: { x: 0, y: 0 }, turn: 0, pitch: 0, mode: 'free', spot: null };
+export const input: Plano390Input = {
+  move: { x: 0, y: 0 },
+  turn: 0,
+  pitch: 0,
+  lookDx: 0,
+  mode: 'free',
+  spot: null,
+};
 
 /** Estado del circuito CCTV (índice visible + salto manual). */
 export const cine = { index: 0, jump: false };
@@ -42,14 +53,15 @@ const WALK_SPEED = 2.9; // m/s
 const SPRINT_MULT = 1.6;
 const TURN_SPEED = 2.1; // rad/s a giro completo
 const PITCH_MAX = 0.52; // rad (~30°)
-const TOUR_SPEED = 1.6;
-const TOUR_WAIT = 1.5;
+const TOUR_SPEED = 1.25;
+const TOUR_WAIT = 2.4;
 const SPOT_DURATION = 1.4;
 const ROOM_TICK = 0.5;
 const CCTV_TIME = 7; // s por cámara
 const CCTV_BLEND = 1.1; // s de transición entre cámaras
 const BASE_FOV = 46;
-const BOUNDS = { x0: -3.2, x1: 17.2, z0: -4.6, z1: 15.6 };
+const TOUR_FOV = 49;
+const BOUNDS = { x0: -3.2, x1: 22.4, z0: -4.8, z1: 15.8 };
 const TAU = Math.PI * 2;
 
 type SpotTween = { idx: number; t: number; pos0: Vector3; look0: Vector3 };
@@ -68,9 +80,11 @@ const clamp1 = (v: number): number => Math.max(-1, Math.min(1, v));
 export default function Plano390CameraRig({
   onRoom,
   onCctv,
+  onTour,
 }: {
   onRoom?: (room: string) => void;
   onCctv?: (index: number) => void;
+  onTour?: (index: number) => void;
 }) {
   const { camera } = useThree();
   const keys = useRef<Record<string, boolean>>({});
@@ -94,16 +108,26 @@ export default function Plano390CameraRig({
   const cctvPrevPos = useRef(new Vector3());
   const cctvPrevLook = useRef(new Vector3());
 
-  const boxes = useMemo<CellBox[]>(
-    () =>
-      WALLS.map((w: WallSeg) => ({
-        x0: w.x0 - PLAYER_R,
-        z0: w.z0 - PLAYER_R,
-        x1: w.x1 + PLAYER_R,
-        z1: w.z1 + PLAYER_R,
-      })),
-    [],
-  );
+  const boxes = useMemo<CellBox[]>(() => {
+    const house = WALLS.map((w: WallSeg) => ({
+      x0: w.x0 - PLAYER_R,
+      z0: w.z0 - PLAYER_R,
+      x1: w.x1 + PLAYER_R,
+      z1: w.z1 + PLAYER_R,
+    }));
+    // Colisiones del quincho: muro de piedra, lateral este y barra.
+    const extra: CellBox[] = [
+      { x0: QUINCHO.x0 - PLAYER_R, z0: QUINCHO.z0 - 0.12 - PLAYER_R, x1: QUINCHO.x1 + PLAYER_R, z1: QUINCHO.z0 + 0.12 + PLAYER_R },
+      { x0: QUINCHO.x1 - 0.12 - PLAYER_R, z0: QUINCHO.z0, x1: QUINCHO.x1 + 0.12 + PLAYER_R, z1: QUINCHO.z1 },
+      {
+        x0: QUINCHO.bar.x0 - PLAYER_R,
+        z0: QUINCHO.bar.z0 - PLAYER_R,
+        x1: QUINCHO.bar.x1 + PLAYER_R,
+        z1: QUINCHO.bar.z1 + PLAYER_R,
+      },
+    ];
+    return [...house, ...extra];
+  }, []);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -149,13 +173,14 @@ export default function Plano390CameraRig({
     onCctv?.(cine.index);
   };
 
-  useFrame((_, rawDelta) => {
+  useFrame((state, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
+    const t = state.clock.elapsedTime;
     const mode: Plano390Mode = input.mode;
     const prev = prevMode.current;
 
     if (prev !== mode) {
-      if (prev === 'cctv') {
+      if (prev === 'cctv' || prev === 'tour') {
         setFov(BASE_FOV);
         pitch.current = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, camera.rotation.x));
       }
@@ -163,10 +188,14 @@ export default function Plano390CameraRig({
         yaw.current = wrapAngle(camera.rotation.y);
         pitch.current = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, camera.rotation.x));
         turnSm.current = 0;
+        camera.rotation.z = 0;
       } else if (mode === 'tour') {
         camera.getWorldDirection(vC.current);
         lookPt.current.copy(camera.position).addScaledVector(vC.current, 2);
+        stopIndex.current = 0;
         wait.current = 0;
+        setFov(TOUR_FOV);
+        onTour?.(0);
       } else {
         startCctv(0);
       }
@@ -230,10 +259,16 @@ export default function Plano390CameraRig({
             if (wait.current >= TOUR_WAIT) {
               wait.current = 0;
               stopIndex.current = (stopIndex.current + 1) % n;
+              onTour?.(stopIndex.current);
             }
           }
-          lookPt.current.lerp(vB.current, Math.min(1, delta * 3));
+          // Mirada suave con adelanto: el encuadre llega antes que el cuerpo.
+          lookPt.current.lerp(vB.current, Math.min(1, delta * 2.2));
           camera.lookAt(lookPt.current);
+          // Respiración de cámara humana (sin desplazar el dolly) y roll mínimo.
+          camera.rotateY(Math.sin(t * 0.62) * 0.006);
+          camera.rotateX(Math.sin(t * 1.15) * 0.004);
+          camera.rotateZ(Math.sin(t * 0.38) * 0.0045);
         }
       } else if (mode === 'cctv') {
         // ── Circuito CCTV (Cine) ──
@@ -282,6 +317,11 @@ export default function Plano390CameraRig({
         moveSm.current.y += (targetF - moveSm.current.y) * accel;
         turnSm.current += (targetT - turnSm.current) * Math.min(1, delta * 9);
 
+        // Giro por arrastre táctil (se acumula y se consume una vez por frame).
+        if (input.lookDx !== 0) {
+          yaw.current = wrapAngle(yaw.current + input.lookDx);
+          input.lookDx = 0;
+        }
         yaw.current = wrapAngle(yaw.current - turnSm.current * delta * TURN_SPEED);
         const pitchTarget = clamp1(input.pitch) * PITCH_MAX;
         pitch.current += (pitchTarget - pitch.current) * Math.min(1, delta * 8);

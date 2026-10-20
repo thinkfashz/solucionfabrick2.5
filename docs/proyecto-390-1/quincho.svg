@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="860" viewBox="0 0 1040 860" role="img" aria-label="Quincho 6,00 x 3,20 m: planta y elevación cotadas">
+  <title>Quincho 390-1 — planta y elevación cotadas (6,00 × 3,20 m · cubierta 2,70 m)</title>
+  <style>
+    .bg { fill: #0f1418; }
+    .slab { fill: #e9e6df; stroke: #9a9489; stroke-width: 2; }
+    .stone { fill: #a89c86; stroke: #6f6656; stroke-width: 2; }
+    .wood { fill: #dcbc8d; stroke: #7a5a34; stroke-width: 1.6; }
+    .steel { fill: #b8bec3; stroke: #5d666c; stroke-width: 1.5; }
+    .dark { fill: #2f3335; stroke: #14181b; stroke-width: 1.5; }
+    .roof { fill: #2b3034; stroke: #161a1c; stroke-width: 1.5; }
+    .dim { stroke: #f6c64a; stroke-width: 1.6; }
+    .dimx { stroke: #8fd0ff; stroke-width: 1.3; stroke-dasharray: 7 5; }
+    .tk { fill: #f6c64a; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 800; }
+    .tb { fill: #8fd0ff; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 700; }
+    .t { fill: #e8eef3; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 700; }
+    .t2 { fill: #a9b6c1; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; }
+    .h { fill: #ffffff; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 19px; font-weight: 800; }
+  </style>
+
+  <rect class="bg" x="0" y="0" width="1040" height="860" rx="18" />
+  <text class="h" x="40" y="46">Quincho · Proyecto 390-1 — planta y elevación cotadas</text>
+  <text class="t2" x="40" y="70">Medidas en metros · 6,00 × 3,20 m · cubierta 2,70 m · barra 3,60 × 1,00 × 1,05 m · 5,40 m de espacio libre al frente</text>
+
+  <!-- ═══ PLANTA · escala 100 px/m → 600 x 320 ═══ -->
+  <text class="t" x="40" y="118">PLANTA (N = muro de piedra al fondo)</text>
+  <g transform="translate(80, 150)">
+    <!-- losa -->
+    <rect class="slab" x="0" y="0" width="600" height="320" />
+
+    <!-- muro de piedra: fondo (z0) y lateral este (x1) -->
+    <rect class="stone" x="0" y="0" width="600" height="16" />
+    <rect class="stone" x="584" y="0" width="16" height="320" />
+
+    <!-- postes -->
+    <rect class="dark" x="8" y="6" width="12" height="12" />
+    <rect class="dark" x="580" y="6" width="12" height="12" />
+    <rect class="dark" x="8" y="302" width="12" height="12" />
+    <rect class="dark" x="580" y="302" width="12" height="12" />
+
+    <!-- mesón de trabajo 5,60 x 0,60 -->
+    <rect class="wood" x="16" y="16" width="560" height="60" />
+    <!-- parrilla -->
+    <rect class="steel" x="395" y="22" width="100" height="58" />
+    <!-- horno de barro (domo) -->
+    <circle class="stone" cx="530" cy="54" r="34" />
+    <!-- lavaplatos -->
+    <rect class="dark" x="115" y="24" width="55" height="40" />
+
+    <!-- barra 3,60 x 1,00 -->
+    <rect class="stone" x="70" y="245" width="360" height="100" />
+    <rect class="dark" x="60" y="255" width="380" height="80" opacity="0.55" />
+    <text class="t2" x="86" y="300" fill="#eaeef2">BARRA 3,60 × 1,00 · alto 1,05</text>
+
+    <!-- 5 taburetes al frente -->
+    <g class="wood">
+      <circle cx="105" cy="372" r="14" />
+      <circle cx="170" cy="372" r="14" />
+      <circle cx="235" cy="372" r="14" />
+      <circle cx="300" cy="372" r="14" />
+      <circle cx="365" cy="372" r="14" />
+    </g>
+    <text class="t2" x="392" y="377">5 taburetes</text>
+
+    <!-- accesos libres -->
+    <path class="dimx" d="M0 160 L-52 160" />
+    <text class="tb" x="-176" y="156">abierto poniente</text>
+    <path class="dimx" d="M470 320 L470 420" />
+    <text class="tb" x="418" y="440">espacio libre 5,40 m</text>
+
+    <!-- cotas planta -->
+    <line class="dim" x1="0" y1="-40" x2="600" y2="-40" />
+    <line class="dim" x1="0" y1="-48" x2="0" y2="-32" />
+    <line class="dim" x1="600" y1="-48" x2="600" y2="-32" />
+    <text class="tk" x="264" y="-48">6,00 m</text>
+
+    <line class="dim" x1="648" y1="0" x2="648" y2="320" />
+    <line class="dim" x1="640" y1="0" x2="656" y2="0" />
+    <line class="dim" x1="640" y1="320" x2="656" y2="320" />
+    <text class="tk" x="656" y="166">3,20 m</text>
+
+    <line class="dim" x1="70" y1="392" x2="430" y2="392" />
+    <text class="tk" x="222" y="410">barra 3,60 m</text>
+    <line class="dim" x1="16" y1="212" x2="576" y2="212" />
+    <text class="tk" x="238" y="206">mesón 5,60 m</text>
+  </g>
+
+  <!-- ═══ ELEVACIÓN · escala 100 px/m → 600 x 270 útiles ═══ -->
+  <text class="t" x="80" y="620">ELEVACIÓN (mirando el muro de piedra desde el jardín)</text>
+  <g transform="translate(80, 640)">
+    <!-- piso -->
+    <rect class="slab" x="0" y="264" width="600" height="16" />
+
+    <!-- muro de piedra -->
+    <rect class="stone" x="0" y="0" width="600" height="264" />
+
+    <!-- cielo de listones + cubierta -->
+    <rect class="wood" x="0" y="-16" width="600" height="16" />
+    <rect class="roof" x="-6" y="-30" width="612" height="16" />
+
+    <!-- postes -->
+    <rect class="dark" x="4" y="0" width="12" height="264" />
+    <rect class="dark" x="584" y="0" width="12" height="264" />
+
+    <!-- mesón -->
+    <rect class="wood" x="16" y="202" width="560" height="62" />
+
+    <!-- campana + ducto de la parrilla -->
+    <rect class="steel" x="382" y="88" width="120" height="42" />
+    <rect class="steel" x="420" y="0" width="44" height="88" />
+    <!-- parrilla -->
+    <rect class="dark" x="395" y="176" width="94" height="26" />
+    <!-- horno de barro -->
+    <path class="stone" d="M474 202 A48 48 0 0 1 570 202 Z" />
+    <circle class="dark" cx="522" cy="176" r="15" />
+
+    <!-- repisa con plantas -->
+    <rect class="wood" x="72" y="112" width="120" height="10" />
+    <circle class="wood" cx="100" cy="100" r="12" />
+    <circle class="wood" cx="150" cy="100" r="12" />
+
+    <!-- lámparas colgantes -->
+    <line class="dimx" x1="230" y1="-16" x2="230" y2="42" />
+    <path class="dark" d="M212 42 L248 42 L240 62 L220 62 Z" />
+    <line class="dimx" x1="330" y1="-16" x2="330" y2="42" />
+    <path class="dark" d="M312 42 L348 42 L340 62 L320 62 Z" />
+    <line class="dimx" x1="430" y1="-16" x2="430" y2="42" />
+    <path class="dark" d="M412 42 L448 42 L440 62 L420 62 Z" />
+
+    <!-- cotas elevación -->
+    <line class="dim" x1="-52" y1="-30" x2="-52" y2="264" />
+    <line class="dim" x1="-60" y1="-30" x2="-44" y2="-30" />
+    <line class="dim" x1="-60" y1="264" x2="-44" y2="264" />
+    <text class="tk" x="-142" y="122">alto 2,70 m</text>
+
+    <line class="dim" x1="660" y1="176" x2="660" y2="264" />
+    <text class="tk" x="668" y="226">0,90 m</text>
+    <text class="t2" x="668" y="244">altura libre sobre el mesón</text>
+
+    <line class="dim" x1="200" y1="264" x2="200" y2="296" />
+    <text class="tk" x="120" y="314">barra 1,05 m</text>
+  </g>
+
+  <!-- Leyenda -->
+  <g transform="translate(760, 130)">
+    <rect class="slab" x="0" y="0" width="34" height="20" />
+    <text class="t2" x="44" y="15">porcelanato</text>
+    <rect class="stone" x="0" y="34" width="34" height="20" />
+    <text class="t2" x="44" y="49">piedra rústica</text>
+    <rect class="wood" x="0" y="68" width="34" height="20" />
+    <text class="t2" x="44" y="83">madera (pino/roble)</text>
+    <rect class="steel" x="0" y="102" width="34" height="20" />
+    <text class="t2" x="44" y="117">acero</text>
+    <rect class="dark" x="0" y="136" width="34" height="20" />
+    <text class="t2" x="44" y="151">granito / negro</text>
+    <rect class="roof" x="0" y="170" width="34" height="20" />
+    <text class="t2" x="44" y="185">cubierta</text>
+  </g>
+
+  <text class="t2" x="40" y="836">Cielo de listones de madera · muro de piedra al fondo · parrilla con campana y ducto · horno de barro en domo · barra con 5 taburetes de mimbre · 2 focos cálidos reales + 3 lámparas colgantes</text>
+</svg>

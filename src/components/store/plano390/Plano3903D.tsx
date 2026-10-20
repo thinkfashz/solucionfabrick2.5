@@ -604,16 +604,37 @@ function Wardrobe({ x, z, w, h = 2.2, mat }: { x: number; z: number; w: number; 
 function FirstPersonHands() {
   const camera = useThree((st) => st.camera);
   const g = useRef<Group>(null);
+  // Materiales de overlay: siempre por delante de la geometría (como un FPS).
   const skin = useMemo(
-    () => new MeshStandardMaterial({ color: '#b9805f', roughness: 0.64, metalness: 0.02 }),
+    () =>
+      new MeshStandardMaterial({
+        color: '#b9805f',
+        roughness: 0.64,
+        metalness: 0.02,
+        depthTest: false,
+        depthWrite: false,
+      }),
     [],
   );
   const sleeve = useMemo(
-    () => new MeshStandardMaterial({ color: '#ded5c5', roughness: 0.95, metalness: 0.01 }),
+    () =>
+      new MeshStandardMaterial({
+        color: '#ded5c5',
+        roughness: 0.95,
+        metalness: 0.01,
+        depthTest: false,
+        depthWrite: false,
+      }),
     [],
   );
-  const hair = useMemo(
-    () => new MeshStandardMaterial({ color: '#2a201b', roughness: 0.8 }),
+  const cuff = useMemo(
+    () =>
+      new MeshStandardMaterial({
+        color: '#2a201b',
+        roughness: 0.8,
+        depthTest: false,
+        depthWrite: false,
+      }),
     [],
   );
 
@@ -622,40 +643,45 @@ function FirstPersonHands() {
     const t = clock.elapsedTime;
     g.current.position.copy(camera.position);
     g.current.quaternion.copy(camera.quaternion);
-    g.current.translateX(Math.sin(t * 1.3) * 0.007);
-    g.current.translateY(-0.27 + Math.sin(t * 6.4) * 0.0045);
-    g.current.translateZ(-0.36);
+    g.current.translateX(Math.sin(t * 1.3) * 0.006);
+    g.current.translateY(-0.07 + Math.sin(t * 6.4) * 0.0045);
+    g.current.translateZ(-0.12);
   });
 
   return (
     <group ref={g}>
       {[-1, 1].map((side) => (
-        <group key={side} position={[side * 0.185, 0, 0]} rotation={[0.18, side * -0.1, side * 0.05]}>
-          {/* manga */}
-          <mesh position={[0, 0, -0.03]} material={sleeve}>
-            <boxGeometry args={[0.12, 0.105, 0.21]} />
+        <group key={side} position={[side * 0.055, 0, 0]} rotation={[-0.25, side * 0.1, side * 0.02]}>
+          {/* manga (cerca de la cámara) */}
+          <mesh position={[0, 0, -0.06]} material={sleeve} renderOrder={999}>
+            <boxGeometry args={[0.1, 0.09, 0.18]} />
+          </mesh>
+          <mesh position={[0, 0, -0.155]} material={cuff} renderOrder={999}>
+            <boxGeometry args={[0.102, 0.092, 0.02]} />
           </mesh>
           {/* antebrazo */}
-          <mesh position={[0, 0.004, -0.19]} rotation={[0.08, 0, 0]} material={skin}>
-            <boxGeometry args={[0.088, 0.082, 0.24]} />
+          <mesh position={[0, 0.002, -0.25]} material={skin} renderOrder={999}>
+            <boxGeometry args={[0.075, 0.07, 0.2]} />
           </mesh>
           {/* dorso de la mano */}
-          <mesh position={[0, 0.006, -0.352]} material={skin}>
-            <boxGeometry args={[0.092, 0.04, 0.115]} />
+          <mesh position={[0, 0, -0.385]} material={skin} renderOrder={999}>
+            <boxGeometry args={[0.08, 0.036, 0.1]} />
           </mesh>
-          {/* dedos ligeramente curvados */}
-          {[-0.032, -0.011, 0.011, 0.032].map((fx, fi) => (
-            <mesh key={fx} position={[fx, 0.004, -0.424 + Math.abs(fi - 1.5) * 0.006]} rotation={[0.42, 0, 0]} material={skin}>
-              <boxGeometry args={[0.017, 0.027, 0.08]} />
+          {/* dedos curvados */}
+          {[-0.027, -0.009, 0.009, 0.027].map((fx, fi) => (
+            <mesh
+              key={fx}
+              position={[fx, -0.004, -0.448 + Math.abs(fi - 1.5) * 0.005]}
+              rotation={[-0.5, 0, 0]}
+              material={skin}
+              renderOrder={999}
+            >
+              <boxGeometry args={[0.015, 0.024, 0.07]} />
             </mesh>
           ))}
-          {/* pulgar */}
-          <mesh position={[side * -0.052, 0.006, -0.352]} rotation={[0.2, 0, side * 0.45]} material={skin}>
-            <boxGeometry args={[0.024, 0.03, 0.075]} />
-          </mesh>
-          {/* puño de la manga */}
-          <mesh position={[0, 0, -0.115]} material={hair}>
-            <boxGeometry args={[0.122, 0.107, 0.02]} />
+          {/* pulgar hacia el centro */}
+          <mesh position={[side * -0.045, -0.002, -0.375]} rotation={[0, 0, side * 0.5]} material={skin} renderOrder={999}>
+            <boxGeometry args={[0.022, 0.026, 0.065]} />
           </mesh>
         </group>
       ))}

@@ -23,11 +23,15 @@ export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode
   const timer = useRef<number | null>(null);
   const [active, setActive] = useState(true);
 
-  const wake = useCallback(() => {
-    setActive(true);
+  const keepAlive = useCallback(() => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setActive(false), IDLE_MS);
   }, []);
+
+  const wake = useCallback(() => {
+    setActive(true);
+    keepAlive();
+  }, [keepAlive]);
 
   useEffect(() => {
     const reset = () => {
@@ -73,6 +77,7 @@ export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode
           const dy = e.clientY - d.y;
           d.x = e.clientX;
           d.y = e.clientY;
+          keepAlive();
           // Arrastrar a la derecha gira a la derecha (yaw negativo).
           input.lookDx -= dx * LOOK_SENS;
           input.pitch = Math.max(-1, Math.min(1, input.pitch - dy * PITCH_SENS));
@@ -101,6 +106,7 @@ export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode
           onMove={(x, y) => {
             input.move.x = x;
             input.move.y = y;
+            keepAlive();
           }}
         />
       </div>
@@ -116,6 +122,7 @@ export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode
           onMove={(x, y) => {
             input.turn = x;
             input.pitch = y;
+            keepAlive();
           }}
         />
       </div>

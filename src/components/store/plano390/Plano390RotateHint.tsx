@@ -17,6 +17,10 @@ export default function Plano390RotateHint({ enabled }: { enabled: boolean }) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!enabled) {
+      setShow(false);
+      return;
+    }
     const check = () => {
       let dismissed = false;
       try {

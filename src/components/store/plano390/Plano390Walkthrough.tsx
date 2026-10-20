@@ -1,6 +1,6 @@
 'use client';
 /*
- * Plano390Walkthrough — recorrido 3D del "Proyecto №390-1" (127 m²):
+ * Plano390Walkthrough — recorrido 3D del "Proyecto №390-1" (148 m²):
  * intro estilo videojuego + escena HD (texturas reales de los visores) +
  * cámara primera persona con colisiones + recorrido guiado + Circuito CCTV
  * en modo Cine + HUD con minimapa y puntos de foto.
@@ -102,6 +102,7 @@ export default function Plano390Walkthrough() {
   };
 
   const changeMode = (m: Plano390Mode) => {
+    const wasPlan = planView;
     setPlanView(false);
     input.mode = m;
     input.spot = null;
@@ -114,6 +115,12 @@ export default function Plano390Walkthrough() {
     setMode(m);
     if (m !== 'cctv') setCctvIndex(0);
     if (m === 'tour') setTourIndex(0);
+    // Salir del plano con "Libre" devuelve al living; si no, quedaría
+    // caminando a la altura de ojos desde el jardín sur.
+    if (wasPlan && m === 'free') {
+      const living = SCENES.find((s) => s.id === 'living');
+      if (living) input.jump = { pos: living.pos, look: living.look };
+    }
   };
 
   const goSpot = (i: number) => {

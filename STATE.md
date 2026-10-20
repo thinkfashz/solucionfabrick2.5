@@ -20,7 +20,8 @@ Bitácora de trabajo (se actualiza al cierre de cada hito).
 ### Validación
 - `esbuild` sobre los 9 archivos tocados: sin errores de sintaxis.
 - Sin `node_modules` local: typecheck/lint real corre en Vercel (`ignoreBuildErrors: false`).
-- Deploy: **pendiente de commit/push** al momento de escribir esta sección.
+- Deploy del commit base `c4e93145`: **Ready** en producción (`https://www.solucionesfabrick.com/herramientas/proyecto-390-1`).
+- Ajustes menores de cierre (salir del plano con “Libre” devuelve al living; el aviso de giro se apaga en plano) van en el push final; el alias de producción queda con la versión más nueva.
 
 ### Próximo
 - Validar con capturas del teléfono en retrato y horizontal; revisar plano 3D y hint.

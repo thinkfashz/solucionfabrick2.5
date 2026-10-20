@@ -17,6 +17,10 @@ Bitácora de trabajo (se actualiza al cierre de cada hito).
 - **Enlaces**: `?vista=plano&audit=1` (o `codigos=1`), `?vista=plano&manos=0`.
 - **Verificación**: `tsc` limpio en 3D/UI/Map2D/Walkthrough/CameraRig/Data/Audit; auditoría 0/0/2; errores 056–061 documentados en `visor-casa-fabrick`; `SKILL.md` y `docs/proyecto-390-1/plano-v2.md` (iteración 7) actualizados.
 
+### Deploy
+- Commit `e00069bc` en `main` → deploy `dpl_6myYZY21Mt4HSBazWzAc1P6hmuF9` **READY**, alias `www.solucionesfabrick.com` verificado.
+- Producción HTTP 200 en `/herramientas/proyecto-390-1`; el chunk de la página incluye las cadenas nuevas (“Auditoría del plano”, “Abrir Plano 3D con códigos”, “Tocá un ambiente para entrar”, “Geometría coherente”). Metadata SEO intactas (no se tocó `page.tsx`).
+
 ### Pendiente
 - Revisar en producción las capturas de `?vista=plano&audit=1`: legibilidad de códigos con pinza, etiquetas de ambientes y ausencia de brillo. Ajustar tamaño de fuente o radio inicial si hace falta.
 - Confirmar que el toque de ambiente no compite con la órbita en pantallas con guantes.

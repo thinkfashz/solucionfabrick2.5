@@ -66,3 +66,28 @@ Bitácora de trabajo (se actualiza al cierre de cada hito).
 - Validar en móvil real: rendimiento con 8 point lights + sombras 2048 (bajar a 1024 si calienta).
 - Ideas: sonido ambiente por estancia, exportar captura del modo Cine, banda sonora en el tour.
 - housefabrick (`/app/`): NO tocar (olvidado a petición del jugador).
+
+### Sesión 5 — plano 2D, panel de cámaras y POV humano (2026-10-19)
+- **Plano 2D** (`Plano390Map2D.tsx`): planta vista desde arriba generada con el mismo
+  contrato (`ROOMS`, `WALLS`, `OPENINGS`, `FURNITURE_2D`, `CCTV_CAMERAS`). Muros con
+  espesor real, ventanas en azul, puertas con hoja y arco de giro, portón punteado,
+  mobiliario, cotas 14,60 × 11,00, escala 1 m y norte. Estilo blueprint oscuro.
+- **Panel "Plano"** en el header (junto a Ficha), con leyenda, superficies y salto a
+  cámara tocando su cono. `FURNITURE_2D` se agregó a `plano390Data.ts`.
+- **Panel de cámaras con miniaturas**: en modo Cámaras aparece una tira inferior con
+  una tarjeta por cámara (miniplano centrado en la zona + cono). Tocar salta a esa
+  cámara (`cine.index` + `cine.jump`). El reloj CCTV subió para no quedar tapado.
+- **POV humano**: `FirstPersonHands` (antebrazos, manos y dedos) colgado de la cámara,
+  con respiración y balanceo; botón **mano** para mostrar/ocultar. Oculto en CCTV.
+- **Puertas automáticas en tour** (`autoDoors`): la hoja abre a < 2,9 m de la cámara.
+  El portón del garaje sigue solo con el interruptor global.
+- **Terminaciones**: zócalo en los 4 lados de cada ambiente, casing blanco en puertas
+  y ventanas, alféizar solo con `sill > 0,2`, backsplash de piedra en cocina, manijas
+  de puerta a 1,02 m (antes estaban a 5 cm del piso).
+- **Mobiliario**: mesas de luz + lámparas en los 3 dormitorios, cabeceras con arte,
+  tríptico en el living, cojines y manta, 2 sillas de cabecera en el comedor, centros
+  de mesa y 2 plantas interiores.
+- **Cielo real**: `Sky` de drei (día/atardecer) y `Stars` de noche, manteniendo el
+  color de fondo como respaldo.
+- **Errores nuevos documentados**: 012 (capturas headless con WebGL matan el server),
+  013 (manija a 5 cm), 014 (`axis` es la normal del muro).

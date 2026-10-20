@@ -355,3 +355,52 @@ export const CCTV_CAMERAS: CctvCamera[] = [
   { id: 'CAM-11', name: 'Jardín · acceso', zone: 'Exterior', pos: [11.0, 1.9, 18.6], look: [6.0, 2.0, 11.0], fov: 52 },
   { id: 'CAM-12', name: 'Pasillo poniente', zone: 'Pasillo', pos: [2.9, 2.5, 5.9], look: [2.9, 1.1, 3.6], fov: 58 },
 ];
+
+/**
+ * Huellas de mobiliario para el plano 2D (misma grilla que la escena 3D).
+ * kind → color/símbolo en `Plano390Map2D`.
+ */
+export type Furniture2D = {
+  kind: 'bed' | 'sofa' | 'table' | 'counter' | 'island' | 'wardrobe' | 'tv' | 'car' | 'desk' | 'bath' | 'rug';
+  x0: number;
+  z0: number;
+  x1: number;
+  z1: number;
+};
+
+export const FURNITURE_2D: Furniture2D[] = [
+  // Dormitorio 1
+  { kind: 'bed', x0: 10.7, z0: 0.53, x1: 12.5, z1: 2.57 },
+  { kind: 'wardrobe', x0: 12.8, z0: 0.33, x1: 14.3, z1: 0.91 },
+  { kind: 'desk', x0: 10.4, z0: 2.93, x1: 11.6, z1: 3.43 },
+  // Dormitorio 2
+  { kind: 'bed', x0: 0.75, z0: 0.53, x1: 2.35, z1: 2.57 },
+  { kind: 'wardrobe', x0: 2.37, z0: 2.06, x1: 3.32, z1: 2.64 },
+  { kind: 'desk', x0: 0.55, z0: 2.87, x1: 1.75, z1: 3.43 },
+  // Dormitorio 3
+  { kind: 'bed', x0: 0.75, z0: 6.53, x1: 2.35, z1: 8.55 },
+  { kind: 'wardrobe', x0: 2.37, z0: 8.31, x1: 3.32, z1: 8.89 },
+  { kind: 'desk', x0: 0.6, z0: 10.07, x1: 1.8, z1: 10.63 },
+  // Living
+  { kind: 'tv', x0: 3.46, z0: 7.0, x1: 3.62, z1: 10.8 },
+  { kind: 'rug', x0: 5.0, z0: 7.8, x1: 8.2, z1: 10.4 },
+  { kind: 'sofa', x0: 7.7, z0: 7.95, x1: 8.6, z1: 10.25 },
+  { kind: 'table', x0: 6.0, z0: 8.55, x1: 6.7, z1: 9.65 },
+  { kind: 'table', x0: 6.35, z0: 7.75, x1: 7.55, z1: 8.65 },
+  // Comedor
+  { kind: 'table', x0: 5.6, z0: 4.3, x1: 7.4, z1: 5.2 },
+  // Cocina
+  { kind: 'counter', x0: 3.65, z0: 0.31, x1: 6.35, z1: 0.93 },
+  { kind: 'counter', x0: 6.45, z0: 0.37, x1: 7.35, z1: 1.07 },
+  { kind: 'island', x0: 4.3, z0: 2.05, x1: 6.7, z1: 3.05 },
+  // Baño
+  { kind: 'bath', x0: 0.25, z0: 3.61, x1: 1.15, z1: 4.8 },
+  { kind: 'counter', x0: 0.4, z0: 5.37, x1: 1.2, z1: 5.87 },
+  { kind: 'bath', x0: 1.55, z0: 4.3, x1: 2.15, z1: 4.9 },
+  // Ensuite
+  { kind: 'bath', x0: 9.45, z0: 3.6, x1: 10.25, z1: 4.5 },
+  { kind: 'counter', x0: 9.42, z0: 4.61, x1: 10.14, z1: 5.09 },
+  { kind: 'bath', x0: 10.52, z0: 3.65, x1: 11.07, z1: 4.15 },
+  // Garaje
+  { kind: 'car', x0: 10.96, z0: 6.65, x1: 12.74, z1: 10.85 },
+];

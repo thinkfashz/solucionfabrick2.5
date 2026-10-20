@@ -24,6 +24,7 @@ import {
 } from 'three';
 import type { Material } from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
+import { Sky, Stars } from '@react-three/drei';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 import {
@@ -235,16 +236,22 @@ function aimYaw(cam: CctvCamera): number {
 function OpeningMesh({
   o,
   open,
+  auto = false,
   matWall,
   matFrame,
   matDoor,
+  matCasing,
 }: {
   o: Opening;
   open: boolean;
+  /** En tour: la hoja se abre sola cuando la cámara se acerca (POV humano). */
+  auto?: boolean;
   matWall: Material;
   matFrame: Material;
   matDoor: Material;
+  matCasing: Material;
 }) {
+  const camera = useThree((s) => s.camera);
   const leaf = useRef<Group>(null);
   const leaf2 = useRef<Group>(null);
   const paneA = useRef<Group>(null);
@@ -257,11 +264,17 @@ function OpeningMesh({
   const lintelH = Math.max(0, WALL_H - top);
   const alongZ = o.axis === 'z';
 
-  const doorTarget = open ? (o.swing ?? 1) * -1.35 : 0;
-  const slide = open ? o.width * 0.44 : 0;
+  const isDoor = o.kind === 'door' || o.kind === 'double';
 
   useFrame((_, dt) => {
     const k = Math.min(1, dt * 6);
+    // Apertura automática: puerta que se abre al paso de la cámara (solo tour).
+    const dx = camera.position.x - o.x;
+    const dz = camera.position.z - o.z;
+    const near = auto && isDoor && dx * dx + dz * dz < 8.4;
+    const isOpen = open || near;
+    const doorTarget = isOpen ? (o.swing ?? 1) * -1.35 : 0;
+    const slide = isOpen ? o.width * 0.44 : 0;
     if (leaf.current) leaf.current.rotation.y = MathUtils.lerp(leaf.current.rotation.y, doorTarget, k);
     if (leaf2.current) leaf2.current.rotation.y = MathUtils.lerp(leaf2.current.rotation.y, -doorTarget, k);
     if (paneA.current) {
@@ -272,6 +285,7 @@ function OpeningMesh({
       if (alongZ) paneB.current.position.x = MathUtils.lerp(paneB.current.position.x, slide, k);
       else paneB.current.position.z = MathUtils.lerp(paneB.current.position.z, slide, k);
     }
+    // El portón del garaje solo responde al interruptor global, no al paso.
     if (panel.current) panel.current.scale.y = MathUtils.lerp(panel.current.scale.y, open ? 0.04 : 1, k);
   });
 
@@ -292,6 +306,41 @@ function OpeningMesh({
       />
     </>
   );
+
+  // Moldura blanca (casing) de puertas y ventanas + alféizar de piedra.
+  const casing =
+    o.kind === 'garage' || o.kind === 'pass' ? null : (
+      <>
+        <B
+          p={[o.x, top + 0.045, o.z]}
+          s={alongZ ? [o.width + 0.2, 0.09, th + 0.06] : [th + 0.06, 0.09, o.width + 0.2]}
+          m={matCasing}
+          cast
+        />
+        <B
+          p={alongZ ? [o.x - o.width / 2 - 0.055, sill + o.height / 2, o.z] : [o.x, sill + o.height / 2, o.z - o.width / 2 - 0.055]}
+          s={alongZ ? [0.1, o.height + 0.02, th + 0.06] : [th + 0.06, o.height + 0.02, 0.1]}
+          m={matCasing}
+          cast
+        />
+        <B
+          p={alongZ ? [o.x + o.width / 2 + 0.055, sill + o.height / 2, o.z] : [o.x, sill + o.height / 2, o.z + o.width / 2 + 0.055]}
+          s={alongZ ? [0.1, o.height + 0.02, th + 0.06] : [th + 0.06, o.height + 0.02, 0.1]}
+          m={matCasing}
+          cast
+        />
+        {o.kind === 'window' || o.kind === 'slider' ? (
+          (o.sill ?? 0) > 0.2 ? (
+          <B
+            p={[o.x, Math.max(0.06, sill - 0.02), o.z]}
+            s={alongZ ? [o.width + 0.24, 0.04, th + 0.22] : [th + 0.22, 0.04, o.width + 0.24]}
+            m={matCasing}
+            cast
+          />
+          ) : null
+        ) : null}
+      </>
+    );
 
   // antepecho y dintel (muro)
   const wallFill = (
@@ -352,6 +401,7 @@ function OpeningMesh({
     return (
       <>
         {wallFill}
+        {casing}
         {frame}
         {leaves.map((l, i) => {
           const gx = alongZ ? o.x + l.hinge : o.x;
@@ -378,9 +428,15 @@ function OpeningMesh({
                   <meshStandardMaterial color="#dcecf4" transparent opacity={0.22} metalness={0.5} roughness={0.03} envMapIntensity={1.8} />
                 </mesh>
               ) : (
-                <mesh position={alongZ ? [0, 0.05, 0] : [0, 0.05, 0]}>
-                  <boxGeometry args={[0.02, 0.02, 0.02]} />
-                  <meshStandardMaterial color="#b99a5f" metalness={0.9} roughness={0.25} />
+                <mesh
+                  position={
+                    alongZ
+                      ? [sx * (leafW - 0.1), 1.02, 0.05]
+                      : [0.05, 1.02, (l.hinge > 0 ? -1 : 1) * (leafW - 0.1)]
+                  }
+                >
+                  <boxGeometry args={alongZ ? [0.12, 0.025, 0.025] : [0.025, 0.025, 0.12]} />
+                  <meshStandardMaterial color="#c9a86a" metalness={0.95} roughness={0.22} />
                 </mesh>
               )}
             </group>
@@ -396,6 +452,7 @@ function OpeningMesh({
   return (
     <>
       {wallFill}
+      {casing}
       {frame}
       <group ref={paneA} position={alongZ ? [o.x - half / 2, 0, o.z] : [o.x, 0, o.z - half / 2]}>
         <mesh position={[0, sill + o.height / 2, 0]}>
@@ -542,16 +599,113 @@ function Wardrobe({ x, z, w, h = 2.2, mat }: { x: number; z: number; w: number; 
   );
 }
 
+/* ── POV humano: cuerpo en primera persona (manos y antebrazos) ── */
+
+function FirstPersonHands() {
+  const camera = useThree((st) => st.camera);
+  const g = useRef<Group>(null);
+  const skin = useMemo(
+    () => new MeshStandardMaterial({ color: '#b9805f', roughness: 0.64, metalness: 0.02 }),
+    [],
+  );
+  const sleeve = useMemo(
+    () => new MeshStandardMaterial({ color: '#ded5c5', roughness: 0.95, metalness: 0.01 }),
+    [],
+  );
+  const hair = useMemo(
+    () => new MeshStandardMaterial({ color: '#2a201b', roughness: 0.8 }),
+    [],
+  );
+
+  useFrame(({ clock }) => {
+    if (!g.current) return;
+    const t = clock.elapsedTime;
+    g.current.position.copy(camera.position);
+    g.current.quaternion.copy(camera.quaternion);
+    g.current.translateX(Math.sin(t * 1.3) * 0.007);
+    g.current.translateY(-0.27 + Math.sin(t * 6.4) * 0.0045);
+    g.current.translateZ(-0.36);
+  });
+
+  return (
+    <group ref={g}>
+      {[-1, 1].map((side) => (
+        <group key={side} position={[side * 0.185, 0, 0]} rotation={[0.18, side * -0.1, side * 0.05]}>
+          {/* manga */}
+          <mesh position={[0, 0, -0.03]} material={sleeve}>
+            <boxGeometry args={[0.12, 0.105, 0.21]} />
+          </mesh>
+          {/* antebrazo */}
+          <mesh position={[0, 0.004, -0.19]} rotation={[0.08, 0, 0]} material={skin}>
+            <boxGeometry args={[0.088, 0.082, 0.24]} />
+          </mesh>
+          {/* dorso de la mano */}
+          <mesh position={[0, 0.006, -0.352]} material={skin}>
+            <boxGeometry args={[0.092, 0.04, 0.115]} />
+          </mesh>
+          {/* dedos ligeramente curvados */}
+          {[-0.032, -0.011, 0.011, 0.032].map((fx, fi) => (
+            <mesh key={fx} position={[fx, 0.004, -0.424 + Math.abs(fi - 1.5) * 0.006]} rotation={[0.42, 0, 0]} material={skin}>
+              <boxGeometry args={[0.017, 0.027, 0.08]} />
+            </mesh>
+          ))}
+          {/* pulgar */}
+          <mesh position={[side * -0.052, 0.006, -0.352]} rotation={[0.2, 0, side * 0.45]} material={skin}>
+            <boxGeometry args={[0.024, 0.03, 0.075]} />
+          </mesh>
+          {/* puño de la manga */}
+          <mesh position={[0, 0, -0.115]} material={hair}>
+            <boxGeometry args={[0.122, 0.107, 0.02]} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/* ── Planta interior ──────────────────────────────────────────── */
+
+function IndoorPlant({ x, z, s = 1 }: { x: number; z: number; s?: number }) {
+  return (
+    <group position={[x, 0, z]} scale={[s, s, s]}>
+      <mesh position={[0, 0.2, 0]} castShadow>
+        <cylinderGeometry args={[0.19, 0.15, 0.4, 16]} />
+        <meshStandardMaterial color="#b9a894" roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.41, 0]}>
+        <cylinderGeometry args={[0.17, 0.17, 0.03, 16]} />
+        <meshStandardMaterial color="#3a3025" roughness={0.95} />
+      </mesh>
+      {[0, 1, 2, 3, 4].map((i) => {
+        const a = (i / 5) * Math.PI * 2;
+        const r = 0.11 + (i % 2) * 0.06;
+        return (
+          <mesh key={i} position={[Math.cos(a) * r, 0.72 + (i % 3) * 0.12, Math.sin(a) * r]} rotation={[0.35, a, 0.4]} castShadow>
+            <coneGeometry args={[0.085, 0.5, 6]} />
+            <meshStandardMaterial color={i % 2 ? '#5f7a4c' : '#6f8a55'} roughness={0.9} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
 /* ── Escena ────────────────────────────────────────────────────── */
 
 export default function Plano3903D({
   light,
   lightsOn = true,
   openHouse = false,
+  showHands = true,
+  autoDoors = false,
 }: {
   light: 'day' | 'sunset' | 'night';
   lightsOn?: boolean;
   openHouse?: boolean;
+  /** Cuerpo en primera persona (manos/antebrazos). */
+  showHands?: boolean;
+  /** Abre las puertas al acercarse la cámara (recorrido POV). */
+  autoDoors?: boolean;
 }) {
   const textures = useViewerTextures();
   const oak = usePbrMaps('woodOak');
@@ -596,8 +750,21 @@ export default function Plano3903D({
     () => new MeshStandardMaterial({ color: '#e9e3d7', roughness: 0.94, metalness: 0.02 }),
     [],
   );
+  const matTerracotta = useMemo(
+    () => new MeshStandardMaterial({ color: '#b8674a', roughness: 0.92, metalness: 0.02 }),
+    [],
+  );
+  const matSage = useMemo(
+    () => new MeshStandardMaterial({ color: '#7f8f6e', roughness: 0.92, metalness: 0.02 }),
+    [],
+  );
+  const matBrass = useMemo(
+    () => new MeshStandardMaterial({ color: '#c9a76a', roughness: 0.28, metalness: 0.9 }),
+    [],
+  );
 
   const night = light === 'night';
+  const sunPos: Vec3 = light === 'sunset' ? [2.5, 2.2, 26] : [6.5, 16, 26];
   const bg = night ? '#0a1522' : light === 'sunset' ? '#f4c9a0' : '#dfeaf3';
   const sunColor = night ? '#93abd8' : light === 'sunset' ? '#ffb46e' : '#eef6ff';
   const sunIntensity = night ? 0.22 : light === 'sunset' ? 2.4 : 3.35;
@@ -612,6 +779,18 @@ export default function Plano3903D({
       <NicheEnvironment intensity={night ? 0.55 : 1.05} />
       <color attach="background" args={[bg]} />
       <fog attach="fog" args={[bg, 34, 92]} />
+      {night ? (
+        <Stars radius={140} depth={50} count={2200} factor={3.4} saturation={0} fade speed={0.35} />
+      ) : (
+        <Sky
+          distance={450000}
+          sunPosition={sunPos}
+          turbidity={light === 'sunset' ? 9.5 : 4.2}
+          rayleigh={light === 'sunset' ? 3.6 : 1.5}
+          mieCoefficient={0.006}
+          mieDirectionalG={0.85}
+        />
+      )}
 
       {/* ── Terreno: césped + adoquín + camino ── */}
       <mesh position={[7.3, -0.03, 9]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow material={matGrass}>
@@ -671,6 +850,8 @@ export default function Plano3903D({
         <group key={`zb${room.id}`}>
           <B p={[room.x0 + 0.02, 0.05, (room.z0 + room.z1) / 2]} s={[0.03, 0.1, room.z1 - room.z0]} m={matBand} />
           <B p={[room.x1 - 0.02, 0.05, (room.z0 + room.z1) / 2]} s={[0.03, 0.1, room.z1 - room.z0]} m={matBand} />
+          <B p={[(room.x0 + room.x1) / 2, 0.05, room.z0 + 0.02]} s={[room.x1 - room.x0, 0.1, 0.03]} m={matBand} />
+          <B p={[(room.x0 + room.x1) / 2, 0.05, room.z1 - 0.02]} s={[room.x1 - room.x0, 0.1, 0.03]} m={matBand} />
         </group>
       ))}
 
@@ -680,9 +861,11 @@ export default function Plano3903D({
           key={o.id}
           o={o}
           open={openHouse}
+          auto={autoDoors}
           matWall={o.ext ? matWallExt : matWallInt}
           matFrame={matFrame}
           matDoor={matOak}
+          matCasing={matBand}
         />
       ))}
 
@@ -754,7 +937,22 @@ export default function Plano3903D({
         <B p={[0, 0.55, 0]} s={[0.75, 0.18, 2.1]} m={matLinen} />
         <B p={[0.05, 0.5, 0.55]} s={[0.5, 0.12, 0.5]} m={matPine} />
         <B p={[0.05, 0.5, -0.55]} s={[0.5, 0.12, 0.5]} m={matPine} />
+        {/* cojines de acento */}
+        <B p={[-0.02, 0.66, 0.62]} s={[0.34, 0.3, 0.14]} m={matTerracotta} r={[0, 0.2, 0.16]} cast />
+        <B p={[-0.02, 0.66, 0.3]} s={[0.3, 0.28, 0.13]} m={matSage} r={[0, -0.15, -0.12]} cast />
+        <B p={[-0.02, 0.66, -0.52]} s={[0.34, 0.3, 0.14]} m={matSage} r={[0, 0.25, -0.16]} cast />
+        {/* manta */}
+        <B p={[0.03, 0.44, -0.15]} s={[0.62, 0.05, 0.7]} m={matTerracotta} r={[0, 0.06, 0]} />
       </group>
+      {/* tríptico en el muro sur del living */}
+      {[5.15, 6.05, 6.95].map((x, i) => (
+        <group key={`art${i}`} position={[x, 1.82, 10.72]}>
+          <B p={[0, 0, 0]} s={[0.62, 0.82, 0.05]} m={matPine} />
+          <B p={[0, 0, 0.028]} s={[0.52, 0.72, 0.01]} m={i === 1 ? matBrass : matTerracotta} />
+        </group>
+      ))}
+      <IndoorPlant x={4.35} z={10.45} s={1.05} />
+      <IndoorPlant x={4.2} z={3.9} s={0.85} />
       <B p={[6.35, 0.4, 9.1]} s={[0.7, 0.38, 1.1]} m={matPine} cast />
       <B p={[6.35, 0.6, 9.1]} s={[0.8, 0.04, 1.2]} m={matBand} />
       <B p={[6.9, 0.3, 8.2]} s={[1.2, 0.45, 0.9]} m={matPine} cast />
@@ -777,9 +975,22 @@ export default function Plano3903D({
           )),
         )}
       </group>
+      {[[-1.12, 0], [1.12, 0]].map(([dx, dz]) => (
+        <group key={`end${dx}`} position={[6.5 + dx, 0, 4.75 + dz]} rotation={[0, dx > 0 ? -Math.PI / 2 : Math.PI / 2, 0]}>
+          <B p={[0, 0.45, 0]} s={[0.44, 0.05, 0.44]} m={matLinen} cast />
+          <B p={[0, 0.72, 0.2]} s={[0.44, 0.5, 0.05]} m={matLinen} cast />
+          {[[-0.17, -0.17], [-0.17, 0.17], [0.17, -0.17], [0.17, 0.17]].map(([lx, lz], j) => (
+            <B key={j} p={[lx, 0.22, lz]} s={[0.035, 0.44, 0.035]} m={matPine} />
+          ))}
+        </group>
+      ))}
       <mesh position={[6.5, 0.5, 4.75]}>
         <cylinderGeometry args={[0.12, 0.16, 0.18, 12]} />
         <meshStandardMaterial color="#e9e2d3" roughness={0.6} />
+      </mesh>
+      <mesh position={[6.5, 0.68, 4.75]}>
+        <sphereGeometry args={[0.16, 8, 6]} />
+        <meshStandardMaterial color="#6f8a55" roughness={0.9} />
       </mesh>
 
       {/* ── Cocina ── */}
@@ -824,6 +1035,9 @@ export default function Plano3903D({
           <boxGeometry args={[1.14, 0.015, 0.02]} />
           <meshStandardMaterial color="#ffeec9" emissive="#ffd9a0" emissiveIntensity={lightsOn ? 1.6 : 0.02} />
         </mesh>
+        {/* backsplash de piedra (lujo, no compite con la luz) */}
+        <B p={[5.02, 1.2, 0.3]} s={[2.86, 0.5, 0.035]} m={matStone} />
+        <B p={[6.9, 1.2, 0.37]} s={[0.86, 0.5, 0.035]} m={matStone} />
         {/* refri acero */}
         <B p={[6.9, 0.925, 0.72]} s={[0.9, 1.85, 0.7]} m={matFrame} cast />
         <mesh position={[6.9, 1.1, 1.08]}>
@@ -958,6 +1172,20 @@ export default function Plano3903D({
           <planeGeometry args={[2.6, 2.2]} />
           <meshStandardMaterial color="#d9cfc0" roughness={0.95} />
         </mesh>
+        {[10.42, 12.78].map((x) => (
+          <group key={x} position={[x, 0, 0.72]}>
+            <B p={[0, 0.26, 0]} s={[0.44, 0.52, 0.44]} m={matPine} cast />
+            <B p={[0, 0.54, 0]} s={[0.48, 0.04, 0.48]} m={matBand} />
+            <mesh position={[0, 0.66, 0]}>
+              <cylinderGeometry args={[0.085, 0.065, 0.18, 12]} />
+              <meshStandardMaterial color="#efe6d5" emissive="#ffd9a0" emissiveIntensity={lightsOn ? 0.9 : 0.02} />
+            </mesh>
+          </group>
+        ))}
+        <group position={[11.6, 1.8, 0.27]}>
+          <B p={[0, 0, 0]} s={[1.15, 0.66, 0.04]} m={matPine} />
+          <B p={[0, 0, 0.024]} s={[1.05, 0.56, 0.01]} m={matSage} />
+        </group>
       </group>
 
       {/* ── Dormitorio 2 ── */}
@@ -966,6 +1194,20 @@ export default function Plano3903D({
         <Wardrobe x={2.85} z={2.35} w={0.95} mat={matBand} />
         <Desk x={1.15} z={3.15} w={1.2} matWood={matPine} matWall={matBand} />
         <B p={[2.35, 0.55, 3.2]} s={[0.5, 0.06, 0.5]} m={matLinen} />
+        {[0.52, 2.58].map((x) => (
+          <group key={x} position={[x, 0, 0.72]}>
+            <B p={[0, 0.26, 0]} s={[0.42, 0.52, 0.42]} m={matPine} cast />
+            <B p={[0, 0.54, 0]} s={[0.46, 0.04, 0.46]} m={matBand} />
+            <mesh position={[0, 0.66, 0]}>
+              <cylinderGeometry args={[0.08, 0.06, 0.17, 12]} />
+              <meshStandardMaterial color="#efe6d5" emissive="#ffd9a0" emissiveIntensity={lightsOn ? 0.9 : 0.02} />
+            </mesh>
+          </group>
+        ))}
+        <group position={[1.55, 1.8, 0.27]}>
+          <B p={[0, 0, 0]} s={[1.05, 0.6, 0.04]} m={matPine} />
+          <B p={[0, 0, 0.024]} s={[0.95, 0.5, 0.01]} m={matTerracotta} />
+        </group>
       </group>
 
       {/* ── Dormitorio 3 ── */}
@@ -978,6 +1220,20 @@ export default function Plano3903D({
           <planeGeometry args={[2.4, 2.2]} />
           <meshStandardMaterial color="#d9cfc0" roughness={0.95} />
         </mesh>
+        {[0.52, 2.58].map((x) => (
+          <group key={x} position={[x, 0, 6.72]}>
+            <B p={[0, 0.26, 0]} s={[0.42, 0.52, 0.42]} m={matPine} cast />
+            <B p={[0, 0.54, 0]} s={[0.46, 0.04, 0.46]} m={matBand} />
+            <mesh position={[0, 0.66, 0]}>
+              <cylinderGeometry args={[0.08, 0.06, 0.17, 12]} />
+              <meshStandardMaterial color="#efe6d5" emissive="#ffd9a0" emissiveIntensity={lightsOn ? 0.9 : 0.02} />
+            </mesh>
+          </group>
+        ))}
+        <group position={[1.55, 1.8, 6.09]}>
+          <B p={[0, 0, 0]} s={[1.05, 0.6, 0.04]} m={matPine} />
+          <B p={[0, 0, 0.024]} s={[0.95, 0.5, 0.01]} m={matSage} />
+        </group>
       </group>
 
       {/* ── Garaje: auto + estantes ── */}
@@ -1101,6 +1357,9 @@ export default function Plano3903D({
           config={{ position: npc.pos }}
         />
       ))}
+
+      {/* ── POV humano: manos y antebrazos ── */}
+      {showHands ? <FirstPersonHands /> : null}
 
       {/* ── Cielorraso del porche ya cubierto; luces exteriores ── */}
       <pointLight position={[7.2, 2.4, 11.9]} intensity={lightsOn ? (night ? 0.9 : 0.25) : 0} color="#ffd9a0" distance={6} decay={2} />

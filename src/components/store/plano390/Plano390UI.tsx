@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
-import { ArrowLeft, X, Route, Footprints, Clapperboard, Video } from 'lucide-react';
+import { ArrowLeft, X, Route, Footprints, Clapperboard, Video, Map as MapIcon, Lightbulb, DoorOpen, Hand } from 'lucide-react';
 import { ROOMS, PHOTO_SPOTS, PLAN, CCTV_CAMERAS, TOUR_STOPS, SCENES } from '@/lib/plano390Data';
 import type { SceneView } from '@/lib/plano390Data';
+import Plano390Map2D from './Plano390Map2D';
 
 type Stage = 'intro' | 'ready' | 'in';
 type Mode = 'free' | 'tour' | 'cctv';
@@ -21,6 +22,13 @@ export default function Plano390UI({
   onScene,
   cctvIndex = 0,
   tourIndex = 0,
+  lightsOn = true,
+  onToggleLights,
+  openHouse = false,
+  onToggleOpen,
+  showHands = true,
+  onToggleHands,
+  onCctvSelect,
 }: {
   stage: Stage;
   onEnter: () => void;
@@ -33,6 +41,13 @@ export default function Plano390UI({
   onScene: (scene: SceneView) => void;
   cctvIndex?: number;
   tourIndex?: number;
+  lightsOn?: boolean;
+  onToggleLights?: () => void;
+  openHouse?: boolean;
+  onToggleOpen?: () => void;
+  showHands?: boolean;
+  onToggleHands?: () => void;
+  onCctvSelect?: (i: number) => void;
 }): ReactElement | null {
   const GOLD = '#F6C64A';
   const ACCENT_BLUE = '#2E6FA0';
@@ -41,6 +56,7 @@ export default function Plano390UI({
   const [step, setStep] = useState(0);
   const [ready, setReady] = useState(false);
   const [showFiche, setShowFiche] = useState(false);
+  const [showPlan, setShowPlan] = useState(false);
   const [prevRoomLabel, setPrevRoomLabel] = useState(roomLabel);
   const [clock, setClock] = useState('');
 
@@ -236,13 +252,22 @@ export default function Plano390UI({
           </span>
           <b className="text-[10px]">{mode === 'cctv' && activeCam ? `${activeCam.id} · ${activeCam.zone}` : roomLabel}</b>
         </div>
-        {/* Ficha button */}
-        <button
-          onClick={() => setShowFiche(true)}
-          className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-black/62 px-4 text-[10px] font-black backdrop-blur-xl"
-        >
-          Ficha
-        </button>
+        {/* Plano + ficha */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowPlan(true)}
+            className="inline-flex h-11 items-center gap-1.5 rounded-full border border-white/12 bg-black/62 px-3 text-[10px] font-black backdrop-blur-xl"
+          >
+            <MapIcon size={14} />
+            <span>Plano</span>
+          </button>
+          <button
+            onClick={() => setShowFiche(true)}
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-black/62 px-3 text-[10px] font-black backdrop-blur-xl"
+          >
+            Ficha
+          </button>
+        </div>
       </header>
 
       {/* Room label banner (fade-in on change) */}
@@ -294,6 +319,34 @@ export default function Plano390UI({
               <Clapperboard size={13} />
               <span>Cámaras</span>
             </button>
+            <span className="mx-0.5 h-5 w-px shrink-0 bg-white/15" />
+            <button
+              onClick={onToggleLights}
+              aria-label="Encender o apagar las luces"
+              className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 ${
+                lightsOn ? 'bg-[#F6C64A] text-black' : 'bg-black/62 text-white/55'
+              }`}
+            >
+              <Lightbulb size={14} />
+            </button>
+            <button
+              onClick={onToggleOpen}
+              aria-label="Abrir o cerrar puertas y ventanas"
+              className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 ${
+                openHouse ? 'bg-[#F6C64A] text-black' : 'bg-black/62 text-white/55'
+              }`}
+            >
+              <DoorOpen size={14} />
+            </button>
+            <button
+              onClick={onToggleHands}
+              aria-label="Mostrar u ocultar el cuerpo en primera persona"
+              className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 ${
+                showHands ? 'bg-[#F6C64A] text-black' : 'bg-black/62 text-white/55'
+              }`}
+            >
+              <Hand size={14} />
+            </button>
           </div>
           <div className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             <span className="shrink-0 pl-1 pr-1.5 text-[7px] font-black uppercase tracking-[.22em] text-white/40">
@@ -318,6 +371,31 @@ export default function Plano390UI({
           </div>
         </div>
       </div>
+
+      {/* ── Panel de cámaras con miniaturas del plano ── */}
+      {mode === 'cctv' ? (
+        <div className="absolute inset-x-0 bottom-[150px] z-30 px-2">
+          <div
+            className="mx-auto flex max-w-[860px] gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-black/55 p-2 backdrop-blur-xl"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            {CCTV_CAMERAS.map((cam, i) => (
+              <button
+                key={cam.id}
+                onClick={() => onCctvSelect?.(i)}
+                aria-label={`Ver ${cam.id} ${cam.name}`}
+                className={`w-[104px] shrink-0 rounded-xl border p-1 text-left ${
+                  i === cctvIndex ? 'border-[#F6C64A] bg-[#F6C64A]/10' : 'border-white/10 bg-white/[.03]'
+                }`}
+              >
+                <Plano390Map2D compact onlyCam={i} focus={[cam.pos[0], cam.pos[2]]} className="h-[70px] w-full rounded-md" selectedCam={i} />
+                <p className="mt-1 text-[7px] font-black text-white/85">{cam.id} · {cam.zone}</p>
+                <p className="truncate text-[7px] text-white/40">{cam.name}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* ── Overlay de Cine CCTV (marco fino + REC + reloj) ── */}
       {mode === 'cctv' && (
@@ -348,7 +426,7 @@ export default function Plano390UI({
             {String(cctvIndex + 1).padStart(2, '0')}
             <span className="text-white/35"> / {String(CCTV_CAMERAS.length).padStart(2, '0')}</span>
           </div>
-          <div className="absolute bottom-24 left-6 flex items-center gap-2 text-[9px] font-black tracking-[.14em] text-white/60">
+          <div className="absolute bottom-[272px] left-6 flex items-center gap-2 text-[9px] font-black tracking-[.14em] text-white/60">
             <Video size={12} />
             <span>{clock}</span>
           </div>
@@ -495,6 +573,54 @@ export default function Plano390UI({
           </div>
         </div>
       )}
+
+      {/* Plano 2D (panel completo) */}
+      {showPlan ? (
+        <div className="absolute inset-0 z-[90] flex flex-col bg-[#050b0e]/97 backdrop-blur-xl">
+          <header className="flex items-center justify-between gap-2 px-4 pt-4">
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-[.22em] text-[#F6C64A]">Planta · vista desde arriba</p>
+              <h2 className="mt-0.5 text-base font-black">Casa 390-1 · 148 m²</h2>
+            </div>
+            <button onClick={() => setShowPlan(false)} className="grid h-10 w-10 place-items-center rounded-full bg-white/[.08]" aria-label="Cerrar plano">
+              <X size={16} />
+            </button>
+          </header>
+          <div className="flex-1 overflow-y-auto px-3 pb-6">
+            <Plano390Map2D
+              className="w-full"
+              selectedCam={mode === 'cctv' ? cctvIndex : -1}
+              onSelectCam={(i) => {
+                onCctvSelect?.(i);
+                setShowPlan(false);
+              }}
+            />
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
+                <p className="text-[8px] font-black uppercase tracking-[.16em] text-white/40">Leyenda</p>
+                <ul className="mt-2 space-y-1 text-[9px] text-white/65">
+                  <li><span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#e8e2d4]" />Muro</li>
+                  <li><span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#7fd3ff]" />Ventana / corredera</li>
+                  <li><span className="mr-1.5 inline-block h-2 w-2 rounded-sm bg-[#f0c46a]" />Puerta / portón</li>
+                  <li><span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-[#F6C64A]" />Cámara y cono de visión</li>
+                </ul>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
+                <p className="text-[8px] font-black uppercase tracking-[.16em] text-white/40">Superficies</p>
+                <ul className="mt-2 space-y-1 text-[9px] text-white/65">
+                  <li className="flex justify-between"><span>Living</span><b>28,22 m²</b></li>
+                  <li className="flex justify-between"><span>Cocina</span><b>13,24 m²</b></li>
+                  <li className="flex justify-between"><span>Garaje</span><b>25,57 m²</b></li>
+                  <li className="flex justify-between"><span>Dormitorios</span><b>40,31 m²</b></li>
+                </ul>
+              </div>
+            </div>
+            <p className="mt-2 text-center text-[8px] uppercase tracking-[.18em] text-white/30">
+              Tocá una cámara del plano para verla en vivo
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {/* Ficha drawer */}
       {showFiche && (

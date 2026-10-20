@@ -62,3 +62,16 @@ Garaje. Garaje al **oriente**, porche al **centro**, jardín al frente.
 - Banda sonora y sonido ambiente por estancia.
 - Exportar captura desde el modo Cine.
 - Muebles de mayor detalle (mesas de luz, decoración, textiles).
+
+## Iteración 2 (2026-10-19) — plano 2D y recorrido POV
+
+- **Plano 2D** en el visor (botón *Plano*): misma data que el 3D, sin plano paralelo.
+  Muros, ventanas, puertas con arco, mobiliario, cotas generales y escala.
+- **Cámaras**: tira de miniaturas con el cono de cada cámara; tocar salta a la vista.
+- **POV**: manos/antebrazos en primera persona (libre y tour; ocultas en CCTV).
+- **Tour**: las puertas se abren solas al acercarse (2,9 m).
+- **Terminaciones**: zócalo perimetral completo, casing blanco, alféizares, backsplash
+  de piedra, manijas a 1,02 m.
+- **Mobiliario**: mesas de luz y lámparas en dormitorios, arte, textiles, sillas de
+  cabecera y plantas.
+- **Cielo**: `Sky`/`Stars` de drei según la hora.

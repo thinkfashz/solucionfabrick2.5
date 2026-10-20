@@ -9,6 +9,7 @@ import { Canvas } from '@react-three/fiber';
 import { Suspense, useState } from 'react';
 import { ACESFilmicToneMapping, PCFSoftShadowMap } from 'three';
 import { PLAN } from '@/lib/plano390Data';
+import type { SceneView } from '@/lib/plano390Data';
 import Plano3903D from './Plano3903D';
 import Plano390CameraRig, { input } from './Plano390CameraRig';
 import type { Plano390Mode } from './Plano390CameraRig';
@@ -53,6 +54,7 @@ export default function Plano390Walkthrough() {
 
   const goSpot = (i: number) => {
     input.mode = 'free';
+    input.jump = null;
     setMode('free');
     input.spot = i;
     setSpot(i);
@@ -61,6 +63,20 @@ export default function Plano390Walkthrough() {
   const closeSpot = () => {
     input.spot = null;
     setSpot(null);
+  };
+
+  /** Salto directo a una escena desde el selector inferior. */
+  const goScene = (scene: SceneView) => {
+    input.mode = 'free';
+    input.spot = null;
+    input.turn = 0;
+    input.pitch = 0;
+    input.lookDx = 0;
+    input.move.x = 0;
+    input.move.y = 0;
+    input.jump = { pos: scene.pos, look: scene.look };
+    setSpot(null);
+    setMode('free');
   };
 
   return (
@@ -83,8 +99,8 @@ export default function Plano390Walkthrough() {
           </Suspense>
         </Canvas>
       </div>
-      {/* Gradiente cinematográfico superior/inferior */}
-      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,.55),transparent_22%,transparent_72%,rgba(0,0,0,.72))]" />
+      {/* Gradiente cinematográfico superior/inferior (liviano, no tapa la vista) */}
+      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,.38),transparent_15%,transparent_80%,rgba(0,0,0,.58))]" />
       <Plano390Controls mode={mode} onReset={() => setMode('free')} />
       {/* Selector de luz */}
       {stage === 'in' ? (
@@ -109,6 +125,7 @@ export default function Plano390Walkthrough() {
         onSpotChange={goSpot}
         roomLabel={roomLabel}
         onCloseSpot={closeSpot}
+        onScene={goScene}
         cctvIndex={cctvIndex}
         tourIndex={tourIndex}
       />

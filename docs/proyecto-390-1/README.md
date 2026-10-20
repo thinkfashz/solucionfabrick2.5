@@ -44,10 +44,10 @@ Alturas de referencia:
 |---|---|
 | `Plano390Walkthrough.tsx` | Página: estado (`stage`, `mode`, `spot`, `light`, `cctvIndex`, `tourIndex`) y configuración del `<Canvas>` (sombras, ACES, píxel ratio). |
 | `Plano3903D.tsx` | Escena: terreno, muros, techo, pisos (porcelanato/madera), cocina, quincho, mobiliario, personajes, luces y carcasas CCTV. |
-| `Plano390CameraRig.tsx` | Cámara: modo libre (colisiones, sprint, bob), tour cinematográfico, circuito CCTV, spots de foto y consumo del arrastre táctil. |
-| `Plano390Controls.tsx` | Overlay DOM: joysticks, botones de Cine y capa de arrastre para mirar. |
-| `Plano390UI.tsx` | Intro, HUD, minimapa, overlay CCTV, rótulo del tour, tarjetas de foto y ficha técnica. |
-| `src/lib/plano390Data.ts` | **Fuente única de verdad**: `PLAN`, `ROOMS`, `WALLS`, `PHOTO_SPOTS`, `TOUR_STOPS`, `NPC_SPOTS`, `CCTV_CAMERAS`, `QUINCHO`. |
+| `Plano390CameraRig.tsx` | Cámara: modo libre (colisiones, sprint, bob), tour cinematográfico a velocidad constante, circuito CCTV con la cámara fuera de la carcasa, spots de foto, salto a escena y consumo del arrastre táctil. |
+| `Plano390Controls.tsx` | Overlay DOM: joysticks, botones de salir del tour/Cine y capa de arrastre para mirar. |
+| `Plano390UI.tsx` | Intro, HUD, minimapa, overlay CCTV sin viñeta, rótulo del tour con ficha, barra inferior de **Modo** y **Escena**, tarjetas de foto y ficha técnica. |
+| `src/lib/plano390Data.ts` | **Fuente única de verdad**: `PLAN`, `ROOMS`, `WALLS`, `PHOTO_SPOTS`, `TOUR_STOPS`, `SCENES`, `NPC_SPOTS`, `CCTV_CAMERAS`, `QUINCHO`. |
 
 ## Cómo se edita
 
@@ -55,8 +55,9 @@ Alturas de referencia:
    ambiente, actualiza también este documento.
 2. **Mobiliario** → grupos dentro de `Plano3903D.tsx`, cada bloque comentado con
    su medida (busca por `{/* ── ... */}`).
-3. **Recorrido** → array `TOUR_STOPS` (posición + punto de mira + rótulo por parada).
+3. **Recorrido** → array `TOUR_STOPS` (posición + punto de mira + rótulo + ficha corta por parada).
 4. **Cámaras** → array `CCTV_CAMERAS` (posición, objetivo, FOV, zona).
+5. **Escenas del selector** → array `SCENES` (posición + punto de mira).
 5. **Luces** → `LAMPS` y `QUINCHO_LIGHTS` en `Plano3903D.tsx`.
 
 Después de editar: `git push origin main` (Vercel despliega solo) y verificar
@@ -86,3 +87,33 @@ Después de editar: `git push origin main` (Vercel despliega solo) y verificar
 - Atardecer: sol `#ffb46e` 2,2 y lámparas en tono cálido.
 - Noche: luna `#93abd8`, lámparas cálidas a 2,8 y quincho a 2,6.
 - Sombras: `PCFSoftShadowMap`, mapa 2048², cámara de sombra −18…18 × −20…20.
+
+## Modos del visor
+
+| Modo | Qué hace | Cómo se sale |
+|---|---|---|
+| **Libre** | Primera persona con colisiones, joysticks, arrastre para mirar y teclado. | — |
+| **Tour cine** | Recorrido automático de 17 paradas con rótulo, ficha técnica y puntos de progreso. | Botón «Salir del recorrido guiado» o chips de Modo. |
+| **Cámaras** | Circuito de 13 cámaras CCTV cada 7 s con REC, reloj y contador. | Botón «Salir de Cine» o chips de Modo. |
+
+### Tour cinematográfico
+
+El avance es de **velocidad constante real** (`travel / dist`): cada frame la
+cámara recorre `1,45 m/s · delta` metros, con multiplicador de hasta ×2,4 en
+tramos largos y pausa de 2,2 s por parada. Al entrar hay un corte directo a la
+primera parada para no atravesar muros; la mirada se interpola con adelanto y
+se suma un micro-movimiento de cámara humana (yaw, pitch y roll mínimos).
+
+### Cámaras CCTV
+
+La cámara virtual se adelanta 0,36 m sobre el eje de mira para salir de la
+carcasa 3D; sin ese desfase el lente (a 0,16 m) tapa casi todo el encuadre y se
+ve como un círculo negro. El overlay ya no usa viñeta ni scanlines a pantalla
+completa: solo marco de esquinas, REC, nombre, reloj y contador.
+
+### Selector de escena
+
+La barra inferior tiene dos filas: **Modo** (Libre · Tour cine · Cámaras) y
+**Escena** (once destinos con desplazamiento horizontal). Tocar una escena pone
+la cámara en modo libre y viaja con un tween de 1,15 s. Los puntos de foto
+(Foto 41, 44, 50 y 58) se movieron al panel **Ficha** para no saturar la barra.

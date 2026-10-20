@@ -38,6 +38,16 @@ export type PhotoSpot = {
 export type TourStop = {
   label: string;
   note: string;
+  /** Ficha técnica corta que se muestra durante el recorrido. */
+  meta: string;
+  pos: [number, number, number];
+  look: [number, number, number];
+};
+
+/** Vista directa a una escena (selector inferior "Escenas"). */
+export type SceneView = {
+  id: string;
+  label: string;
   pos: [number, number, number];
   look: [number, number, number];
 };
@@ -123,21 +133,38 @@ export const PHOTO_SPOTS: PhotoSpot[] = [
 
 /** Recorrido guiado (walkthrough): cámara en primera persona suavizada por parada. */
 export const TOUR_STOPS: TourStop[] = [
-  { label: 'Fachada sur', note: 'Presentación de la casa y su acceso principal', pos: [7, 1.72, 18.4], look: [7, 2.2, 11.2] },
-  { label: 'Acceso principal', note: 'Umbral del recibidor, 7,17 m²', pos: [5.1, 1.68, 13.1], look: [5.1, 1.5, 10.8] },
-  { label: 'Recibidor', note: 'Circulación que reparte la casa', pos: [4.95, 1.65, 9.5], look: [5.6, 1.4, 7.2] },
-  { label: 'Sala de estar', note: '44,2 m² de cocina-comedor con paño corredizo a la terraza', pos: [7.6, 1.65, 4.4], look: [3.2, 1.15, 1.5] },
-  { label: 'Cocina', note: 'L de 4,50 × 3,50 m con isla de 1,80 × 0,90 m', pos: [4.6, 1.62, 3.2], look: [0.8, 1.0, 2.7] },
-  { label: 'Isla de cocina', note: 'Encimera de 0,95 m y tres taburetes', pos: [3.95, 1.55, 4.55], look: [2.9, 0.9, 2.8] },
-  { label: 'Terraza', note: '21,5 m² al norte con pérgola y paso de 20 cm', pos: [3.2, 1.65, -1.8], look: [3.6, 1.3, 2.1] },
-  { label: 'Pasillo', note: 'Luz fría continua hacia los dormitorios', pos: [10.7, 1.65, 6.3], look: [4.6, 1.35, 6.25] },
-  { label: 'Dormitorio 3', note: '14 m² al sur oriente', pos: [12.1, 1.65, 9.9], look: [12.1, 1.05, 7.3] },
-  { label: 'Dormitorio 2', note: '14 m² al sur poniente', pos: [8.3, 1.65, 9.9], look: [8.3, 1.05, 7.3] },
-  { label: 'Baño y sauna', note: 'Sanitarios y sauna de 5,6 m²', pos: [9.7, 1.65, 3.4], look: [9.3, 1.1, 1.0] },
-  { label: 'Dormitorio principal', note: '16 m² con ventana norte y sofá', pos: [12.6, 1.65, 4.6], look: [12.4, 1.05, 1.0] },
-  { label: 'Quincho', note: '6,00 × 3,20 m con parrilla, horno y barra de 3,60 m', pos: [15.9, 1.62, 7.9], look: [18.6, 1.35, 3.4] },
-  { label: 'Barra del quincho', note: 'Barra de 1,05 m y cinco taburetes, 5,40 m de espacio libre', pos: [17.4, 1.55, 6.6], look: [18.3, 1.05, 2.5] },
-  { label: 'Vista aérea', note: 'Cierre del recorrido: casa, terraza y quincho', pos: [7.5, 7.8, 20.5], look: [9.0, 1.5, 6.5] },
+  { label: 'Fachada sur', note: 'Presentación de la casa y su acceso principal', meta: 'Casa 390-1 · 127 m² · 3 dormitorios · 1 baño · sauna', pos: [7, 1.72, 18.4], look: [7, 2.2, 11.2] },
+  { label: 'Acceso principal', note: 'Umbral del recibidor, 7,17 m²', meta: 'Recibidor 7,17 m² · circulación principal', pos: [5.1, 1.68, 13.1], look: [5.1, 1.5, 10.8] },
+  { label: 'Recibidor', note: 'Circulación que reparte la casa', meta: 'Recibidor 7,17 m² · vestidor 7,53 m²', pos: [4.95, 1.65, 9.5], look: [5.6, 1.4, 7.2] },
+  { label: 'Sala de estar', note: '44,2 m² de cocina-comedor con paño corredizo a la terraza', meta: 'Cocina · Comedor 44,21 m² · paño corredizo norte', pos: [7.6, 1.65, 4.4], look: [3.2, 1.15, 1.5] },
+  { label: 'Cocina', note: 'L de 4,50 × 3,50 m con isla de 1,80 × 0,90 m', meta: 'Cocina en L 4,50 × 3,50 m · muebles 0,90 m', pos: [4.6, 1.62, 3.2], look: [0.8, 1.0, 2.7] },
+  { label: 'Detalle de cocina', note: 'Alacenas con LED, campana y torre de hornos', meta: 'Alacenas 0,90 m desde 1,50 m · campana + ducto', pos: [3.6, 1.42, 4.9], look: [0.6, 1.25, 2.4] },
+  { label: 'Isla de cocina', note: 'Encimera de 0,95 m y tres taburetes', meta: 'Isla 1,80 × 0,90 m · alto 0,95 m · 3 taburetes', pos: [3.95, 1.55, 4.55], look: [2.9, 0.9, 2.8] },
+  { label: 'Terraza', note: '21,5 m² al norte con pérgola y paso de 20 cm', meta: 'Terraza 21,50 m² · pérgola de listones', pos: [3.2, 1.65, -1.8], look: [3.6, 1.3, 2.1] },
+  { label: 'Pasillo', note: 'Luz fría continua hacia los dormitorios', meta: 'Pasillo 8,73 m² · luz fría continua', pos: [10.7, 1.65, 6.3], look: [4.6, 1.35, 6.25] },
+  { label: 'Dormitorio 3', note: '14 m² al sur oriente', meta: 'Dormitorio 3 · 14,00 m² · cama 1,80 × 2,00 m', pos: [12.1, 1.65, 9.9], look: [12.1, 1.05, 7.3] },
+  { label: 'Dormitorio 2', note: '14 m² al sur poniente', meta: 'Dormitorio 2 · 14,00 m²', pos: [8.3, 1.65, 9.9], look: [8.3, 1.05, 7.3] },
+  { label: 'Baño y sauna', note: 'Sanitarios y sauna de 5,6 m²', meta: 'Baño 5,32 m² · sauna 5,60 m²', pos: [9.55, 1.63, 2.25], look: [9.15, 1.05, 0.75] },
+  { label: 'Dormitorio principal', note: '16 m² con ventana norte y sofá', meta: 'Dormitorio principal · 16,00 m² · ventana norte', pos: [12.6, 1.65, 4.6], look: [12.4, 1.05, 1.0] },
+  { label: 'Quincho', note: '6,00 × 3,20 m con parrilla, horno y barra de 3,60 m', meta: 'Quincho 6,00 × 3,20 m · 19,2 m² · cubierta 2,70 m', pos: [15.9, 1.62, 7.9], look: [18.6, 1.35, 3.4] },
+  { label: 'Parrilla del quincho', note: 'Parrilla, campana y horno de barro sobre piedra', meta: 'Mesón 5,60 m · parrilla + horno de barro', pos: [17.0, 1.55, 3.15], look: [19.7, 1.15, 2.25] },
+  { label: 'Barra del quincho', note: 'Barra de 1,05 m y cinco taburetes, 5,40 m de espacio libre', meta: 'Barra 3,60 × 1,00 × 1,05 m · 5 taburetes', pos: [17.4, 1.55, 6.6], look: [18.3, 1.05, 2.5] },
+  { label: 'Vista aérea', note: 'Cierre del recorrido: casa, terraza y quincho', meta: 'Casa + terraza + quincho · 127 m² construidos', pos: [7.5, 7.8, 20.5], look: [9.0, 1.5, 6.5] },
+];
+
+/** Selector de escena: salto directo con tween corto desde el HUD. */
+export const SCENES: SceneView[] = [
+  { id: 'sala', label: 'Sala', pos: [7.4, 1.65, 4.6], look: [2.6, 1.05, 1.8] },
+  { id: 'cocina', label: 'Cocina', pos: [4.7, 1.62, 3.5], look: [0.7, 1.0, 2.8] },
+  { id: 'isla', label: 'Isla', pos: [4.4, 1.55, 4.5], look: [3.0, 0.95, 2.9] },
+  { id: 'terraza', label: 'Terraza', pos: [3.2, 1.65, -1.9], look: [3.8, 1.25, 2.0] },
+  { id: 'pasillo', label: 'Pasillo', pos: [10.7, 1.65, 6.3], look: [4.4, 1.35, 6.25] },
+  { id: 'dorm3', label: 'Dorm. 3', pos: [12.1, 1.65, 9.9], look: [12.1, 1.0, 7.2] },
+  { id: 'dorm2', label: 'Dorm. 2', pos: [8.3, 1.65, 9.9], look: [8.3, 1.0, 7.2] },
+  { id: 'principal', label: 'Principal', pos: [12.6, 1.65, 4.7], look: [12.4, 1.0, 1.0] },
+  { id: 'bano', label: 'Baño', pos: [9.4, 1.65, 2.05], look: [9.2, 1.05, 0.6] },
+  { id: 'quincho', label: 'Quincho', pos: [15.6, 1.6, 7.4], look: [18.6, 1.2, 2.9] },
+  { id: 'exterior', label: 'Exterior', pos: [7, 1.7, 17.5], look: [7, 2.0, 11] },
 ];
 
 /**
@@ -182,5 +209,12 @@ export const CCTV_CAMERAS: CctvCamera[] = [
   { id: 'CAM-04', name: 'Fachada · acceso principal', zone: 'Exterior', pos: [1.3, 3.05, 15.1], look: [7.0, 1.7, 10.6], fov: 52 },
   { id: 'CAM-05', name: 'Dormitorio principal', zone: 'Dormitorio', pos: [13.3, 2.38, 0.9], look: [11.9, 1.05, 4.7], fov: 60 },
   { id: 'CAM-06', name: 'Quincho · barra y parrilla', zone: 'Quincho', pos: [20.4, 2.42, 2.15], look: [16.5, 1.15, 4.35], fov: 64 },
+  { id: 'CAM-07', name: 'Cocina · isla y alacenas', zone: 'Cocina', pos: [7.9, 2.42, 2.4], look: [1.4, 0.95, 3.5], fov: 60 },
+  { id: 'CAM-08', name: 'Terraza · deck exterior', zone: 'Terraza', pos: [6.4, 2.2, -3.2], look: [2.0, 1.0, 0.4], fov: 64 },
+  { id: 'CAM-09', name: 'Baño', zone: 'Baño', pos: [10.6, 2.35, 2.15], look: [8.8, 0.95, 0.6], fov: 62 },
+  { id: 'CAM-10', name: 'Sauna', zone: 'Sauna', pos: [10.7, 2.25, 4.55], look: [8.8, 1.0, 3.1], fov: 60 },
+  { id: 'CAM-11', name: 'Quincho · parrilla', zone: 'Quincho', pos: [15.35, 2.15, 3.0], look: [19.8, 1.15, 2.4], fov: 55 },
+  { id: 'CAM-12', name: 'Jardín · fachada', zone: 'Exterior', pos: [9.5, 1.9, 19.0], look: [6.6, 2.1, 11.0], fov: 50 },
+  { id: 'CAM-13', name: 'Dormitorio 2', zone: 'Dormitorio', pos: [10.15, 2.35, 7.35], look: [7.2, 1.0, 10.3], fov: 58 },
 ];
 

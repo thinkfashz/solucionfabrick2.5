@@ -112,28 +112,46 @@ animado con `index` 0/1) del simulador sísmico:
 | CAM-04 | Fachada · acceso principal | Exterior | `[1,30, 3,05, 15,10]` | `[7,0, 1,7, 10,6]` | 52° |
 | CAM-05 | Dormitorio principal | Dormitorio | `[13,30, 2,38, 0,90]` | `[11,9, 1,05, 4,7]` | 60° |
 | CAM-06 | Quincho · barra y parrilla | Quincho | `[20,40, 2,42, 2,15]` | `[16,5, 1,15, 4,35]` | 64° |
+| CAM-07 | Cocina · isla y alacenas | Cocina | `[7,90, 2,42, 2,40]` | `[1,4, 0,95, 3,5]` | 60° |
+| CAM-08 | Terraza · deck exterior | Terraza | `[6,40, 2,20, −3,20]` | `[2,0, 1,0, 0,4]` | 64° |
+| CAM-09 | Baño | Baño | `[10,60, 2,35, 2,15]` | `[8,8, 0,95, 0,6]` | 62° |
+| CAM-10 | Sauna | Sauna | `[10,70, 2,25, 4,55]` | `[8,8, 1,0, 3,1]` | 60° |
+| CAM-11 | Quincho · parrilla | Quincho | `[15,35, 2,15, 3,00]` | `[19,8, 1,15, 2,4]` | 55° |
+| CAM-12 | Jardín · fachada | Exterior | `[9,50, 1,90, 19,00]` | `[6,6, 2,1, 11,0]` | 50° |
+| CAM-13 | Dormitorio 2 | Dormitorio | `[10,15, 2,35, 7,35]` | `[7,2, 1,0, 10,3]` | 58° |
 
 Circuito: 7 s por cámara, transición suave de 1,1 s, balanceo leve de cámara de
-seguridad. El HUD muestra `REC`, ID, reloj y contador de cámaras. La cámara
-exterior (CAM-04) se monta sobre un poste de 3,05 m.
+seguridad. La cámara virtual se adelanta **0,36 m** sobre el eje de mira
+(`CCTV_OFFSET`) para quedar fuera de la carcasa y del lente: sin ese desfase el
+cilindro del lente tapa casi todo el encuadre (el "punto negro" del modo Cine).
+El HUD muestra `REC`, ID, nombre, reloj y contador compacto `05 / 13`.
 
 ## 8. Recorrido cinematográfico (`TOUR_STOPS`)
 
-15 paradas, cámara a 1,62 m de altura, avance a 1,25 m/s, pausa de 2,4 s por
-parada, mirada suavizada y micro-movimiento de cámara humana:
+17 paradas, cámara a 1,62 m de altura, avance de **velocidad constante real**
+(1,45 m/s, con aceleración hasta ×2,4 en tramos largos), pausa de 2,2 s por
+parada, mirada suavizada con adelanto y micro-movimiento de cámara humana:
 
 1. Fachada sur → 2. Acceso principal → 3. Recibidor → 4. Sala de estar →
-5. Cocina → 6. Isla de cocina → 7. Terraza → 8. Pasillo → 9. Dormitorio 3 →
-10. Dormitorio 2 → 11. Baño y sauna → 12. Dormitorio principal → 13. Quincho →
-14. Barra del quincho → 15. Vista aérea.
+5. Cocina → 6. Detalle de cocina → 7. Isla de cocina → 8. Terraza →
+9. Pasillo → 10. Dormitorio 3 → 11. Dormitorio 2 → 12. Baño y sauna →
+13. Dormitorio principal → 14. Quincho → 15. Parrilla del quincho →
+16. Barra del quincho → 17. Vista aérea.
 
-Cada parada trae `label` y `note`; el HUD los muestra con barras cinematográficas
-y puntos de progreso.
+Al entrar, la cámara hace un corte directo a la primera parada (no atraviesa
+muros). Cada parada trae `label`, `note` y `meta` (ficha técnica corta); el HUD
+muestra las tres, con barras cinematográficas de 3,5 vh y puntos de progreso.
 
-## 9. Puntos de foto (`PHOTO_SPOTS`)
+## 9. Puntos de foto (`PHOTO_SPOTS`) y selector de escena (`SCENES`)
 
-Seis puntos guiados con tween de 1,4 s. Al elegir uno, la cámara viaja al punto y
-queda mirando el objetivo marcado; el HUD muestra la tarjeta con la cuña de visión.
+Cuatro puntos de foto guiados con tween de 1,4 s (Foto 41, 44, 50 y 58). Al
+elegir uno, la cámara viaja al punto y queda mirando el objetivo; el HUD muestra
+la tarjeta con la cuña de visión. Los puntos viven ahora dentro del panel
+**Ficha** para dejar libre la barra inferior.
+
+El selector `SCENES` (once destinos) salta a una escena con un tween de 1,15 s:
+Sala, Cocina, Isla, Terraza, Pasillo, Dorm. 3, Dorm. 2, Principal, Baño, Quincho
+y Exterior. Funciona desde cualquier modo: pone la cámara en libre y viaja.
 
 ## 10. Controles
 
@@ -145,7 +163,8 @@ queda mirando el objetivo marcado; el HUD muestra la tarjeta con la cuña de vis
 | `WASD` / flechas | Mover |
 | `Q` / `E` | Girar |
 | `Shift` | Correr (×1,6) |
-| Chips inferiores | Libre · Tour cine · Cine CCTV · puntos de foto |
+| Barra inferior, fila **Modo** | Libre · Tour cine · Cámaras |
+| Barra inferior, fila **Escena** | Salta a Sala, Cocina, Isla, Terraza, Pasillo, Dorm. 3, Dorm. 2, Principal, Baño, Quincho o Exterior |
 | Botón `Ficha` | Ficha técnica del proyecto |
 
 Colisiones: AABB eje a eje contra `WALLS` ampliados por el radio del jugador

@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
 import { ArrowLeft, X, Route, Footprints, Clapperboard, Video } from 'lucide-react';
-import { ROOMS, PHOTO_SPOTS, PLAN, CCTV_CAMERAS, TOUR_STOPS, QUINCHO } from '@/lib/plano390Data';
+import { ROOMS, PHOTO_SPOTS, PLAN, CCTV_CAMERAS, TOUR_STOPS, QUINCHO, SCENES } from '@/lib/plano390Data';
+import type { SceneView } from '@/lib/plano390Data';
 
 type Stage = 'intro' | 'ready' | 'in';
 type Mode = 'free' | 'tour' | 'cctv';
@@ -17,6 +18,7 @@ export default function Plano390UI({
   onSpotChange,
   roomLabel,
   onCloseSpot,
+  onScene,
   cctvIndex = 0,
   tourIndex = 0,
 }: {
@@ -28,6 +30,7 @@ export default function Plano390UI({
   onSpotChange: (i: number) => void;
   roomLabel: string;
   onCloseSpot: () => void;
+  onScene: (scene: SceneView) => void;
   cctvIndex?: number;
   tourIndex?: number;
 }): ReactElement | null {
@@ -254,61 +257,61 @@ export default function Plano390UI({
         </span>
       </div>
 
-      {/* Bottom chips */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex max-w-[96vw] flex-row gap-2 overflow-x-auto px-4 select-none touch-none">
-        {/* Modos de cámara */}
-        <button
-          onClick={() => onModeChange('free')}
-          className={`inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-2 text-[9px] font-black ${
-            mode === 'free' ? 'bg-[#F6C64A] text-black' : ''
-          }`}
-        >
-          <Footprints size={14} />
-          <span>Libre</span>
-        </button>
-        <button
-          onClick={() => onModeChange('tour')}
-          className={`inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-2 text-[9px] font-black ${
-            mode === 'tour' ? 'bg-[#F6C64A] text-black' : ''
-          }`}
-        >
-          <Route size={14} />
-          <span>Tour cine</span>
-        </button>
-        <button
-          onClick={() => onModeChange('cctv')}
-          className={`inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-2 text-[9px] font-black ${
-            mode === 'cctv' ? 'bg-[#F6C64A] text-black' : ''
-          }`}
-        >
-          <Clapperboard size={14} />
-          <span>Cine CCTV</span>
-        </button>
-        {/* Photo spots chips */}
-        {PHOTO_SPOTS.map((spot, idx) => (
-          <button
-            key={spot.id}
-            onClick={() => handleSpotClick(idx)}
-            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/62 px-3 py-2 text-[9px] font-black"
-            style={
-              activeSpot === idx
-                ? { borderColor: spot.color, color: spot.color, background: `${spot.color}22` }
-                : undefined
-            }
-          >
-            <span
-              className="h-[6px] w-[6px] rounded-full"
-              style={{ background: spot.color }}
-            />
-            <span>{spot.label.split('·')[0].trim()}</span>
-          </button>
-        ))}
+      {/* ── Controles inferiores: modo + selector de escena ── */}
+      <div className="absolute inset-x-0 bottom-0 z-30 select-none">
+        <div className="mx-auto flex max-w-[860px] flex-col gap-1 px-2 pb-2">
+          <div className="flex items-center justify-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            <span className="shrink-0 pl-1 pr-1.5 text-[7px] font-black uppercase tracking-[.22em] text-white/40">
+              Modo
+            </span>
+            <button
+              onClick={() => onModeChange('free')}
+              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-black/62 px-3 text-[9px] font-black ${
+                mode === 'free' ? 'bg-[#F6C64A] text-black' : ''
+              }`}
+            >
+              <Footprints size={13} />
+              <span>Libre</span>
+            </button>
+            <button
+              onClick={() => onModeChange('tour')}
+              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-black/62 px-3 text-[9px] font-black ${
+                mode === 'tour' ? 'bg-[#F6C64A] text-black' : ''
+              }`}
+            >
+              <Route size={13} />
+              <span>Tour cine</span>
+            </button>
+            <button
+              onClick={() => onModeChange('cctv')}
+              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-black/62 px-3 text-[9px] font-black ${
+                mode === 'cctv' ? 'bg-[#F6C64A] text-black' : ''
+              }`}
+            >
+              <Clapperboard size={13} />
+              <span>Cámaras</span>
+            </button>
+          </div>
+          <div className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            <span className="shrink-0 pl-1 pr-1.5 text-[7px] font-black uppercase tracking-[.22em] text-white/40">
+              Escena
+            </span>
+            {SCENES.map((scene) => (
+              <button
+                key={scene.id}
+                onClick={() => onScene(scene)}
+                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-white/10 bg-black/62 px-3 text-[9px] font-black text-white/85 active:bg-white/15"
+              >
+                {scene.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* ── Overlay de Cine CCTV (scanlines + REC + reloj) ── */}
+      {/* ── Overlay de Cine CCTV (marco fino + REC + reloj) ── */}
       {mode === 'cctv' && (
         <div className="pointer-events-none absolute inset-0 z-20">
-          <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,.035)_0px,rgba(255,255,255,.035)_1px,transparent_1px,transparent_4px)] opacity-40" />
           {/* Esquinas de encuadre */}
           {[
             'left-3 top-3 border-l-2 border-t-2',
@@ -316,10 +319,10 @@ export default function Plano390UI({
             'left-3 bottom-3 border-l-2 border-b-2',
             'right-3 bottom-3 border-r-2 border-b-2',
           ].map((cls) => (
-            <span key={cls} className={`absolute h-7 w-7 border-white/35 ${cls}`} />
+            <span key={cls} className={`absolute h-7 w-7 border-white/30 ${cls}`} />
           ))}
           {/* REC + cámara */}
-          <div className="absolute left-6 top-20 flex items-center gap-2 rounded-md bg-black/55 px-2.5 py-1.5 backdrop-blur-sm">
+          <div className="absolute left-6 top-6 flex items-center gap-2 rounded-md bg-black/55 px-2.5 py-1.5 backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-70" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
@@ -327,34 +330,27 @@ export default function Plano390UI({
             <span className="text-[9px] font-black tracking-[.2em] text-white">REC</span>
             <span className="text-[9px] font-bold text-white/55">{activeCam?.id}</span>
           </div>
-          <div className="absolute left-6 top-28 max-w-[240px] text-[9px] font-black uppercase tracking-[.18em] text-white/70">
+          <div className="absolute left-6 top-[54px] max-w-[260px] text-[9px] font-black uppercase tracking-[.18em] text-white/70">
             {activeCam?.name}
           </div>
-          {/* Contador de cámaras */}
-          <div className="absolute right-6 top-20 flex items-center gap-1.5">
-            {CCTV_CAMERAS.map((cam, i) => (
-              <span
-                key={cam.id}
-                className={`h-1.5 rounded-full transition-all duration-500 ${
-                  i === cctvIndex ? 'w-5 bg-[#F6C64A]' : 'w-1.5 bg-white/30'
-                }`}
-              />
-            ))}
+          {/* Contador compacto (no depende del número de cámaras) */}
+          <div className="absolute right-6 top-6 rounded-md bg-black/55 px-2.5 py-1.5 text-[9px] font-black tracking-[.14em] text-white/70 backdrop-blur-sm">
+            {String(cctvIndex + 1).padStart(2, '0')}
+            <span className="text-white/35"> / {String(CCTV_CAMERAS.length).padStart(2, '0')}</span>
           </div>
-          <div className="absolute bottom-20 left-6 flex items-center gap-2 text-[9px] font-black tracking-[.14em] text-white/60">
+          <div className="absolute bottom-24 left-6 flex items-center gap-2 text-[9px] font-black tracking-[.14em] text-white/60">
             <Video size={12} />
             <span>{clock}</span>
-            <span className="text-white/25">CAM {String(cctvIndex + 1).padStart(2, '0')}/{String(CCTV_CAMERAS.length).padStart(2, '0')}</span>
           </div>
         </div>
       )}
 
-      {/* ── Overlay de recorrido cinematográfico (barras + rótulo + progreso) ── */}
+      {/* ── Overlay de recorrido cinematográfico (barras + rótulo + ficha) ── */}
       {mode === 'tour' && (
         <>
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[6vh] bg-black/85" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[6vh] bg-black/85" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-[132px] z-30 flex flex-col items-center gap-1.5 px-6 text-center">
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[3.5vh] bg-black/85" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[3.5vh] bg-black/85" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-[150px] z-30 flex flex-col items-center gap-1 px-6 text-center">
             <span className="text-[8px] font-black uppercase tracking-[.3em] text-[#F6C64A]">
               Recorrido cinematográfico
             </span>
@@ -364,7 +360,12 @@ export default function Plano390UI({
             <p className="max-w-[420px] text-balance text-[10px] leading-4 text-white/70">
               {activeStop?.note}
             </p>
-            <div className="mt-1 flex items-center gap-1.5">
+            {activeStop?.meta ? (
+              <span className="mt-0.5 rounded-full border border-white/12 bg-black/45 px-2.5 py-1 text-[8px] font-bold tracking-wide text-white/65 backdrop-blur-sm">
+                {activeStop.meta}
+              </span>
+            ) : null}
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
               {TOUR_STOPS.map((stop, i) => (
                 <span
                   key={stop.label}
@@ -498,7 +499,7 @@ export default function Plano390UI({
       {/* Ficha drawer */}
       {showFiche && (
         <aside
-          className="absolute bottom-[98px] left-3 right-3 z-40 max-h-[50dvh] overflow-y-auto rounded-[1.5rem] border border-white/12 bg-[#071017]/96 p-4 shadow-2xl backdrop-blur-2xl"
+          className="absolute bottom-[112px] left-3 right-3 z-40 max-h-[50dvh] overflow-y-auto rounded-[1.5rem] border border-white/12 bg-[#071017]/96 p-4 shadow-2xl backdrop-blur-2xl"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -541,6 +542,27 @@ export default function Plano390UI({
             <p className="text-[9px] leading-5 text-white/50">
               Casa unifamiliar de acero ligero con terminaciones en madera estructural, cubierta a dos aguas y terraza norte. Cocina en L de 4,50 x 3,50 m con isla de 1,80 m; quincho cubierto de 6,00 x 3,20 m con parrilla, horno de barro y barra de 3,60 m. Orientación sur para máximo ganancia solar.
             </p>
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-[.18em] text-white/40">
+                Puntos de foto
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {PHOTO_SPOTS.map((spot, idx) => (
+                  <button
+                    key={spot.id}
+                    onClick={() => {
+                      setShowFiche(false);
+                      handleSpotClick(idx);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[.04] px-2.5 py-1.5 text-[9px] font-black"
+                    style={activeSpot === idx ? { borderColor: spot.color, color: spot.color } : undefined}
+                  >
+                    <span className="h-[6px] w-[6px] rounded-full" style={{ background: spot.color }} />
+                    {spot.label.split('·')[0].trim()}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </aside>
       )}

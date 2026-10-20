@@ -39,7 +39,15 @@ Bitácora de trabajo (se actualiza al cierre de cada hito).
 - **Fix "punto negro" de CCTV**: se eliminó la viñeta `inset 0 0 190px rgba(0,0,0,.85)` que tapaba la vista en móvil; scanlines bajadas a 40 %.
 - **Documentación nueva**: `docs/proyecto-390-1/` con `README.md`, `escena.md` (inventario completo con coordenadas), `cocina.md`, `quincho.md`, `cocina.svg` y `quincho.svg` (planos cotados).
 
+### Sesión 4 — tour operativo, cámaras sin "punto negro" y selector de escena
+- **Bug del tour**: el rig aplicaba `smooth(step)` sobre un lerp ya diminuto (`step ≈ 0,017`), así que la cámara avanzaba ~0,08 % por frame y nunca llegaba a la parada (el rótulo quedaba clavado en "Fachada sur"). Ahora avanza `travel / dist` con `travel = velocidad · delta` (velocidad constante real), pausa 2,2 s y aceleración ×2,4 en tramos largos. Al entrar al tour hay corte directo a la parada 1.
+- **"Punto negro" de CCTV (causa real)**: la cámara virtual estaba en el centro de la carcasa; el cilindro del lente, a 0,16 m delante, subtendía ~49° y tapaba casi toda la pantalla. Se adelanta la cámara **0,36 m** sobre el eje de mira (`CCTV_OFFSET`) y se eliminaron scanlines y viñeta del overlay (solo esquinas, REC, nombre, reloj y contador compacto). El gradiente global bajó a 0,38/0,58.
+- **13 cámaras CCTV** (antes 6): se sumaron cocina/isla, deck exterior, baño, sauna, parrilla del quincho, jardín/fachada y dormitorio 2, con FOV y encuadres propios (circuito de 91 s).
+- **17 paradas de tour** (antes 15): se agregaron "Detalle de cocina" y "Parrilla del quincho"; cada parada trae `meta` (ficha técnica corta) que el HUD muestra bajo el rótulo. Barras cinematográficas de 3,5 vh (antes 6 vh) para no tapar la vista.
+- **Selector de escena** (`SCENES`, 11 destinos) con tween de 1,15 s desde cualquier modo (`input.jump` + `spotTween` con `idx −1`). La barra inferior ahora tiene dos filas: **Modo** (Libre · Tour cine · Cámaras) y **Escena** (scroll horizontal). Los puntos de foto se movieron al panel **Ficha**.
+- **Documentación**: `README.md` y `escena.md` actualizados (cámaras, tour, selector, causa del punto negro).
+
 ### Pendiente / ideas
 - Validar en móvil real: rendimiento con 8 point lights + sombras 2048 (bajar a 1024 si calienta).
-- Ideas: sonido ambiente por estancia, más cámaras (baño/sauna), exportar captura del modo Cine.
+- Ideas: sonido ambiente por estancia, exportar captura del modo Cine, banda sonora en el tour.
 - housefabrick (`/app/`): NO tocar (olvidado a petición del jugador).

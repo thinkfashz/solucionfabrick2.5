@@ -83,7 +83,7 @@ export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode
               Arrastra para mirar · joystick para moverte
             </span>
           </div>
-          <div className="absolute bottom-[86px] left-4 z-30">
+          <div className="absolute bottom-[98px] left-4 z-30">
             <LabJoystick
               label="Caminar"
               onMove={(x, y) => {
@@ -92,7 +92,7 @@ export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode
               }}
             />
           </div>
-          <div className="absolute bottom-[86px] right-4 z-30">
+          <div className="absolute bottom-[98px] right-4 z-30">
             <LabJoystick
               label="Mirar"
               onMove={(x, y) => {
@@ -102,12 +102,12 @@ export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode
             />
           </div>
           {/* Ayuda de teclado, solo escritorio */}
-          <div className="pointer-events-none absolute bottom-[86px] left-1/2 z-20 hidden -translate-x-1/2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[8px] font-black uppercase tracking-[.18em] text-white/45 backdrop-blur-md md:block">
+          <div className="pointer-events-none absolute bottom-[98px] left-1/2 z-20 hidden -translate-x-1/2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[8px] font-black uppercase tracking-[.18em] text-white/45 backdrop-blur-md md:block">
             WASD mover · Q/E girar · Shift correr
           </div>
         </>
       ) : mode === 'tour' ? (
-        <div className="absolute inset-x-0 bottom-[86px] z-30 flex justify-center">
+        <div className="absolute inset-x-0 bottom-[98px] z-30 flex justify-center">
           <button
             type="button"
             onClick={exitToFree}
@@ -117,7 +117,7 @@ export default function Plano390Controls({ mode, onReset }: { mode: Plano390Mode
           </button>
         </div>
       ) : (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[86px] z-30 flex flex-wrap items-center justify-center gap-2 px-4">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[98px] z-30 flex flex-wrap items-center justify-center gap-2 px-4">
           <button
             type="button"
             onClick={() => nextCctv()}

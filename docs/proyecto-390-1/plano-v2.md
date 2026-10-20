@@ -237,3 +237,81 @@ comedor y el vestíbulo, y estaba amueblado como baño.
 - **Skill**: errores **048–055** en `visor-casa-fabrick/references/errores.md` y
   nueva skill hermana `arquitectura-fabrick` con
   `references/checklist-geometria.md`.
+
+## Iteración 7 (2026-10-20) — corte de planta, auditoría y luz de día
+
+Revisión de las 7 capturas del teléfono. El desorden no era un solape de datos
+(el chequeo geométrico daba 0 colisiones): era la **altura de los muros** en la
+vista “Plano 3D” y el **brillo especular** del porcelanato. Los muros de 2,80 m,
+vistos a 71°, proyectaban su cara sobre el ambiente vecino y tapaban camas,
+cocina y baños; el sol quemaba el centro del living.
+
+### Diagnóstico
+- La vista “Plano 3D” reutilizaba la escena habitable completa. Cada tabique
+  tapaba el ambiente de al lado; no había corte ni poché.
+- `matPorcelain` estaba en `roughness 0,16`, `envMapIntensity 1,15`, sol `2,45`
+  y exposición `0,92`: el reflejo especular se recortaba a blanco.
+- El jardín usaba `pastoCalle`, una foto **mitad pasto y mitad hormigón**,
+  repetida 16 × 12: franjas grises de vereda.
+- Al cortar los muros, las alacenas (1,40–2,10 m), los roperos (2,20 m), el
+  refri (1,85 m) y la lámpara del comedor quedaban flotando sobre el corte.
+- No existía forma de entrar a un ambiente tocando el plano; pasillo y
+  distribuidor no tenían escena propia.
+
+### Cambios
+- **Corte de planta**: `PLAN.planCutH = 1,15 m`. Los muros se dibujan a esa
+  altura y llevan una **tapa de poché** oscura del mismo espesor (0,25 m
+  exterior / 0,12 m interior), con offset de 0,8 mm por muro para evitar
+  z-fighting en las esquinas. En planta los muros usan materiales neutros
+  (`matWallExtPlan` / `matWallIntPlan`); el limón queda para el 3D.
+- **Ocultos en planta**: losa de techo, cielorraso, franja blanca, portal,
+  cornisas, zócalos, muro de TV, downlights, apliques, interruptores, cámaras,
+  lámpara colgante del comedor, alacenas altas, campana y paños altos del
+  backsplash. Roperos y refri se recortan a 1,15 m.
+- **Aberturas**: `OpeningMesh` recorta marcos, hojas, dinteles, casing y vidrios
+  al corte; el portón del garaje se dibuja como umbral y las ventanas altas como
+  línea de vidrio. La ducha del baño principal queda en 0,90 × 1,20 m con
+  retorno de vidrio y paso de 40 cm.
+- **Capa de anotación**: una sola textura de canvas (1536 px) sobre un plano
+  horizontal de 14,6 × 13,2 m (incluye el porche). Retícula cada metro y cada
+  5 m, nombre, medidas y superficie por ambiente, norte y escala de 1 m. Con
+  `audit` suma los códigos `M-xx` (48 muros), `F-xx` (45 muebles) y `P-xx`
+  (11 puertas). Se eligió una textura y no sprites/DOM por rendimiento.
+- **Auditoría** (`src/lib/plano390Audit.ts`): corre sobre el mismo contrato y
+  valida muros cruzados/duplicados/fuera de envolvente, vanos sin apoyo,
+  tapados o solapados, ambientes superpuestos o contenidos, bordes sin muro,
+  superficie declarada, muebles fuera de ambiente, mueble-muro, mueble-mueble,
+  barrido de puertas y mueble alto ante ventana.
+- **Resultado de la auditoría**: **0 errores, 0 avisos, 2 notas** (Ensuite
+  contenido en Dorm. 1 y Lavandería contenida en Garaje; ambas con muro y
+  puerta propios). Falsos positivos corregidos: alineación por espesor en la
+  normal del vano, jambas por contacto, tolerancia de 12 cm para sillas y
+  exclusión de la ducha bajo ventana alta.
+- **Luz de día**: exposición `0,78` (planta `0,88`), sol `1,38`, hemisférica
+  `0,38`, entorno `0,62`, porcelanato `roughness 0,38` / `env 0,48`. Luces
+  puntuales de día a 0,10–0,20 y apagadas en planta; apliques a 0,35 de día y
+  1,1 de noche. El halo de los LED baja a 0,08 de día y 0 en planta.
+- **Césped**: `makeGrassTexture()` procedural (512², base `#6d8d4d`, 11.000
+  briznas y manchas de tono), repeat 16 × 12, `roughness 0,98`. En planta se
+  cubre con una base neutra `#e8ecdd` para que la retícula se lea.
+- **Plano táctil**: arrastre de un dedo (yaw/pitch), pinza de dos dedos y rueda
+  (radio 7–30 m, pitch 0,35–1,5). Un toque de menos de 8 px sobre el piso de un
+  ambiente entra a su escena (`ROOM_SCENE`); el umbral evita disparar al orbitar.
+- **Escenas nuevas**: `pasillo` (2,83 · 1,62 · 5,95 mirando al norte) y
+  `distribuidor` (10,32 · 1,62 · 4,95). `SCENES` pasa de 18 a 20.
+- **UI**: botón “Auditoría del plano” en el menú; tarjeta de hallazgos en el
+  panel 2D con resumen, notas válidas y botón “Abrir Plano 3D con códigos”.
+  El SVG queda limpio: 104 códigos a 3 px serían ilegibles, así que la lectura
+  de códigos vive en la capa 3D, donde se puede hacer pinza.
+- **Enlaces**: `?vista=plano&audit=1` (o `codigos=1`) abre el plano con códigos;
+  `?vista=plano&manos=0` para revisar sin manos.
+
+### Verificación
+- Typecheck de `Plano3903D`, `Plano390UI`, `Plano390Map2D`,
+  `Plano390Walkthrough`, `Plano390CameraRig`, `plano390Data` y
+  `plano390Audit` con `tsc` (0 errores).
+- `auditPlano()` sobre los datos reales: 48 muros, 15 ambientes, 21 vanos,
+  45 muebles, 20 escenas; 0 errores y 0 avisos.
+- Errores **056–061** documentados en
+  `visor-casa-fabrick/references/errores.md`; `SKILL.md` actualizado con el
+  corte de planta, la capa de códigos y la auditoría.

@@ -105,6 +105,12 @@ export const PLAN = {
   sunElevationDeg: 50,
   sunSombraFactor: 0.84,
   eyeH: 1.62,
+  /**
+   * Altura del corte de planta. Un plano arquitectónico no se mira con los
+   * muros completos: se corta a ~1,15 m (por encima de mesas y camas, por
+   * debajo de alacenas y dinteles) y se dibuja el relleno del muro (poché).
+   */
+  planCutH: 1.15,
 } as const;
 
 /** Ambientes del plano (numerados como la lista del proyecto). */
@@ -222,13 +228,13 @@ export const OPENINGS: Opening[] = [
   // Oriente
   { id: 'w-ensuite', kind: 'window', axis: 'x', x: 14.475, z: 4.4, width: 0.8, height: 0.65, sill: 1.55, ext: true, glass: true },
   // Puertas interiores
-  { id: 'd-d2', kind: 'door', axis: 'z', x: 2.825, z: 3.55, width: 0.75, height: 2.05, hinge: 'right', swing: 1 },
+  { id: 'd-d2', kind: 'door', axis: 'z', x: 2.825, z: 3.55, width: 0.75, height: 2.05, hinge: 'right', swing: -1 },
   { id: 'd-d3', kind: 'door', axis: 'z', x: 2.825, z: 6.01, width: 0.75, height: 2.05, hinge: 'left', swing: 1 },
   { id: 'd-bath', kind: 'door', axis: 'x', x: 2.26, z: 4.575, width: 0.85, height: 2.05, hinge: 'left', swing: -1 },
-  { id: 'd-d1', kind: 'door', axis: 'z', x: 12.925, z: 3.55, width: 0.85, height: 2.05, hinge: 'right', swing: 1 },
-  { id: 'd-ensuite', kind: 'door', axis: 'x', x: 11.26, z: 4.725, width: 0.85, height: 2.05, hinge: 'left', swing: 1 },
+  { id: 'd-d1', kind: 'door', axis: 'z', x: 12.925, z: 3.55, width: 0.85, height: 2.05, hinge: 'right', swing: -1 },
+  { id: 'd-ensuite', kind: 'door', axis: 'x', x: 11.26, z: 4.725, width: 0.85, height: 2.05, hinge: 'left', swing: -1 },
   { id: 'd-ens-int', kind: 'door', axis: 'x', x: 11.26, z: 1.9, width: 0.7, height: 2.05, hinge: 'left', swing: 1 },
-  { id: 'd-garage-int', kind: 'door', axis: 'z', x: 13.625, z: 5.46, width: 0.85, height: 2.05, hinge: 'left', swing: -1 },
+  { id: 'd-garage-int', kind: 'door', axis: 'z', x: 13.625, z: 5.46, width: 0.85, height: 2.05, hinge: 'left', swing: 1 },
   { id: 'd-laundry', kind: 'door', axis: 'z', x: 10.1, z: 8.3, width: 0.7, height: 2.05, hinge: 'left', swing: -1 },
   // Pasos sin hoja (solo dintel)
   { id: 'p-hall', kind: 'pass', axis: 'x', x: 3.4, z: 5.6, width: 0.8, height: 2.2 },
@@ -434,6 +440,8 @@ export const SCENES: SceneView[] = [
   { id: 'dorm2', label: 'Dorm. 2', pos: [0.65, 1.62, 2.68], look: [2.6, 1.1, 1.2] },
   { id: 'dorm3', label: 'Dorm. 3', pos: [0.75, 1.62, 9.35], look: [2.7, 1.1, 7.0] },
   { id: 'bano', label: 'Baño', pos: [1.95, 1.62, 5.2], look: [0.8, 1.1, 4.2] },
+  { id: 'pasillo', label: 'Pasillo', pos: [2.83, 1.62, 5.95], look: [2.83, 1.15, 1.4] },
+  { id: 'distribuidor', label: 'Distribuidor', pos: [10.32, 1.62, 4.95], look: [11.15, 1.2, 4.35] },
   { id: 'ensuite', label: 'Ensuite', pos: [12.13, 1.62, 2.65], look: [10.6, 1.1, 1.3] },
   { id: 'garaje', label: 'Garaje', pos: [13.9, 1.62, 10.35], look: [10.4, 1.0, 6.2] },
   { id: 'lavanderia', label: 'Lavandería', pos: [10.45, 1.62, 9.8], look: [9.8, 1.0, 9.5] },
@@ -481,59 +489,95 @@ export const CCTV_CAMERAS: CctvCamera[] = [
  * kind → color/símbolo en `Plano390Map2D`.
  */
 export type Furniture2D = {
-  kind: 'bed' | 'sofa' | 'table' | 'counter' | 'island' | 'wardrobe' | 'tv' | 'car' | 'desk' | 'bath' | 'rug' | 'quincho';
+  /** Código estable para la capa de auditoría (F-01, F-02…). */
+  id: string;
+  name: string;
+  /** Ambiente al que pertenece; `null` = exterior (quincho). */
+  room: string | null;
+  kind:
+    | 'bed'
+    | 'sofa'
+    | 'chair'
+    | 'table'
+    | 'counter'
+    | 'island'
+    | 'wardrobe'
+    | 'fridge'
+    | 'tv'
+    | 'car'
+    | 'desk'
+    | 'bath'
+    | 'rug'
+    | 'quincho';
   x0: number;
   z0: number;
   x1: number;
   z1: number;
+  /** Altura real del mueble: sirve para comprobar que no tapa una ventana. */
+  h?: number;
+  /** Alfombra: se puede pisar y no genera conflictos. */
+  soft?: boolean;
+  /** Montado en el muro (TV): puede tocar el paramento. */
+  onWall?: boolean;
 };
 
 export const FURNITURE_2D: Furniture2D[] = [
-  // Dormitorio 1 (cama con cabecera al oriente, lejos de la ventana)
-  { kind: 'bed', x0: 12.35, z0: 0.6, x1: 14.35, z1: 2.4 },
-  { kind: 'wardrobe', x0: 11.33, z0: 2.5, x1: 11.91, z1: 3.45 },
-  { kind: 'desk', x0: 13.8, z0: 2.6, x1: 14.35, z1: 3.4 },
-  // Ensuite dentro del dormitorio 1
-  { kind: 'bath', x0: 9.55, z0: 0.3, x1: 10.45, z1: 1.5 },
-  { kind: 'counter', x0: 9.6, z0: 1.75, x1: 10.4, z1: 2.25 },
-  { kind: 'bath', x0: 10.55, z0: 0.35, x1: 11.1, z1: 1.05 },
-  // Dormitorio 2 (cabecera al oriente)
-  { kind: 'bed', x0: 1.34, z0: 0.75, x1: 3.34, z1: 2.35 },
-  { kind: 'wardrobe', x0: 0.26, z0: 0.4, x1: 0.84, z1: 1.35 },
-  { kind: 'desk', x0: 0.55, z0: 2.87, x1: 1.75, z1: 3.43 },
-  // Dormitorio 3 (cabecera contra el muro norte, sin flotar)
-  { kind: 'bed', x0: 0.75, z0: 6.19, x1: 2.35, z1: 8.19 },
-  { kind: 'wardrobe', x0: 2.71, z0: 8.2, x1: 3.29, z1: 9.15 },
-  { kind: 'desk', x0: 2.74, z0: 9.5, x1: 3.29, z1: 10.7 },
+  // Dormitorio 1 (cama 1,80 × 2,00 con cabecera al oriente)
+  { id: 'F-01', name: 'Cama 1,80 × 2,00', room: '3', kind: 'bed', x0: 12.3, z0: 0.6, x1: 14.3, z1: 2.4, h: 0.55 },
+  { id: 'F-02', name: 'Clóset 0,95 m', room: '3', kind: 'wardrobe', x0: 11.34, z0: 2.5, x1: 11.9, z1: 3.445, h: 2.2 },
+  { id: 'F-03', name: 'Escritorio 0,80 m', room: '3', kind: 'desk', x0: 13.795, z0: 2.6, x1: 14.338, z1: 3.4, h: 0.78 },
+  { id: 'F-04', name: 'Silla de escritorio', room: '3', kind: 'chair', x0: 13.225, z0: 2.775, x1: 13.675, z1: 3.225, h: 0.75 },
+  // Ensuite dentro del dormitorio 1 (ducha 0,90 × 1,20)
+  { id: 'F-05', name: 'Ducha 0,90 × 1,20', room: '15', kind: 'bath', x0: 9.55, z0: 0.3, x1: 10.45, z1: 1.5, h: 2.0 },
+  { id: 'F-06', name: 'Vanitorio 0,80 m', room: '15', kind: 'counter', x0: 9.6, z0: 1.8, x1: 10.4, z1: 2.3, h: 0.9 },
+  { id: 'F-07', name: 'WC suspendido', room: '15', kind: 'bath', x0: 10.55, z0: 0.35, x1: 11.1, z1: 1.05, h: 1.0 },
+  // Dormitorio 2 (cama 1,60 × 2,00 con cabecera al oriente)
+  { id: 'F-08', name: 'Cama 1,60 × 2,00', room: '1', kind: 'bed', x0: 1.32, z0: 0.75, x1: 3.32, z1: 2.35, h: 0.55 },
+  { id: 'F-09', name: 'Clóset 0,95 m', room: '1', kind: 'wardrobe', x0: 0.26, z0: 0.395, x1: 0.84, z1: 1.345, h: 2.2 },
+  { id: 'F-10', name: 'Consola / escritorio', room: '1', kind: 'desk', x0: 0.55, z0: 2.875, x1: 1.75, z1: 3.425, h: 0.78 },
+  // Dormitorio 3 (cama 1,60 × 2,00 con cabecera al norte)
+  { id: 'F-11', name: 'Cama 1,60 × 2,00', room: '10', kind: 'bed', x0: 0.75, z0: 6.19, x1: 2.35, z1: 8.19, h: 0.55 },
+  { id: 'F-12', name: 'Clóset 0,95 m', room: '10', kind: 'wardrobe', x0: 2.71, z0: 8.125, x1: 3.29, z1: 9.075, h: 2.2 },
+  { id: 'F-13', name: 'Escritorio 1,20 m', room: '10', kind: 'desk', x0: 2.74, z0: 9.5, x1: 3.29, z1: 10.7, h: 0.78 },
+  { id: 'F-14', name: 'Silla de escritorio', room: '10', kind: 'chair', x0: 2.125, z0: 9.875, x1: 2.575, z1: 10.325, h: 0.75 },
   // Living
-  { kind: 'tv', x0: 3.46, z0: 7.0, x1: 3.64, z1: 10.8 },
-  { kind: 'rug', x0: 4.65, z0: 7.7, x1: 8.05, z1: 10.5 },
-  { kind: 'sofa', x0: 7.75, z0: 7.95, x1: 8.65, z1: 10.25 },
-  { kind: 'table', x0: 5.45, z0: 8.75, x1: 6.75, z1: 9.45 },
-  { kind: 'sofa', x0: 5.53, z0: 9.8, x1: 6.38, z1: 10.6 },
-  { kind: 'sofa', x0: 5.53, z0: 7.1, x1: 6.38, z1: 7.9 },
-  { kind: 'table', x0: 8.11, z0: 7.36, x1: 8.49, z1: 7.74 },
-  { kind: 'table', x0: 7.95, z0: 10.36, x1: 8.85, z1: 10.68 },
-  // Despensa
-  { kind: 'counter', x0: 7.55, z0: 0.31, x1: 8.95, z1: 0.85 },
-  { kind: 'wardrobe', x0: 9.0, z0: 0.5, x1: 9.34, z1: 3.2 },
-  // Comedor
-  { kind: 'table', x0: 5.6, z0: 4.3, x1: 7.4, z1: 5.2 },
-  // Cocina
-  { kind: 'counter', x0: 3.65, z0: 0.31, x1: 6.35, z1: 0.93 },
-  { kind: 'counter', x0: 6.45, z0: 0.27, x1: 7.35, z1: 0.97 },
-  { kind: 'island', x0: 4.3, z0: 2.05, x1: 6.7, z1: 3.05 },
-  // Baño (ducha al norte, WC al poniente, vanitorio al sur)
-  { kind: 'bath', x0: 0.25, z0: 3.61, x1: 1.45, z1: 4.81 },
-  { kind: 'counter', x0: 1.25, z0: 5.45, x1: 2.05, z1: 5.95 },
-  { kind: 'bath', x0: 0.3, z0: 4.95, x1: 0.9, z1: 5.65 },
+  { id: 'F-15', name: 'Muro de TV 3,80 m', room: '9', kind: 'tv', x0: 3.46, z0: 7.0, x1: 3.64, z1: 10.75, h: 2.4, onWall: true },
+  { id: 'F-16', name: 'Alfombra 3,20 × 3,10', room: '9', kind: 'rug', x0: 4.65, z0: 7.7, x1: 8.05, z1: 10.5, h: 0.02, soft: true },
+  { id: 'F-17', name: 'Sofá 2,30 m', room: '9', kind: 'sofa', x0: 7.75, z0: 7.95, x1: 8.65, z1: 10.25, h: 0.85 },
+  { id: 'F-18', name: 'Mesa de centro 1,30 × 0,70', room: '9', kind: 'table', x0: 5.45, z0: 8.75, x1: 6.75, z1: 9.45, h: 0.42 },
+  { id: 'F-19', name: 'Butaca sur', room: '9', kind: 'chair', x0: 5.53, z0: 9.8, x1: 6.38, z1: 10.6, h: 0.85 },
+  { id: 'F-20', name: 'Butaca norte', room: '9', kind: 'chair', x0: 5.53, z0: 7.1, x1: 6.38, z1: 7.9, h: 0.85 },
+  { id: 'F-21', name: 'Mesa auxiliar', room: '9', kind: 'table', x0: 8.11, z0: 7.36, x1: 8.49, z1: 7.74, h: 0.5 },
+  { id: 'F-22', name: 'Consola del muro sur', room: '9', kind: 'counter', x0: 7.95, z0: 10.36, x1: 8.85, z1: 10.68, h: 0.76 },
+  // Despensa / café
+  { id: 'F-23', name: 'Mueble de café', room: '13', kind: 'counter', x0: 7.5, z0: 0.3, x1: 8.94, z1: 0.8, h: 0.95 },
+  { id: 'F-24', name: 'Estantería alta', room: '13', kind: 'wardrobe', x0: 9.0, z0: 0.5, x1: 9.32, z1: 3.2, h: 2.3 },
+  // Comedor (mesa 1,80 × 0,90 + 6 sillas)
+  { id: 'F-25', name: 'Mesa 1,80 × 0,90', room: '4', kind: 'table', x0: 5.6, z0: 4.3, x1: 7.4, z1: 5.2, h: 0.75 },
+  { id: 'F-26', name: 'Silla norte 1', room: '4', kind: 'chair', x0: 5.74, z0: 3.79, x1: 6.16, z1: 4.21, h: 0.95 },
+  { id: 'F-27', name: 'Silla norte 2', room: '4', kind: 'chair', x0: 6.84, z0: 3.79, x1: 7.26, z1: 4.21, h: 0.95 },
+  { id: 'F-28', name: 'Silla sur 1', room: '4', kind: 'chair', x0: 5.74, z0: 5.29, x1: 6.16, z1: 5.71, h: 0.95 },
+  { id: 'F-29', name: 'Silla sur 2', room: '4', kind: 'chair', x0: 6.84, z0: 5.29, x1: 7.26, z1: 5.71, h: 0.95 },
+  { id: 'F-30', name: 'Silla cabecera poniente', room: '4', kind: 'chair', x0: 5.16, z0: 4.53, x1: 5.6, z1: 4.97, h: 0.95 },
+  { id: 'F-31', name: 'Silla cabecera oriente', room: '4', kind: 'chair', x0: 7.4, z0: 4.53, x1: 7.84, z1: 4.97, h: 0.95 },
+  // Cocina (línea 0,90 m + isla 2,40 × 1,00 + barra 1,05)
+  { id: 'F-32', name: 'Muebles bajos norte', room: '2', kind: 'counter', x0: 3.62, z0: 0.31, x1: 6.42, z1: 0.93, h: 0.9 },
+  { id: 'F-33', name: 'Refrigerador 0,90 × 0,70', room: '2', kind: 'fridge', x0: 6.45, z0: 0.27, x1: 7.35, z1: 0.97, h: 1.85 },
+  { id: 'F-34', name: 'Isla 2,40 × 1,00', room: '2', kind: 'island', x0: 4.3, z0: 2.05, x1: 6.7, z1: 3.05, h: 0.9 },
+  { id: 'F-35', name: 'Taburete 1', room: '2', kind: 'chair', x0: 4.57, z0: 3.3, x1: 4.93, z1: 3.66, h: 0.85 },
+  { id: 'F-36', name: 'Taburete 2', room: '2', kind: 'chair', x0: 5.32, z0: 3.3, x1: 5.68, z1: 3.66, h: 0.85 },
+  { id: 'F-37', name: 'Taburete 3', room: '2', kind: 'chair', x0: 6.07, z0: 3.3, x1: 6.43, z1: 3.66, h: 0.85 },
+  // Baño (ducha 0,90 × 1,20 al norte, WC al poniente, vanitorio 0,80 al sur)
+  { id: 'F-38', name: 'Ducha 0,90 × 1,20', room: '5', kind: 'bath', x0: 0.25, z0: 3.61, x1: 1.15, z1: 4.81, h: 2.0 },
+  { id: 'F-39', name: 'Vanitorio 0,80 m', room: '5', kind: 'counter', x0: 1.25, z0: 5.45, x1: 2.05, z1: 5.95, h: 0.9 },
+  { id: 'F-40', name: 'WC suspendido', room: '5', kind: 'bath', x0: 0.3, z0: 4.95, x1: 0.9, z1: 5.65, h: 1.0 },
   // Garaje
-  { kind: 'car', x0: 11.2, z0: 6.55, x1: 12.98, z1: 10.75 },
+  { id: 'F-41', name: 'Auto 1,78 × 4,20', room: '11', kind: 'car', x0: 11.2, z0: 6.55, x1: 12.98, z1: 10.75, h: 1.5 },
   // Lavandería cerrada (dentro del garaje)
-  { kind: 'counter', x0: 9.58, z0: 8.55, x1: 10.25, z1: 10.55 },
-  // Recibidor / vestíbulo
-  { kind: 'counter', x0: 13.72, z0: 3.95, x1: 14.22, z1: 5.05 },
-  { kind: 'sofa', x0: 11.9, z0: 4.95, x1: 12.9, z1: 5.32 },
-  // Quincho exterior
-  { kind: 'quincho', x0: 10.75, z0: 13.0, x1: 14.2, z1: 15.8 },
+  { id: 'F-42', name: 'Lavadora, secadora y mesón', room: '14', kind: 'counter', x0: 9.58, z0: 8.55, x1: 10.25, z1: 10.55, h: 1.03 },
+  // Vestíbulo / recibidor
+  { id: 'F-43', name: 'Consola 1,10 m', room: '8', kind: 'counter', x0: 13.72, z0: 3.95, x1: 14.22, z1: 5.05, h: 0.82 },
+  { id: 'F-44', name: 'Banco 1,00 m', room: '8', kind: 'sofa', x0: 11.9, z0: 4.95, x1: 12.9, z1: 5.32, h: 0.5 },
+  // Quincho exterior (fuera de la envolvente)
+  { id: 'F-45', name: 'Mesón y parrilla', room: null, kind: 'quincho', x0: 10.75, z0: 13.0, x1: 14.2, z1: 15.8, h: 2.5 },
 ];

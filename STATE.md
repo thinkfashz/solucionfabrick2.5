@@ -2,7 +2,26 @@
 
 Bitácora de trabajo (se actualiza al cierre de cada hito).
 
-## Última sesión — 2026-10-20 (3): geometría del plano v2 y plano elevado táctil
+## Última sesión — 2026-10-20 (4): corte de planta, códigos y luz de día
+
+### Hecho
+- **Causa raíz del desorden en las capturas**: no había solapes de datos. La vista “Plano 3D” mostraba los muros completos de 2,80 m y, a 71°, cada tabique tapaba el ambiente vecino. Se implementó **corte de planta a `PLAN.planCutH = 1,15 m`** con tapa de poché oscura del mismo espesor (0,25 ext / 0,12 int) y offset de 0,8 mm por muro para evitar z-fighting. En planta los muros usan materiales neutros; el limón queda para el 3D.
+- **Ocultos en planta**: losa, cielorraso, franja, portal, cornisas, zócalos, muro de TV, downlights, apliques, interruptores, cámaras, lámpara del comedor, alacenas altas, campana y backsplash alto. Roperos y refri se recortan a 1,15 m. Aberturas recortadas al corte (marcos, hojas, dinteles, casing, vidrios; portón como umbral).
+- **Capa de anotación**: textura de canvas 1536 px sobre plano de 14,6 × 13,2 m con retícula 1/5 m, nombre, medidas, m², norte y escala. Con `audit` suma códigos `M-xx` (48 muros), `F-xx` (45 muebles) y `P-xx` (11 puertas). Una sola textura/draw call por rendimiento.
+- **Auditoría nueva** (`src/lib/plano390Audit.ts`): muros cruzados/duplicados/fuera de envolvente, vanos sin apoyo/tapados/solapados, ambientes superpuestos/contenidos, bordes sin muro, superficie declarada, muebles fuera de ambiente/mueble-muro/mueble-mueble, barrido de puertas y mueble alto ante ventana. Resultado real: **0 errores, 0 avisos, 2 notas válidas** (ensuite en Dorm. 1 y lavandería en Garaje).
+- **Falsos positivos corregidos**: alineación por espesor en la normal del vano, span en el eje del vano, jambas por contacto, tolerancia de 12 cm para sillas y exclusión de ducha bajo ventana alta.
+- **Luz de día**: exposición 0,78 (planta 0,88), sol 1,38, hemisférica 0,38, entorno 0,62, porcelanato roughness 0,38 / env 0,48. Puntuales de día 0,10–0,20 y apagadas en planta; apliques 0,35 día / 1,1 noche. Se elimina el blanco quemado del centro.
+- **Césped procedural** (`makeGrassTexture`): la textura `pastoCalle` era mitad pasto y mitad hormigón. Nueva textura 512² con 11.000 briznas, repeat 16 × 12. En planta se cubre con base neutra `#e8ecdd`.
+- **Plano táctil**: órbita 1 dedo, pinza 2 dedos, rueda (radio 7–30 m, pitch 0,35–1,5). Toque < 8 px sobre el piso de un ambiente entra a su escena (`ROOM_SCENE`); no dispara al arrastrar. Escenas nuevas `pasillo` y `distribuidor` (SCENES 18 → 20).
+- **UI**: botón “Auditoría del plano”, tarjeta de hallazgos en el panel 2D con resumen y notas válidas, botón “Abrir Plano 3D con códigos”. El SVG no lleva 104 códigos ilegibles; la lectura vive en la capa 3D con pinza.
+- **Enlaces**: `?vista=plano&audit=1` (o `codigos=1`), `?vista=plano&manos=0`.
+- **Verificación**: `tsc` limpio en 3D/UI/Map2D/Walkthrough/CameraRig/Data/Audit; auditoría 0/0/2; errores 056–061 documentados en `visor-casa-fabrick`; `SKILL.md` y `docs/proyecto-390-1/plano-v2.md` (iteración 7) actualizados.
+
+### Pendiente
+- Revisar en producción las capturas de `?vista=plano&audit=1`: legibilidad de códigos con pinza, etiquetas de ambientes y ausencia de brillo. Ajustar tamaño de fuente o radio inicial si hace falta.
+- Confirmar que el toque de ambiente no compite con la órbita en pantallas con guantes.
+
+## Sesión — 2026-10-20 (3): geometría del plano v2 y plano elevado táctil
 
 ### Hecho
 - **Causa raíz del “baño sin muro”**: el ambiente x 9,46…11,20 / z 3,61…5,40 estaba rotulado “Ensuite” pero es el **paso** del comedor al vestíbulo (hueco del tabique x 9,34…9,46 / z 3,80…5,20, `p-vest`). Se convirtió en **Distribuidor** y el baño privado se mudó al noroeste del Dorm. 1 (1,74 × 2,10 m, muro oriente con puerta de 0,70 m, ducha 0,90 × 1,20, vanitorio 0,80 y WC).

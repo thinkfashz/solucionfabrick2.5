@@ -41,13 +41,34 @@ import {
   SCONCES,
   SWITCHES,
   TV_WALL,
+  FURNITURE_2D,
   WALLS,
 } from '@/lib/plano390Data';
+import { fmtM } from '@/lib/plano390Audit';
 import type { CctvCamera, Opening, WallSeg } from '@/lib/plano390Data';
 import { AnimatedFigure } from '../monitoring/AnimatedFigure';
 import { usePbrMaps, useTextureMaterial, useViewerTextures, viewerTextureVariant } from '../monitoring/useViewerTextures';
 
 type Vec3 = [number, number, number];
+
+/** Ambiente del plano → escena del recorrido que se abre al tocarlo. */
+const ROOM_SCENE: Record<string, string> = {
+  '1': 'dorm2',
+  '2': 'cocina',
+  '3': 'dorm1',
+  '4': 'comedor',
+  '5': 'bano',
+  '6': 'pasillo',
+  '7': 'distribuidor',
+  '8': 'recibidor',
+  '9': 'living',
+  '10': 'dorm3',
+  '11': 'garaje',
+  '12': 'fachada',
+  '13': 'despensa',
+  '14': 'lavanderia',
+  '15': 'ensuite',
+};
 
 /* ── Texturas procedurales ─────────────────────────────────────── */
 
@@ -176,6 +197,283 @@ function makeStuccoTexture(): CanvasTexture | null {
   t.repeat.set(4, 3);
   t.colorSpace = SRGBColorSpace;
   return t;
+}
+
+
+
+/**
+ * Césped procedural.
+ *
+ * La textura del visor sísmico (`pastoCalle`) es mitad pasto y mitad hormigón:
+ * repetida en el jardín dejaba franjas grises que parecían una vereda. Acá se
+ * genera solo pasto, con briznas y manchas, y se repite en el terreno.
+ */
+function makeGrassTexture(): CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 512;
+  const g = c.getContext('2d');
+  if (!g) return null;
+
+  g.fillStyle = '#6d8d4d';
+  g.fillRect(0, 0, 512, 512);
+
+  // Manchas de tono para que la repetición no se lea como un patrón.
+  for (let i = 0; i < 46; i++) {
+    const r = 24 + Math.random() * 70;
+    g.fillStyle = Math.random() > 0.5 ? 'rgba(58,82,38,.12)' : 'rgba(150,170,96,.10)';
+    g.beginPath();
+    g.arc(Math.random() * 512, Math.random() * 512, r, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  const BLADES = ['#5a7a3f', '#658747', '#7fa35a', '#8fb268', '#a3b96f'];
+  for (let i = 0; i < 11000; i++) {
+    const x = Math.random() * 512;
+    const y = Math.random() * 512;
+    const h = 2.5 + Math.random() * 5.5;
+    const lean = (Math.random() - 0.5) * 3.2;
+    g.strokeStyle = BLADES[(Math.random() * BLADES.length) | 0];
+    g.lineWidth = 0.7 + Math.random() * 0.8;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + lean, y - h);
+    g.stroke();
+  }
+
+  const t = new CanvasTexture(c);
+  t.wrapS = t.wrapT = RepeatWrapping;
+  t.repeat.set(16, 12);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+}
+
+/**
+ * Capa de anotación del plano (una sola textura, un solo draw call).
+ *
+ * Dibuja sobre una planta de 14,60 × 11,00 m: retícula cada metro, nombre y
+ * medidas de cada ambiente, y —cuando la auditoría está activa— el código de
+ * cada muro (M-xx), mueble (F-xx) y puerta (P-xx). Es la versión liviana de la
+ * "capa vinculada" de AutoCAD: no duplica geometría y se apaga con un toque.
+ */
+function makePlanAnnotationTexture(showCodes: boolean): CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  const W = 1536;
+  // La lámina incluye el porche (z 11…13,2), no solo la envolvente.
+  const PLAN_DEPTH = 13.2;
+  const H = Math.round((W * PLAN_DEPTH) / PLAN.widthM);
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d');
+  if (!g) return null;
+
+  const sx = W / PLAN.widthM;
+  const sz = H / PLAN_DEPTH;
+  const X = (x: number) => x * sx;
+  const Z = (z: number) => z * sz;
+  const FONT = 'ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif';
+
+  const round = (x: number, y: number, w: number, h: number, r: number) => {
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  };
+
+  // Retícula: 1 m tenue, 5 m marcado. Ayuda a leer medidas sin cotas.
+  for (let m = 0; m <= Math.ceil(PLAN.widthM); m++) {
+    g.strokeStyle = m % 5 === 0 ? 'rgba(35,45,38,.20)' : 'rgba(35,45,38,.075)';
+    g.lineWidth = m % 5 === 0 ? 2 : 1;
+    g.beginPath();
+    g.moveTo(X(m), 0);
+    g.lineTo(X(m), H);
+    g.stroke();
+  }
+  for (let m = 0; m <= Math.ceil(PLAN_DEPTH); m++) {
+    g.strokeStyle = m % 5 === 0 ? 'rgba(35,45,38,.20)' : 'rgba(35,45,38,.075)';
+    g.lineWidth = m % 5 === 0 ? 2 : 1;
+    g.beginPath();
+    g.moveTo(0, Z(m));
+    g.lineTo(W, Z(m));
+    g.stroke();
+  }
+
+  // Etiqueta con una o dos líneas y fondo tipo papel.
+  const pill = (
+    lines: { text: string; size: number; weight?: number; color?: string }[],
+    px: number,
+    pz: number,
+    bg: string,
+    border?: string,
+  ) => {
+    const padX = 9;
+    const padY = 6;
+    const gap = 1;
+    let w = 0;
+    let h = padY * 2;
+    for (const l of lines) {
+      g.font = `${l.weight ?? 700} ${l.size}px ${FONT}`;
+      w = Math.max(w, g.measureText(l.text).width);
+      h += l.size * 1.12 + gap;
+    }
+    h -= gap;
+    const x = px - w / 2 - padX;
+    const y = pz - h / 2;
+    round(x, y, w + padX * 2, h, Math.min(7, h / 2));
+    g.fillStyle = bg;
+    g.fill();
+    if (border) {
+      g.strokeStyle = border;
+      g.lineWidth = 1.5;
+      g.stroke();
+    }
+    let ty = y + padY;
+    for (const l of lines) {
+      g.font = `${l.weight ?? 700} ${l.size}px ${FONT}`;
+      g.fillStyle = l.color ?? '#1d241c';
+      g.textAlign = 'center';
+      g.textBaseline = 'top';
+      g.fillText(l.text, px, ty);
+      ty += l.size * 1.12 + gap;
+    }
+  };
+
+  // Nombre y medidas por ambiente. Las posiciones evitan que las píldoras se
+  // pisen entre el dormitorio 1 y su ensuite, o entre pasillo y baño.
+  const LABEL_AT: Record<string, [number, number]> = {
+    '1': [1.75, 1.55],
+    '2': [5.35, 1.35],
+    '3': [12.55, 1.15],
+    '4': [6.5, 4.75],
+    '5': [1.22, 4.55],
+    '6': [2.83, 4.55],
+    '7': [10.33, 4.62],
+    '8': [12.95, 4.62],
+    '9': [6.15, 6.55],
+    '10': [1.7, 7.15],
+    '11': [13.35, 8.0],
+    '12': [7.2, 11.75],
+    '13': [8.35, 1.8],
+    '14': [10.18, 9.55],
+    '15': [10.33, 1.2],
+  };
+  const SHORT: Record<string, string> = {
+    '1': 'DORM. 2',
+    '2': 'COCINA',
+    '3': 'DORM. 1',
+    '4': 'COMEDOR',
+    '5': 'BAÑO',
+    '6': 'PASILLO',
+    '7': 'DISTRIB.',
+    '8': 'VESTÍB.',
+    '9': 'LIVING',
+    '10': 'DORM. 3',
+    '11': 'GARAJE',
+    '12': 'PORCHE',
+    '13': 'DESPENSA',
+    '14': 'LAVAND.',
+    '15': 'ENSUITE',
+  };
+
+  for (const r of ROOMS) {
+    const [px, pz] = LABEL_AT[r.id] ?? [(r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2];
+    const w = r.x1 - r.x0;
+    const d = r.z1 - r.z0;
+    pill(
+      [
+        { text: SHORT[r.id] ?? r.name.toUpperCase(), size: 38, weight: 800 },
+        { text: `${fmtM(w)} × ${fmtM(d)} m`, size: 18, weight: 600, color: '#4a5347' },
+        { text: `${fmtM(r.areaM2)} m²`, size: 16, weight: 700, color: '#6a7366' },
+      ],
+      X(px),
+      Z(pz),
+      'rgba(252,249,240,.9)',
+      'rgba(45,55,46,.18)',
+    );
+  }
+
+  // Norte y escala gráfica.
+  g.save();
+  g.translate(X(0.7), Z(12.5));
+  g.fillStyle = 'rgba(29,36,28,.9)';
+  g.beginPath();
+  g.moveTo(0, 34);
+  g.lineTo(-11, 56);
+  g.lineTo(0, 48);
+  g.lineTo(11, 56);
+  g.closePath();
+  g.fill();
+  g.font = `800 22px ${FONT}`;
+  g.textAlign = 'center';
+  g.fillText('N', 0, 20);
+  g.restore();
+
+  const barY = Z(12.5);
+  g.strokeStyle = 'rgba(29,36,28,.85)';
+  g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(X(1.9), barY);
+  g.lineTo(X(2.9), barY);
+  g.moveTo(X(1.9), barY - 6);
+  g.lineTo(X(1.9), barY + 6);
+  g.moveTo(X(2.9), barY - 6);
+  g.lineTo(X(2.9), barY + 6);
+  g.stroke();
+  g.font = `700 15px ${FONT}`;
+  g.fillStyle = 'rgba(29,36,28,.9)';
+  g.textAlign = 'left';
+  g.fillText('1 m', X(3.05), barY + 5);
+
+  if (showCodes) {
+    // Códigos de muro: el código que se reporta al recorrer. Los jambos muy
+    // cortos (< 0,5 m) no llevan placa para no tapar el ambiente; su vano sí.
+    WALLS.forEach((w, i) => {
+      const len = Math.hypot(w.x1 - w.x0, w.z1 - w.z0);
+      if (len < 0.5) return;
+      const cx = (w.x0 + w.x1) / 2;
+      const cz = (w.z0 + w.z1) / 2;
+      pill([{ text: `M-${String(i + 1).padStart(2, '0')}`, size: 20, weight: 800, color: '#f7f4e8' }], X(cx), Z(cz), 'rgba(31,38,31,.86)');
+    });
+
+    // Códigos de mueble.
+    for (const f of FURNITURE_2D) {
+      if (f.room === null) continue; // quincho: fuera de la envolvente
+      pill([{ text: f.id, size: 18, weight: 800 }], X((f.x0 + f.x1) / 2), Z((f.z0 + f.z1) / 2), 'rgba(246,198,74,.94)');
+    }
+
+    // Códigos de puertas y pasos, corridos hacia el lado interior.
+    let dn = 0;
+    for (const o of OPENINGS) {
+      if (o.kind !== 'door' && o.kind !== 'double' && o.kind !== 'pass') continue;
+      dn += 1;
+      const off = 0.42 * (o.swing ?? 1);
+      const px = o.axis === 'z' ? o.x : o.x + off;
+      const pz = o.axis === 'z' ? o.z + off : o.z;
+      pill([{ text: `P-${String(dn).padStart(2, '0')}`, size: 18, weight: 800 }], X(px), Z(pz), 'rgba(255,255,255,.92)', 'rgba(45,55,46,.25)');
+    }
+  }
+
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  // Mipmaps + anisotropía: la lámina se ve en oblicuo y muy reducida; sin
+  // mipmaps el texto parpadea al orbitar. La nitidez se recupera con pinza.
+  t.anisotropy = 4;
+  t.needsUpdate = true;
+  return t;
+}
+
+/** Exposición por modo: el plano no puede quemar el porcelanato. */
+function Exposure({ mode }: { mode: 'plan' | 'day' | 'sunset' | 'night' }) {
+  const gl = useThree((s) => s.gl);
+  useEffect(() => {
+    gl.toneMappingExposure = mode === 'plan' ? 0.88 : mode === 'day' ? 0.78 : mode === 'sunset' ? 0.84 : 0.96;
+  }, [gl, mode]);
+  return null;
 }
 
 function NicheEnvironment({ intensity }: { intensity: number }) {
@@ -376,6 +674,7 @@ function OpeningMesh({
   matFrame,
   matDoor,
   matCasing,
+  planView = false,
 }: {
   o: Opening;
   open: boolean;
@@ -385,6 +684,8 @@ function OpeningMesh({
   matFrame: Material;
   matDoor: Material;
   matCasing: Material;
+  /** Planta con corte: la abertura se recorta a la altura de planta. */
+  planView?: boolean;
 }) {
   const camera = useThree((s) => s.camera);
   const leaf = useRef<Group>(null);
@@ -396,7 +697,13 @@ function OpeningMesh({
   const th = o.ext ? EXT_T : INT_T;
   const sill = o.sill ?? 0;
   const top = sill + o.height;
-  const lintelH = Math.max(0, WALL_H - top);
+  // En planta se corta a 1,15 m: los dinteles y las hojas altas desaparecen,
+  // y el vano se lee como un hueco real en el muro.
+  const cutTop = planView ? PLAN.planCutH : WALL_H;
+  const lintelH = planView ? 0 : Math.max(0, WALL_H - top);
+  const sillH = Math.min(sill, cutTop);
+  const frameTop = Math.min(top, cutTop);
+  const jambH = Math.max(0.02, frameTop - sill);
   const alongZ = o.axis === 'z';
 
   const isDoor = o.kind === 'door' || o.kind === 'double';
@@ -431,16 +738,20 @@ function OpeningMesh({
   // marco
   const frame = (
     <>
-      <B p={[o.x, top, o.z]} s={alongZ ? [o.width, 0.07, th + 0.02] : [th + 0.02, 0.07, o.width]} m={matFrame} />
-      <B p={[o.x, sill, o.z]} s={alongZ ? [o.width, 0.07, th + 0.02] : [th + 0.02, 0.07, o.width]} m={matFrame} />
+      {!planView || top <= cutTop + 0.001 ? (
+        <B p={[o.x, frameTop, o.z]} s={alongZ ? [o.width, 0.07, th + 0.02] : [th + 0.02, 0.07, o.width]} m={matFrame} />
+      ) : null}
+      {sillH > 0.005 ? (
+        <B p={[o.x, Math.min(sill, cutTop), o.z]} s={alongZ ? [o.width, 0.07, th + 0.02] : [th + 0.02, 0.07, o.width]} m={matFrame} />
+      ) : null}
       <B
-        p={alongZ ? [o.x - o.width / 2, o.height / 2 + sill, o.z] : [o.x, o.height / 2 + sill, o.z - o.width / 2]}
-        s={alongZ ? [0.07, o.height, th + 0.02] : [th + 0.02, o.height, 0.07]}
+        p={alongZ ? [o.x - o.width / 2, sill + jambH / 2, o.z] : [o.x, sill + jambH / 2, o.z - o.width / 2]}
+        s={alongZ ? [0.07, jambH, th + 0.02] : [th + 0.02, jambH, 0.07]}
         m={matFrame}
       />
       <B
-        p={alongZ ? [o.x + o.width / 2, o.height / 2 + sill, o.z] : [o.x, o.height / 2 + sill, o.z + o.width / 2]}
-        s={alongZ ? [0.07, o.height, th + 0.02] : [th + 0.02, o.height, 0.07]}
+        p={alongZ ? [o.x + o.width / 2, sill + jambH / 2, o.z] : [o.x, sill + jambH / 2, o.z + o.width / 2]}
+        s={alongZ ? [0.07, jambH, th + 0.02] : [th + 0.02, jambH, 0.07]}
         m={matFrame}
       />
     </>
@@ -448,7 +759,7 @@ function OpeningMesh({
 
   // Moldura blanca (casing) de puertas y ventanas + alféizar de piedra.
   const casing =
-    o.kind === 'garage' || o.kind === 'pass' ? null : (
+    planView || o.kind === 'garage' || o.kind === 'pass' ? null : (
       <>
         <B
           p={[o.x, top + 0.045, o.z]}
@@ -484,8 +795,8 @@ function OpeningMesh({
   // antepecho y dintel (muro)
   const wallFill = (
     <>
-      {sill > 0.02 ? (
-        <B p={[o.x, sill / 2, o.z]} s={alongZ ? [o.width, sill, th] : [th, sill, o.width]} m={matWall} cast recv />
+      {sillH > 0.02 ? (
+        <B p={[o.x, sillH / 2, o.z]} s={alongZ ? [o.width, sillH, th] : [th, sillH, o.width]} m={matWall} cast recv />
       ) : null}
       {lintelH > 0.02 ? (
         <B
@@ -509,6 +820,15 @@ function OpeningMesh({
   }
 
   if (o.kind === 'garage') {
+    if (planView) {
+      return (
+        <>
+          {wallFill}
+          {frame}
+          <B p={[o.x, 0.025, o.z]} s={alongZ ? [o.width, 0.05, th * 0.8] : [th * 0.8, 0.05, o.width]} m={matFrame} />
+        </>
+      );
+    }
     return (
       <>
         {wallFill}
@@ -537,6 +857,7 @@ function OpeningMesh({
           ]
         : [{ hinge: o.hinge === 'right' ? o.width / 2 : -o.width / 2, rot: 1 }];
     const leafW = o.kind === 'double' ? o.width / 2 - 0.02 : o.width - 0.06;
+    const leafH = Math.min(o.height - 0.08, Math.max(0.02, cutTop - sill));
     return (
       <>
         {wallFill}
@@ -553,20 +874,20 @@ function OpeningMesh({
               position={[gx, 0, gz]}
             >
               <mesh
-                position={alongZ ? [(sx * leafW) / 2, sill + o.height / 2, 0] : [0, sill + o.height / 2, (l.hinge > 0 ? -1 : 1) * leafW / 2]}
+                position={alongZ ? [(sx * leafW) / 2, sill + leafH / 2, 0] : [0, sill + leafH / 2, (l.hinge > 0 ? -1 : 1) * leafW / 2]}
                 castShadow
                 material={o.glass ? matFrame : matDoor}
               >
-                <boxGeometry args={alongZ ? [leafW, o.height - 0.08, 0.05] : [0.05, o.height - 0.08, leafW]} />
+                <boxGeometry args={alongZ ? [leafW, leafH, 0.05] : [0.05, leafH, leafW]} />
               </mesh>
               {o.glass ? (
                 <mesh
-                  position={alongZ ? [(sx * leafW) / 2, sill + o.height / 2, 0] : [0, sill + o.height / 2, (l.hinge > 0 ? -1 : 1) * leafW / 2]}
+                  position={alongZ ? [(sx * leafW) / 2, sill + leafH / 2, 0] : [0, sill + leafH / 2, (l.hinge > 0 ? -1 : 1) * leafW / 2]}
                 >
-                  <boxGeometry args={alongZ ? [leafW - 0.12, o.height - 0.28, 0.02] : [0.02, o.height - 0.28, leafW - 0.12]} />
+                  <boxGeometry args={alongZ ? [leafW - 0.12, Math.max(0.03, leafH - 0.2), 0.02] : [0.02, Math.max(0.03, leafH - 0.2), leafW - 0.12]} />
                   <meshStandardMaterial color="#dcecf4" transparent opacity={0.22} metalness={0.5} roughness={0.03} envMapIntensity={1.8} />
                 </mesh>
-              ) : (
+              ) : planView ? null : (
                 <mesh
                   position={
                     alongZ
@@ -587,31 +908,42 @@ function OpeningMesh({
 
   // ventanas / correderas: dos hojas de vidrio
   const half = o.width / 2;
-  const paneH = o.height - 0.1;
+  const highSill = planView && sill >= cutTop - 0.03;
+  const paneH = Math.min(o.height - 0.1, Math.max(0.03, cutTop - sill));
   return (
     <>
       {wallFill}
       {casing}
       {frame}
-      <group ref={paneA} position={alongZ ? [o.x - half / 2, 0, o.z] : [o.x, 0, o.z - half / 2]}>
-        <mesh position={[0, sill + o.height / 2, 0]}>
-          <boxGeometry args={alongZ ? [half - 0.02, paneH, 0.035] : [0.035, paneH, half - 0.02]} />
-          <meshStandardMaterial color="#d8eaf4" transparent opacity={0.24} metalness={0.45} roughness={0.02} envMapIntensity={1.9} />
+      {highSill ? (
+        // Ventana alta: en el corte se dibuja como línea de vidrio.
+        <mesh position={[o.x, cutTop + 0.006, o.z]}>
+          <boxGeometry args={alongZ ? [o.width - 0.04, 0.018, Math.min(th * 0.7, 0.12)] : [Math.min(th * 0.7, 0.12), 0.018, o.width - 0.04]} />
+          <meshBasicMaterial color="#7fbcd2" toneMapped={false} />
         </mesh>
-      </group>
-      <group ref={paneB} position={alongZ ? [o.x + half / 2, 0, o.z] : [o.x, 0, o.z + half / 2]}>
-        <mesh position={[0, sill + o.height / 2, 0]}>
-          <boxGeometry args={alongZ ? [half - 0.02, paneH, 0.035] : [0.035, paneH, half - 0.02]} />
-          <meshStandardMaterial color="#d8eaf4" transparent opacity={0.24} metalness={0.45} roughness={0.02} envMapIntensity={1.9} />
-        </mesh>
-      </group>
+      ) : (
+        <>
+          <group ref={paneA} position={alongZ ? [o.x - half / 2, 0, o.z] : [o.x, 0, o.z - half / 2]}>
+            <mesh position={[0, sill + paneH / 2, 0]}>
+              <boxGeometry args={alongZ ? [half - 0.02, paneH, 0.035] : [0.035, paneH, half - 0.02]} />
+              <meshStandardMaterial color="#d8eaf4" transparent opacity={0.28} metalness={0.35} roughness={0.08} envMapIntensity={1.1} />
+            </mesh>
+          </group>
+          <group ref={paneB} position={alongZ ? [o.x + half / 2, 0, o.z] : [o.x, 0, o.z + half / 2]}>
+            <mesh position={[0, sill + paneH / 2, 0]}>
+              <boxGeometry args={alongZ ? [half - 0.02, paneH, 0.035] : [0.035, paneH, half - 0.02]} />
+              <meshStandardMaterial color="#d8eaf4" transparent opacity={0.28} metalness={0.35} roughness={0.08} envMapIntensity={1.1} />
+            </mesh>
+          </group>
+        </>
+      )}
     </>
   );
 }
 
 /* ── Apliques, interruptores y vegetación ─────────────────────── */
 
-function Sconce({ x, y, z, rot, on, glow }: { x: number; y: number; z: number; rot: number; on: boolean; glow?: boolean }) {
+function Sconce({ x, y, z, rot, on, glow, night }: { x: number; y: number; z: number; rot: number; on: boolean; glow?: boolean; night?: boolean }) {
   return (
     <group position={[x, y, z]} rotation={[0, rot, 0]}>
       <mesh castShadow>
@@ -622,7 +954,7 @@ function Sconce({ x, y, z, rot, on, glow }: { x: number; y: number; z: number; r
         <boxGeometry args={[0.075, 0.2, 0.025]} />
         <meshStandardMaterial color="#fff3db" emissive="#ffd9a0" emissiveIntensity={on ? 1.8 : 0.04} />
       </mesh>
-      {on && glow ? <pointLight position={[0, 0, 0.35]} intensity={1.1} color="#ffd9a0" distance={4.5} decay={2} /> : null}
+      {on && glow ? <pointLight position={[0, 0, 0.35]} intensity={night ? 1.1 : 0.35} color="#ffd9a0" distance={4.5} decay={2} /> : null}
     </group>
   );
 }
@@ -774,6 +1106,7 @@ function Wardrobe({
   h = 2.2,
   rot = 0,
   mat,
+  planView = false,
 }: {
   x: number;
   z: number;
@@ -782,20 +1115,25 @@ function Wardrobe({
   /** 0 = frente al sur; -90° = frente al poniente, respaldo al muro oriente. */
   rot?: number;
   mat: Material;
+  planView?: boolean;
 }) {
+  // En planta el ropero se corta a 1,15 m: no tapa el ambiente ni parece un muro.
+  const hh = planView ? Math.min(h, PLAN.planCutH) : h;
   return (
     <group position={[x, 0, z]} rotation={[0, rot, 0]}>
-      <B p={[0, h / 2, 0]} s={[w, h, 0.58]} m={mat} cast />
+      <B p={[0, hh / 2, 0]} s={[w, hh, 0.58]} m={mat} cast />
       {[0, 1, 2].map((i) => (
-        <mesh key={i} position={[-w / 2 + (w / 3) * (i + 0.5), h / 2, 0.3]}>
-          <boxGeometry args={[0.008, h - 0.12, 0.01]} />
+        <mesh key={i} position={[-w / 2 + (w / 3) * (i + 0.5), hh / 2, 0.3]}>
+          <boxGeometry args={[0.008, Math.max(0.04, hh - 0.12), 0.01]} />
           <meshStandardMaterial color="#b9b0a1" roughness={0.6} />
         </mesh>
       ))}
-      <mesh position={[w / 6, h * 0.62, 0.31]}>
-        <boxGeometry args={[0.02, 0.32, 0.02]} />
-        <meshStandardMaterial color="#c9a76a" metalness={0.8} roughness={0.3} />
-      </mesh>
+      {!planView ? (
+        <mesh position={[w / 6, hh * 0.62, 0.31]}>
+          <boxGeometry args={[0.02, 0.32, 0.02]} />
+          <meshStandardMaterial color="#c9a76a" metalness={0.8} roughness={0.3} />
+        </mesh>
+      ) : null}
     </group>
   );
 }
@@ -927,6 +1265,8 @@ export default function Plano3903D({
   showNpc = true,
   planView = false,
   autoDoors = false,
+  audit = false,
+  onRoomEnter,
 }: {
   light: 'day' | 'sunset' | 'night';
   lightsOn?: boolean;
@@ -939,6 +1279,10 @@ export default function Plano3903D({
   planView?: boolean;
   /** Abre las puertas al acercarse la cámara (recorrido POV). */
   autoDoors?: boolean;
+  /** Capa de códigos M-xx / F-xx / P-xx sobre el plano elevado. */
+  audit?: boolean;
+  /** Tocar un ambiente del plano entra a su escena en primera persona. */
+  onRoomEnter?: (sceneId: string) => void;
 }) {
   const textures = useViewerTextures();
   const oak = usePbrMaps('woodOak');
@@ -959,13 +1303,22 @@ export default function Plano3903D({
   // Fachada en verde limón suave: la misma familia cromática que el interior,
   // con el portal de piedra y la franja blanca como acentos mediterráneos.
   const matWallExt = useTextureMaterial(stuccoCanvas, { color: '#d8c6a4', roughness: 0.9, envMapIntensity: 0.28 });
+  // En planta los muros se leen neutros (no limón): el color queda para el 3D.
+  const matWallExtPlan = useMemo(
+    () => new MeshStandardMaterial({ color: '#e7dbc6', roughness: 0.96, envMapIntensity: 0.18 }),
+    [],
+  );
+  const matWallIntPlan = useMemo(
+    () => new MeshStandardMaterial({ color: '#f3efe4', roughness: 0.96, envMapIntensity: 0.16 }),
+    [],
+  );
   const matBand = useTextureMaterial(stuccoCanvas, { color: '#fbf8f1', roughness: 0.8, envMapIntensity: 0.4 });
   const matCeil = useTextureMaterial(wallMap, { color: '#fbf7ef', roughness: 0.95, envMapIntensity: 0.25 });
   // Porcelanato cálido tipo piedra clara: combina con el limón sin blanquear la escena.
-  const matPorcelain = useTextureMaterial(porcelainCanvas, { color: '#e7dfd2', roughness: 0.16, metalness: 0.03, envMapIntensity: 1.15 });
+  const matPorcelain = useTextureMaterial(porcelainCanvas, { color: '#e7dfd2', roughness: 0.38, metalness: 0.02, envMapIntensity: 0.48 });
   const matStone = useTextureMaterial(stoneCanvas, { color: '#efe7d9', roughness: 0.78, metalness: 0.02, envMapIntensity: 0.5 });
   const matPaver = useTextureMaterial(paverCanvas, { color: '#ffffff', roughness: 0.85, envMapIntensity: 0.35 });
-  const matGrass = useTextureMaterial(grassMap, { color: '#93a97c', roughness: 0.96, envMapIntensity: 0.25 });
+  const matGrass = useTextureMaterial(grassMap, { color: '#ffffff', roughness: 0.98, envMapIntensity: 0.18 });
   const matConcrete = useMemo(
     () => new MeshStandardMaterial({ color: '#8f918c', roughness: 0.72, metalness: 0.02, envMapIntensity: 0.35 }),
     [],
@@ -1028,21 +1381,33 @@ export default function Plano3903D({
       new MeshBasicMaterial({
         color: '#ffca82',
         transparent: true,
-        opacity: lightsOn ? 0.22 : 0,
+        opacity: lightsOn ? (planView ? 0 : light === 'night' ? 0.2 : 0.08) : 0,
         depthWrite: false,
         blending: AdditiveBlending,
         side: DoubleSide,
         toneMapped: false,
       }),
-    [lightsOn],
+    [lightsOn, planView, light],
   );
 
+  /** Relleno de muro en el corte: tinta oscura, como el poché de un plano. */
+  const matPoche = useMemo(
+    () => new MeshBasicMaterial({ color: '#333a31', toneMapped: false }),
+    [],
+  );
   const night = light === 'night';
   const sunPos: Vec3 = light === 'sunset' ? [2.5, 2.2, 26] : [6.5, 16, 26];
   const bg = night ? '#0a1522' : light === 'sunset' ? '#f4c9a0' : '#dfeaf3';
   const sunColor = night ? '#93abd8' : light === 'sunset' ? '#ffb46e' : '#eef6ff';
-  const sunIntensity = night ? 0.2 : light === 'sunset' ? 1.9 : 2.45;
+  // Día: sol directo pero sin quemar el porcelanato. Planta: luz pareja,
+  // sin sombras duras, para que el plano se lea como un dibujo.
+  const sunIntensity = planView ? 0.82 : night ? 0.2 : light === 'sunset' ? 1.55 : 1.38;
   const lamp = lightsOn ? (night ? 1.1 : 0.55) : 0;
+
+  // Un toque corto (sin arrastre) sobre el piso de un ambiente entra a su escena.
+  const tap = useRef<{ x: number; y: number } | null>(null);
+  const planTex = useMemo(() => (planView ? makePlanAnnotationTexture(audit) : null), [planView, audit]);
+  useEffect(() => () => planTex?.dispose(), [planTex]);
 
   if (!porcelainCanvas) return null;
 
@@ -1050,7 +1415,7 @@ export default function Plano3903D({
 
   return (
     <>
-      <NicheEnvironment intensity={night ? 0.55 : 1.05} />
+      <NicheEnvironment intensity={planView ? 0.5 : night ? 0.42 : light === 'sunset' ? 0.65 : 0.62} />
       <color attach="background" args={[bg]} />
       <fog attach="fog" args={[bg, 34, 92]} />
       {night ? (
@@ -1088,6 +1453,27 @@ export default function Plano3903D({
       {ROOMS.map((room) => (
         <mesh
           key={room.id}
+          onPointerDown={
+            planView
+              ? (e) => {
+                  tap.current = { x: e.clientX, y: e.clientY };
+                }
+              : undefined
+          }
+          onPointerUp={
+            planView
+              ? (e) => {
+                  const start = tap.current;
+                  tap.current = null;
+                  if (!start) return;
+                  if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) return;
+                  const target = ROOM_SCENE[room.id];
+                  if (!target) return;
+                  e.stopPropagation();
+                  onRoomEnter?.(target);
+                }
+              : undefined
+          }
           position={[(room.x0 + room.x1) / 2, 0.03 + (room.id === '14' || room.id === '15' ? 0.005 : 0), (room.z0 + room.z1) / 2]}
           receiveShadow
           material={
@@ -1122,15 +1508,28 @@ export default function Plano3903D({
       {/* ── Muros ── */}
       {wallsRender.map((seg, i) => {
         const { len, th, cx, cz } = wallSize(seg);
+        const h = planView ? PLAN.planCutH : WALL_H;
         return (
-          <mesh key={`w${i}`} position={[cx, WALL_H / 2, cz]} castShadow receiveShadow material={seg.kind === 'ext' ? matWallExt : matWallInt}>
-            <boxGeometry args={[len, WALL_H, th]} />
-          </mesh>
+          <group key={`w${i}`}>
+            <mesh
+              position={[cx, h / 2, cz]}
+              castShadow={!planView}
+              receiveShadow={!planView}
+              material={planView ? (seg.kind === 'ext' ? matWallExtPlan : matWallIntPlan) : seg.kind === 'ext' ? matWallExt : matWallInt}
+            >
+              <boxGeometry args={[len, h, th]} />
+            </mesh>
+            {planView ? (
+              // Tapa de corte: lee el espesor real del muro (exterior 25 cm,
+              // tabique 12 cm) y evita que el limón inunde la planta.
+              <B p={[cx, h + 0.012 + (i % 5) * 0.0008, cz]} s={[len + 0.002, 0.026, th + 0.002]} m={matPoche} />
+            ) : null}
+          </group>
         );
       })}
 
       {/* ── Guardapolvo perimetral: solo tramos con muro real ── */}
-      {ROOMS.filter((r) => r.id !== '11' && r.id !== '12').map((room) => (
+      {!planView && ROOMS.filter((r) => r.id !== '11' && r.id !== '12').map((room) => (
         <group key={`zb${room.id}`}>
           {trimRuns(room, 0.13, 0.14, 0.03).map((run, i) => (
             <B key={`b${i}`} p={run.p} s={run.s} m={matSkirt} cast />
@@ -1142,7 +1541,7 @@ export default function Plano3903D({
       ))}
 
       {/* ── Cornisa en recepción, cocina y despensa ── */}
-      {ROOMS.filter((r) => ['2', '4', '9', '13'].includes(r.id)).map((room) => (
+      {!planView && ROOMS.filter((r) => ['2', '4', '9', '13'].includes(r.id)).map((room) => (
         <group key={`cr${room.id}`}>
           {trimRuns(room, 2.685, 0.09, 0.05, false).map((run, i) => (
             <B key={`c${i}`} p={run.p} s={run.s} m={matBand} />
@@ -1157,31 +1556,36 @@ export default function Plano3903D({
           o={o}
           open={openHouse}
           auto={autoDoors}
-          matWall={o.ext ? matWallExt : matWallInt}
+          matWall={planView ? (o.ext ? matWallExtPlan : matWallIntPlan) : o.ext ? matWallExt : matWallInt}
           matFrame={matFrame}
           matDoor={matOak}
           matCasing={matBand}
+          planView={planView}
         />
       ))}
 
       {/* ── Techo plano + franja blanca + portal de piedra ── */}
       {!planView ? <B p={[7.3, WALL_H + 0.16, 5.5]} s={[15.2, 0.28, 11.9]} m={matFrame} cast recv /> : null}
-      <B p={[7.3, WALL_H + 0.02, 11.12]} s={[15.0, 0.34, 0.34]} m={matBand} cast />
-      <B p={[7.3, WALL_H + 0.02, -0.12]} s={[15.0, 0.34, 0.34]} m={matBand} cast />
-      <B p={[-0.12, WALL_H + 0.02, 5.5]} s={[0.34, 0.34, 11.3]} m={matBand} cast />
-      <B p={[14.72, WALL_H + 0.02, 5.5]} s={[0.34, 0.34, 11.3]} m={matBand} cast />
-      {/* portal (piedra) */}
-      <B p={[5.95, 1.5, 11.16]} s={[0.8, 3.0, 0.42]} m={matStone} cast />
-      <B p={[8.45, 1.5, 11.16]} s={[0.8, 3.0, 0.42]} m={matStone} cast />
-      <B p={[7.2, 2.72, 11.16]} s={[3.3, 0.56, 0.42]} m={matStone} cast />
-      <B p={[7.2, 3.03, 11.16]} s={[3.5, 0.14, 0.52]} m={matBand} cast />
+      {!planView ? (
+        <>
+          <B p={[7.3, WALL_H + 0.02, 11.12]} s={[15.0, 0.34, 0.34]} m={matBand} cast />
+          <B p={[7.3, WALL_H + 0.02, -0.12]} s={[15.0, 0.34, 0.34]} m={matBand} cast />
+          <B p={[-0.12, WALL_H + 0.02, 5.5]} s={[0.34, 0.34, 11.3]} m={matBand} cast />
+          <B p={[14.72, WALL_H + 0.02, 5.5]} s={[0.34, 0.34, 11.3]} m={matBand} cast />
+          {/* portal (piedra) */}
+          <B p={[5.95, 1.5, 11.16]} s={[0.8, 3.0, 0.42]} m={matStone} cast />
+          <B p={[8.45, 1.5, 11.16]} s={[0.8, 3.0, 0.42]} m={matStone} cast />
+          <B p={[7.2, 2.72, 11.16]} s={[3.3, 0.56, 0.42]} m={matStone} cast />
+          <B p={[7.2, 3.03, 11.16]} s={[3.5, 0.14, 0.52]} m={matBand} cast />
+        </>
+      ) : null}
       {/* porche: cielo y escalones */}
       {!planView ? <B p={[7.35, 2.86, 11.72]} s={[3.9, 0.12, 1.96]} m={matBand} cast /> : null}
       <B p={[7.35, 0.09, 12.7]} s={[3.9, 0.18, 0.42]} m={matPaver} recv />
       <B p={[7.35, 0.05, 13.02]} s={[4.2, 0.1, 0.34]} m={matPaver} recv />
 
       {/* ── Muro de TV (3,80 m) ── */}
-      <group>
+      {!planView ? <group>
         {Array.from({ length: 15 }).map((_, i) => (
           <B
             key={`s${i}`}
@@ -1243,7 +1647,7 @@ export default function Plano3903D({
         {/* estante lateral */}
         <B p={[3.6, 1.9, 10.45]} s={[0.3, 0.05, 0.65]} m={matPine} />
         <B p={[3.6, 1.3, 10.45]} s={[0.3, 0.05, 0.65]} m={matPine} />
-      </group>
+      </group> : null}
 
       {/* ── Living: sofá, mesa, alfombra ── */}
       <mesh position={[6.6, 0.062, 9.0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -1380,7 +1784,8 @@ export default function Plano3903D({
         <planeGeometry args={[2.9, 2.05]} />
         <meshStandardMaterial color="#c8b9a2" roughness={0.97} />
       </mesh>
-      {/* lámpara lineal sobre la mesa: tres globos cálidos */}
+      {/* lámpara lineal sobre la mesa: tres globos cálidos (oculta en planta) */}
+      {!planView ? (
       <group position={[6.5, 0, 4.75]}>
         <mesh position={[0, 2.25, 0]}>
           <boxGeometry args={[1.5, 0.04, 0.06]} />
@@ -1399,9 +1804,10 @@ export default function Plano3903D({
           </group>
         ))}
         {lightsOn ? (
-          <pointLight position={[0, 1.9, 0]} intensity={night ? 0.7 : 0.22} color="#ffd9a0" distance={4.5} decay={2} />
+          <pointLight position={[0, 1.9, 0]} intensity={night ? 0.7 : 0.1} color="#ffd9a0" distance={4.5} decay={2} />
         ) : null}
       </group>
+      ) : null}
 
       {/* ── Cocina ── */}
       <group>
@@ -1443,43 +1849,58 @@ export default function Plano3903D({
             </mesh>
           )),
         )}
-        <B p={[5.7, 1.62, 0.55]} s={[0.82, 0.16, 0.5]} m={matFrame} cast />
-        <B p={[5.7, 2.2, 0.4]} s={[0.36, 1.0, 0.3]} m={matFrame} />
-        {/* alacenas (a la izquierda de la ventana, sin taparla) */}
-        <B p={[3.73, 1.75, 0.43]} s={[0.54, 0.7, 0.34]} m={matBand} cast />
-        <mesh position={[3.73, 1.41, 0.61]} material={matLed}>
-          <boxGeometry args={[0.48, 0.018, 0.02]} />
-        </mesh>
-        <mesh position={[3.73, 1.41, 0.61]} material={matLedGlow}>
-          <boxGeometry args={[0.48, 0.06, 0.035]} />
-        </mesh>
-        {/* alacena a la derecha de la ventana: cierra la línea alta */}
-        <B p={[5.87, 1.75, 0.43]} s={[1.1, 0.7, 0.34]} m={matBand} cast />
-        <mesh position={[5.87, 1.41, 0.61]} material={matLed}>
-          <boxGeometry args={[1.04, 0.018, 0.02]} />
-        </mesh>
-        <mesh position={[5.87, 1.41, 0.61]} material={matLedGlow}>
-          <boxGeometry args={[1.04, 0.06, 0.035]} />
-        </mesh>
-        {[5.6, 6.14].map((x) => (
-          <mesh key={`uphandle${x}`} position={[x, 1.45, 0.62]} material={matBrass}>
-            <boxGeometry args={[0.018, 0.16, 0.018]} />
-          </mesh>
-        ))}
+        {!planView ? (
+          <>
+            <B p={[5.7, 1.62, 0.55]} s={[0.82, 0.16, 0.5]} m={matFrame} cast />
+            <B p={[5.7, 2.2, 0.4]} s={[0.36, 1.0, 0.3]} m={matFrame} />
+          </>
+        ) : null}
+        {/* Alacenas altas: se ocultan en planta (quedan sobre el corte de 1,15 m) */}
+        {!planView ? (
+          <>
+            <B p={[3.73, 1.75, 0.43]} s={[0.54, 0.7, 0.34]} m={matBand} cast />
+            <mesh position={[3.73, 1.41, 0.61]} material={matLed}>
+              <boxGeometry args={[0.48, 0.018, 0.02]} />
+            </mesh>
+            <mesh position={[3.73, 1.41, 0.61]} material={matLedGlow}>
+              <boxGeometry args={[0.48, 0.06, 0.035]} />
+            </mesh>
+            <B p={[5.87, 1.75, 0.43]} s={[1.1, 0.7, 0.34]} m={matBand} cast />
+            <mesh position={[5.87, 1.41, 0.61]} material={matLed}>
+              <boxGeometry args={[1.04, 0.018, 0.02]} />
+            </mesh>
+            <mesh position={[5.87, 1.41, 0.61]} material={matLedGlow}>
+              <boxGeometry args={[1.04, 0.06, 0.035]} />
+            </mesh>
+            {[5.6, 6.14].map((x) => (
+              <mesh key={`uphandle${x}`} position={[x, 1.45, 0.62]} material={matBrass}>
+                <boxGeometry args={[0.018, 0.16, 0.018]} />
+              </mesh>
+            ))}
+          </>
+        ) : null}
         {/* backsplash de piedra: peto bajo + paños a los lados de la ventana */}
         <B p={[5.02, 1.0, 0.27]} s={[2.8, 0.1, 0.03]} m={matStone} />
-        <B p={[3.835, 1.2, 0.27]} s={[0.43, 0.5, 0.03]} m={matStone} />
-        <B p={[5.735, 1.2, 0.27]} s={[1.37, 0.5, 0.03]} m={matStone} />
-        {/* refri acero */}
-        <B p={[6.9, 0.925, 0.62]} s={[0.9, 1.85, 0.7]} m={matFrame} cast />
-        <mesh position={[6.9, 1.1, 0.98]}>
-          <boxGeometry args={[0.8, 1.5, 0.02]} />
-          <meshStandardMaterial color="#8e969b" metalness={0.85} roughness={0.25} envMapIntensity={1.2} />
-        </mesh>
-        <mesh position={[6.62, 1.2, 1.0]}>
-          <boxGeometry args={[0.02, 0.3, 0.02]} />
-          <meshStandardMaterial color="#2a2f33" metalness={0.7} roughness={0.3} />
-        </mesh>
+        {!planView ? (
+          <>
+            <B p={[3.835, 1.2, 0.27]} s={[0.43, 0.5, 0.03]} m={matStone} />
+            <B p={[5.735, 1.2, 0.27]} s={[1.37, 0.5, 0.03]} m={matStone} />
+          </>
+        ) : null}
+        {/* refri acero: en planta se corta a la altura del plano */}
+        <B p={[6.9, (planView ? 1.15 : 1.85) / 2, 0.62]} s={[0.9, planView ? 1.15 : 1.85, 0.7]} m={matFrame} cast />
+        {!planView ? (
+          <>
+            <mesh position={[6.9, 1.1, 0.98]}>
+              <boxGeometry args={[0.8, 1.5, 0.02]} />
+              <meshStandardMaterial color="#8e969b" metalness={0.85} roughness={0.25} envMapIntensity={1.2} />
+            </mesh>
+            <mesh position={[6.62, 1.2, 1.0]}>
+              <boxGeometry args={[0.02, 0.3, 0.02]} />
+              <meshStandardMaterial color="#2a2f33" metalness={0.7} roughness={0.3} />
+            </mesh>
+          </>
+        ) : null}
         {/* horno empotrado bajo la encimera (sin torre que invada el mueble) */}
         <mesh position={[6.05, 0.45, 0.94]}>
           <boxGeometry args={[0.56, 0.55, 0.02]} />
@@ -1542,18 +1963,18 @@ export default function Plano3903D({
         <mesh position={[KITCHEN.island.x, 0.975, 3.37]} material={matLedGlow}>
           <boxGeometry args={[KITCHEN.island.w, 0.06, 0.035]} />
         </mesh>
-        {lightsOn ? (
+        {lightsOn && !planView ? (
           <>
             <pointLight
               position={[KITCHEN.island.x, 1.85, KITCHEN.island.z]}
-              intensity={night ? 1.1 : 0.38}
+              intensity={night ? 1.1 : 0.2}
               color="#ffd9a0"
               distance={5.5}
               decay={2}
             />
             <pointLight
               position={[5.2, 2.55, 1.35]}
-              intensity={night ? 0.75 : 0.24}
+              intensity={night ? 0.75 : 0.12}
               color="#ffe6c2"
               distance={4.5}
               decay={2}
@@ -1646,30 +2067,32 @@ export default function Plano3903D({
 
       {/* ── Baño (1,95 × 2,34): ducha al norte, WC al poniente, vanitorio al sur ── */}
       <group>
-        <B p={[0.85, 0.04, 4.2]} s={[1.2, 0.08, 1.2]} m={matStone} recv />
-        <mesh position={[1.45, 1.0, 4.2]}>
+        {/* Ducha real 0,90 × 1,20: deja 30 cm libres para el barrido de la puerta */}
+        <B p={[0.7, 0.04, 4.21]} s={[0.9, 0.08, 1.2]} m={matStone} recv />
+        <mesh position={[1.15, 1.0, 4.21]}>
           <boxGeometry args={[0.02, 2.0, 1.2]} />
           <meshStandardMaterial color="#dcecf4" transparent opacity={0.2} metalness={0.4} roughness={0.05} />
         </mesh>
-        <mesh position={[1.45, 2.0, 4.2]}>
+        <mesh position={[1.15, 2.0, 4.21]}>
           <boxGeometry args={[0.03, 0.03, 1.2]} />
           <meshStandardMaterial color="#22282c" metalness={0.6} roughness={0.3} />
         </mesh>
-        <mesh position={[0.85, 2.1, 3.72]} rotation={[Math.PI / 2, 0, 0]}>
+        <mesh position={[0.7, 2.1, 3.72]} rotation={[Math.PI / 2, 0, 0]}>
           <cylinderGeometry args={[0.12, 0.12, 0.03, 16]} />
           <meshStandardMaterial color="#c9ced2" metalness={0.9} roughness={0.2} />
         </mesh>
-        <mesh position={[0.85, 1.55, 3.66]}>
+        <mesh position={[0.7, 1.55, 3.66]}>
           <cylinderGeometry args={[0.015, 0.015, 0.9, 8]} />
           <meshStandardMaterial color="#c9ced2" metalness={0.9} roughness={0.2} />
         </mesh>
         <B p={[0.34, 1.25, 4.2]} s={[0.06, 0.4, 0.4]} m={matWallInt} />
-        <mesh position={[1.45, 0.98, 3.75]}>
-          <boxGeometry args={[0.02, 1.9, 0.42]} />
+        {/* Retorno de vidrio al sur, con paso de 40 cm junto al mango */}
+        <mesh position={[0.5, 0.98, 4.81]}>
+          <boxGeometry args={[0.5, 1.9, 0.02]} />
           <meshStandardMaterial color="#dcecf4" transparent opacity={0.22} metalness={0.4} roughness={0.05} />
         </mesh>
-        <mesh position={[1.485, 1.0, 3.62]} material={matBrass}>
-          <boxGeometry args={[0.02, 0.24, 0.02]} />
+        <mesh position={[1.165, 1.05, 4.62]} material={matBrass}>
+          <boxGeometry args={[0.02, 0.26, 0.02]} />
         </mesh>
         <mesh position={[2.14, 1.15, 4.15]} rotation={[Math.PI / 2, 0, 0]} material={matBrass}>
           <cylinderGeometry args={[0.012, 0.012, 0.6, 8]} />
@@ -1748,7 +2171,7 @@ export default function Plano3903D({
       {/* ── Dormitorio 1 (cabecera al oriente, ensuite al poniente) ── */}
       <group>
         <Bed x={13.3} z={1.5} w={1.8} head={-1} rot={-Math.PI / 2} matWood={matPine} matLinen={matLinen} />
-        <Wardrobe x={11.62} z={2.97} w={0.95} rot={Math.PI / 2} mat={matBand} />
+        <Wardrobe x={11.62} z={2.97} w={0.95} rot={Math.PI / 2} mat={matBand} planView={planView} />
         <Desk x={14.07} z={3.0} w={0.8} rot={Math.PI / 2} matWood={matPine} matWall={matBand} />
         <Chair x={13.45} z={3.0} rot={Math.PI / 2} matWood={matPine} matLinen={matLinen} />
         <mesh position={[13.1, 0.04, 1.5]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -1830,7 +2253,7 @@ export default function Plano3903D({
       {/* ── Dormitorio 2 (cabecera al oriente, clóset al poniente) ── */}
       <group>
         <Bed x={2.32} z={1.55} w={1.6} head={-1} rot={-Math.PI / 2} matWood={matWood} matLinen={matLinen} />
-        <Wardrobe x={0.55} z={0.87} w={0.95} rot={Math.PI / 2} mat={matBand} />
+        <Wardrobe x={0.55} z={0.87} w={0.95} rot={Math.PI / 2} mat={matBand} planView={planView} />
         <Desk x={1.15} z={3.15} w={1.2} matWood={matPine} matWall={matBand} />
         {[[3.05, 0.35], [3.05, 2.65]].map(([x, z]) => (
           <group key={`d2n${z}`} position={[x, 0, z]}>
@@ -1855,7 +2278,7 @@ export default function Plano3903D({
       {/* ── Dormitorio 3 ── */}
       <group>
         <Bed x={1.55} z={7.19} w={1.6} head={-1} matWood={matWood} matLinen={matLinen} />
-        <Wardrobe x={3.0} z={8.6} w={0.95} rot={-Math.PI / 2} mat={matBand} />
+        <Wardrobe x={3.0} z={8.6} w={0.95} rot={-Math.PI / 2} mat={matBand} planView={planView} />
         <Desk x={3.015} z={10.1} w={1.2} rot={Math.PI / 2} matWood={matPine} matWall={matBand} />
         <Chair x={2.35} z={10.1} rot={Math.PI / 2} matWood={matPine} matLinen={matLinen} />
         <mesh position={[1.7, 0.04, 7.9]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -2100,17 +2523,21 @@ export default function Plano3903D({
           </group>
         ))}
         {lightsOn ? (
-          <pointLight position={[12.5, 2.0, 14.4]} intensity={night ? 0.75 : 0.28} color="#ffd9a0" distance={6} decay={2} />
+          <pointLight position={[12.5, 2.0, 14.4]} intensity={night ? 0.75 : 0.12} color="#ffd9a0" distance={6} decay={2} />
         ) : null}
       </group>
 
       {/* ── Apliques, interruptores y enchufes ── */}
-      {SCONCES.map((s, i) => (
-        <Sconce key={`sc${i}`} x={s.x} y={s.y} z={s.z} rot={s.rot} on={lightsOn} glow={i < 4} />
-      ))}
-      {SWITCHES.map((s, i) => (
-        <Plate key={`pl${i}`} x={s.x} y={s.y} z={s.z} rot={s.rot} outlet={s.outlet} />
-      ))}
+      {!planView
+        ? SCONCES.map((s, i) => (
+            <Sconce key={`sc${i}`} x={s.x} y={s.y} z={s.z} rot={s.rot} on={lightsOn} glow={i < 4} night={night} />
+          ))
+        : null}
+      {!planView
+        ? SWITCHES.map((s, i) => (
+            <Plate key={`pl${i}`} x={s.x} y={s.y} z={s.z} rot={s.rot} outlet={s.outlet} />
+          ))
+        : null}
 
       {/* ── Vegetación animada ── */}
       <Hedge x={2.6} z={12.9} w={4.6} d={0.75} h={0.7} />
@@ -2160,10 +2587,10 @@ export default function Plano3903D({
               </mesh>
             </>
           ) : null}
-          {lightsOn && [0, 1, 6, 8, 10, 12].includes(i) ? (
+          {lightsOn && !planView && [0, 1, 6, 8, 10, 12].includes(i) ? (
             <pointLight
               position={[0, -0.25, 0]}
-              intensity={night ? 0.85 : 0.42}
+              intensity={night ? 0.85 : 0.16}
               color="#fff0d4"
               distance={5.6}
               decay={2}
@@ -2215,19 +2642,32 @@ export default function Plano3903D({
         />
       ))}
 
+      {/* ── Capa de anotación / códigos (una textura, un draw call) ── */}
+      {/* Capa CAD a 7,5 cm del piso: etiquetas sin paralaje de perspectiva. */}
+      {planView && planTex ? (
+        <mesh position={[PLAN.widthM / 2, 0.075, 6.6]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={30}>
+          <planeGeometry args={[PLAN.widthM, 13.2]} />
+          <meshBasicMaterial map={planTex} transparent depthTest={false} depthWrite={false} toneMapped={false} />
+        </mesh>
+      ) : null}
+
       {/* ── POV humano: manos y antebrazos ── */}
       {showHands ? <FirstPersonHands /> : null}
 
       {/* ── Cielorraso del porche ya cubierto; luces exteriores ── */}
-      <pointLight position={[7.2, 2.4, 11.9]} intensity={lightsOn ? (night ? 0.9 : 0.25) : 0} color="#ffd9a0" distance={6} decay={2} />
+      <pointLight position={[7.2, 2.4, 11.9]} intensity={lightsOn && !planView ? (night ? 0.9 : 0.1) : 0} color="#ffd9a0" distance={6} decay={2} />
+
+      <Exposure mode={planView ? 'plan' : light} />
 
       {/* ── Iluminación global ── */}
-      <hemisphereLight args={[night ? '#22354f' : '#eaf2fb', night ? '#1a2530' : '#cfc4af', night ? 0.18 : 0.5]} />
+      <hemisphereLight
+        args={[night ? '#22354f' : '#eaf2fb', night ? '#1a2530' : '#cfc4af', planView ? 1.18 : night ? 0.16 : 0.38]}
+      />
       <directionalLight
         position={[6.5, 16, 26]}
         intensity={sunIntensity}
         color={sunColor}
-        castShadow
+        castShadow={!planView}
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-bias={-0.0004}
@@ -2238,8 +2678,8 @@ export default function Plano3903D({
         shadow-camera-top={20}
         shadow-camera-bottom={-20}
       />
-      <directionalLight position={[4, 9, -12]} intensity={night ? 0.12 : 0.3} color={night ? '#93abd8' : '#dfeaf7'} />
-      {lightsOn && night ? <ambientLight intensity={0.09} color="#ffe9c9" /> : null}
+      <directionalLight position={[4, 9, -12]} intensity={planView ? 0.3 : night ? 0.1 : 0.2} color={night ? '#93abd8' : '#dfeaf7'} />
+      {lightsOn && night && !planView ? <ambientLight intensity={0.09} color="#ffe9c9" /> : null}
     </>
   );
 }

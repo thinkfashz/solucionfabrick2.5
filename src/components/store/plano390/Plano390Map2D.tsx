@@ -52,10 +52,26 @@ function doorGlyph(o: Opening) {
   );
 }
 
+const FURNITURE_STYLE: Record<string, { fill: string; stroke: string; dash?: string }> = {
+  bed: { fill: 'rgba(125,151,163,.20)', stroke: '#9fb8c4' },
+  wardrobe: { fill: 'rgba(240,196,106,.13)', stroke: '#f0c46a' },
+  tv: { fill: 'rgba(16,21,24,.92)', stroke: '#f0c46a' },
+  car: { fill: 'rgba(201,239,99,.05)', stroke: 'rgba(201,239,99,.5)', dash: '0.2 0.14' },
+  bath: { fill: 'rgba(127,211,255,.14)', stroke: '#7fd3ff' },
+  island: { fill: 'rgba(125,151,163,.20)', stroke: '#b8ccd6' },
+  counter: { fill: 'rgba(125,151,163,.16)', stroke: FURNITURE_STROKE },
+  sofa: { fill: 'rgba(125,151,163,.17)', stroke: '#a9c0cb' },
+  chair: { fill: 'rgba(125,151,163,.10)', stroke: 'rgba(125,151,163,.75)' },
+  table: { fill: 'rgba(198,136,74,.10)', stroke: '#c6884a' },
+  desk: { fill: 'rgba(125,151,163,.12)', stroke: FURNITURE_STROKE },
+  fridge: { fill: 'rgba(216,234,241,.16)', stroke: '#cfe3ec' },
+  rug: { fill: 'rgba(240,196,106,.05)', stroke: 'rgba(240,196,106,.35)', dash: '0.12 0.1' },
+};
+
 function Furniture({ f }: { f: Furniture2D }) {
   // El quincho se dibuja aparte, con su propia pérgola y etiqueta.
   if (f.kind === 'quincho') return null;
-  const isRug = f.kind === 'rug';
+  const st = FURNITURE_STYLE[f.kind] ?? { fill: 'rgba(125,151,163,.13)', stroke: FURNITURE_STROKE };
   return (
     <rect
       x={f.x0}
@@ -63,10 +79,10 @@ function Furniture({ f }: { f: Furniture2D }) {
       width={f.x1 - f.x0}
       height={f.z1 - f.z0}
       rx={0.06}
-      fill={isRug ? 'rgba(240,196,106,.06)' : 'rgba(125,151,163,.13)'}
-      stroke={isRug ? 'rgba(240,196,106,.35)' : FURNITURE_STROKE}
+      fill={st.fill}
+      stroke={st.stroke}
       strokeWidth="0.045"
-      strokeDasharray={isRug ? '0.12 0.1' : undefined}
+      strokeDasharray={st.dash}
     />
   );
 }

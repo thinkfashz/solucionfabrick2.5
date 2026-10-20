@@ -63,6 +63,7 @@ export default function Plano390Walkthrough() {
   const [tourIndex, setTourIndex] = useState(0);
   const [initialScene, setInitialScene] = useState<SceneView | null>(null);
   const [planView, setPlanView] = useState(false);
+  const [audit, setAudit] = useState(false);
 
   /**
    * Enlace directo para revisión visual y para compartir una vista:
@@ -74,10 +75,12 @@ export default function Plano390Walkthrough() {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const vista = params.get('vista');
-    if (!vista) return;
-    const scene = SCENES.find(
-      (s) => s.id === vista || s.label.toLowerCase() === vista.toLowerCase(),
-    );
+    const wantsAudit = params.get('audit') === '1' || params.get('codigos') === '1';
+    if (!vista && !wantsAudit) return;
+    const scene = vista
+      ? SCENES.find((s) => s.id === vista || s.label.toLowerCase() === vista.toLowerCase())
+      : SCENES.find((s) => s.id === 'plano');
+    if (wantsAudit) setAudit(true);
     const luz = params.get('luz');
     if (luz === 'sunset' || luz === 'night' || luz === 'day') setLight(luz);
     if (params.get('manos') === '0') setShowHands(false);
@@ -170,6 +173,19 @@ export default function Plano390Walkthrough() {
     setMode('free');
   };
 
+  /**
+   * Auditoría: enciende la capa de códigos y, si hace falta, entra al plano
+   * elevado para poder leerla. No cambia la geometría ni recarga la escena.
+   */
+  const toggleAudit = () => {
+    const next = !audit;
+    setAudit(next);
+    if (next && !planView) {
+      const plano = SCENES.find((s) => s.id === 'plano');
+      if (plano) goScene(plano);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[120] overflow-hidden select-none bg-[#020507] text-white">
       <div className={`absolute inset-0 ${stage === 'intro' ? 'invisible' : ''}`}>
@@ -183,7 +199,12 @@ export default function Plano390Walkthrough() {
               showHands={showHands && mode !== 'cctv' && !planView}
               showNpc={mode === 'free' && !planView}
               planView={planView}
+              audit={audit}
               autoDoors={mode === 'tour'}
+              onRoomEnter={(id) => {
+                const scene = SCENES.find((s) => s.id === id);
+                if (scene) goScene(scene);
+              }}
             />
             <Plano390CameraRig
               initialScene={initialScene}
@@ -213,7 +234,7 @@ export default function Plano390Walkthrough() {
         onModeChange={changeMode}
         activeSpot={spot}
         onSpotChange={goSpot}
-        roomLabel={planView ? 'Plano 3D' : roomLabel}
+        roomLabel={planView ? (audit ? 'Plano 3D · auditoría' : 'Plano 3D') : roomLabel}
         onCloseSpot={closeSpot}
         onScene={goScene}
         cctvIndex={cctvIndex}
@@ -227,6 +248,9 @@ export default function Plano390Walkthrough() {
         onCctvSelect={goCctv}
         light={light}
         onLightChange={setLight}
+        planView={planView}
+        audit={audit}
+        onToggleAudit={toggleAudit}
       />
       <Plano390RotateHint enabled={stage === 'in' && !planView} />
     </div>

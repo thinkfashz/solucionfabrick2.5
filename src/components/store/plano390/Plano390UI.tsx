@@ -21,10 +21,13 @@ import {
   EyeOff,
   ChevronRight,
   Info,
+  ScanLine,
+  TriangleAlert,
 } from 'lucide-react';
-import { PHOTO_SPOTS, CCTV_CAMERAS, TOUR_STOPS, SCENES } from '@/lib/plano390Data';
+import { PHOTO_SPOTS, CCTV_CAMERAS, TOUR_STOPS, SCENES, WALLS, ROOMS, OPENINGS, FURNITURE_2D } from '@/lib/plano390Data';
 import type { SceneView } from '@/lib/plano390Data';
 import Plano390Map2D from './Plano390Map2D';
+import { auditPlano, auditSummary } from '@/lib/plano390Audit';
 
 type Stage = 'intro' | 'ready' | 'in';
 type Mode = 'free' | 'tour' | 'cctv';
@@ -50,6 +53,9 @@ export default function Plano390UI({
   onCctvSelect,
   light = 'day',
   onLightChange,
+  planView = false,
+  audit = false,
+  onToggleAudit,
 }: {
   stage: Stage;
   onEnter: () => void;
@@ -71,6 +77,11 @@ export default function Plano390UI({
   onCctvSelect?: (i: number) => void;
   light?: 'day' | 'sunset' | 'night';
   onLightChange?: (l: 'day' | 'sunset' | 'night') => void;
+  /** Está activa la vista de planta elevada. */
+  planView?: boolean;
+  /** Capa de códigos M-xx / F-xx / P-xx. */
+  audit?: boolean;
+  onToggleAudit?: () => void;
 }): ReactElement | null {
   const GOLD = '#F6C64A';
   const [progress, setProgress] = useState(0);
@@ -81,6 +92,10 @@ export default function Plano390UI({
   const [showMenu, setShowMenu] = useState(false);
   const [showTourInfo, setShowTourInfo] = useState(true);
   const [clock, setClock] = useState('');
+  // La auditoría es pura y barata (48 muros, 45 muebles): se calcula una vez.
+  const issues = useMemo(() => auditPlano(), []);
+  const summary = useMemo(() => auditSummary(issues), [issues]);
+  const findings = useMemo(() => issues.filter((i) => i.severity !== 'info'), [issues]);
 
   // Intro loading steps
   useEffect(() => {
@@ -632,6 +647,25 @@ export default function Plano390UI({
               >
                 Ficha técnica <ChevronRight size={13} />
               </button>
+              <button
+                onClick={() => {
+                  onToggleAudit?.();
+                  setShowMenu(false);
+                }}
+                aria-pressed={audit}
+                className={`col-span-2 inline-flex h-11 items-center justify-between gap-2 rounded-xl border px-3 text-[10px] font-black transition active:scale-95 ${
+                  audit
+                    ? 'border-[#F6C64A]/55 bg-[#F6C64A]/15 text-[#F6C64A]'
+                    : 'border-white/10 bg-white/[.04] text-white/85'
+                }`}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <ScanLine size={14} /> Auditoría del plano
+                </span>
+                <span className={`rounded-full px-2 py-1 text-[8px] tracking-[.08em] ${summary.errors ? 'bg-red-500/20 text-red-200' : 'bg-[#c9ef63]/15 text-[#d8ff8a]'}`}>
+                  {summary.errors} err · {summary.warnings} avisos
+                </span>
+              </button>
             </div>
 
             <p className="mt-3 text-center text-[8px] uppercase tracking-[.16em] text-white/30">
@@ -699,6 +733,11 @@ export default function Plano390UI({
                     <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-[#F6C64A]" />
                     Cámara y cono de visión
                   </li>
+                  {audit ? (
+                    <li className="pt-1 text-[8px] leading-4 text-white/45">
+                      Los códigos M-xx / F-xx / P-xx se leen en el Plano 3D; reportá el código al detectar un error.
+                    </li>
+                  ) : null}
                 </ul>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
@@ -727,10 +766,67 @@ export default function Plano390UI({
                 </ul>
               </div>
             </div>
+            <div className="mt-2 rounded-xl border border-white/10 bg-white/[.03] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="inline-flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[.16em] text-white/40">
+                  <TriangleAlert size={11} /> Auditoría geométrica
+                </p>
+                <span className={`rounded-full px-2 py-0.5 text-[8px] font-black ${
+                  summary.errors ? 'bg-red-500/20 text-red-200' : summary.warnings ? 'bg-[#F6C64A]/20 text-[#F6C64A]' : 'bg-[#c9ef63]/15 text-[#d8ff8a]'
+                }`}>
+                  {summary.errors} errores · {summary.warnings} avisos
+                </span>
+              </div>
+              {findings.length ? (
+                <ul className="mt-2 space-y-1.5">
+                  {findings.slice(0, 6).map((it) => (
+                    <li key={it.code} className="flex gap-2 text-[9px] leading-4">
+                      <span className={`mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full ${
+                        it.severity === 'error' ? 'bg-red-400' : 'bg-[#F6C64A]'
+                      }`} />
+                      <span className="min-w-0 text-white/60">
+                        <b className="text-white/85">{it.code}</b> · {it.detail}{' '}
+                        <span className="text-[#c9ef63]/80">{it.refs.join(' · ')}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 rounded-lg border border-[#c9ef63]/20 bg-[#c9ef63]/[.06] px-2.5 py-2 text-[9px] leading-4 text-[#d8ff8a]">
+                  Geometría coherente: {WALLS.length} muros, {ROOMS.length} ambientes, {OPENINGS.length} vanos y{' '}
+                  {FURNITURE_2D.length} muebles sin solapes ni muebles montados. Las {issues.length} notas son
+                  ambientes contenidos válidos (ensuite y lavandería).
+                </p>
+              )}
+              <button
+                onClick={() => {
+                  if (!audit) onToggleAudit?.();
+                  const planScene = SCENES.find((s) => s.id === 'plano');
+                  if (planScene) onScene(planScene);
+                  setShowPlan(false);
+                }}
+                className="mt-2 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-[#F6C64A]/35 bg-[#F6C64A]/10 text-[9px] font-black uppercase tracking-[.1em] text-[#F6C64A] transition active:scale-95"
+              >
+                <ScanLine size={13} /> Abrir Plano 3D con códigos
+              </button>
+              <p className="mt-2 text-[8px] leading-4 text-white/40">
+                Se valida el mismo contrato que dibuja el 3D: muros que se cruzan, vanos sin apoyo,
+                superficies declaradas, muebles fuera de ambiente o montados, y barrido de puertas.
+              </p>
+            </div>
             <p className="mt-2 text-center text-[8px] uppercase tracking-[.18em] text-white/30">
               Tocá una cámara del plano para verla en vivo
             </p>
           </div>
+        </div>
+      ) : null}
+
+      {/* ── Ayuda del plano elevado ── */}
+      {planView && stage === 'in' ? (
+        <div className="pointer-events-none absolute inset-x-0 top-[4.9rem] z-[70] flex justify-center px-3">
+          <span className="rounded-full border border-white/10 bg-black/55 px-3 py-1.5 text-center text-[8px] font-black uppercase tracking-[.13em] text-white/60 backdrop-blur-xl">
+            Tocá un ambiente para entrar · arrastrá para orbitar · pinza para zoom
+          </span>
         </div>
       ) : null}
 

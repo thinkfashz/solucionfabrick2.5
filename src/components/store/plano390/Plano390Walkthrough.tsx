@@ -5,9 +5,9 @@
  * cámara primera persona con colisiones + recorrido guiado + Circuito CCTV
  * en modo Cine + HUD con minimapa y puntos de foto.
  */
-import { Canvas } from '@react-three/fiber';
-import { Suspense, useEffect, useState } from 'react';
-import { ACESFilmicToneMapping, PCFSoftShadowMap } from 'three';
+import { Canvas, useThree } from '@react-three/fiber';
+import { Suspense, useEffect, useLayoutEffect, useState } from 'react';
+import { ACESFilmicToneMapping, PCFSoftShadowMap, PerspectiveCamera } from 'three';
 import type { WebGLRenderer } from 'three';
 import { PLAN, SCENES } from '@/lib/plano390Data';
 import type { SceneView } from '@/lib/plano390Data';
@@ -19,16 +19,29 @@ import Plano390UI from './Plano390UI';
 
 const INITIAL_CAM = { position: [7, PLAN.eyeH, 17.2] as [number, number, number], fov: 46, near: 0.05, far: 220 };
 
-// Props estables: si se pasan literales nuevos en cada render, R3F puede
-// recrear cámara/renderer y la cámara vuelve a la posición inicial (rompe
-// el salto de ?vista= y el tour). Ver error 025 de la skill.
-const CANVAS_CAMERA = {
-  position: INITIAL_CAM.position,
-  fov: INITIAL_CAM.fov,
-  near: INITIAL_CAM.near,
-  far: INITIAL_CAM.far,
-};
-const CANVAS_GL = { antialias: true, powerPreference: 'high-performance' as const };
+// La cámara se configura UNA vez dentro del Canvas. Si se pasa la prop
+// `camera` al Canvas, R3F la reaplica en cada render y cualquier cambio de
+// estado (rótulo de ambiente, luz, escena) devuelve la vista al exterior.
+// Ver error 025 de la skill.
+function CameraBootstrap({ scene }: { scene: SceneView | null }) {
+  const { camera } = useThree();
+  useLayoutEffect(() => {
+    if (scene) {
+      camera.position.set(scene.pos[0], scene.pos[1], scene.pos[2]);
+      camera.lookAt(scene.look[0], scene.look[1], scene.look[2]);
+    } else {
+      camera.position.set(INITIAL_CAM.position[0], INITIAL_CAM.position[1], INITIAL_CAM.position[2]);
+      camera.lookAt(7, 1.35, 6);
+    }
+    if (camera instanceof PerspectiveCamera) {
+      camera.fov = INITIAL_CAM.fov;
+      camera.near = INITIAL_CAM.near;
+      camera.far = INITIAL_CAM.far;
+      camera.updateProjectionMatrix();
+    }
+  }, [camera, scene]);
+  return null;
+}
 
 const setupCanvas = ({ gl }: { gl: WebGLRenderer }) => {
   gl.toneMapping = ACESFilmicToneMapping;
@@ -145,13 +158,8 @@ export default function Plano390Walkthrough() {
   return (
     <div className="fixed inset-0 z-[120] overflow-hidden select-none bg-[#020507] text-white">
       <div className={`absolute inset-0 ${stage === 'intro' ? 'invisible' : ''}`}>
-        <Canvas
-          shadows="soft"
-          dpr={[1, 1.6]}
-          gl={CANVAS_GL}
-          camera={CANVAS_CAMERA}
-          onCreated={setupCanvas}
-        >
+        <Canvas shadows="soft" dpr={[1, 1.6]} onCreated={setupCanvas}>
+          <CameraBootstrap scene={initialScene} />
           <Suspense fallback={null}>
             <Plano3903D light={light} lightsOn={lightsOn} openHouse={openHouse} showHands={showHands && mode !== 'cctv'} autoDoors={mode === 'tour'} />
             <Plano390CameraRig initialScene={initialScene} onRoom={setRoomLabel} onCctv={setCctvIndex} onTour={setTourIndex} />

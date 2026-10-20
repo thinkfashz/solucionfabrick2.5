@@ -120,3 +120,6 @@ Bitácora de trabajo (se actualiza al cierre de cada hito).
 - **Cámara estable**: `camera`/`gl` del `<Canvas>` pasaron a constantes de módulo.
   Los literales inline hacían que R3F recreara la cámara en cada render y el salto
   de `?vista=` volvía al exterior. Documentado como error 025.
+- **Cámara, fix definitivo**: se quitaron `camera` y `gl` del `<Canvas>`; un
+  `CameraBootstrap` dentro del Canvas fija posición/lookAt/fov una sola vez. R3F
+  reaplicaba la prop `camera` en cada render y devolvía la vista al exterior.

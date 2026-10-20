@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, type ReactElement } from 'react';
 import { ArrowLeft, X, Route, Footprints, Clapperboard, Video } from 'lucide-react';
-import { ROOMS, PHOTO_SPOTS, PLAN, CCTV_CAMERAS, TOUR_STOPS, QUINCHO, SCENES } from '@/lib/plano390Data';
+import { ROOMS, PHOTO_SPOTS, PLAN, CCTV_CAMERAS, TOUR_STOPS, SCENES } from '@/lib/plano390Data';
 import type { SceneView } from '@/lib/plano390Data';
 
 type Stage = 'intro' | 'ready' | 'in';
@@ -159,10 +159,10 @@ export default function Plano390UI({
             Proyecto 390-1
           </span>
           <h1 className="max-w-[720px] text-balance text-4xl font-black leading-[1.04] tracking-tight text-white sm:text-6xl">
-            Casa 390-1 <span style={{ color: GOLD }}>127 m²</span>
+            Casa 390-1 <span style={{ color: GOLD }}>148 m²</span>
           </h1>
           <p className="mt-3 max-w-[440px] text-balance text-[11px] leading-5 text-white/40 sm:text-xs select-none touch-none">
-            Recorrido 3D primera persona · 3 dormitorios · sauna · terraza
+            Recorrido 3D primera persona · 3 dormitorios · 2 baños · garaje y porche
           </p>
         </div>
 
@@ -300,8 +300,7 @@ export default function Plano390UI({
               Escena
             </span>
             {SCENES.map((scene) => {
-              const sceneActive =
-                scene.label === roomLabel || (scene.id === 'sala' && roomLabel === 'Cocina · Comedor');
+              const sceneActive = scene.label === roomLabel;
               return (
                 <button
                   key={scene.id}
@@ -392,41 +391,31 @@ export default function Plano390UI({
 
       {/* Minimap (hidden on mobile) */}
       <div className="absolute right-3 top-16 z-20 hidden sm:block select-none touch-none pointer-events-none">
-        <svg width="224" height="148" viewBox="-0.4 -3.4 22.8 15" aria-label="Minimapa del plano">
-          {/* Exterior border glow */}
+        <svg width="224" height="186" viewBox="-1 -1 16.6 13.8" aria-label="Minimapa del plano">
+          {/* Contorno de la casa */}
           <rect
-            x="-0.1"
-            y="-3.3"
-            width="14.2"
-            height="14.6"
+            x="0"
+            y="0"
+            width="14.6"
+            height="11"
             rx="0.5"
             fill="none"
             stroke={GOLD}
             strokeWidth="0.15"
             opacity="0.7"
           />
-          {/* Quincho */}
+          {/* Porche */}
           <rect
-            x={QUINCHO.x0}
-            y={QUINCHO.z0}
-            width={QUINCHO.x1 - QUINCHO.x0}
-            height={QUINCHO.z1 - QUINCHO.z0}
+            x="5.65"
+            y="10.75"
+            width="3.4"
+            height="1.8"
             rx="0.2"
             fill="rgba(246,198,74,.13)"
             stroke={GOLD}
             strokeWidth="0.1"
             opacity="0.9"
           />
-          <text
-            x={(QUINCHO.x0 + QUINCHO.x1) / 2}
-            y={(QUINCHO.z0 + QUINCHO.z1) / 2}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize="0.36"
-            fill="#F6C64A"
-          >
-            Quincho
-          </text>
           {/* Rooms */}
           {ROOMS.map((room) => (
             <rect
@@ -517,7 +506,7 @@ export default function Plano390UI({
               <p className="text-[8px] font-black uppercase tracking-[.18em] text-[#F6C64A]">
                 Ficha técnica
               </p>
-              <h2 className="mt-1 text-sm font-black">Casa 390-1 · 127 m²</h2>
+              <h2 className="mt-1 text-sm font-black">Casa 390-1 · Mediterránea 148 m²</h2>
             </div>
             <button onClick={() => setShowFiche(false)} className="grid h-9 w-9 place-items-center rounded-full bg-white/[.06]">
               <X size={15} />
@@ -527,7 +516,7 @@ export default function Plano390UI({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-[9px] font-black text-white/60">Superficie</p>
-                <p className="text-[11px] font-black text-white">127 m²</p>
+                <p className="text-[11px] font-black text-white">148 m²</p>
               </div>
               <div>
                 <p className="text-[9px] font-black text-white/60">Dormitorios</p>
@@ -535,23 +524,23 @@ export default function Plano390UI({
               </div>
               <div>
                 <p className="text-[9px] font-black text-white/60">Baños</p>
-                <p className="text-[11px] font-black text-white">1</p>
+                <p className="text-[11px] font-black text-white">2 (baño + ensuite)</p>
               </div>
               <div>
-                <p className="text-[9px] font-black text-white/60">Sauna</p>
-                <p className="text-[11px] font-black text-white">5,6 m²</p>
+                <p className="text-[9px] font-black text-white/60">Garaje</p>
+                <p className="text-[11px] font-black text-white">25,6 m²</p>
               </div>
               <div>
-                <p className="text-[9px] font-black text-white/60">Terraza</p>
-                <p className="text-[11px] font-black text-white">21,5 m²</p>
+                <p className="text-[9px] font-black text-white/60">Living</p>
+                <p className="text-[11px] font-black text-white">28,2 m²</p>
               </div>
               <div>
-                <p className="text-[9px] font-black text-white/60">Quincho</p>
-                <p className="text-[11px] font-black text-white">19,2 m²</p>
+                <p className="text-[9px] font-black text-white/60">Porche</p>
+                <p className="text-[11px] font-black text-white">6,1 m²</p>
               </div>
             </div>
             <p className="text-[9px] leading-5 text-white/50">
-              Casa unifamiliar de acero ligero con terminaciones en madera estructural, cubierta a dos aguas y terraza norte. Cocina en L de 4,50 x 3,50 m con isla de 1,80 m; quincho cubierto de 6,00 x 3,20 m con parrilla, horno de barro y barra de 3,60 m. Orientación sur para máximo ganancia solar.
+              Casa mediterránea de una planta sobre el plano del cliente: muros crema, porcelanato blanco brillante y franja blanca con portal de piedra. Tres dormitorios y dos baños (baño 1,80 × 2,20 m con ducha de 0,90 m y vanitorio de 0,80 m). Living de 28,2 m² con muro de TV de 3,80 m (TV 1,40 × 0,79 m y mueble flotante de 2,60 m), cocina abierta con isla de 2,40 × 1,00 m y barra de 1,05 m, garaje de 25,6 m² con portón seccional de 3,60 m y porche de acceso. Puertas y ventanas animadas, luces encendidas/apagadas, interruptores y enchufes a la vista, vegetación en movimiento y circuito de 12 cámaras.
             </p>
             <div>
               <p className="text-[8px] font-black uppercase tracking-[.18em] text-white/40">

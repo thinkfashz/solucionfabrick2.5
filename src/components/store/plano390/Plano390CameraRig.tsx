@@ -4,8 +4,8 @@
  * • Modo libre: WASD/flechas + joysticks analógicos con suavizado (aceleración
  *   y giro), pitch (mirar arriba/abajo), Sprint con Shift y colisiones AABB
  *   eje a eje contra WALLS (los tramos de vidrio también bloquean).
- * • Modo tour: dolly cinematográfico por TOUR_STOPS en bucle (1,45 m/s con
- *   aceleración en tramos largos, espera 2,2 s, mirada suavizada, respiración
+ * • Modo tour: dolly cinematográfico por TOUR_STOPS en bucle (2,0 m/s con
+ *   aceleración en tramos largos, espera 1,8 s, mirada suavizada, respiración
  *   de cámara y roll sutil).
  * • Modo CCTV (Cine): recorre el circuito CCTV_CAMERAS cada 7 s con corte
  *   suavizado, ligero sway de cámara de seguridad y FOV propio.
@@ -16,7 +16,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import { PerspectiveCamera, Vector3 } from 'three';
-import { CCTV_CAMERAS, PHOTO_SPOTS, PLAN, QUINCHO, ROOMS, TOUR_STOPS, WALLS } from '@/lib/plano390Data';
+import { BLOCKERS, CCTV_CAMERAS, PHOTO_SPOTS, PLAN, ROOMS, TOUR_STOPS, WALLS } from '@/lib/plano390Data';
 import type { CctvCamera, PhotoSpot, WallSeg } from '@/lib/plano390Data';
 
 export type Plano390Mode = 'free' | 'tour' | 'cctv';
@@ -57,8 +57,8 @@ const WALK_SPEED = 2.9; // m/s
 const SPRINT_MULT = 1.6;
 const TURN_SPEED = 2.1; // rad/s a giro completo
 const PITCH_MAX = 0.52; // rad (~30°)
-const TOUR_SPEED = 1.45;
-const TOUR_WAIT = 2.2;
+const TOUR_SPEED = 2.0;
+const TOUR_WAIT = 1.8;
 const SPOT_DURATION = 1.4;
 const SCENE_DURATION = 1.15;
 const ROOM_TICK = 0.5;
@@ -68,7 +68,7 @@ const CCTV_BLEND = 1.1; // s de transición entre cámaras
 const CCTV_OFFSET = 0.36;
 const BASE_FOV = 46;
 const TOUR_FOV = 49;
-const BOUNDS = { x0: -3.2, x1: 22.4, z0: -4.8, z1: 15.8 };
+const BOUNDS = { x0: -3.2, x1: 18.2, z0: -4.8, z1: 20.5 };
 const TAU = Math.PI * 2;
 
 type SpotTween = { idx: number; t: number; pos0: Vector3; look0: Vector3 };
@@ -124,17 +124,13 @@ export default function Plano390CameraRig({
       x1: w.x1 + PLAYER_R,
       z1: w.z1 + PLAYER_R,
     }));
-    // Colisiones del quincho: muro de piedra, lateral este y barra.
-    const extra: CellBox[] = [
-      { x0: QUINCHO.x0 - PLAYER_R, z0: QUINCHO.z0 - 0.12 - PLAYER_R, x1: QUINCHO.x1 + PLAYER_R, z1: QUINCHO.z0 + 0.12 + PLAYER_R },
-      { x0: QUINCHO.x1 - 0.12 - PLAYER_R, z0: QUINCHO.z0, x1: QUINCHO.x1 + 0.12 + PLAYER_R, z1: QUINCHO.z1 },
-      {
-        x0: QUINCHO.bar.x0 - PLAYER_R,
-        z0: QUINCHO.bar.z0 - PLAYER_R,
-        x1: QUINCHO.bar.x1 + PLAYER_R,
-        z1: QUINCHO.bar.z1 + PLAYER_R,
-      },
-    ];
+    // Volúmenes de muebles grandes y auto del garaje.
+    const extra: CellBox[] = BLOCKERS.map((b) => ({
+      x0: b.x0 - PLAYER_R,
+      z0: b.z0 - PLAYER_R,
+      x1: b.x1 + PLAYER_R,
+      z1: b.z1 + PLAYER_R,
+    }));
     return [...house, ...extra];
   }, []);
 

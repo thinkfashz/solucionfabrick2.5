@@ -170,3 +170,14 @@ y Exterior. Funciona desde cualquier modo: pone la cámara en libre y viaja.
 Colisiones: AABB eje a eje contra `WALLS` ampliados por el radio del jugador
 (0,30 m) más los volúmenes del quincho (muro de piedra, lateral este y barra).
 Límites del mundo: x −3,2…22,4 y z −4,8…15,8.
+
+---
+
+## Nota v2 (2026-10-20)
+
+Esta ficha describe la escena del **127 m²** (histórica). El visor actual es la
+**v2 "Mediterránea 148 m²"**: la geometría, los ambientes y las aberturas se
+rebautizaron en `plano-v2.md`. Del documento anterior se mantienen las lecciones
+de CCTV (offset de 0,36 m sobre el eje de mira), el tour a velocidad constante y
+el uso de las texturas reales (`useViewerTextures`). La sauna y el quincho ya no
+existen en la escena.

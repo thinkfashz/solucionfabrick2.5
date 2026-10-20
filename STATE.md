@@ -2,6 +2,21 @@
 
 Bitácora de trabajo (se actualiza al cierre de cada hito).
 
+## Última sesión — 2026-10-20: Plano v2 "Mediterránea 148 m²" + skill del visor
+
+### Hecho
+- **Distribución nueva** según la planta capturada (reemplaza los 127 m² con terraza norte y quincho): norte Dorm. 2 · Cocina · Dorm. 1; centro Baño · Pasillo · Comedor · Ensuite · Vestíbulo; sur Dorm. 3 · Living · **Garaje**; **porche centrado**; garaje al oriente. Ver `docs/proyecto-390-1/plano-v2.md`.
+- **Fachada mediterránea**: muros crema (estuco procedural), franja/cornisa blanca, portal de piedra de 3,05 m, techo plano, adoquín en la entrada, escalones, setos, árboles y apliques de muro.
+- **Interiores v2** (`Plano3903D.tsx` reescrito, ~900 líneas): porcelanato blanco brillante, muro de TV de 3,80 m (panel 2,20 / TV 1,40×0,79 / mueble 2,60), cocina con isla 2,40×1,00 + barra 1,05 y taburetes 0,75, refri 1,85, torre de hornos y alacenas a 1,40, baño (ducha 0,90 / vanitorio 0,80 / espejo 1,00 a 1,40 / inodoro 0,60×0,40), ensuite, tres dormitorios con cama, clóset y escritorio, garaje con auto.
+- **Instalaciones**: 17 interruptores/enchufes (1,10 / 0,30-1,20), 6 **apliques** (4 exteriores con luz), **luces on/off** (`lightsOn`) y **puertas/ventanas/portón animados** (`openHouse`) con conmutadores en el HUD.
+- **Vegetación animada** (sway con `useFrame`), sombras 2048 del sol del sur y downlights; luces puntuales limitadas (~6) por rendimiento móvil.
+- **Tour más rápido**: 2,0 m/s, pausa 1,8 s, **17 paradas** con ficha `meta`; **12 cámaras CCTV** con `CCTV_OFFSET` para no meter el lente en cuadro; selector de escena con 12 destinos.
+- **Skill global nueva `visor-casa-fabrick`** (~/.config/opencode/skills/): contrato de datos, orden de construcción, reglas de cámara/tour, `references/medidas.md` (capturas del cliente) y `references/errores.md` (011 errores documentados). Guardada también en EverOS y Supermemory.
+- **Docs**: `plano-v2.md` nuevo; `escena.md` y `README.md` con la nota v2; `cocina.md`/`quincho.md` quedan como legado del 127 m².
+
+### Errores corregidos y documentados
+`wallSize` invertía el eje; `AnimatedFigure` exige sus props; `require` en cliente; hielos de piso en umbrales (losa base continua); exceso de luces puntuales. Todo en `references/errores.md` (007–011).
+
 ## Última sesión — 2026-10-19: Recorrido 3D Proyecto 390-1 (127 m²)
 
 ### Hecho

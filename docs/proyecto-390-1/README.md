@@ -117,3 +117,20 @@ La barra inferior tiene dos filas: **Modo** (Libre · Tour cine · Cámaras) y
 **Escena** (once destinos con desplazamiento horizontal). Tocar una escena pone
 la cámara en modo libre y viaja con un tween de 1,15 s. Los puntos de foto
 (Foto 41, 44, 50 y 58) se movieron al panel **Ficha** para no saturar la barra.
+
+---
+
+## v2 — Plano "Mediterránea 148 m²" (2026-10-20)
+
+La distribución de 127 m² (terraza norte + quincho) fue **reemplazada** por la
+planta capturada por el cliente: una casa mediterránea de una planta con garaje al
+oriente y porche centrado. El detalle de ambientes, medidas, aberturas e
+instalaciones está en **`plano-v2.md`**.
+
+- Escena: `src/components/store/plano390/Plano3903D.tsx` (reescrita).
+- Datos: `src/lib/plano390Data.ts` (`ROOMS`, `WALLS`, `OPENINGS`, `SCENES`,
+  `CCTV_CAMERAS`, `SCONCES`, `SWITCHES`, `BLOCKERS`, `TV_WALL`, `KITCHEN`, `GARAGE`).
+- Se eliminan `QUINCHO` y la sauna; `cocina.md` y `quincho.md` quedan como
+  documentación legado del 127 m² (no aplican a la v2).
+- Conmutadores en el HUD: **Luces on/off** y **Abrir casa** (puertas, ventanas y
+  portón del garaje animados).

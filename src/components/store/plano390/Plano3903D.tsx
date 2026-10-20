@@ -1,57 +1,50 @@
 'use client';
 /*
- * Plano3903D — reconstrucción 3D del plano "Proyecto №390-1" (127 m²).
- * Contrato de datos: src/lib/plano390Data.ts.
- * Suelo x→Este 0..14, z→Sur 0..11; z negativo = terraza al norte.
+ * Plano3903D — Casa Fabrick "Mediterránea" (v2, plano del cliente 2026-10-20).
+ * Contrato: src/lib/plano390Data.ts.
+ * x → Este (0..14,60) · z → Sur (0..11,00) · y → altura.
  *
- * Materiales: reutiliza el set de texturas REALES de los otros visores
- * (`useViewerTextures`: /flow/fabrick-tex-* y PBR /materials/wood-*) con
- * fallback procedural en canvas. Iluminación: entorno de estudio PMREM
- * (RoomEnvironment) + sol con sombras + lámparas interiores.
+ * • Fachada mediterránea: muros crema, franja blanca, portal de piedra,
+ *   garaje al oriente, porche centrado, adoquín y vegetación.
+ * • Interiores: porcelanato blanco brillante, muro de TV de 3,80 m, cocina con
+ *   isla 2,40 × 1,00 y barra 1,05, baño y ensuite con medidas reales.
+ * • Puertas y ventanas animadas (prop `openHouse`), luces on/off (`lightsOn`),
+ *   interruptores, enchufes y apliques de muro.
  */
-import { useEffect, useMemo } from 'react';
-import { CanvasTexture, DoubleSide, PMREMGenerator, RepeatWrapping, SRGBColorSpace } from 'three';
-import { useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
+import {
+  CanvasTexture,
+  DoubleSide,
+  Group,
+  MathUtils,
+  MeshStandardMaterial,
+  PMREMGenerator,
+  RepeatWrapping,
+  SRGBColorSpace,
+} from 'three';
+import type { Material } from 'three';
+import { useFrame, useThree } from '@react-three/fiber';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
-import { PLAN, ROOMS, WALLS, NPC_SPOTS, CCTV_CAMERAS, QUINCHO } from '@/lib/plano390Data';
-import type { CctvCamera, RoomBox, WallSeg } from '@/lib/plano390Data';
+import {
+  CCTV_CAMERAS,
+  KITCHEN,
+  NPC_SPOTS,
+  OPENINGS,
+  PLAN,
+  ROOMS,
+  SCONCES,
+  SWITCHES,
+  TV_WALL,
+  WALLS,
+} from '@/lib/plano390Data';
+import type { CctvCamera, Opening, WallSeg } from '@/lib/plano390Data';
 import { AnimatedFigure } from '../monitoring/AnimatedFigure';
 import { usePbrMaps, useTextureMaterial, useViewerTextures, viewerTextureVariant } from '../monitoring/useViewerTextures';
 
-/* ── Textura procedural de cerámica (fallback del baño) ── */
+type Vec3 = [number, number, number];
 
-function makeTileTexture(): CanvasTexture | null {
-  if (typeof document === 'undefined') return null;
-  const c = document.createElement('canvas');
-  c.width = 256;
-  c.height = 256;
-  const g = c.getContext('2d');
-  if (!g) return null;
-  g.fillStyle = '#e6e2da';
-  g.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 700; i++) {
-    g.fillStyle = `rgba(120,114,102,${Math.random() * 0.06})`;
-    g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
-  }
-  g.strokeStyle = 'rgba(150,145,135,.55)';
-  g.lineWidth = 2;
-  for (const s of [0, 64, 128, 192]) {
-    g.beginPath();
-    g.moveTo(s, 0);
-    g.lineTo(s, 256);
-    g.moveTo(0, s);
-    g.lineTo(256, s);
-    g.stroke();
-  }
-  const t = new CanvasTexture(c);
-  t.wrapS = t.wrapT = RepeatWrapping;
-  t.repeat.set(2, 3);
-  t.colorSpace = SRGBColorSpace;
-  return t;
-}
-
-/* ── Porcelanato brillante (losas grandes + vetas suaves) ── */
+/* ── Texturas procedurales ─────────────────────────────────────── */
 
 function makePorcelainTexture(): CanvasTexture | null {
   if (typeof document === 'undefined') return null;
@@ -60,21 +53,20 @@ function makePorcelainTexture(): CanvasTexture | null {
   c.height = 512;
   const g = c.getContext('2d');
   if (!g) return null;
-  g.fillStyle = '#ece9e3';
+  g.fillStyle = '#f8f7f3';
   g.fillRect(0, 0, 512, 512);
-  // vetas de mármol muy suaves
-  for (let i = 0; i < 26; i++) {
-    g.strokeStyle = `rgba(150,148,142,${Math.random() * 0.09 + 0.02})`;
-    g.lineWidth = 1 + Math.random() * 2.5;
+  for (let i = 0; i < 22; i++) {
+    g.strokeStyle = `rgba(186,182,174,${Math.random() * 0.07 + 0.02})`;
+    g.lineWidth = 1 + Math.random() * 2.2;
     g.beginPath();
     const y = Math.random() * 512;
     g.moveTo(0, y);
-    g.bezierCurveTo(170, y + (Math.random() * 70 - 35), 340, y + (Math.random() * 70 - 35), 512, y);
+    g.bezierCurveTo(170, y + (Math.random() * 50 - 25), 340, y + (Math.random() * 50 - 25), 512, y);
     g.stroke();
   }
-  // losa 120×120 cm: junta fina cada 256 px (2 losas por textura)
-  g.strokeStyle = 'rgba(176,172,164,.55)';
-  g.lineWidth = 2;
+  // losa de 120 × 120 cm: junta cada 256 px
+  g.strokeStyle = 'rgba(198,194,186,.5)';
+  g.lineWidth = 1.5;
   for (const s of [0, 256, 512]) {
     g.beginPath();
     g.moveTo(s, 0);
@@ -91,46 +83,37 @@ function makePorcelainTexture(): CanvasTexture | null {
   return t;
 }
 
-/* ── Piedra rústica del quincho (muro de parrilla) ── */
-
 function makeStoneTexture(): CanvasTexture | null {
   if (typeof document === 'undefined') return null;
   const c = document.createElement('canvas');
-  c.width = 256;
-  c.height = 256;
+  c.width = 512;
+  c.height = 512;
   const g = c.getContext('2d');
   if (!g) return null;
-  g.fillStyle = '#8d8577';
-  g.fillRect(0, 0, 256, 256);
+  g.fillStyle = '#ddd5c7';
+  g.fillRect(0, 0, 512, 512);
   let y = 0;
   let row = 0;
-  while (y < 256) {
-    const h = 26 + Math.random() * 16;
-    let x = row % 2 === 0 ? -20 : 0;
-    while (x < 256) {
-      const w = 34 + Math.random() * 38;
-      const tone = 118 + Math.floor(Math.random() * 48);
-      g.fillStyle = `rgb(${tone},${tone - 8},${tone - 20})`;
-      g.beginPath();
-      const r = 5;
-      const x0 = x + 2;
-      const y0 = y + 2;
-      const w0 = w - 4;
-      const h0 = h - 4;
-      g.moveTo(x0 + r, y0);
-      g.lineTo(x0 + w0 - r, y0);
-      g.quadraticCurveTo(x0 + w0, y0, x0 + w0, y0 + r);
-      g.lineTo(x0 + w0, y0 + h0 - r);
-      g.quadraticCurveTo(x0 + w0, y0 + h0, x0 + w0 - r, y0 + h0);
-      g.lineTo(x0 + r, y0 + h0);
-      g.quadraticCurveTo(x0, y0 + h0, x0, y0 + h0 - r);
-      g.lineTo(x0, y0 + r);
-      g.quadraticCurveTo(x0, y0, x0 + r, y0);
-      g.fill();
+  while (y < 512) {
+    const h = 72 + Math.random() * 40;
+    let x = row % 2 === 0 ? -60 : 0;
+    while (x < 512) {
+      const w = 110 + Math.random() * 90;
+      const tone = 206 + Math.floor(Math.random() * 26);
+      g.fillStyle = `rgb(${tone},${tone - 8},${tone - 22})`;
+      g.fillRect(x + 2, y + 2, w - 4, h - 4);
       x += w;
     }
     y += h;
     row++;
+  }
+  g.strokeStyle = 'rgba(160,150,136,.5)';
+  g.lineWidth = 3;
+  for (let i = 0; i < 512; i += 128) {
+    g.beginPath();
+    g.moveTo(0, i);
+    g.lineTo(512, i);
+    g.stroke();
   }
   const t = new CanvasTexture(c);
   t.wrapS = t.wrapT = RepeatWrapping;
@@ -139,115 +122,457 @@ function makeStoneTexture(): CanvasTexture | null {
   return t;
 }
 
+function makePaverTexture(): CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 512;
+  const g = c.getContext('2d');
+  if (!g) return null;
+  g.fillStyle = '#cfc9be';
+  g.fillRect(0, 0, 512, 512);
+  const pw = 128;
+  const ph = 64;
+  for (let row = 0; row < 8; row++) {
+    const off = row % 2 === 0 ? 0 : pw / 2;
+    for (let col = -1; col < 5; col++) {
+      const x = col * pw + off;
+      const y = row * ph;
+      const tone = 196 + Math.floor(Math.random() * 34);
+      g.fillStyle = `rgb(${tone},${tone - 4},${tone - 12})`;
+      g.fillRect(x + 3, y + 3, pw - 6, ph - 6);
+      g.fillStyle = `rgba(255,255,255,${Math.random() * 0.05})`;
+      g.fillRect(x + 6, y + 6, pw - 12, 8);
+    }
+  }
+  const t = new CanvasTexture(c);
+  t.wrapS = t.wrapT = RepeatWrapping;
+  t.repeat.set(6, 6);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+}
 
+function makeStuccoTexture(): CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 256;
+  const g = c.getContext('2d');
+  if (!g) return null;
+  g.fillStyle = '#efe3d1';
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 2400; i++) {
+    const a = Math.random() * 0.05;
+    g.fillStyle = Math.random() > 0.5 ? `rgba(255,255,255,${a})` : `rgba(150,132,108,${a})`;
+    g.fillRect(Math.random() * 256, Math.random() * 256, 1.6, 1.6);
+  }
+  const t = new CanvasTexture(c);
+  t.wrapS = t.wrapT = RepeatWrapping;
+  t.repeat.set(4, 3);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+}
 
-function StudioEnvironment() {
+function NicheEnvironment({ intensity }: { intensity: number }) {
   const { gl, scene } = useThree();
   useEffect(() => {
     const pmrem = new PMREMGenerator(gl);
     const room = new RoomEnvironment();
     const env = pmrem.fromScene(room, 0.04).texture;
     scene.environment = env;
-    scene.environmentIntensity = 0.9;
+    scene.environmentIntensity = intensity;
     return () => {
       scene.environment = null;
       env.dispose();
       pmrem.dispose();
     };
-  }, [gl, scene]);
+  }, [gl, scene, intensity]);
   return null;
 }
 
-/* ── Ayudas tipadas ── */
+/* ── Ayudas ────────────────────────────────────────────────────── */
 
 const WALL_H = PLAN.wallH;
+const EXT_T = PLAN.extT;
+const INT_T = PLAN.intT;
 
-type WallSize = { len: number; th: number; cx: number; cz: number; horizontal: boolean };
+/** Caja genérica con material compartido. */
+function B({
+  p,
+  s,
+  m,
+  r,
+  cast,
+  recv,
+}: {
+  p: Vec3;
+  s: Vec3;
+  m: Material;
+  r?: Vec3;
+  cast?: boolean;
+  recv?: boolean;
+}) {
+  return (
+    <mesh position={p} rotation={r} material={m} castShadow={cast} receiveShadow={recv}>
+      <boxGeometry args={s} />
+    </mesh>
+  );
+}
 
-function wallSize(seg: WallSeg): WallSize {
-  const horizontal = seg.z0 !== seg.z1;
+function wallSize(seg: WallSeg) {
+  const horizontal = Math.abs(seg.x1 - seg.x0) >= Math.abs(seg.z1 - seg.z0);
   const len = horizontal ? Math.abs(seg.x1 - seg.x0) : Math.abs(seg.z1 - seg.z0);
   const th = horizontal ? Math.abs(seg.z1 - seg.z0) : Math.abs(seg.x1 - seg.x0);
-  return { len, th, cx: (seg.x0 + seg.x1) / 2, cz: (seg.z0 + seg.z1) / 2, horizontal };
+  return { len, th, cx: (seg.x0 + seg.x1) / 2, cz: (seg.z0 + seg.z1) / 2 };
 }
 
-function isWood(room: RoomBox): boolean {
-  return room.floor === 'wood' || room.floor === 'corridor';
-}
-
-/** Yaw para que la carcasa (lente hacia −z) apunte de `pos` a `look`. */
 function aimYaw(cam: CctvCamera): number {
   return Math.atan2(-(cam.look[0] - cam.pos[0]), -(cam.look[2] - cam.pos[2]));
 }
 
-/* Techo a dos aguas: caballete a lo largo de x en z = 5,5. */
-const RIDGE_Z = 5.5;
-const RISE = PLAN.ridgeExtra;
-const EAVE_RUN = RIDGE_Z + 0.4;
-const SLOPE_LEN = Math.hypot(EAVE_RUN, RISE);
-const ROOF_ANG = Math.atan2(RISE, EAVE_RUN);
-const EAVE_Y = WALL_H - (RISE * 0.4) / EAVE_RUN;
-const ROOF_MID_Y = (WALL_H + RISE + EAVE_Y) / 2 - 0.06;
+/* ── Aberturas animadas ───────────────────────────────────────── */
 
-type TreeSpot = { x: number; z: number; s: number };
-const TREES: TreeSpot[] = [
-  { x: -2.4, z: 6.6, s: 1.0 },
-  { x: -2.9, z: 12.4, s: 0.9 },
-  { x: 22.9, z: 2.2, s: 1.05 },
-  { x: 22.6, z: 10.2, s: 0.85 },
-  { x: 16.0, z: -2.4, s: 0.9 },
-  { x: -2.7, z: -2.2, s: 0.8 },
-];
+function OpeningMesh({
+  o,
+  open,
+  matWall,
+  matFrame,
+  matDoor,
+}: {
+  o: Opening;
+  open: boolean;
+  matWall: Material;
+  matFrame: Material;
+  matDoor: Material;
+}) {
+  const leaf = useRef<Group>(null);
+  const leaf2 = useRef<Group>(null);
+  const paneA = useRef<Group>(null);
+  const paneB = useRef<Group>(null);
+  const panel = useRef<Group>(null);
 
-const CLOSET_BARS: [number, number, number][] = [
-  [11.9, 1.0, 6.7],
-  [12.3, 1.0, 6.7],
-  [12.7, 1.0, 6.7],
-  [13.1, 1.0, 6.7],
-  [13.5, 1.0, 6.7],
-];
+  const th = o.ext ? EXT_T : INT_T;
+  const sill = o.sill ?? 0;
+  const top = sill + o.height;
+  const lintelH = Math.max(0, WALL_H - top);
+  const alongZ = o.axis === 'z';
 
-/** Lámparas de techo por estancia: [x, z]. */
-const LAMPS: [number, number][] = [
-  [3.9, 2.4],
-  [7.4, 6.3],
-  [8.3, 8.9],
-  [12.1, 8.9],
-  [12.4, 2.6],
-  [9.6, 1.3],
-];
+  const doorTarget = open ? (o.swing ?? 1) * -1.35 : 0;
+  const slide = open ? o.width * 0.44 : 0;
 
-/** Puntos de luz del quincho (bajo la barra). */
-const QUINCHO_LIGHTS: [number, number][] = [
-  [16.6, 4.45],
-  [18.2, 4.45],
-];
+  useFrame((_, dt) => {
+    const k = Math.min(1, dt * 6);
+    if (leaf.current) leaf.current.rotation.y = MathUtils.lerp(leaf.current.rotation.y, doorTarget, k);
+    if (leaf2.current) leaf2.current.rotation.y = MathUtils.lerp(leaf2.current.rotation.y, -doorTarget, k);
+    if (paneA.current) {
+      if (alongZ) paneA.current.position.x = MathUtils.lerp(paneA.current.position.x, -slide, k);
+      else paneA.current.position.z = MathUtils.lerp(paneA.current.position.z, -slide, k);
+    }
+    if (paneB.current) {
+      if (alongZ) paneB.current.position.x = MathUtils.lerp(paneB.current.position.x, slide, k);
+      else paneB.current.position.z = MathUtils.lerp(paneB.current.position.z, slide, k);
+    }
+    if (panel.current) panel.current.scale.y = MathUtils.lerp(panel.current.scale.y, open ? 0.04 : 1, k);
+  });
 
-/* ── Escena ── */
+  // marco
+  const frame = (
+    <>
+      <B p={[o.x, top, o.z]} s={alongZ ? [o.width, 0.07, th + 0.02] : [th + 0.02, 0.07, o.width]} m={matFrame} />
+      <B p={[o.x, sill, o.z]} s={alongZ ? [o.width, 0.07, th + 0.02] : [th + 0.02, 0.07, o.width]} m={matFrame} />
+      <B
+        p={alongZ ? [o.x - o.width / 2, o.height / 2 + sill, o.z] : [o.x, o.height / 2 + sill, o.z - o.width / 2]}
+        s={alongZ ? [0.07, o.height, th + 0.02] : [th + 0.02, o.height, 0.07]}
+        m={matFrame}
+      />
+      <B
+        p={alongZ ? [o.x + o.width / 2, o.height / 2 + sill, o.z] : [o.x, o.height / 2 + sill, o.z + o.width / 2]}
+        s={alongZ ? [0.07, o.height, th + 0.02] : [th + 0.02, o.height, 0.07]}
+        m={matFrame}
+      />
+    </>
+  );
 
-export default function Plano3903D({ light }: { light: 'day' | 'sunset' | 'night' }) {
+  // antepecho y dintel (muro)
+  const wallFill = (
+    <>
+      {sill > 0.02 ? (
+        <B p={[o.x, sill / 2, o.z]} s={alongZ ? [o.width, sill, th] : [th, sill, o.width]} m={matWall} cast recv />
+      ) : null}
+      {lintelH > 0.02 ? (
+        <B
+          p={[o.x, top + lintelH / 2, o.z]}
+          s={alongZ ? [o.width, lintelH, th] : [th, lintelH, o.width]}
+          m={matWall}
+          cast
+          recv
+        />
+      ) : null}
+    </>
+  );
+
+  if (o.kind === 'pass') {
+    return (
+      <>
+        {wallFill}
+        {frame}
+      </>
+    );
+  }
+
+  if (o.kind === 'garage') {
+    return (
+      <>
+        {wallFill}
+        {frame}
+        <group ref={panel} position={[o.x, o.height, o.z]}>
+          <mesh position={[0, -o.height / 2, 0]} castShadow material={matFrame}>
+            <boxGeometry args={[o.width, o.height, 0.09]} />
+          </mesh>
+          {[0.18, 0.38, 0.58, 0.78].map((f) => (
+            <mesh key={f} position={[0, -o.height * f, 0.05]}>
+              <boxGeometry args={[o.width, 0.02, 0.02]} />
+              <meshStandardMaterial color="#0d1114" roughness={0.6} />
+            </mesh>
+          ))}
+        </group>
+      </>
+    );
+  }
+
+  if (o.kind === 'door' || o.kind === 'double') {
+    const leaves: { hinge: number; rot: number }[] =
+      o.kind === 'double'
+        ? [
+            { hinge: -o.width / 2, rot: 1 },
+            { hinge: o.width / 2, rot: -1 },
+          ]
+        : [{ hinge: o.hinge === 'right' ? o.width / 2 : -o.width / 2, rot: 1 }];
+    const leafW = o.kind === 'double' ? o.width / 2 - 0.02 : o.width - 0.06;
+    return (
+      <>
+        {wallFill}
+        {frame}
+        {leaves.map((l, i) => {
+          const gx = alongZ ? o.x + l.hinge : o.x;
+          const gz = alongZ ? o.z : o.z + l.hinge;
+          const sx = alongZ ? (l.hinge > 0 ? -1 : 1) : 1;
+          return (
+            <group
+              key={i}
+              ref={i === 0 ? leaf : leaf2}
+              position={[gx, 0, gz]}
+            >
+              <mesh
+                position={alongZ ? [(sx * leafW) / 2, sill + o.height / 2, 0] : [0, sill + o.height / 2, (l.hinge > 0 ? -1 : 1) * leafW / 2]}
+                castShadow
+                material={o.glass ? matFrame : matDoor}
+              >
+                <boxGeometry args={alongZ ? [leafW, o.height - 0.08, 0.05] : [0.05, o.height - 0.08, leafW]} />
+              </mesh>
+              {o.glass ? (
+                <mesh
+                  position={alongZ ? [(sx * leafW) / 2, sill + o.height / 2, 0] : [0, sill + o.height / 2, (l.hinge > 0 ? -1 : 1) * leafW / 2]}
+                >
+                  <boxGeometry args={alongZ ? [leafW - 0.12, o.height - 0.28, 0.02] : [0.02, o.height - 0.28, leafW - 0.12]} />
+                  <meshStandardMaterial color="#dcecf4" transparent opacity={0.22} metalness={0.5} roughness={0.03} envMapIntensity={1.8} />
+                </mesh>
+              ) : (
+                <mesh position={alongZ ? [0, 0.05, 0] : [0, 0.05, 0]}>
+                  <boxGeometry args={[0.02, 0.02, 0.02]} />
+                  <meshStandardMaterial color="#b99a5f" metalness={0.9} roughness={0.25} />
+                </mesh>
+              )}
+            </group>
+          );
+        })}
+      </>
+    );
+  }
+
+  // ventanas / correderas: dos hojas de vidrio
+  const half = o.width / 2;
+  const paneH = o.height - 0.1;
+  return (
+    <>
+      {wallFill}
+      {frame}
+      <group ref={paneA} position={alongZ ? [o.x - half / 2, 0, o.z] : [o.x, 0, o.z - half / 2]}>
+        <mesh position={[0, sill + o.height / 2, 0]}>
+          <boxGeometry args={alongZ ? [half - 0.02, paneH, 0.035] : [0.035, paneH, half - 0.02]} />
+          <meshStandardMaterial color="#d8eaf4" transparent opacity={0.24} metalness={0.45} roughness={0.02} envMapIntensity={1.9} />
+        </mesh>
+      </group>
+      <group ref={paneB} position={alongZ ? [o.x + half / 2, 0, o.z] : [o.x, 0, o.z + half / 2]}>
+        <mesh position={[0, sill + o.height / 2, 0]}>
+          <boxGeometry args={alongZ ? [half - 0.02, paneH, 0.035] : [0.035, paneH, half - 0.02]} />
+          <meshStandardMaterial color="#d8eaf4" transparent opacity={0.24} metalness={0.45} roughness={0.02} envMapIntensity={1.9} />
+        </mesh>
+      </group>
+    </>
+  );
+}
+
+/* ── Apliques, interruptores y vegetación ─────────────────────── */
+
+function Sconce({ x, y, z, rot, on, glow }: { x: number; y: number; z: number; rot: number; on: boolean; glow?: boolean }) {
+  return (
+    <group position={[x, y, z]} rotation={[0, rot, 0]}>
+      <mesh castShadow>
+        <boxGeometry args={[0.1, 0.26, 0.1]} />
+        <meshStandardMaterial color="#2b2f33" roughness={0.5} metalness={0.6} />
+      </mesh>
+      <mesh position={[0, 0, 0.055]}>
+        <boxGeometry args={[0.075, 0.2, 0.025]} />
+        <meshStandardMaterial color="#fff3db" emissive="#ffd9a0" emissiveIntensity={on ? 1.8 : 0.04} />
+      </mesh>
+      {on && glow ? <pointLight position={[0, 0, 0.35]} intensity={1.1} color="#ffd9a0" distance={4.5} decay={2} /> : null}
+    </group>
+  );
+}
+
+function Plate({ x, y, z, rot, outlet }: { x: number; y: number; z: number; rot: number; outlet?: boolean }) {
+  return (
+    <group position={[x, y, z]} rotation={[0, rot, 0]}>
+      <mesh>
+        <boxGeometry args={[0.09, 0.12, 0.012]} />
+        <meshStandardMaterial color="#fbf8f1" roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 0, 0.008]}>
+        <boxGeometry args={outlet ? [0.045, 0.05, 0.006] : [0.02, 0.055, 0.006]} />
+        <meshStandardMaterial color={outlet ? '#2a2d31' : '#c9c4ba'} roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+function Grass({ x, z, s = 1, phase = 0 }: { x: number; z: number; s?: number; phase?: number }) {
+  const ref = useRef<Group>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.9 + phase) * 0.07;
+  });
+  return (
+    <group position={[x, 0, z]} scale={[s, s, s]} ref={ref}>
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <mesh key={i} position={[(i - 2.5) * 0.035, 0.32, (i % 2) * 0.04]} rotation={[0, 0, (i - 2.5) * 0.09]}>
+          <boxGeometry args={[0.025, 0.62 + (i % 3) * 0.14, 0.025]} />
+          <meshStandardMaterial color={i % 2 ? '#7d8f5c' : '#93a76a'} roughness={0.9} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function Hedge({ x, z, w, d, h = 0.75 }: { x: number; z: number; w: number; d: number; h?: number }) {
+  const ref = useRef<Group>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) ref.current.position.y = Math.sin(clock.elapsedTime * 0.8 + x) * 0.008;
+  });
+  return (
+    <group position={[x, 0, z]} ref={ref}>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[w, h, d]} />
+        <meshStandardMaterial color="#6f8450" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, h / 2, 0]}>
+        <boxGeometry args={[w * 0.96, 0.06, d * 0.9]} />
+        <meshStandardMaterial color="#81975c" roughness={0.95} />
+      </mesh>
+    </group>
+  );
+}
+
+/* ── Mobiliario ────────────────────────────────────────────────── */
+
+function Bed({
+  x,
+  z,
+  w = 1.6,
+  head,
+  matWood,
+  matLinen,
+}: {
+  x: number;
+  z: number;
+  w?: number;
+  head: 1 | -1;
+  matWood: Material;
+  matLinen: Material;
+}) {
+  return (
+    <group position={[x, 0, z]}>
+      <B p={[0, 0.2, 0]} s={[w, 0.28, 2.0]} m={matWood} cast recv />
+      <B p={[0, 0.42, 0.05]} s={[w - 0.08, 0.22, 1.94]} m={matLinen} cast />
+      <B p={[0, 0.62, head * -0.62]} s={[w - 0.2, 0.1, 0.6]} m={matLinen} />
+      <B p={[0, 0.95, head * 1.02]} s={[w + 0.16, 0.9, 0.08]} m={matWood} cast />
+      <B p={[0, 0.75, head * 1.0]} s={[w - 0.3, 0.35, 0.14]} m={matLinen} />
+      <B p={[0, 0.5, head * -0.9]} s={[w - 0.25, 0.05, 0.5]} m={matWood} />
+    </group>
+  );
+}
+
+function Desk({ x, z, w = 1.2, matWood, matWall }: { x: number; z: number; w?: number; matWood: Material; matWall: Material }) {
+  return (
+    <group position={[x, 0, z]}>
+      <B p={[0, 0.78, 0]} s={[w, 0.05, 0.55]} m={matWood} cast />
+      <B p={[-w / 2 + 0.05, 0.4, 0]} s={[0.05, 0.76, 0.5]} m={matWood} />
+      <B p={[w / 2 - 0.05, 0.4, 0]} s={[0.05, 0.76, 0.5]} m={matWood} />
+      <B p={[0, 2.0, -0.06]} s={[w, 1.21, 0.05]} m={matWall} cast />
+      <B p={[0, 1.35, -0.02]} s={[w - 0.3, 0.2, 0.3]} m={matWood} />
+      <B p={[0, 1.2, 0.02]} s={[w - 0.5, 0.03, 0.03]} m={matWood} />
+    </group>
+  );
+}
+
+function Wardrobe({ x, z, w, h = 2.2, mat }: { x: number; z: number; w: number; h?: number; mat: Material }) {
+  return (
+    <group position={[x, 0, z]}>
+      <B p={[0, h / 2, 0]} s={[w, h, 0.58]} m={mat} cast />
+      {[0, 1, 2].map((i) => (
+        <mesh key={i} position={[-w / 2 + (w / 3) * (i + 0.5), h / 2, 0.3]}>
+          <boxGeometry args={[0.008, h - 0.12, 0.01]} />
+          <meshStandardMaterial color="#b9b0a1" roughness={0.6} />
+        </mesh>
+      ))}
+      <mesh position={[w / 6, h * 0.62, 0.31]}>
+        <boxGeometry args={[0.02, 0.32, 0.02]} />
+        <meshStandardMaterial color="#c9a76a" metalness={0.8} roughness={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
+/* ── Escena ────────────────────────────────────────────────────── */
+
+export default function Plano3903D({
+  light,
+  lightsOn = true,
+  openHouse = false,
+}: {
+  light: 'day' | 'sunset' | 'night';
+  lightsOn?: boolean;
+  openHouse?: boolean;
+}) {
   const textures = useViewerTextures();
   const oak = usePbrMaps('woodOak');
   const pine = usePbrMaps('woodPine');
-  const tileCanvas = useMemo(() => makeTileTexture(), []);
   const porcelainCanvas = useMemo(() => makePorcelainTexture(), []);
   const stoneCanvas = useMemo(() => makeStoneTexture(), []);
+  const paverCanvas = useMemo(() => makePaverTexture(), []);
+  const stuccoCanvas = useMemo(() => makeStuccoTexture(), []);
 
-  // Variantes de repeat sobre las fotos reales de los visores.
-  const woodMap = useMemo(() => viewerTextureVariant('pisoMadera', 7, 5), [textures.pisoMadera]);
-  const deckMap = useMemo(() => viewerTextureVariant('pisoMadera', 4, 2), [textures.pisoMadera]);
-  const drywallMap = useMemo(() => viewerTextureVariant('intDrywall', 3, 2), [textures.intDrywall]);
-  const extMap = useMemo(() => viewerTextureVariant('extMetalcon', 5, 2), [textures.extMetalcon]);
-  const roofMap = useMemo(() => viewerTextureVariant('techoCalamina', 6, 3), [textures.techoCalamina]);
-  const grassMap = useMemo(() => viewerTextureVariant('pastoCalle', 12, 9), [textures.pastoCalle]);
+  const woodMap = useMemo(() => viewerTextureVariant('pisoMadera', 7, 5), [textures]);
+  const wallMap = useMemo(() => viewerTextureVariant('intDrywall', 3, 2), [textures]);
+  const grassMap = useMemo(() => viewerTextureVariant('pastoCalle', 16, 12), [textures]);
 
   const matWood = useTextureMaterial(woodMap, { color: '#ffffff', roughness: 0.6, metalness: 0.03, envMapIntensity: 0.7 });
-  const matDeck = useTextureMaterial(deckMap, { color: '#d9b48c', roughness: 0.75, envMapIntensity: 0.5 });
-  const matTile = useTextureMaterial(tileCanvas, { color: '#ffffff', roughness: 0.34, envMapIntensity: 0.6 });
-  const matWallInt = useTextureMaterial(drywallMap, { color: '#f3eee4', roughness: 0.88, envMapIntensity: 0.35 });
-  const matCeil = useTextureMaterial(drywallMap, { color: '#fbf7ef', roughness: 0.95, envMapIntensity: 0.3 });
-  const matWallExt = useTextureMaterial(extMap, { color: '#6d757c', roughness: 0.66, metalness: 0.2, envMapIntensity: 0.8 });
-  const matRoof = useTextureMaterial(roofMap, { color: '#505b64', roughness: 0.52, metalness: 0.35, envMapIntensity: 0.9 });
+  const matWallInt = useTextureMaterial(wallMap, { color: '#f3e9d8', roughness: 0.9, envMapIntensity: 0.3 });
+  const matWallExt = useTextureMaterial(stuccoCanvas, { color: '#f1e6d4', roughness: 0.86, envMapIntensity: 0.35 });
+  const matBand = useTextureMaterial(stuccoCanvas, { color: '#fbf8f1', roughness: 0.8, envMapIntensity: 0.4 });
+  const matCeil = useTextureMaterial(wallMap, { color: '#fbf7ef', roughness: 0.95, envMapIntensity: 0.25 });
+  const matPorcelain = useTextureMaterial(porcelainCanvas, { color: '#ffffff', roughness: 0.07, metalness: 0.04, envMapIntensity: 1.85 });
+  const matStone = useTextureMaterial(stoneCanvas, { color: '#efe7d9', roughness: 0.78, metalness: 0.02, envMapIntensity: 0.5 });
+  const matPaver = useTextureMaterial(paverCanvas, { color: '#ffffff', roughness: 0.85, envMapIntensity: 0.35 });
   const matGrass = useTextureMaterial(grassMap, { color: '#93a97c', roughness: 0.96, envMapIntensity: 0.25 });
   const matOak = useTextureMaterial(oak.color, {
     color: '#ffffff',
@@ -258,45 +583,48 @@ export default function Plano3903D({ light }: { light: 'day' | 'sunset' | 'night
   });
   const matPine = useTextureMaterial(pine.color, {
     color: '#e8cfa8',
-    roughness: 0.7,
+    roughness: 0.72,
     normalMap: pine.normal,
     roughnessMap: pine.roughness,
     envMapIntensity: 0.4,
   });
-  const matPorcelain = useTextureMaterial(porcelainCanvas, {
-    color: '#ffffff',
-    roughness: 0.08,
-    metalness: 0.04,
-    envMapIntensity: 1.7,
-  });
-  const matStone = useTextureMaterial(stoneCanvas, {
-    color: '#b6ab97',
-    roughness: 0.82,
-    metalness: 0.02,
-    envMapIntensity: 0.5,
-  });
-
-  if (!tileCanvas) return null;
+  const matFrame = useMemo(
+    () => new MeshStandardMaterial({ color: '#22282c', roughness: 0.42, metalness: 0.5 }),
+    [],
+  );
+  const matLinen = useMemo(
+    () => new MeshStandardMaterial({ color: '#e9e3d7', roughness: 0.94, metalness: 0.02 }),
+    [],
+  );
 
   const night = light === 'night';
-  const bg = night ? '#0b1524' : light === 'sunset' ? '#f3c9a0' : '#d6e5ef';
+  const bg = night ? '#0a1522' : light === 'sunset' ? '#f4c9a0' : '#dfeaf3';
   const sunColor = night ? '#93abd8' : light === 'sunset' ? '#ffb46e' : '#eef6ff';
-  const sunIntensity = night ? 0.2 : light === 'sunset' ? 2.2 : 3.1;
-  const lampIntensity = night ? 2.8 : light === 'sunset' ? 1.3 : 0.65;
+  const sunIntensity = night ? 0.22 : light === 'sunset' ? 2.4 : 3.35;
+  const lamp = lightsOn ? (night ? 1.1 : 0.55) : 0;
+
+  if (!porcelainCanvas) return null;
+
+  const wallsRender = WALLS.filter((w) => !w.window);
 
   return (
     <>
-      <StudioEnvironment />
+      <NicheEnvironment intensity={night ? 0.55 : 1.05} />
       <color attach="background" args={[bg]} />
-      <fog attach="fog" args={[bg, 28, 78]} />
-      <group>
+      <fog attach="fog" args={[bg, 34, 92]} />
 
-      {/* ── Terreno con césped real ── */}
-      <mesh position={[7, -0.02, 7]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow material={matGrass}>
-        <planeGeometry args={[62, 46]} />
+      {/* ── Terreno: césped + adoquín + camino ── */}
+      <mesh position={[7.3, -0.03, 9]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow material={matGrass}>
+        <planeGeometry args={[64, 52]} />
       </mesh>
+      <B p={[12.0, 0.01, 15.6]} s={[5.4, 0.06, 9.2]} m={matPaver} recv />
+      <B p={[7.05, 0.01, 16.2]} s={[1.9, 0.06, 7.4]} m={matPaver} recv />
+      <B p={[2.8, 0.01, 14.2]} s={[5.2, 0.06, 2.4]} m={matPaver} recv />
 
-      {/* ── Losas de piso por ROOMS ── */}
+      {/* ── Losa base continua (cubre umbrales y juntas entre ambientes) ── */}
+      <B p={[7.3, 0.0175, 5.5]} s={[14.6, 0.075, 11]} m={matPorcelain} recv />
+
+      {/* ── Pisos por ambiente ── */}
       {ROOMS.map((room) => (
         <mesh
           key={room.id}
@@ -305,65 +633,32 @@ export default function Plano3903D({ light }: { light: 'day' | 'sunset' | 'night
           material={
             room.floor === 'porcelain'
               ? matPorcelain
-              : isWood(room)
+              : room.floor === 'wood'
                 ? matWood
-                : room.floor === 'tile'
-                  ? matTile
-                  : matDeck
+                : room.floor === 'terrace'
+                  ? matPaver
+                  : matStone
           }
         >
           <boxGeometry args={[room.x1 - room.x0, 0.06, room.z1 - room.z0]} />
         </mesh>
       ))}
 
-      {/* ── Cielorraso interior ── */}
-      {ROOMS.filter((room) => room.id !== '11').map((room) => (
+      {/* ── Cielorraso ── */}
+      {ROOMS.filter((r) => r.id !== '11' && r.id !== '12').map((room) => (
         <mesh
-          key={`ceil${room.id}`}
-          position={[(room.x0 + room.x1) / 2, WALL_H - 0.035, (room.z0 + room.z1) / 2]}
+          key={`c${room.id}`}
+          position={[(room.x0 + room.x1) / 2, WALL_H - 0.04, (room.z0 + room.z1) / 2]}
           receiveShadow
           material={matCeil}
         >
-          <boxGeometry args={[room.x1 - room.x0, 0.05, room.z1 - room.z0]} />
+          <boxGeometry args={[room.x1 - room.x0, 0.06, room.z1 - room.z0]} />
         </mesh>
       ))}
 
-      {/* ── Muros WALLS (cajas; vanos = saltos entre cajas) ── */}
-      {WALLS.map((seg, i) => {
-        const { len, th, cx, cz, horizontal } = wallSize(seg);
-        if (seg.window) {
-          const half = len / 2;
-          return (
-            <group key={`w${i}`}>
-              <mesh position={[cx, 1.05, cz]} rotation={horizontal ? [0, 0, 0] : [0, Math.PI / 2, 0]}>
-                <boxGeometry args={[len, 2.1, th * 0.4]} />
-                <meshStandardMaterial
-                  color="#a9d0ec"
-                  transparent
-                  opacity={0.22}
-                  metalness={0.35}
-                  roughness={0.03}
-                  envMapIntensity={1.6}
-                />
-              </mesh>
-              <mesh position={[cx - (half - 0.04), 1.05, cz]}>
-                <boxGeometry args={[0.08, 2.1, th]} />
-                <meshStandardMaterial color="#20272c" roughness={0.45} metalness={0.4} />
-              </mesh>
-              <mesh position={[cx + (half - 0.04), 1.05, cz]}>
-                <boxGeometry args={[0.08, 2.1, th]} />
-                <meshStandardMaterial color="#20272c" roughness={0.45} metalness={0.4} />
-              </mesh>
-              <mesh position={[cx, 2.14, cz]}>
-                <boxGeometry args={[len, 0.08, th]} />
-                <meshStandardMaterial color="#20272c" roughness={0.45} metalness={0.4} />
-              </mesh>
-              <mesh position={[cx, 2.4, cz]} castShadow receiveShadow material={seg.kind === 'ext' ? matWallExt : matWallInt}>
-                <boxGeometry args={[len, WALL_H - 2.1, th]} />
-              </mesh>
-            </group>
-          );
-        }
+      {/* ── Muros ── */}
+      {wallsRender.map((seg, i) => {
+        const { len, th, cx, cz } = wallSize(seg);
         return (
           <mesh key={`w${i}`} position={[cx, WALL_H / 2, cz]} castShadow receiveShadow material={seg.kind === 'ext' ? matWallExt : matWallInt}>
             <boxGeometry args={[len, WALL_H, th]} />
@@ -371,603 +666,400 @@ export default function Plano3903D({ light }: { light: 'day' | 'sunset' | 'night
         );
       })}
 
-      {/* ── Puerta de entrada entreabierta ── */}
-      <group position={[4.62, 0, 10.82]} rotation={[0, -0.62, 0]}>
-        <mesh position={[0.49, 1.05, 0]} castShadow material={matOak}>
-          <boxGeometry args={[0.96, 2.1, 0.06]} />
-        </mesh>
-        <mesh position={[0.82, 1.02, 0.07]}>
-          <cylinderGeometry args={[0.022, 0.022, 0.16, 8]} />
-          <meshStandardMaterial color="#c8a35a" roughness={0.25} metalness={0.85} />
-        </mesh>
-      </group>
-
-      {/* ── Escalón decorativo bajo el paño corredizo de la terraza ── */}
-      <mesh position={[(0.25 + 6.4) / 2, 0.1, 0]} castShadow receiveShadow material={matDeck}>
-        <boxGeometry args={[6.4 - 0.25, PLAN.stepH, 0.5]} />
-      </mesh>
-
-      {/* ── Cubierta a dos aguas + chimenea + alero sur ── */}
-      <mesh position={[7, ROOF_MID_Y, (RIDGE_Z - 0.4) / 2]} rotation={[-ROOF_ANG, 0, 0]} castShadow material={matRoof}>
-        <boxGeometry args={[15.0, 0.12, SLOPE_LEN]} />
-      </mesh>
-      <mesh position={[7, ROOF_MID_Y, (RIDGE_Z + 11.4) / 2]} rotation={[ROOF_ANG, 0, 0]} castShadow material={matRoof}>
-        <boxGeometry args={[15.0, 0.12, SLOPE_LEN]} />
-      </mesh>
-      <mesh position={[9.8, WALL_H + RISE + 0.3, RIDGE_Z]} castShadow>
-        <boxGeometry args={[0.7, 1.6, 0.7]} />
-        <meshStandardMaterial color="#2b3136" roughness={0.95} />
-      </mesh>
-      <mesh position={[3.4, 2.78, 10.9]} castShadow material={matOak}>
-        <boxGeometry args={[0.16, 0.2, 1.3]} />
-      </mesh>
-      <mesh position={[10.6, 2.78, 10.9]} castShadow material={matOak}>
-        <boxGeometry args={[0.16, 0.2, 1.3]} />
-      </mesh>
-
-      {/* ── Pérgola de la terraza (postes + cubierta translúcida) ── */}
-      {[
-        [0.4, -0.35],
-        [6.1, -0.35],
-        [0.4, -2.8],
-        [6.1, -2.8],
-      ].map((p, i) => (
-        <mesh key={`pp${i}`} position={[p[0], 1.25, p[1]]} castShadow material={matPine}>
-          <boxGeometry args={[0.12, 2.5, 0.12]} />
-        </mesh>
+      {/* ── Zócalo perimetral interior ── */}
+      {ROOMS.filter((r) => r.id !== '11' && r.id !== '12').map((room) => (
+        <group key={`zb${room.id}`}>
+          <B p={[room.x0 + 0.02, 0.05, (room.z0 + room.z1) / 2]} s={[0.03, 0.1, room.z1 - room.z0]} m={matBand} />
+          <B p={[room.x1 - 0.02, 0.05, (room.z0 + room.z1) / 2]} s={[0.03, 0.1, room.z1 - room.z0]} m={matBand} />
+        </group>
       ))}
-      <mesh position={[3.25, 2.56, -1.575]}>
-        <boxGeometry args={[6.2, 0.06, 3.2]} />
-        <meshStandardMaterial color="#3a4742" transparent opacity={0.45} roughness={0.35} metalness={0.2} envMapIntensity={1.2} />
+
+      {/* ── Aberturas animadas ── */}
+      {OPENINGS.map((o) => (
+        <OpeningMesh
+          key={o.id}
+          o={o}
+          open={openHouse}
+          matWall={o.ext ? matWallExt : matWallInt}
+          matFrame={matFrame}
+          matDoor={matOak}
+        />
+      ))}
+
+      {/* ── Techo plano + franja blanca + portal de piedra ── */}
+      <B p={[7.3, WALL_H + 0.16, 5.5]} s={[15.2, 0.28, 11.9]} m={matFrame} cast recv />
+      <B p={[7.3, WALL_H + 0.02, 11.12]} s={[15.0, 0.34, 0.34]} m={matBand} cast />
+      <B p={[7.3, WALL_H + 0.02, -0.12]} s={[15.0, 0.34, 0.34]} m={matBand} cast />
+      <B p={[-0.12, WALL_H + 0.02, 5.5]} s={[0.34, 0.34, 11.3]} m={matBand} cast />
+      <B p={[14.72, WALL_H + 0.02, 5.5]} s={[0.34, 0.34, 11.3]} m={matBand} cast />
+      {/* portal (piedra) */}
+      <B p={[5.95, 1.5, 11.16]} s={[0.8, 3.0, 0.42]} m={matStone} cast />
+      <B p={[8.45, 1.5, 11.16]} s={[0.8, 3.0, 0.42]} m={matStone} cast />
+      <B p={[7.2, 2.72, 11.16]} s={[3.3, 0.56, 0.42]} m={matStone} cast />
+      <B p={[7.2, 3.03, 11.16]} s={[3.5, 0.14, 0.52]} m={matBand} cast />
+      {/* porche: cielo y escalones */}
+      <B p={[7.35, 2.86, 11.72]} s={[3.9, 0.12, 1.96]} m={matBand} cast />
+      <B p={[7.35, 0.09, 12.7]} s={[3.9, 0.18, 0.42]} m={matPaver} recv />
+      <B p={[7.35, 0.05, 13.02]} s={[4.2, 0.1, 0.34]} m={matPaver} recv />
+
+      {/* ── Muro de TV (3,80 m) ── */}
+      <group>
+        {Array.from({ length: 15 }).map((_, i) => (
+          <B
+            key={`s${i}`}
+            p={[3.5, 1.3, 7.06 + i * 0.049]}
+            s={[0.05, 2.5, 0.04]}
+            m={matPine}
+            cast
+          />
+        ))}
+        {Array.from({ length: 17 }).map((_, i) => (
+          <B
+            key={`s2${i}`}
+            p={[3.5, 1.3, 9.97 + i * 0.049]}
+            s={[0.05, 2.5, 0.04]}
+            m={matPine}
+            cast
+          />
+        ))}
+        <B p={[3.49, 1.25, 8.85]} s={[0.06, 1.8, 2.2]} m={matStone} cast />
+        <B p={[3.56, TV_WALL.tv.y, 8.85]} s={[0.06, TV_WALL.tv.h, TV_WALL.tv.w]} m={matFrame} cast />
+        <mesh position={[3.6, TV_WALL.tv.y, 8.85]}>
+          <boxGeometry args={[0.01, TV_WALL.tv.h - 0.04, TV_WALL.tv.w - 0.04]} />
+          <meshStandardMaterial color="#0a0d10" roughness={0.18} metalness={0.3} envMapIntensity={1.4} />
+        </mesh>
+        <B p={[3.74, 0.47, 8.85]} s={[0.5, 0.45, 2.6]} m={matPine} cast />
+        <B p={[3.74, 0.72, 8.85]} s={[0.52, 0.04, 2.62]} m={matBand} />
+        <mesh position={[3.99, 0.24, 8.85]}>
+          <boxGeometry args={[0.02, 0.02, 2.5]} />
+          <meshStandardMaterial color="#ffe9c2" emissive="#ffcf8a" emissiveIntensity={lightsOn ? 1.7 : 0.02} />
+        </mesh>
+        <mesh position={[3.53, TV_WALL.tv.y + 0.55, 8.85]}>
+          <boxGeometry args={[0.02, 0.02, 1.5]} />
+          <meshStandardMaterial color="#fff1d4" emissive="#ffd9a0" emissiveIntensity={lightsOn ? 1.2 : 0.02} />
+        </mesh>
+        {/* estante lateral */}
+        <B p={[3.6, 1.9, 10.45]} s={[0.3, 0.05, 0.65]} m={matPine} />
+        <B p={[3.6, 1.3, 10.45]} s={[0.3, 0.05, 0.65]} m={matPine} />
+      </group>
+
+      {/* ── Living: sofá, mesa, alfombra ── */}
+      <mesh position={[6.6, 0.055, 9.1]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[3.2, 2.6]} />
+        <meshStandardMaterial color="#d8cebd" roughness={0.95} />
+      </mesh>
+      <group position={[8.15, 0, 9.1]}>
+        <B p={[0, 0.32, 0]} s={[0.9, 0.3, 2.3]} m={matLinen} cast />
+        <B p={[0.38, 0.62, 0]} s={[0.16, 0.55, 2.3]} m={matLinen} cast />
+        <B p={[0, 0.55, 0]} s={[0.75, 0.18, 2.1]} m={matLinen} />
+        <B p={[0.05, 0.5, 0.55]} s={[0.5, 0.12, 0.5]} m={matPine} />
+        <B p={[0.05, 0.5, -0.55]} s={[0.5, 0.12, 0.5]} m={matPine} />
+      </group>
+      <B p={[6.35, 0.4, 9.1]} s={[0.7, 0.38, 1.1]} m={matPine} cast />
+      <B p={[6.35, 0.6, 9.1]} s={[0.8, 0.04, 1.2]} m={matBand} />
+      <B p={[6.9, 0.3, 8.2]} s={[1.2, 0.45, 0.9]} m={matPine} cast />
+
+      {/* ── Comedor: mesa 1,80 × 0,90 + 6 sillas ── */}
+      <group position={[6.5, 0, 4.75]}>
+        <B p={[0, 0.72, 0]} s={[1.8, 0.06, 0.9]} m={matPine} cast />
+        {[[-0.75, -0.35], [-0.75, 0.35], [0.75, -0.35], [0.75, 0.35]].map(([dx, dz], i) => (
+          <B key={i} p={[dx, 0.36, dz]} s={[0.06, 0.72, 0.06]} m={matPine} />
+        ))}
+        {[-0.45, 0.45].map((dz) =>
+          [-0.55, 0.55].map((dx) => (
+            <group key={`${dx}-${dz}`} position={[dx, 0, dz]}>
+              <B p={[0, 0.45, 0]} s={[0.42, 0.05, 0.42]} m={matLinen} cast />
+              <B p={[dx > 0 ? 0.19 : -0.19, 0.72, 0]} s={[0.05, 0.5, 0.42]} m={matLinen} cast />
+              {[[-0.16, -0.16], [-0.16, 0.16], [0.16, -0.16], [0.16, 0.16]].map(([lx, lz], j) => (
+                <B key={j} p={[lx, 0.22, lz]} s={[0.035, 0.44, 0.035]} m={matPine} />
+              ))}
+            </group>
+          )),
+        )}
+      </group>
+      <mesh position={[6.5, 0.5, 4.75]}>
+        <cylinderGeometry args={[0.12, 0.16, 0.18, 12]} />
+        <meshStandardMaterial color="#e9e2d3" roughness={0.6} />
       </mesh>
 
-      {/* ── Living: sofá + mesa ratona + alfombra (frente al ventanal) ── */}
+      {/* ── Cocina ── */}
       <group>
-        <mesh position={[4.2, 0.27, 0.55]} castShadow>
-          <boxGeometry args={[2.2, 0.42, 0.95]} />
-          <meshStandardMaterial color="#3a4046" roughness={0.95} />
-        </mesh>
-        <mesh position={[4.2, 0.58, 0.3]} castShadow>
-          <boxGeometry args={[2.2, 0.5, 0.18]} />
-          <meshStandardMaterial color="#3a4046" roughness={0.95} />
-        </mesh>
-        <mesh position={[3.73, 0.56, 0.62]} castShadow>
-          <boxGeometry args={[1.02, 0.16, 0.68]} />
-          <meshStandardMaterial color="#e6dccb" roughness={0.98} />
-        </mesh>
-        <mesh position={[4.67, 0.56, 0.62]} castShadow>
-          <boxGeometry args={[1.02, 0.16, 0.68]} />
-          <meshStandardMaterial color="#e6dccb" roughness={0.98} />
-        </mesh>
-        <mesh position={[5.7, 0.067, 2.0]} receiveShadow>
-          <boxGeometry args={[2.4, 0.014, 1.8]} />
-          <meshStandardMaterial color="#7d5a4a" roughness={0.98} />
-        </mesh>
-        <mesh position={[4.2, 0.28, 2.6]} castShadow material={matOak}>
-          <boxGeometry args={[1.1, 0.42, 0.55]} />
-        </mesh>
-      </group>
-
-      {/* ── Comedor (movido al este para dejar la cocina en L) ── */}
-      <group>
-        <mesh position={[6.5, 0.78, 3.9]} castShadow material={matOak}>
-          <boxGeometry args={[2.0, 0.06, 0.9]} />
-        </mesh>
-        {[
-          [5.6, 3.58],
-          [7.4, 3.58],
-          [5.6, 4.22],
-          [7.4, 4.22],
-          [5.3, 3.9],
-          [7.7, 3.9],
-        ].map((p, i) => (
-          <mesh key={`st${i}`} position={[p[0], 0.285, p[1]]} castShadow material={matPine}>
-            <cylinderGeometry args={[0.2, 0.24, 0.45, 12]} />
+        {/* muebles bajos norte */}
+        <B p={[5.02, 0.45, 0.62]} s={[2.8, 0.9, 0.62]} m={matFrame} cast />
+        <B p={[5.02, 0.925, 0.65]} s={[2.92, 0.05, 0.68]} m={matBand} cast />
+        {[3.85, 4.45, 5.55, 6.15].map((x) => (
+          <mesh key={x} position={[x, 0.45, 0.94]}>
+            <boxGeometry args={[0.56, 0.78, 0.01]} />
+            <meshStandardMaterial color="#31383b" roughness={0.45} metalness={0.15} />
           </mesh>
+        ))}
+        {/* lavaplatos */}
+        <mesh position={[4.6, 0.95, 0.65]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[0.7, 0.42]} />
+          <meshStandardMaterial color="#b9c0c4" metalness={0.9} roughness={0.18} />
+        </mesh>
+        <mesh position={[4.6, 1.15, 0.38]}>
+          <cylinderGeometry args={[0.018, 0.018, 0.32, 8]} />
+          <meshStandardMaterial color="#9aa3a8" metalness={0.9} roughness={0.2} />
+        </mesh>
+        <mesh position={[4.6, 1.28, 0.5]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.015, 0.015, 0.24, 8]} />
+          <meshStandardMaterial color="#9aa3a8" metalness={0.9} roughness={0.2} />
+        </mesh>
+        {/* placa + campana */}
+        <B p={[5.7, 0.955, 0.65]} s={[0.72, 0.012, 0.5]} m={matFrame} />
+        {[5.5, 5.9].map((x) =>
+          [0.52, 0.78].map((z) => (
+            <mesh key={`${x}-${z}`} position={[x, 0.965, z]}>
+              <cylinderGeometry args={[0.075, 0.075, 0.008, 16]} />
+              <meshStandardMaterial color="#1b1f22" roughness={0.4} />
+            </mesh>
+          )),
+        )}
+        <B p={[5.7, 1.62, 0.55]} s={[0.82, 0.16, 0.5]} m={matFrame} cast />
+        <B p={[5.7, 2.2, 0.4]} s={[0.36, 1.0, 0.3]} m={matFrame} />
+        {/* alacenas */}
+        <B p={[4.3, 1.75, 0.36]} s={[1.2, 0.7, 0.34]} m={matBand} cast />
+        <mesh position={[4.3, 1.41, 0.54]}>
+          <boxGeometry args={[1.14, 0.015, 0.02]} />
+          <meshStandardMaterial color="#ffeec9" emissive="#ffd9a0" emissiveIntensity={lightsOn ? 1.6 : 0.02} />
+        </mesh>
+        {/* refri acero */}
+        <B p={[6.9, 0.925, 0.72]} s={[0.9, 1.85, 0.7]} m={matFrame} cast />
+        <mesh position={[6.9, 1.1, 1.08]}>
+          <boxGeometry args={[0.8, 1.5, 0.02]} />
+          <meshStandardMaterial color="#8e969b" metalness={0.85} roughness={0.25} envMapIntensity={1.2} />
+        </mesh>
+        <mesh position={[6.62, 1.2, 1.1]}>
+          <boxGeometry args={[0.02, 0.3, 0.02]} />
+          <meshStandardMaterial color="#2a2f33" metalness={0.7} roughness={0.3} />
+        </mesh>
+        {/* torre de hornos */}
+        <B p={[6.05, 1.0, 0.72]} s={[0.6, 1.55, 0.66]} m={matFrame} cast />
+        {[0.72, 1.14].map((y) => (
+          <mesh key={y} position={[6.05, y, 1.06]}>
+            <boxGeometry args={[0.5, 0.3, 0.02]} />
+            <meshStandardMaterial color="#2b3033" metalness={0.6} roughness={0.25} />
+          </mesh>
+        ))}
+        {/* isla 2,40 × 1,00 + barra 1,05 */}
+        <B p={[KITCHEN.island.x, 0.44, KITCHEN.island.z]} s={[KITCHEN.island.w, 0.88, KITCHEN.island.d]} m={matFrame} cast />
+        <B p={[KITCHEN.island.x, 0.9, KITCHEN.island.z]} s={[KITCHEN.island.w + 0.06, 0.05, KITCHEN.island.d + 0.06]} m={matBand} cast />
+        <B
+          p={[KITCHEN.island.x, 1.02, KITCHEN.island.z + KITCHEN.island.d / 2 + KITCHEN.island.overhang / 2]}
+          s={[KITCHEN.island.w, 0.06, KITCHEN.island.overhang + 0.1]}
+          m={matPine}
+          cast
+        />
+        {[-0.75, 0, 0.75].map((dx) => (
+          <group key={dx} position={[KITCHEN.island.x + dx, 0, KITCHEN.island.z + 0.95]}>
+            <B p={[0, 0.72, 0]} s={[0.36, 0.06, 0.36]} m={matPine} />
+            <B p={[0, 0.38, 0]} s={[0.05, 0.72, 0.05]} m={matFrame} />
+            <B p={[0, 0.36, 0]} s={[0.3, 0.03, 0.3]} m={matFrame} />
+          </group>
+        ))}
+        {/* colgantes */}
+        {[-0.75, 0, 0.75].map((dx) => (
+          <group key={`p${dx}`} position={[KITCHEN.island.x + dx, 2.05, KITCHEN.island.z]}>
+            <mesh>
+              <coneGeometry args={[0.13, 0.18, 14, 1, true]} />
+              <meshStandardMaterial color="#3a3f42" metalness={0.5} roughness={0.4} side={DoubleSide} />
+            </mesh>
+            <mesh position={[0, -0.09, 0]}>
+              <sphereGeometry args={[0.05, 10, 8]} />
+              <meshStandardMaterial color="#fff0d2" emissive="#ffcf8a" emissiveIntensity={lightsOn ? 2 : 0.05} />
+            </mesh>
+          </group>
         ))}
       </group>
 
-      {/* ── COCINA (referencia 4,50 × 3,50 m) ────────────────────────
-          Muebles bajos 0,90 m · encimera 0,05 m · alacenas 0,90 m
-          Isla 1,80 × 0,90 m y 0,95 m de alto · 3 taburetes.          */}
+      {/* ── Baño (1,95 × 2,34) ── */}
       <group>
-        {/* Muebles bajos: ala oeste (z 1,85..4,85) */}
-        <mesh position={[0.55, 0.45, 3.35]} castShadow material={matOak}>
-          <boxGeometry args={[0.6, 0.9, 3.0]} />
+        {/* ducha 0,90 × 1,20 */}
+        <B p={[0.7, 0.04, 4.2]} s={[0.9, 0.08, 1.2]} m={matStone} recv />
+        <mesh position={[1.15, 1.0, 4.2]}>
+          <boxGeometry args={[0.02, 2.0, 1.2]} />
+          <meshStandardMaterial color="#dcecf4" transparent opacity={0.2} metalness={0.4} roughness={0.05} />
         </mesh>
-        <mesh position={[0.575, 0.93, 3.35]} castShadow>
-          <boxGeometry args={[0.72, 0.05, 3.12]} />
-          <meshStandardMaterial color="#f4f2ec" roughness={0.16} metalness={0.03} envMapIntensity={1.2} />
+        <mesh position={[1.15, 2.0, 4.2]}>
+          <boxGeometry args={[0.03, 0.03, 1.2]} />
+          <meshStandardMaterial color="#22282c" metalness={0.6} roughness={0.3} />
         </mesh>
-        {/* Muebles bajos: ala sur (x 0,85..3,95) */}
-        <mesh position={[2.4, 0.45, 5.25]} castShadow material={matOak}>
-          <boxGeometry args={[3.1, 0.9, 0.6]} />
+        <mesh position={[0.7, 2.1, 3.78]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.12, 0.12, 0.03, 16]} />
+          <meshStandardMaterial color="#c9ced2" metalness={0.9} roughness={0.2} />
         </mesh>
-        <mesh position={[2.4, 0.93, 5.22]} castShadow>
-          <boxGeometry args={[3.2, 0.05, 0.68]} />
-          <meshStandardMaterial color="#f4f2ec" roughness={0.16} metalness={0.03} envMapIntensity={1.2} />
+        <mesh position={[0.7, 1.55, 3.72]}>
+          <cylinderGeometry args={[0.015, 0.015, 0.9, 8]} />
+          <meshStandardMaterial color="#c9ced2" metalness={0.9} roughness={0.2} />
         </mesh>
-        {/* Refrigerador doble puerta (acero) */}
-        <mesh position={[0.58, 0.97, 0.8]} castShadow>
-          <boxGeometry args={[0.66, 1.94, 0.7]} />
-          <meshStandardMaterial color="#b9bec2" roughness={0.24} metalness={0.85} envMapIntensity={1.4} />
+        {/* nicho */}
+        <B p={[0.34, 1.25, 4.2]} s={[0.06, 0.4, 0.4]} m={matWallInt} />
+        {/* vanitorio 0,80 × 0,85 × 0,50 */}
+        <B p={[0.8, 0.43, 5.62]} s={[0.8, 0.86, 0.5]} m={matPine} cast />
+        <B p={[0.8, 0.88, 5.62]} s={[0.86, 0.05, 0.54]} m={matBand} />
+        <mesh position={[0.8, 0.93, 5.6]}>
+          <cylinderGeometry args={[0.19, 0.15, 0.12, 20]} />
+          <meshStandardMaterial color="#fbfaf6" roughness={0.15} />
         </mesh>
-        <mesh position={[0.925, 1.1, 0.8]}>
-          <boxGeometry args={[0.015, 1.5, 0.02]} />
-          <meshStandardMaterial color="#6d7378" roughness={0.3} metalness={0.8} />
+        <mesh position={[0.8, 1.05, 5.42]}>
+          <cylinderGeometry args={[0.012, 0.012, 0.24, 8]} />
+          <meshStandardMaterial color="#3b3f42" metalness={0.85} roughness={0.2} />
         </mesh>
-        <mesh position={[0.93, 1.25, 0.62]}>
-          <boxGeometry args={[0.03, 0.7, 0.04]} />
-          <meshStandardMaterial color="#8d949a" roughness={0.25} metalness={0.9} />
+        {/* espejo 1,00 × 0,70 a 1,40 */}
+        <mesh position={[0.8, 1.45, 5.9]}>
+          <boxGeometry args={[0.7, 1.0, 0.03]} />
+          <meshStandardMaterial color="#cfe3ee" metalness={0.75} roughness={0.05} envMapIntensity={1.5} />
         </mesh>
-        {/* Torre de hornos en madera + dos hornos de vidrio negro */}
-        <mesh position={[0.58, 1.1, 1.5]} castShadow material={matOak}>
-          <boxGeometry args={[0.66, 2.2, 0.7]} />
+        <mesh position={[0.8, 1.45, 5.87]}>
+          <boxGeometry args={[0.76, 1.06, 0.02]} />
+          <meshStandardMaterial color="#fff2d8" emissive="#ffe6bd" emissiveIntensity={lightsOn ? 1.4 : 0.02} />
         </mesh>
-        <mesh position={[0.925, 1.42, 1.5]}>
-          <boxGeometry args={[0.02, 0.38, 0.5]} />
-          <meshStandardMaterial color="#111518" roughness={0.12} metalness={0.4} envMapIntensity={1.4} />
+        {/* inodoro 0,60 × 0,40 */}
+        <B p={[1.82, 0.2, 4.6]} s={[0.6, 0.4, 0.55]} m={matBand} cast />
+        <mesh position={[1.82, 0.44, 4.5]}>
+          <boxGeometry args={[0.4, 0.06, 0.44]} />
+          <meshStandardMaterial color="#fbfaf7" roughness={0.25} />
         </mesh>
-        <mesh position={[0.925, 1.9, 1.5]}>
-          <boxGeometry args={[0.02, 0.38, 0.5]} />
-          <meshStandardMaterial color="#111518" roughness={0.12} metalness={0.4} envMapIntensity={1.4} />
+        <B p={[2.1, 0.9, 4.6]} s={[0.12, 0.16, 0.42]} m={matBand} />
+      </group>
+
+      {/* ── Ensuite ── */}
+      <group>
+        <B p={[9.85, 0.04, 4.05]} s={[0.8, 0.08, 0.9]} m={matStone} recv />
+        <mesh position={[10.25, 1.0, 4.05]}>
+          <boxGeometry args={[0.02, 2.0, 0.9]} />
+          <meshStandardMaterial color="#dcecf4" transparent opacity={0.2} metalness={0.4} roughness={0.05} />
         </mesh>
-        {[1.22, 1.7].map((y, i) => (
-          <mesh key={`oh${i}`} position={[0.955, y, 1.5]}>
-            <boxGeometry args={[0.03, 0.03, 0.44]} />
-            <meshStandardMaterial color="#c9ced2" roughness={0.25} metalness={0.9} />
+        <B p={[9.78, 0.44, 4.85]} s={[0.72, 0.86, 0.48]} m={matPine} cast />
+        <B p={[9.78, 0.88, 4.85]} s={[0.78, 0.05, 0.52]} m={matBand} />
+        <mesh position={[9.78, 0.94, 4.85]}>
+          <cylinderGeometry args={[0.16, 0.13, 0.1, 18]} />
+          <meshStandardMaterial color="#fbfaf6" roughness={0.15} />
+        </mesh>
+        <mesh position={[9.51, 1.42, 4.85]}>
+          <boxGeometry args={[0.03, 0.9, 0.62]} />
+          <meshStandardMaterial color="#cfe3ee" metalness={0.75} roughness={0.05} />
+        </mesh>
+        <mesh position={[9.49, 1.42, 4.85]}>
+          <boxGeometry args={[0.02, 0.96, 0.68]} />
+          <meshStandardMaterial color="#fff2d8" emissive="#ffe6bd" emissiveIntensity={lightsOn ? 1.3 : 0.02} />
+        </mesh>
+        <B p={[10.8, 0.2, 3.95]} s={[0.55, 0.4, 0.5]} m={matBand} cast />
+      </group>
+
+      {/* ── Dormitorio 1 ── */}
+      <group>
+        <Bed x={11.6} z={1.55} w={1.8} head={-1} matWood={matPine} matLinen={matLinen} />
+        <Wardrobe x={13.55} z={0.62} w={1.5} mat={matBand} />
+        <Desk x={11.0} z={3.2} w={1.2} matWood={matPine} matWall={matBand} />
+        <B p={[12.2, 0.55, 3.25]} s={[0.5, 0.06, 0.5]} m={matLinen} />
+        <mesh position={[11.8, 0.04, 1.7]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[2.6, 2.2]} />
+          <meshStandardMaterial color="#d9cfc0" roughness={0.95} />
+        </mesh>
+      </group>
+
+      {/* ── Dormitorio 2 ── */}
+      <group>
+        <Bed x={1.55} z={1.55} w={1.6} head={-1} matWood={matWood} matLinen={matLinen} />
+        <Wardrobe x={2.85} z={2.35} w={0.95} mat={matBand} />
+        <Desk x={1.15} z={3.15} w={1.2} matWood={matPine} matWall={matBand} />
+        <B p={[2.35, 0.55, 3.2]} s={[0.5, 0.06, 0.5]} m={matLinen} />
+      </group>
+
+      {/* ── Dormitorio 3 ── */}
+      <group>
+        <Bed x={1.55} z={7.55} w={1.6} head={-1} matWood={matWood} matLinen={matLinen} />
+        <Wardrobe x={2.85} z={8.6} w={0.95} mat={matBand} />
+        <Desk x={1.2} z={10.35} w={1.2} matWood={matPine} matWall={matBand} />
+        <B p={[2.4, 0.55, 10.35]} s={[0.5, 0.06, 0.5]} m={matLinen} />
+        <mesh position={[1.7, 0.04, 8.8]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[2.4, 2.2]} />
+          <meshStandardMaterial color="#d9cfc0" roughness={0.95} />
+        </mesh>
+      </group>
+
+      {/* ── Garaje: auto + estantes ── */}
+      <group position={[11.85, 0, 8.75]}>
+        <B p={[0, 0.55, 0]} s={[1.78, 0.5, 4.2]} m={matBand} cast />
+        <B p={[0, 0.98, 0.05]} s={[1.62, 0.42, 2.24]} m={matBand} cast />
+        <mesh position={[0, 1.02, 0.05]}>
+          <boxGeometry args={[1.64, 0.32, 2.26]} />
+          <meshStandardMaterial color="#26333c" metalness={0.6} roughness={0.1} />
+        </mesh>
+        <B p={[0, 0.34, 2.1]} s={[1.8, 0.18, 0.2]} m={matFrame} />
+        <B p={[0, 0.34, -2.1]} s={[1.8, 0.18, 0.2]} m={matFrame} />
+        {[[-0.85, 1.35], [0.85, 1.35], [-0.85, -1.35], [0.85, -1.35]].map(([dx, dz], i) => (
+          <mesh key={i} position={[dx, 0.34, dz]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.32, 0.32, 0.2, 18]} />
+            <meshStandardMaterial color="#15181a" roughness={0.8} />
           </mesh>
         ))}
-        {/* Alacenas blancas (oeste + sur) */}
-        <mesh position={[0.43, 1.95, 3.2]} castShadow>
-          <boxGeometry args={[0.36, 0.9, 2.6]} />
-          <meshStandardMaterial color="#f1efe8" roughness={0.55} />
-        </mesh>
-        <mesh position={[2.65, 1.95, 5.37]} castShadow>
-          <boxGeometry args={[2.5, 0.9, 0.36]} />
-          <meshStandardMaterial color="#f1efe8" roughness={0.55} />
-        </mesh>
-        {/* Tira LED bajo alacenas (luz cálida) */}
-        <mesh position={[0.62, 1.475, 3.2]}>
-          <boxGeometry args={[0.05, 0.02, 2.5]} />
-          <meshStandardMaterial color="#fff6e0" emissive="#ffd9a0" emissiveIntensity={1.5} />
-        </mesh>
-        <mesh position={[2.65, 1.475, 5.18]}>
-          <boxGeometry args={[2.4, 0.02, 0.05]} />
-          <meshStandardMaterial color="#fff6e0" emissive="#ffd9a0" emissiveIntensity={1.5} />
-        </mesh>
-        {/* Placa de cocción + campana + ducto */}
-        <mesh position={[0.58, 0.965, 2.85]}>
-          <boxGeometry args={[0.52, 0.02, 0.75]} />
-          <meshStandardMaterial color="#101315" roughness={0.1} metalness={0.45} envMapIntensity={1.4} />
-        </mesh>
-        <mesh position={[0.58, 1.8, 2.85]} castShadow>
-          <boxGeometry args={[0.52, 0.14, 0.82]} />
-          <meshStandardMaterial color="#aeb4b8" roughness={0.3} metalness={0.75} envMapIntensity={1.2} />
-        </mesh>
-        <mesh position={[0.5, 2.22, 2.85]}>
-          <boxGeometry args={[0.3, 0.72, 0.3]} />
-          <meshStandardMaterial color="#9aa0a4" roughness={0.35} metalness={0.7} />
-        </mesh>
-        {/* Lavamanos de cocina */}
-        <mesh position={[2.7, 0.962, 5.18]}>
-          <boxGeometry args={[0.55, 0.015, 0.42]} />
-          <meshStandardMaterial color="#2b3033" roughness={0.15} metalness={0.5} />
-        </mesh>
-        <mesh position={[2.7, 1.1, 5.4]}>
-          <cylinderGeometry args={[0.022, 0.022, 0.3, 10]} />
-          <meshStandardMaterial color="#b9bec2" roughness={0.2} metalness={0.9} />
-        </mesh>
-        <mesh position={[2.7, 1.24, 5.34]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.018, 0.018, 0.16, 10]} />
-          <meshStandardMaterial color="#b9bec2" roughness={0.2} metalness={0.9} />
-        </mesh>
-        {/* Isla 1,80 × 0,90 m, alto 0,95 m, cuerpo en madera */}
-        <mesh position={[3.0, 0.46, 3.2]} castShadow material={matPine}>
-          <boxGeometry args={[0.9, 0.92, 1.8]} />
-        </mesh>
-        <mesh position={[3.0, 0.955, 3.2]} castShadow>
-          <boxGeometry args={[1.02, 0.06, 1.9]} />
-          <meshStandardMaterial color="#f4f2ec" roughness={0.16} metalness={0.03} envMapIntensity={1.2} />
-        </mesh>
-        {/* Lavaplatos de isla + grifería */}
-        <mesh position={[3.0, 0.99, 3.0]}>
-          <boxGeometry args={[0.38, 0.012, 0.5]} />
-          <meshStandardMaterial color="#2b3033" roughness={0.15} metalness={0.5} />
-        </mesh>
-        <mesh position={[3.0, 1.12, 3.3]}>
-          <cylinderGeometry args={[0.02, 0.02, 0.28, 10]} />
-          <meshStandardMaterial color="#1e2225" roughness={0.25} metalness={0.8} />
-        </mesh>
-        {/* 3 taburetes frente a la isla */}
-        {[2.6, 3.2, 3.8].map((z, i) => (
-          <group key={`isl-st${i}`}>
-            <mesh position={[3.66, 0.72, z]} castShadow>
-              <cylinderGeometry args={[0.19, 0.19, 0.07, 16]} />
-              <meshStandardMaterial color="#6d5f4e" roughness={0.9} />
+        {[-0.55, 0.55].map((dx) => (
+          <mesh key={dx} position={[dx, 0.62, 2.12]}>
+            <boxGeometry args={[0.35, 0.12, 0.03]} />
+            <meshStandardMaterial color="#fff3d4" emissive="#ffe6b0" emissiveIntensity={0.5} />
+          </mesh>
+        ))}
+      </group>
+      <B p={[9.85, 1.1, 8.0]} s={[0.4, 2.2, 0.6]} m={matWallExt} />
+      <B p={[14.0, 1.4, 6.3]} s={[0.5, 1.6, 2.0]} m={matBand} />
+
+      {/* ── Apliques, interruptores y enchufes ── */}
+      {SCONCES.map((s, i) => (
+        <Sconce key={`sc${i}`} x={s.x} y={s.y} z={s.z} rot={s.rot} on={lightsOn} glow={i < 4} />
+      ))}
+      {SWITCHES.map((s, i) => (
+        <Plate key={`pl${i}`} x={s.x} y={s.y} z={s.z} rot={s.rot} outlet={s.outlet} />
+      ))}
+
+      {/* ── Vegetación animada ── */}
+      <Hedge x={2.6} z={12.9} w={4.6} d={0.75} h={0.7} />
+      <Hedge x={5.1} z={13.15} w={1.2} d={0.6} h={0.55} />
+      <Hedge x={13.9} z={13.3} w={2.2} d={0.7} h={0.8} />
+      <Hedge x={-0.9} z={4.2} w={0.8} d={5.0} h={0.7} />
+      <Hedge x={15.3} z={4.6} w={0.8} d={4.6} h={0.7} />
+      <Grass x={6.12} z={11.55} s={1.15} phase={0.4} />
+      <Grass x={8.22} z={11.55} s={1.15} phase={1.7} />
+      <Grass x={2.2} z={12.2} s={0.95} phase={2.4} />
+      <Grass x={4.0} z={12.2} s={0.75} phase={0.9} />
+      <Grass x={13.6} z={11.7} s={1.0} phase={1.2} />
+      {/* árboles */}
+      {[[-2.6, 7.0, 1.05], [-2.4, 2.2, 0.9], [16.4, 2.4, 1.0], [16.2, 9.0, 0.85], [12.6, 17.6, 0.8]].map(
+        ([x, z, s], i) => (
+          <group key={`t${i}`} position={[x, 0, z]} scale={[s, s, s]}>
+            <mesh position={[0, 1.1, 0]} castShadow>
+              <cylinderGeometry args={[0.12, 0.18, 2.2, 8]} />
+              <meshStandardMaterial color="#6b5741" roughness={0.9} />
             </mesh>
-            <mesh position={[3.7, 0.93, z]}>
-              <boxGeometry args={[0.05, 0.35, 0.36]} />
-              <meshStandardMaterial color="#4a4238" roughness={0.85} />
-            </mesh>
-            {[
-              [3.6, z - 0.13],
-              [3.72, z - 0.13],
-              [3.6, z + 0.13],
-              [3.72, z + 0.13],
-            ].map((p, j) => (
-              <mesh key={`leg${j}`} position={[p[0], 0.34, p[1]]}>
-                <cylinderGeometry args={[0.015, 0.015, 0.68, 8]} />
-                <meshStandardMaterial color="#1b1e20" roughness={0.4} metalness={0.6} />
+            {[1.9, 2.5, 3.1].map((y, j) => (
+              <mesh key={j} position={[0, y, 0]} castShadow>
+                <sphereGeometry args={[1.05 - j * 0.22, 12, 10]} />
+                <meshStandardMaterial color={j % 2 ? '#5d7247' : '#6b8150'} roughness={0.95} />
               </mesh>
             ))}
           </group>
-        ))}
-      </group>
+        ),
+      )}
 
-      {/* ── Dormitorio principal (7) ── */}
-      <group>
-        <mesh position={[12.4, 0.9, 5.4]} castShadow material={matOak}>
-          <boxGeometry args={[1.9, 1.2, 0.12]} />
-        </mesh>
-        <mesh position={[12.4, 0.19, 4.3]} castShadow material={matPine}>
-          <boxGeometry args={[1.8, 0.26, 2.05]} />
-        </mesh>
-        <mesh position={[12.4, 0.47, 4.3]} castShadow>
-          <boxGeometry args={[1.8, 0.35, 2.0]} />
-          <meshStandardMaterial color="#e8e2d6" roughness={0.97} />
-        </mesh>
-        <mesh position={[12.4, 0.68, 4.05]} castShadow>
-          <boxGeometry args={[1.8, 0.08, 1.3]} />
-          <meshStandardMaterial color="#7d5a4a" roughness={0.98} />
-        </mesh>
-        <mesh position={[12.0, 0.71, 5.05]} castShadow>
-          <boxGeometry args={[0.6, 0.14, 0.35]} />
-          <meshStandardMaterial color="#f0e8da" roughness={0.98} />
-        </mesh>
-        <mesh position={[12.8, 0.71, 5.05]} castShadow>
-          <boxGeometry args={[0.6, 0.14, 0.35]} />
-          <meshStandardMaterial color="#f0e8da" roughness={0.98} />
-        </mesh>
-        <mesh position={[11.35, 0.31, 4.9]} castShadow material={matOak}>
-          <boxGeometry args={[0.45, 0.5, 0.45]} />
-        </mesh>
-        <mesh position={[13.45, 0.31, 4.9]} castShadow material={matOak}>
-          <boxGeometry args={[0.45, 0.5, 0.45]} />
-        </mesh>
-      </group>
-
-      {/* ── Dormitorios 2 y 3 ── */}
+      {/* ── Lámparas de techo / downlights ── */}
       {[
-        { x: 8.3, nx1: 7.1, nx2: 9.5 },
-        { x: 12.1, nx1: 10.9, nx2: 13.3 },
-      ].map((b, i) => (
-        <group key={`bed${i}`}>
-          <mesh position={[b.x, 0.9, 10.62]} castShadow material={matOak}>
-            <boxGeometry args={[1.9, 1.2, 0.12]} />
+        [7.4, 8.6], [5.2, 4.8], [5.4, 1.9], [6.5, 4.7], [2.9, 4.8], [1.6, 1.7],
+        [12.3, 1.7], [1.6, 8.6], [12.0, 8.0], [10.2, 4.5], [1.2, 4.8], [11.9, 4.5],
+      ].map(([x, z], i) => (
+        <group key={`dl${i}`} position={[x, WALL_H - 0.06, z]}>
+          <mesh>
+            <cylinderGeometry args={[0.075, 0.075, 0.02, 14]} />
+            <meshStandardMaterial color="#fdf8ee" emissive="#fff1d6" emissiveIntensity={lightsOn ? 1.4 : 0.04} />
           </mesh>
-          <mesh position={[b.x, 0.19, 9.5]} castShadow material={matPine}>
-            <boxGeometry args={[1.8, 0.26, 2.05]} />
-          </mesh>
-          <mesh position={[b.x, 0.47, 9.5]} castShadow>
-            <boxGeometry args={[1.8, 0.35, 2.0]} />
-            <meshStandardMaterial color="#e8e2d6" roughness={0.97} />
-          </mesh>
-          <mesh position={[b.x, 0.68, 9.25]} castShadow>
-            <boxGeometry args={[1.8, 0.08, 1.3]} />
-            <meshStandardMaterial color="#7d5a4a" roughness={0.98} />
-          </mesh>
-          <mesh position={[b.x - 0.4, 0.71, 10.27]} castShadow>
-            <boxGeometry args={[0.6, 0.14, 0.35]} />
-            <meshStandardMaterial color="#f0e8da" roughness={0.98} />
-          </mesh>
-          <mesh position={[b.x + 0.4, 0.71, 10.27]} castShadow>
-            <boxGeometry args={[0.6, 0.14, 0.35]} />
-            <meshStandardMaterial color="#f0e8da" roughness={0.98} />
-          </mesh>
-          <mesh position={[b.nx1, 0.31, 10.4]} castShadow material={matOak}>
-            <boxGeometry args={[0.45, 0.5, 0.45]} />
-          </mesh>
-          <mesh position={[b.nx2, 0.31, 10.4]} castShadow material={matOak}>
-            <boxGeometry args={[0.45, 0.5, 0.45]} />
-          </mesh>
+          {lightsOn && i % 2 === 0 ? (
+            <pointLight position={[0, -0.25, 0]} intensity={0.5} color="#fff0d4" distance={5.4} decay={2} />
+          ) : null}
         </group>
       ))}
 
-      {/* ── Clóset (8) ── */}
-      {CLOSET_BARS.map((p, i) => (
-        <mesh key={`cb${i}`} position={[p[0], p[1], p[2]]} castShadow material={matPine}>
-          <boxGeometry args={[0.05, 2.0, 0.05]} />
-        </mesh>
-      ))}
-      <mesh position={[12.7, 2.03, 6.7]} castShadow material={matPine}>
-        <boxGeometry args={[1.7, 0.06, 0.4]} />
-      </mesh>
-
-      {/* ── Baño (9) ── */}
-      <group>
-        <mesh position={[8.8, 0.2, 0.6]} castShadow>
-          <cylinderGeometry args={[0.24, 0.28, 0.4, 16]} />
-          <meshStandardMaterial color="#f2efe8" roughness={0.2} envMapIntensity={0.9} />
-        </mesh>
-        <mesh position={[8.8, 0.5, 0.38]} castShadow>
-          <boxGeometry args={[0.42, 0.55, 0.16]} />
-          <meshStandardMaterial color="#f2efe8" roughness={0.2} envMapIntensity={0.9} />
-        </mesh>
-        <mesh position={[8.8, 0.42, 0.66]} castShadow>
-          <boxGeometry args={[0.5, 0.07, 0.42]} />
-          <meshStandardMaterial color="#ffffff" roughness={0.15} envMapIntensity={1} />
-        </mesh>
-        <mesh position={[9.9, 0.4, 0.5]} castShadow>
-          <boxGeometry args={[0.5, 0.35, 0.4]} />
-          <meshStandardMaterial color="#e8e2d6" roughness={0.25} envMapIntensity={0.9} />
-        </mesh>
-        <mesh position={[10.625, 1.0, 0.9]}>
-          <boxGeometry args={[0.45, 2.0, 1.0]} />
-          <meshStandardMaterial color="#a9d0ec" transparent opacity={0.22} roughness={0.03} metalness={0.35} envMapIntensity={1.4} />
-        </mesh>
-      </group>
-
-      {/* ── Sauna (10) ── */}
-      <group>
-        <mesh position={[9.85, 0.14, 3.7]} castShadow receiveShadow material={matPine}>
-          <boxGeometry args={[0.45, 0.28, 2.1]} />
-        </mesh>
-        <mesh position={[10.3, 0.28, 3.7]} castShadow receiveShadow material={matPine}>
-          <boxGeometry args={[0.45, 0.56, 2.1]} />
-        </mesh>
-        <mesh position={[10.72, 0.42, 3.7]} castShadow receiveShadow material={matPine}>
-          <boxGeometry args={[0.45, 0.84, 2.1]} />
-        </mesh>
-        <mesh position={[8.78, 0.3, 3.5]} castShadow>
-          <boxGeometry args={[0.4, 0.6, 0.5]} />
-          <meshStandardMaterial color="#33383c" roughness={0.5} metalness={0.3} />
-        </mesh>
-        <mesh position={[8.78, 0.18, 3.5]}>
-          <boxGeometry args={[0.42, 0.07, 0.52]} />
-          <meshStandardMaterial color="#8a8f94" roughness={0.3} metalness={0.7} envMapIntensity={1.1} />
-        </mesh>
-        <mesh position={[8.78, 0.42, 3.5]}>
-          <boxGeometry args={[0.42, 0.07, 0.52]} />
-          <meshStandardMaterial color="#8a8f94" roughness={0.3} metalness={0.7} envMapIntensity={1.1} />
-        </mesh>
-      </group>
-
-      {/* ── Recibidor ── */}
-      <group>
-        <mesh position={[5.6, 0.27, 10.05]} castShadow material={matOak}>
-          <boxGeometry args={[1.4, 0.42, 0.4]} />
-        </mesh>
-        <mesh position={[4.6, 0.96, 10.3]} castShadow material={matPine}>
-          <cylinderGeometry args={[0.05, 0.07, 1.8, 8]} />
-        </mesh>
-        <mesh position={[4.6, 1.62, 10.3]} castShadow material={matPine}>
-          <boxGeometry args={[0.55, 0.05, 0.05]} />
-        </mesh>
-        <mesh position={[4.6, 1.62, 10.3]} rotation={[0, Math.PI / 2, 0]} castShadow material={matPine}>
-          <boxGeometry args={[0.55, 0.05, 0.05]} />
-        </mesh>
-      </group>
-
-      {/* ══ QUINCHO 6,00 × 3,20 m · cubierta 2,70 m · barra 3,60 × 1,00 · alto 1,05 ══ */}
-      <group>
-        {/* Losa de porcelanato exterior */}
-        <mesh
-          position={[(QUINCHO.x0 + QUINCHO.x1) / 2, 0.012, (QUINCHO.z0 + QUINCHO.z1) / 2]}
-          receiveShadow
-          material={matPorcelain}
-        >
-          <boxGeometry args={[QUINCHO.x1 - QUINCHO.x0 + 0.2, 0.05, QUINCHO.z1 - QUINCHO.z0 + 0.2]} />
-        </mesh>
-        {/* Muro de piedra al fondo + lateral este */}
-        <mesh position={[(QUINCHO.x0 + QUINCHO.x1) / 2, 1.35, QUINCHO.z0]} castShadow receiveShadow material={matStone}>
-          <boxGeometry args={[QUINCHO.x1 - QUINCHO.x0, 2.7, 0.14]} />
-        </mesh>
-        <mesh position={[QUINCHO.x1, 1.35, (QUINCHO.z0 + QUINCHO.z1) / 2]} castShadow receiveShadow material={matStone}>
-          <boxGeometry args={[0.14, 2.7, QUINCHO.z1 - QUINCHO.z0]} />
-        </mesh>
-        {/* Postes de acero negro */}
-        {[
-          [QUINCHO.x0 + 0.1, QUINCHO.z0 + 0.12],
-          [QUINCHO.x1 - 0.1, QUINCHO.z0 + 0.12],
-          [QUINCHO.x0 + 0.1, QUINCHO.z1 - 0.1],
-          [QUINCHO.x1 - 0.1, QUINCHO.z1 - 0.1],
-        ].map((p, i) => (
-          <mesh key={`qp${i}`} position={[p[0], 1.35, p[1]]} castShadow>
-            <boxGeometry args={[0.12, 2.7, 0.12]} />
-            <meshStandardMaterial color="#161a1c" roughness={0.35} metalness={0.7} />
-          </mesh>
-        ))}
-        {/* Cielo de listones de madera + cubierta */}
-        <mesh position={[(QUINCHO.x0 + QUINCHO.x1) / 2, 2.655, (QUINCHO.z0 + QUINCHO.z1) / 2]} material={matPine}>
-          <boxGeometry args={[QUINCHO.x1 - QUINCHO.x0, 0.06, QUINCHO.z1 - QUINCHO.z0]} />
-        </mesh>
-        {[2.35, 3.2, 4.05, 4.9].map((x, i) => (
-          <mesh key={`qb${i}`} position={[x, 2.6, (QUINCHO.z0 + QUINCHO.z1) / 2]} material={matOak}>
-            <boxGeometry args={[0.08, 0.09, QUINCHO.z1 - QUINCHO.z0]} />
-          </mesh>
-        ))}
-        <mesh
-          position={[(QUINCHO.x0 + QUINCHO.x1) / 2, 2.75, (QUINCHO.z0 + QUINCHO.z1) / 2]}
-          castShadow
-        >
-          <boxGeometry args={[QUINCHO.x1 - QUINCHO.x0 + 0.25, 0.12, QUINCHO.z1 - QUINCHO.z0 + 0.25]} />
-          <meshStandardMaterial color="#2b3034" roughness={0.7} metalness={0.15} />
-        </mesh>
-        {/* Mesón de trabajo contra el muro de piedra */}
-        <mesh position={[17.9, 0.45, 2.28]} castShadow>
-          <boxGeometry args={[5.6, 0.9, 0.6]} />
-          <meshStandardMaterial color="#3a3f43" roughness={0.6} metalness={0.05} />
-        </mesh>
-        <mesh position={[17.9, 0.92, 2.28]} castShadow>
-          <boxGeometry args={[5.7, 0.06, 0.66]} />
-          <meshStandardMaterial color="#7b756a" roughness={0.35} metalness={0.05} envMapIntensity={0.8} />
-        </mesh>
-        {/* Parrilla a gas con rejillas + campana industrial */}
-        <mesh position={[18.85, 0.99, 2.28]} castShadow>
-          <boxGeometry args={[1.0, 0.14, 0.58]} />
-          <meshStandardMaterial color="#a8afb4" roughness={0.3} metalness={0.8} envMapIntensity={1.1} />
-        </mesh>
-        {[18.45, 18.61, 18.77, 18.93, 19.09, 19.25].map((x, i) => (
-          <mesh key={`gr${i}`} position={[x, 1.07, 2.28]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.012, 0.012, 0.5, 8]} />
-            <meshStandardMaterial color="#2b2f32" roughness={0.35} metalness={0.8} />
-          </mesh>
-        ))}
-        <mesh position={[18.85, 1.78, 2.12]} castShadow>
-          <boxGeometry args={[1.25, 0.42, 0.55]} />
-          <meshStandardMaterial color="#4c5358" roughness={0.32} metalness={0.7} />
-        </mesh>
-        <mesh position={[18.85, 2.34, 2.12]}>
-          <boxGeometry args={[0.42, 0.7, 0.42]} />
-          <meshStandardMaterial color="#5b6267" roughness={0.4} metalness={0.6} />
-        </mesh>
-        {/* Horno de barro (domo) */}
-        <mesh position={[20.2, 0.98, 2.4]} castShadow>
-          <boxGeometry args={[1.0, 0.16, 0.7]} />
-          <meshStandardMaterial color="#6c665e" roughness={0.7} />
-        </mesh>
-        <mesh position={[20.2, 1.06, 2.4]} castShadow>
-          <sphereGeometry args={[0.5, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshStandardMaterial color="#8a6a52" roughness={0.85} />
-        </mesh>
-        <mesh position={[20.2, 1.2, 2.9]}>
-          <boxGeometry args={[0.34, 0.24, 0.02]} />
-          <meshStandardMaterial color="#17110d" roughness={0.9} />
-        </mesh>
-        {/* Lavaplatos + grifería */}
-        <mesh position={[15.95, 0.955, 2.28]}>
-          <boxGeometry args={[0.55, 0.02, 0.4]} />
-          <meshStandardMaterial color="#2b3033" roughness={0.15} metalness={0.5} />
-        </mesh>
-        <mesh position={[15.95, 1.1, 2.1]}>
-          <cylinderGeometry args={[0.02, 0.02, 0.3, 10]} />
-          <meshStandardMaterial color="#b9bec2" roughness={0.2} metalness={0.9} />
-        </mesh>
-        {/* Repisa con plantas + LED */}
-        <mesh position={[16.4, 1.55, 2.03]} material={matPine}>
-          <boxGeometry args={[1.2, 0.05, 0.24]} />
-        </mesh>
-        {[16.1, 16.7].map((x, i) => (
-          <group key={`qp${i}`}>
-            <mesh position={[x, 1.63, 2.03]} castShadow>
-              <cylinderGeometry args={[0.09, 0.07, 0.14, 10]} />
-              <meshStandardMaterial color="#8d6a4f" roughness={0.8} />
-            </mesh>
-            <mesh position={[x, 1.78, 2.03]} castShadow>
-              <sphereGeometry args={[0.13, 10, 8]} />
-              <meshStandardMaterial color="#3f6a3e" roughness={0.9} />
-            </mesh>
-          </group>
-        ))}
-        <mesh position={[17.9, 1.5, 1.99]}>
-          <boxGeometry args={[4.4, 0.02, 0.05]} />
-          <meshStandardMaterial color="#fff6e0" emissive="#ffd9a0" emissiveIntensity={1.4} />
-        </mesh>
-        {/* BARRA 3,60 × 1,00 × 1,05 */}
-        <mesh position={[17.4, 0.5, 4.45]} castShadow receiveShadow material={matStone}>
-          <boxGeometry args={[QUINCHO.bar.x1 - QUINCHO.bar.x0, 1.0, QUINCHO.bar.z1 - QUINCHO.bar.z0]} />
-        </mesh>
-        <mesh position={[17.4, 1.075, 4.45]} castShadow>
-          <boxGeometry args={[3.8, 0.05, 1.1]} />
-          <meshStandardMaterial color="#2f3335" roughness={0.18} metalness={0.2} envMapIntensity={1.4} />
-        </mesh>
-        {/* 5 taburetes de mimbre */}
-        {[0, 1, 2, 3, 4].map((i) => {
-          const x = 15.95 + i * 0.65;
-          return (
-            <group key={`qs${i}`}>
-              <mesh position={[x, 0.73, 5.42]} castShadow>
-                <cylinderGeometry args={[0.19, 0.19, 0.07, 16]} />
-                <meshStandardMaterial color="#6d5f4e" roughness={0.9} />
-              </mesh>
-              <mesh position={[x, 0.94, 5.53]}>
-                <boxGeometry args={[0.36, 0.32, 0.05]} />
-                <meshStandardMaterial color="#4a4238" roughness={0.85} />
-              </mesh>
-              {[
-                [x - 0.12, 5.3],
-                [x + 0.12, 5.3],
-                [x - 0.12, 5.54],
-                [x + 0.12, 5.54],
-              ].map((p, j) => (
-                <mesh key={`qleg${j}`} position={[p[0], 0.35, p[1]]}>
-                  <cylinderGeometry args={[0.015, 0.015, 0.7, 8]} />
-                  <meshStandardMaterial color="#1b1e20" roughness={0.4} metalness={0.6} />
-                </mesh>
-              ))}
-            </group>
-          );
-        })}
-        {/* Lámparas colgantes (3) */}
-        {[16.4, 17.4, 18.4].map((x, i) => (
-          <group key={`qpnd${i}`}>
-            <mesh position={[x, 2.45, 4.45]}>
-              <cylinderGeometry args={[0.008, 0.008, 0.42, 6]} />
-              <meshStandardMaterial color="#1b1e20" roughness={0.4} />
-            </mesh>
-            <mesh position={[x, 2.18, 4.45]}>
-              <cylinderGeometry args={[0.11, 0.16, 0.16, 16, 1, true]} />
-              <meshStandardMaterial color="#1b1e20" roughness={0.35} metalness={0.4} side={DoubleSide} />
-            </mesh>
-            <mesh position={[x, 2.1, 4.45]}>
-              <sphereGeometry args={[0.045, 10, 8]} />
-              <meshStandardMaterial color="#fff3d6" emissive="#ffd9a0" emissiveIntensity={2.2} />
-            </mesh>
-          </group>
-        ))}
-        {/* Luces cálidas del quincho (2 focos reales) */}
-        {QUINCHO_LIGHTS.map(([x, z], i) => (
-          <pointLight
-            key={`ql${i}`}
-            position={[x, 2.05, z]}
-            intensity={night ? 2.6 : light === 'sunset' ? 1.7 : 1.1}
-            color="#ffd9a0"
-            distance={6}
-            decay={1.9}
-          />
-        ))}
-        {/* Focos de pared sobre el muro de piedra */}
-        {[16.3, 19.5].map((x, i) => (
-          <mesh key={`qwall${i}`} position={[x, 2.05, 1.99]}>
-            <cylinderGeometry args={[0.05, 0.05, 0.12, 10]} />
-            <meshStandardMaterial color="#fff3d6" emissive="#ffd9a0" emissiveIntensity={1.6} />
-          </mesh>
-        ))}
-      </group>
-
-
-      {/* ── Lámparas de techo + luz fría de día / cálida de noche ── */}
-      <mesh position={[7.4, 2.665, 6.27]}>
-        <boxGeometry args={[7.6, 0.025, 0.09]} />
-        <meshStandardMaterial
-          color={night ? '#fff6e0' : '#f2f7ff'}
-          emissive={night ? '#ffd9a0' : '#dbeaff'}
-          emissiveIntensity={night ? 1.7 : 1.1}
-        />
-      </mesh>
-      {LAMPS.map(([x, z], i) => (
-        <group key={`lamp${i}`}>
-          <mesh position={[x, 2.63, z]}>
-            <cylinderGeometry args={[0.18, 0.18, 0.035, 18]} />
-            <meshStandardMaterial
-              color="#fdf8ec"
-              emissive={night ? '#ffd9a0' : '#dbeaff'}
-              emissiveIntensity={night ? 1.6 : 0.55}
-              roughness={0.4}
-            />
-          </mesh>
-          <pointLight
-            position={[x, 2.5, z]}
-            intensity={lampIntensity}
-            color={night ? '#ffd9a0' : '#e4eeff'}
-            distance={7.5}
-            decay={1.8}
-          />
-        </group>
-      ))}
-
-      {/* ── Cámaras CCTV (carcasa + lente + LED de grabación) ── */}
+      {/* ── Cámaras CCTV ── */}
       {CCTV_CAMERAS.map((cam) => (
         <group key={cam.id}>
           {cam.zone === 'Exterior' ? (
@@ -979,81 +1071,58 @@ export default function Plano3903D({ light }: { light: 'day' | 'sunset' | 'night
           <group position={cam.pos} rotation={[0, aimYaw(cam), 0]}>
             <mesh castShadow>
               <boxGeometry args={[0.16, 0.13, 0.26]} />
-              <meshStandardMaterial color="#d9d7d0" roughness={0.45} metalness={0.15} />
+              <meshStandardMaterial color="#e7e1d5" roughness={0.45} metalness={0.15} />
             </mesh>
             <mesh position={[0, -0.09, 0.02]}>
               <boxGeometry args={[0.12, 0.06, 0.16]} />
               <meshStandardMaterial color="#22282c" roughness={0.6} />
             </mesh>
             <mesh position={[0, 0, -0.16]} rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry args={[0.05, 0.062, 0.1, 14]} />
-              <meshStandardMaterial color="#101418" roughness={0.2} metalness={0.5} envMapIntensity={1.2} />
+              <cylinderGeometry args={[0.05, 0.062, 0.1, 16]} />
+              <meshStandardMaterial color="#1b2024" metalness={0.5} roughness={0.35} />
             </mesh>
-            <mesh position={[0.075, 0.075, 0.06]}>
+            <mesh position={[0, 0, -0.215]}>
               <sphereGeometry args={[0.018, 8, 8]} />
-              <meshStandardMaterial color="#ff3b30" emissive="#ff3b30" emissiveIntensity={2.5} />
+              <meshStandardMaterial color="#ff3b30" emissive="#ff2d20" emissiveIntensity={1.3} />
             </mesh>
           </group>
         </group>
       ))}
 
-      {/* ── Pinos decorativos ── */}
-      {TREES.map((t, i) => (
-        <group key={`tr${i}`}>
-          <mesh position={[t.x, 0.3 * t.s, t.z]} castShadow>
-            <cylinderGeometry args={[0.12 * t.s, 0.16 * t.s, 0.6 * t.s, 8]} />
-            <meshStandardMaterial color="#5a4430" roughness={0.9} />
-          </mesh>
-          <mesh position={[t.x, 0.55 * t.s + 1.4 * t.s, t.z]} castShadow>
-            <coneGeometry args={[0.85 * t.s, 2.8 * t.s, 8]} />
-            <meshStandardMaterial color="#3f6a3e" roughness={0.92} />
-          </mesh>
-        </group>
+      {/* ── Personajes ── */}
+      {NPC_SPOTS.map((npc, i) => (
+        <AnimatedFigure
+          key={`npc${i}`}
+          playing
+          visualProgress={0}
+          shakeIntensity={0}
+          index={i === 0 ? 0 : 1}
+          houseDoor={npc.door}
+          config={{ position: npc.pos }}
+        />
       ))}
 
-      {/* ── Personajes (AnimatedFigure del simulador sísmico) ── */}
-      <>
-        {NPC_SPOTS.map((s, i) => (
-          <AnimatedFigure
-            key={i}
-            playing
-            visualProgress={0}
-            shakeIntensity={0}
-            index={i === 0 ? 0 : 1}
-            houseDoor={s.door}
-            config={{ position: s.pos }}
-          />
-        ))}
-      </>
+      {/* ── Cielorraso del porche ya cubierto; luces exteriores ── */}
+      <pointLight position={[7.2, 2.4, 11.9]} intensity={lightsOn ? (night ? 0.9 : 0.25) : 0} color="#ffd9a0" distance={6} decay={2} />
 
-      {/* ── Iluminación global (HDR frío de día, cálido al atardecer) ── */}
-      <ambientLight intensity={night ? 0.16 : light === 'sunset' ? 0.36 : 0.48} color={night ? '#24313f' : '#dbe8fa'} />
-      <hemisphereLight
-        intensity={night ? 0.14 : light === 'sunset' ? 0.45 : 0.72}
-        color={night ? '#38506e' : '#d9ecff'}
-        groundColor="#6a5a45"
-      />
+      {/* ── Iluminación global ── */}
+      <hemisphereLight args={[night ? '#22354f' : '#eaf2fb', night ? '#1a2530' : '#cfc4af', night ? 0.35 : 0.65]} />
       <directionalLight
-        position={[4, 8, -14]}
-        intensity={night ? 0.05 : light === 'sunset' ? 0.28 : 0.5}
-        color={night ? '#5f7ba8' : '#dcecff'}
-      />
-      <directionalLight
-        castShadow
-        position={[7, 17.6, 14.8]}
+        position={[6.5, 16, 26]}
         intensity={sunIntensity}
         color={sunColor}
-        shadow-mapSize={[2048, 2048]}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.02}
         shadow-camera-left={-18}
         shadow-camera-right={18}
         shadow-camera-top={20}
         shadow-camera-bottom={-20}
-        shadow-camera-near={1}
-        shadow-camera-far={70}
-        shadow-bias={-0.0003}
-        shadow-normalBias={0.02}
       />
-      </group>
+      <directionalLight position={[4, 9, -12]} intensity={night ? 0.15 : 0.45} color={night ? '#93abd8' : '#dfeaf7'} />
+      {lightsOn && night ? <ambientLight intensity={0.12} color="#ffe9c9" /> : null}
     </>
   );
 }

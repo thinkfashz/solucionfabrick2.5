@@ -7,6 +7,7 @@
  */
 import { Canvas } from '@react-three/fiber';
 import { Suspense, useState } from 'react';
+import { DoorOpen, Lightbulb } from 'lucide-react';
 import { ACESFilmicToneMapping, PCFSoftShadowMap } from 'three';
 import { PLAN } from '@/lib/plano390Data';
 import type { SceneView } from '@/lib/plano390Data';
@@ -23,6 +24,8 @@ export default function Plano390Walkthrough() {
   const [mode, setMode] = useState<Plano390Mode>('free');
   const [spot, setSpot] = useState<number | null>(null);
   const [light, setLight] = useState<'day' | 'sunset' | 'night'>('day');
+  const [lightsOn, setLightsOn] = useState(true);
+  const [openHouse, setOpenHouse] = useState(false);
   const [roomLabel, setRoomLabel] = useState('Exterior');
   const [cctvIndex, setCctvIndex] = useState(0);
   const [tourIndex, setTourIndex] = useState(0);
@@ -94,7 +97,7 @@ export default function Plano390Walkthrough() {
           }}
         >
           <Suspense fallback={null}>
-            <Plano3903D light={light} />
+            <Plano3903D light={light} lightsOn={lightsOn} openHouse={openHouse} />
             <Plano390CameraRig onRoom={setRoomLabel} onCctv={setCctvIndex} onTour={setTourIndex} />
           </Suspense>
         </Canvas>
@@ -114,6 +117,29 @@ export default function Plano390Walkthrough() {
               {m === 'day' ? 'Día' : m === 'sunset' ? 'Atardecer' : 'Noche'}
             </button>
           ))}
+        </div>
+      ) : null}
+      {/* Conmutadores de instalaciones: luces y aberturas */}
+      {stage === 'in' ? (
+        <div className="absolute right-3 top-[116px] z-30 grid gap-1 rounded-2xl border border-white/10 bg-black/58 p-1 backdrop-blur-xl">
+          <button
+            onClick={() => setLightsOn((v) => !v)}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-xl px-2.5 text-[8px] font-black ${
+              lightsOn ? 'bg-[#F6C64A] text-black' : 'text-white/55'
+            }`}
+          >
+            <Lightbulb size={12} />
+            <span>{lightsOn ? 'Luces on' : 'Luces off'}</span>
+          </button>
+          <button
+            onClick={() => setOpenHouse((v) => !v)}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-xl px-2.5 text-[8px] font-black ${
+              openHouse ? 'bg-[#F6C64A] text-black' : 'text-white/55'
+            }`}
+          >
+            <DoorOpen size={12} />
+            <span>{openHouse ? 'Cerrando…' : 'Abrir casa'}</span>
+          </button>
         </div>
       ) : null}
       <Plano390UI

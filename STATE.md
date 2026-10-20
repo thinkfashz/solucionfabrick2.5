@@ -114,3 +114,6 @@ Bitácora de trabajo (se actualiza al cierre de cada hito).
 - **Errores nuevos**: 015–023 en la skill `visor-casa-fabrick`.
 - **Pendiente**: validación visual en teléfono (o captura remota); type-check real en
   Vercel; revisar rendimiento con 7 point lights + sombras 2048.
+- **Enlace directo corregido**: `?vista=` ahora se pasa como `initialScene` al rig y
+  el salto se encola cuando el Canvas ya está montado (antes se perdía por el Suspense;
+  `?luz=` sí funcionaba). Documentado como error 024 en la skill.

@@ -17,6 +17,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { BLOCKERS, CCTV_CAMERAS, PHOTO_SPOTS, PLAN, ROOMS, TOUR_STOPS, WALLS } from '@/lib/plano390Data';
+import type { SceneView } from '@/lib/plano390Data';
 import type { CctvCamera, PhotoSpot, WallSeg } from '@/lib/plano390Data';
 
 export type Plano390Mode = 'free' | 'tour' | 'cctv';
@@ -85,10 +86,13 @@ const smooth = (u: number): number => u * u * (3 - 2 * u);
 const clamp1 = (v: number): number => Math.max(-1, Math.min(1, v));
 
 export default function Plano390CameraRig({
+  initialScene,
   onRoom,
   onCctv,
   onTour,
 }: {
+  /** Escena pedida por enlace directo; se aplica cuando el rig ya está montado. */
+  initialScene?: SceneView | null;
   onRoom?: (room: string) => void;
   onCctv?: (index: number) => void;
   onTour?: (index: number) => void;
@@ -133,6 +137,14 @@ export default function Plano390CameraRig({
     }));
     return [...house, ...extra];
   }, []);
+
+  // Enlace directo: el salto se encola DESPUÉS de que el rig está montado.
+  // Hacerlo desde el padre (antes del Canvas) podía perderse en el Suspense.
+  useEffect(() => {
+    if (initialScene) {
+      input.jump = { pos: initialScene.pos, look: initialScene.look };
+    }
+  }, [initialScene]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {

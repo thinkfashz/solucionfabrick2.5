@@ -29,6 +29,7 @@ export default function Plano390Walkthrough() {
   const [roomLabel, setRoomLabel] = useState('Exterior');
   const [cctvIndex, setCctvIndex] = useState(0);
   const [tourIndex, setTourIndex] = useState(0);
+  const [initialScene, setInitialScene] = useState<SceneView | null>(null);
 
   /**
    * Enlace directo para revisión visual y para compartir una vista:
@@ -49,7 +50,7 @@ export default function Plano390Walkthrough() {
     if (params.get('manos') === '0') setShowHands(false);
     input.mode = 'free';
     input.spot = null;
-    if (scene) input.jump = { pos: scene.pos, look: scene.look };
+    setInitialScene(scene ?? null);
     setMode('free');
     setStage('in');
   }, []);
@@ -139,7 +140,7 @@ export default function Plano390Walkthrough() {
         >
           <Suspense fallback={null}>
             <Plano3903D light={light} lightsOn={lightsOn} openHouse={openHouse} showHands={showHands && mode !== 'cctv'} autoDoors={mode === 'tour'} />
-            <Plano390CameraRig onRoom={setRoomLabel} onCctv={setCctvIndex} onTour={setTourIndex} />
+            <Plano390CameraRig initialScene={initialScene} onRoom={setRoomLabel} onCctv={setCctvIndex} onTour={setTourIndex} />
           </Suspense>
         </Canvas>
       </div>
